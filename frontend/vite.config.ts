@@ -1,10 +1,7 @@
-// Vite Configuration
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
-import { defineConfig } from 'vite';
-import vue from '@vitejs/plugin-vue';
-
-// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [react()],
   base: '/raunaq-portfolio/',
-});
+})
