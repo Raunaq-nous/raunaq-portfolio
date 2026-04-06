@@ -4,13 +4,6 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/raunaq-portfolio/',
-})
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-export default defineConfig({
-  plugins: [react()],
-  base: '/raunaq-portfolio/',
   server: {
     port: 5173,
     proxy: {
