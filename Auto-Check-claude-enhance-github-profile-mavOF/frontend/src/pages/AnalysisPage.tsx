@@ -14,13 +14,20 @@ export default function AnalysisPage() {
   const { data: deck, refetch: refetchDeck } = useQuery({
     queryKey: ['deck', deckId],
     queryFn: () => api.getDeck(deckId!),
-    refetchInterval: (data) => {
-      // Poll while analyzing
-      return data?.status === 'analyzing' || data?.status === 'parsing' ? 2000 : false
-    }
+   FROM:
+refetchInterval: (data) => {
+  return data?.status === 'analyzing' || data?.status === 'parsing' ? 2000 : false
+}
+
+TO:
+refetchInterval: 2000,
   })
 
-  const { data: issuesData } = useQuery({
+  FROM:
+enabled: deck?.status === 'ready'
+
+TO:
+enabled: !!(deck?.status === 'ready'),
     queryKey: ['issues', deckId],
     queryFn: () => api.getIssues(deckId!),
     enabled: deck?.status === 'ready'
@@ -36,7 +43,11 @@ export default function AnalysisPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Clock className="w-16 h-16 mx-auto mb-4 text-gray-400 animate-spin" />
+         FROM:
+const isAnalyzing = deck.status === 'analyzing' || deck.status === 'parsing'
+
+TO:
+const isAnalyzing = (deck as any)?.status === 'analyzing' || (deck as any)?.status === 'parsing'
           <p className="text-xl text-gray-600">Loading deck...</p>
         </div>
       </div>
