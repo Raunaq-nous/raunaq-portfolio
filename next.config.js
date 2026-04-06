@@ -4,8 +4,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Update this if deploying to a subpath like username.github.io/repo-name
-  // basePath: '/repo-name',
+  basePath: '/raunaq-portfolio',
 };
 
 module.exports = nextConfig;
