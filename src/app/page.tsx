@@ -1,39 +1,48 @@
+'use client';
+
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { useMode } from '@/components/ModeContext';
 
 const cards = [
   {
     title: 'Curiosities',
     count: 4,
-    description: "What I'm building, thinking about, and advising on right now.",
-    tags: 'AI systems \u00b7 Capital allocation \u00b7 Agentic workflows',
+    calm: "Things I'm currently obsessed with.",
+    nerd: "Active research threads and builds. AI systems, capital allocation, agentic workflows.",
+    tags: 'AI systems · Capital allocation · Agentic workflows',
     href: '/curiosities',
   },
   {
     title: 'Builds',
     count: 12,
-    description: 'Tools I built because the problem annoyed me enough. Some are serious. All are real.',
-    tags: 'Python \u00b7 TypeScript \u00b7 LangChain \u00b7 React',
+    calm: 'Tools I made because they should exist.',
+    nerd: '12 production tools. Financial modeling, RAG engines, scheduling optimization, survey automation. Repos linked.',
+    tags: 'Python · TypeScript · LangChain · React',
     href: '/builds',
   },
   {
     title: 'Past Battles',
     count: 6,
-    description: 'The work. The companies. What actually happened.',
-    tags: 'Strategy \u00b7 AI \u00b7 Capital \u00b7 Energy \u00b7 Consumer',
+    calm: 'Where I\'ve worked and what happened.',
+    nerd: '6 roles across MBB consulting, growth advisory, competitive intelligence, market entry, and a startup. Key projects tagged by industry.',
+    tags: 'Strategy · AI · Capital · Energy · Consumer',
     href: '/past-battles',
   },
   {
     title: 'Skills & Learning',
     count: 14,
-    description: 'Courses completed, skills being built, credentials earned.',
-    tags: 'AI \u00b7 Consulting \u00b7 Finance \u00b7 Engineering',
+    calm: 'What I\'ve learned and what I\'m learning.',
+    nerd: 'Certifications from Anthropic, Wharton, Harvard, IBM. Technical stack: Python, LangChain, Next.js, RAG, multi-agent systems.',
+    tags: 'AI · Consulting · Finance · Engineering',
     href: '/skills',
   },
 ];
 
 export default function Home() {
+  const { mode } = useMode();
+
   return (
     <>
       <Header />
@@ -41,27 +50,65 @@ export default function Home() {
         {/* Hero */}
         <section className="grid-bg min-h-[85vh] flex items-center">
           <div className="max-w-5xl mx-auto px-6 py-24">
-            <div className="max-w-2xl">
-              <p className="section-label mb-6 fade-in">Raunaq Rakesh</p>
-              <h1 className="font-mono text-4xl sm:text-5xl md:text-[3.5rem] font-bold leading-[1.1] tracking-tight mb-8 fade-in-1">
-                THINK.<br />BUILD.<br />SOLVE.
-              </h1>
-              <p className="text-text-secondary text-base leading-relaxed mb-4 fade-in-2">
-                I work at the intersection of strategy, capital, and AI &mdash; where the interesting
-                problems actually live. By day, I&apos;m a Project Leader at Bain & Company, advising
-                energy companies and utilities on decisions that involve a lot of zeros. Outside of
-                that, I build AI systems. Not as a side project. As a habit.
-              </p>
-              <p className="text-text-secondary text-base leading-relaxed mb-10 fade-in-3">
-                I love hard problems. The kind that don&apos;t have a clean framework. The kind that
-                require you to think clearly, move fast, and occasionally just build the tool that
-                doesn&apos;t exist yet.
-              </p>
-              <div className="fade-in-4">
-                <p className="text-text-muted text-xs font-mono leading-relaxed">
-                  Currently at Bain & Company &mdash; Capital Projects. Building things on GitHub.
-                  Thinking about what agentic AI actually changes.
-                </p>
+            <div className="flex flex-col md:flex-row md:items-center gap-12">
+              <div className="max-w-2xl flex-1">
+                <p className="section-label mb-6 fade-in">Raunaq Rakesh</p>
+                <h1 className="font-mono text-4xl sm:text-5xl md:text-[3.5rem] font-bold leading-[1.1] tracking-tight mb-8 fade-in-1">
+                  THINK.<br />BUILD.<br />SOLVE.
+                </h1>
+
+                {mode === 'calm' ? (
+                  <>
+                    <p className="text-text-secondary text-base leading-relaxed mb-4 fade-in-2">
+                      I spend my days advising energy companies and utilities at Bain &amp; Company on
+                      capital decisions that keep people up at night. Evenings and weekends, I build
+                      AI tools &mdash; not because someone asked me to, but because the problems were
+                      there and the tools weren&apos;t.
+                    </p>
+                    <p className="text-text-secondary text-base leading-relaxed mb-10 fade-in-3">
+                      Most of what I enjoy doesn&apos;t come with a playbook. It&apos;s messy, ambiguous
+                      stuff &mdash; the kind where you have to figure out the question before you can
+                      figure out the answer. Sometimes the fastest path is just building the thing yourself.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-text-secondary text-base leading-relaxed mb-4 fade-in-2">
+                      Project Leader at Bain &amp; Company, Capital Projects &amp; Infrastructure.
+                      I work on upstream oil feasibility, nuclear program sequencing, solar performance
+                      optimization &mdash; decisions involving billions in CapEx with multi-year execution
+                      horizons. I also build production AI tools: multi-agent financial modeling, RAG
+                      document intelligence, EPC schedule optimization, capital allocation tracking.
+                    </p>
+                    <p className="text-text-secondary text-base leading-relaxed mb-10 fade-in-3">
+                      12 tools shipped. All open-source. Built in Python, TypeScript, LangChain, React,
+                      FastAPI, D3.js. The pattern: I hit a problem on an engagement, there&apos;s no
+                      good tool for it, so I build one. Then I make it general enough that it works
+                      for the next engagement too.
+                    </p>
+                  </>
+                )}
+
+                <div className="fade-in-4">
+                  <p className="text-text-muted text-xs font-mono leading-relaxed">
+                    {mode === 'calm'
+                      ? 'Currently at Bain & Company. Building things on GitHub. Figuring out what agentic AI actually changes.'
+                      : 'Bain & Company → Capital Projects. 12 repos on GitHub. Anthropic, Wharton, Harvard certified. 5 IEEE publications.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Profile photo */}
+              <div className="flex-shrink-0 fade-in-2">
+                <div className="w-48 h-48 md:w-56 md:h-56 rounded-2xl overflow-hidden border-2 border-border hover:border-accent/40 transition-colors bg-[#1a2035]">
+                  {/* Replace public/profile.jpg with your actual photo */}
+                  <img
+                    src={`${process.env.__NEXT_ROUTER_BASEPATH || ''}/profile.jpg`}
+                    alt="Raunaq Rakesh"
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -86,7 +133,7 @@ export default function Home() {
                     </span>
                   </div>
                   <p className="text-text-secondary text-sm leading-relaxed mb-4">
-                    {card.description}
+                    {mode === 'calm' ? card.calm : card.nerd}
                   </p>
                   <p className="text-text-muted text-xs font-mono">
                     {card.tags}

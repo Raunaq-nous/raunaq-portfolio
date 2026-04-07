@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import ModeToggle from './ModeToggle';
 
 const navItems = [
   { href: '/', label: 'Home' },
@@ -37,6 +38,7 @@ export default function Header() {
               {item.label}
             </Link>
           ))}
+          <ModeToggle />
         </nav>
 
         <button
@@ -75,6 +77,9 @@ export default function Header() {
               {item.label}
             </Link>
           ))}
+          <div className="pt-2 border-t border-border">
+            <ModeToggle />
+          </div>
         </div>
       )}
     </header>
