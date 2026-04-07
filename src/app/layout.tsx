@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { ModeProvider } from '@/components/ModeContext';
 
 export const metadata: Metadata = {
   title: 'Raunaq Rakesh \u2014 Think. Build. Solve.',
@@ -18,7 +19,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <ModeProvider>{children}</ModeProvider>
+      </body>
     </html>
   );
 }
