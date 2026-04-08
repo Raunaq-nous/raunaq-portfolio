@@ -36,27 +36,14 @@ It is not a chatbot on top of a database. That distinction matters.`,
     tags: ['AI', 'strategy', 'consulting', 'TypeScript', 'NextJS', 'agents'],
   },
   {
-    id: 'capital-allocation',
-    title: 'Capital Allocation Intelligence',
+    id: 'capital-projects-tracker',
+    title: 'Capital Projects Opportunity Tracker',
     role: 'BUILDER',
     year: '2025',
     status: 'ACTIVE',
-    description: `One of the underrated problems in large organizations is that no one has a real-time picture of where capital is actually going versus where it should go. The data exists. It's just fragmented, in the wrong formats, and never analyzed together.
+    description: `One of the underrated problems in large organizations is that no one has a real-time picture of their entire capital project portfolio. The data exists — budgets, schedules, milestones, risk registers — but it's fragmented across systems, formats, and teams.
 
-I built a capital allocation opportunity trigger mapping system that ingests portfolio-level investment data and surfaces signals \u2014 where budgets are misaligned, where projects are drifting from thesis, where reallocation would improve returns. It's the kind of analysis that used to take weeks of manual data work. Now it runs continuously.`,
-    tags: ['AI', 'capitalallocation', 'finance', 'portfolio', 'python'],
-  },
-  {
-    id: 'agentic-ai-changes',
-    title: 'What Agentic AI Actually Changes',
-    role: 'THINKER',
-    year: '2025',
-    status: 'ONGOING',
-    description: `I have a specific view on this that I find most conversations miss. The question isn't what tasks AI can automate. It's which human behaviors change when certain cognitive costs drop to near zero.
-
-In consulting and capital-intensive industries, a lot of decisions don't get made \u2014 not because the answer is unknown, but because assembling the analysis costs too much time and attention. When that cost drops, the decision landscape changes. Organizations that understand this first will move differently.
-
-I'm still working out the full shape of this. Writing about it helps.`,
-    tags: ['AI', 'strategy', 'future', 'thinking'],
+I built a tracker that monitors the entire portfolio continuously. It finds issues in terms of schedule — where projects are slipping, where dependencies are breaking, where cost overruns are forming. More importantly, it triggers opportunities: where a failure is likely to occur before it shows up in a quarterly review, and where reallocation would improve outcomes. It's portfolio intelligence that runs continuously, not annually.`,
+    tags: ['AI', 'capitalprojects', 'finance', 'portfolio', 'python'],
   },
 ];

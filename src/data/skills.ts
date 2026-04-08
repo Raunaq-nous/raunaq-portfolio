@@ -38,7 +38,6 @@ export const skillSections: SkillSection[] = [
       { title: "CS50's Introduction to Programming with Python", issuer: 'Harvard University', year: '', tag: 'python' },
       { title: 'Introduction to Git and GitHub', issuer: 'Google', year: '2025', tag: 'git' },
       { title: 'Introduction to IT & Cybersecurity', issuer: 'Certified', year: '2024', tag: 'IT' },
-      { title: 'Tableau Business Intelligence Analyst', issuer: 'Tableau', year: '', tag: 'data' },
     ],
   },
 ];
@@ -47,8 +46,31 @@ export const technicalSkills = [
   'Python', 'LangChain', 'Streamlit', 'TypeScript', 'Next.js', 'React',
   'FastAPI', 'D3.js', 'SQL', 'GitHub', 'RAG systems', 'Vector databases',
   'Multi-agent LLMs', 'Knowledge graphs', 'Agentic AI', 'AI ADKs',
-  'Claude Code', 'Advanced Excel', 'Financial modeling', 'Tableau',
+  'Claude Code', 'Advanced Excel', 'Financial modeling',
 ];
+
+// Map technical skills to related build IDs
+export const skillToBuildMap: Record<string, string[]> = {
+  'Python': ['financial-modelling', 'solar-cost', 'capital-allocation', 'rag-engine', 'workplan', 'survey', 'solar-benchmark', 'universal-rag', 'proposal', 'capital-watcher'],
+  'LangChain': ['financial-modelling', 'capital-allocation', 'rag-engine', 'workplan', 'proposal'],
+  'Streamlit': ['financial-modelling', 'workplan'],
+  'TypeScript': ['haus-nous'],
+  'Next.js': ['haus-nous'],
+  'React': ['scheduling', 'haus-nous'],
+  'FastAPI': ['scheduling'],
+  'D3.js': ['scheduling'],
+  'RAG systems': ['rag-engine', 'universal-rag'],
+  'Vector databases': ['rag-engine', 'universal-rag'],
+  'Multi-agent LLMs': ['financial-modelling', 'solar-cost', 'workplan', 'survey'],
+  'Agentic AI': ['financial-modelling', 'capital-allocation', 'haus-nous'],
+  'AI ADKs': ['haus-nous'],
+  'Claude Code': ['haus-nous'],
+  'Financial modeling': ['financial-modelling', 'solar-cost'],
+  'Advanced Excel': ['financial-modelling', 'solar-cost'],
+  'SQL': ['capital-allocation', 'capital-watcher'],
+  'GitHub': ['financial-modelling', 'solar-cost', 'scheduling', 'capital-allocation', 'rag-engine', 'workplan', 'haus-nous', 'survey'],
+  'Knowledge graphs': ['rag-engine'],
+};
 
 export const linkedinSkills = [
   'AI Agents', 'Vector Databases', 'Retrieval-Augmented Generation (RAG)',

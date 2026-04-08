@@ -1,3 +1,13 @@
+export interface BattleLink {
+  label: string;
+  url: string;
+}
+
+export interface KeyProject {
+  industry: string;
+  description: string;
+}
+
 export interface Battle {
   id: string;
   company: string;
@@ -8,6 +18,11 @@ export interface Battle {
   section: string;
   tags: string[];
   description: string;
+  keyProjects?: KeyProject[];
+  links?: BattleLink[];
+  tools?: BattleLink[];
+  problemStatements?: string[];
+  frameworks?: string[];
 }
 
 export interface Education {
@@ -28,17 +43,21 @@ export const battles: Battle[] = [
     status: 'CURRENT',
     section: 'NOW',
     tags: ['strategy', 'energy', 'AI', 'capitalprojects', 'consulting'],
-    description: `This is MBB consulting, which means the stakes are real and the timelines are tight. I lead cross-functional teams on capital project advisory engagements across oil and gas, solar, nuclear, and mining \u2014 working directly with C-suites and boards on decisions that don't have easy answers.
-
-Three engagements worth describing:
-
-A national energy company in South America had shelved an upstream oil extraction project \u2014 internally assessed as non-feasible, not worth pursuing. The question they brought us was whether there was a different project concept that could change that answer. I designed an AI-augmented evaluation framework that tested multiple extraction concepts against each other, integrating financial modeling, technical simulation, and regulatory inputs into a structured comparison. The conclusion was yes, there was a viable path, and the C-suite made the investment decision. A project that had been written off came back.
-
-A major North American nuclear utility was trying to figure out how to sequence and govern a multi-plant new-build program. The decisions involved billions of dollars, years of execution, and a level of governance complexity that most program frameworks aren't designed for. I built the decision model that covered program sequencing, operating model design, governance structure, and contractor selection criteria \u2014 and structured the recommendation for the board.
-
-A utility-scale solar project was underperforming against its financial projections. The question was where the value was leaking and what could actually be done about it. I led the performance analysis, identified CapEx and OpEx optimization levers, and built the investment-committee-ready case for the interventions.
-
-Alongside all of this, I've been building the AI toolkit \u2014 financial modeling, scheduling, document intelligence, capital allocation tracking \u2014 that makes the analytical work faster and more rigorous at the same time.`,
+    description: `Leading cross-functional teams on capital project advisory engagements across oil & gas, solar, nuclear, and mining \u2014 working directly with C-suites and boards on high-stakes investment decisions. Simultaneously building an AI toolkit that makes the analytical work faster and more rigorous.`,
+    keyProjects: [
+      { industry: 'Oil & Gas', description: 'Designed an AI-augmented evaluation framework for a South American energy company that revived a shelved upstream extraction project \u2014 C-suite approved the investment decision.' },
+      { industry: 'Nuclear', description: 'Built the decision model for a North American utility\u2019s multi-billion-dollar, multi-plant new-build program \u2014 covering sequencing, governance, operating model, and contractor selection.' },
+      { industry: 'Solar', description: 'Led performance analysis on an underperforming utility-scale solar project \u2014 identified CapEx/OpEx optimization levers and built the investment-committee-ready case.' },
+    ],
+    problemStatements: ['Investment decision modeling', 'Capital project optimization', 'Portfolio performance tracking', 'Schedule and cost overrun prevention'],
+    frameworks: ['Financial modeling', 'Multi-agent AI', 'Decision analysis', 'Performance benchmarking'],
+    tools: [
+      { label: 'Financial Modeling Engine', url: 'https://github.com/Raunaq-nous/FInancial-Modelling' },
+      { label: 'EPC Scheduling Platform', url: 'https://github.com/Raunaq-nous/Solar-Cost-Modelling' },
+      { label: 'Document Intelligence (RAG)', url: 'https://github.com/Raunaq-nous/Universal-RAG' },
+      { label: 'Capital Allocation Tracker', url: 'https://github.com/Raunaq-nous/Capital-Projects-Watcher' },
+      { label: 'Solar Benchmarking', url: 'https://github.com/Raunaq-nous/Solar-Project-Benchmarking' },
+    ],
   },
   {
     id: 'aranca',
@@ -49,29 +68,25 @@ Alongside all of this, I've been building the AI toolkit \u2014 financial modeli
     status: 'WORKED',
     section: 'ADVISORY',
     tags: ['strategy', 'GTM', 'financialmodeling', 'MA', 'advisory', 'EMEA', 'consumer', 'logistics'],
-    description: `Three years of leading growth advisory mandates across EMEA, North America, and APAC for Fortune 500 and PE-backed clients. The scope was intentionally wide \u2014 which is either a feature or a bug depending on what you're looking for. I found it useful. You learn differently when the problem type changes every few months.
-
-The work that's worth describing:
-
-A B2B commerce marketplace was preparing for its Series A. They needed a financial model and business plan rigorous enough to hold up to institutional investor scrutiny, plus a credible narrative for their expansion thesis. I built both, including sizing adjacent market opportunities to strengthen the investment case. The raise happened.
-
-A global drinks company was entering the ready-to-drink segment \u2014 a new category that required a completely different approach to positioning, channel, and launch. I developed the marketing strategy and product launch plan from scratch: consumer positioning, pricing architecture, channel mix across retail and on-trade, and market-by-market sequencing. The legacy commercial model had been built for traditional categories. This wasn't that.
-
-A consumer electronics brand in EMEA had stopped growing. The channel mix was wrong, the brand positioning hadn't evolved, and the product architecture was starting to look like everything else in the market. I led the full strategic and commercial redesign \u2014 positioning, channel, distribution model, product category adjacencies \u2014 and built the efficiency framework to make the new commercial structure viable.
-
-A technology firm needed a pricing strategy for a software suite targeting the carbon credits exchange market. The problem: no clean comparables. The market was too new. I built the pricing model using replacement-cost methodology combined with competitor analysis across adjacent software categories, arriving at a defensible tiered architecture.
-
-A stock trading firm needed a complete solution portfolio architecture for its software suite \u2014 product bundling logic, tier-based pricing, and a commercial framework designed for C-suite adoption. I built the full structure, not just the price points.
-
-For a global port operator expanding across three continents, I led the financial return modeling and bid strategy across geographies with very different competitive and regulatory environments. Structures that work in one region often don't work in another. That tension is where the interesting work lives.
-
-I also formulated the M&A roadmap that enabled PE investment in a global IT services firm. The existing business mix didn't command a premium multiple. The acquisition sequence I recommended changed that calculus.
-
-A logistics firm needed to know where the high-value growth was in its market \u2014 not just a market sizing exercise but a genuine strategic analysis integrating demand forecasting, competitive supply assessment, and business model viability. I built the framework and ran the analysis.
-
-An ecommerce platform was evaluating several expansion directions simultaneously without a rigorous basis for comparing them. I built the market sizing, competitive dynamics, and operational feasibility analysis for each option so leadership had something to actually decide with.
-
-Also published on AI's impact on green manufacturing and digital governance \u2014 Economic Times and Dataquest. Neither was purely promotional. Both tried to say something true.`,
+    description: `Three years leading growth advisory mandates across EMEA, North America, and APAC for Fortune 500 and PE-backed clients. Wide scope by design \u2014 strategy, financial modeling, M&A, GTM, pricing. Published on AI\u2019s impact on green manufacturing (Economic Times) and digital governance (Dataquest).`,
+    keyProjects: [
+      { industry: 'B2B Commerce', description: 'Built financial model and business plan for a marketplace\u2019s Series A \u2014 including adjacent market sizing. The raise happened.' },
+      { industry: 'Beverages (FMCG)', description: 'Developed full GTM and product launch strategy for a global drinks company entering ready-to-drink \u2014 positioning, pricing, channel mix, market sequencing.' },
+      { industry: 'Consumer Electronics', description: 'Led strategic and commercial redesign for an EMEA brand \u2014 repositioning, channel restructuring, product architecture, efficiency framework.' },
+      { industry: 'Climate Tech', description: 'Built pricing strategy for carbon credits exchange software with no clean comparables \u2014 replacement-cost methodology with tiered architecture.' },
+      { industry: 'Financial Services', description: 'Designed solution portfolio architecture for a stock trading firm \u2014 product bundling, tier-based pricing, C-suite commercial framework.' },
+      { industry: 'Ports & Logistics', description: 'Led financial return modeling and bid strategy for a global port operator expanding across three continents with varying regulatory environments.' },
+      { industry: 'IT Services (PE)', description: 'Formulated M&A roadmap that enabled PE investment in a global IT services firm \u2014 acquisition sequence to improve multiple.' },
+      { industry: 'Logistics', description: 'Built strategic growth framework integrating demand forecasting, competitive supply assessment, and business model viability analysis.' },
+      { industry: 'E-commerce', description: 'Built market sizing, competitive dynamics, and operational feasibility analysis across multiple expansion directions for leadership decision-making.' },
+    ],
+    problemStatements: ['Market entry strategy', 'GTM and pricing', 'M&A roadmapping', 'Financial modeling for fundraising', 'Competitive repositioning'],
+    frameworks: ['Go-to-market strategy', 'Financial modeling', 'Competitive intelligence', 'Market sizing', 'Pricing strategy'],
+    tools: [
+      { label: 'AI Proposal Builder', url: 'https://github.com/Raunaq-nous/Proposal-Builder' },
+      { label: 'Survey Intelligence Platform', url: 'https://github.com/Raunaq-nous/Survey-Tool' },
+      { label: 'Haus Nous (Strategy Platform)', url: 'https://github.com/Raunaq-nous/Haus-Nous' },
+    ],
   },
   {
     id: 'evalueserve',
@@ -82,17 +97,16 @@ Also published on AI's impact on green manufacturing and digital governance \u20
     status: 'WORKED',
     section: 'ADVISORY',
     tags: ['intelligence', 'cloud', 'technology', 'GTM', 'research'],
-    description: `Competitive intelligence and market analysis for Fortune 1000 technology clients. The work was dense, deadline-driven, and required translating complex multi-source data into something a senior executive would actually act on.
-
-A global cloud provider was entering India and needed to know which system integrator partners to prioritize. I built the digital readiness evaluation framework, assessed ten-plus GSI partners, and arrived at a tiered engagement model and prioritized GTM strategy for leadership.
-
-A major Indian telecoms company was launching into CPaaS and CCaaS \u2014 technically complex categories with a crowded competitive landscape. I designed the competitive intelligence-driven GTM strategy, structured the product positioning, and built the customer engagement model for the launch.
-
-For a top hyperscale cloud provider, I led competitive analysis on cloud compliance assurance programs \u2014 work that directly shaped their product roadmap and M&A screening criteria.
-
-I mapped IT solution spending across the Canadian public sector for a global technology firm \u2014 building a structured taxonomy of who was spending what, and where the client had the strongest basis for enterprise engagement.
-
-I also ran the strategic landscape analysis for EV charging infrastructure \u2014 identifying key technologies, deployment models, and investment opportunities as the category was still forming. That kind of early-stage analysis requires being comfortable with uncertainty while still arriving somewhere useful.`,
+    description: `Competitive intelligence and market analysis for Fortune 1000 technology clients. Dense, deadline-driven work translating complex multi-source data into executive-actionable insights.`,
+    keyProjects: [
+      { industry: 'Cloud (India Entry)', description: 'Built digital readiness evaluation framework for a global cloud provider\u2019s India entry \u2014 assessed 10+ GSI partners, delivered tiered engagement model and GTM strategy.' },
+      { industry: 'Telecoms (CPaaS/CCaaS)', description: 'Designed competitive intelligence-driven GTM strategy for a major Indian telecoms company launching into CPaaS and CCaaS.' },
+      { industry: 'Cloud Compliance', description: 'Led competitive analysis on compliance assurance programs for a top hyperscale cloud provider \u2014 directly shaped product roadmap and M&A screening.' },
+      { industry: 'Public Sector IT', description: 'Mapped IT solution spending across Canadian public sector \u2014 structured taxonomy of spending patterns and enterprise engagement opportunities.' },
+      { industry: 'EV Infrastructure', description: 'Ran strategic landscape analysis for EV charging infrastructure \u2014 key technologies, deployment models, and investment opportunities in an emerging market.' },
+    ],
+    problemStatements: ['Competitive intelligence', 'Market entry assessment', 'Product roadmap shaping', 'Public sector opportunity mapping'],
+    frameworks: ['Competitive intelligence', 'GTM strategy', 'Technology landscape analysis'],
   },
   {
     id: 'tecnova',
@@ -103,17 +117,16 @@ I also ran the strategic landscape analysis for EV charging infrastructure \u201
     status: 'WORKED',
     section: 'ADVISORY',
     tags: ['marketentry', 'India', 'automotive', 'pharma', 'consumer', 'strategy'],
-    description: `India market entry strategy for global clients. The work required understanding India specifically \u2014 its competitive structures, regulatory environments, and the gap between how global companies think about the market and what it actually is.
-
-A $10 billion French industrial conglomerate wanted to establish meaningful presence in India across automotive components, pharmaceutical, and consumer electronics simultaneously. Three different sectors with three different competitive dynamics. I led the full engagement \u2014 market sizing, M&A and JV target identification, competitive intelligence, and partner origination across all three. The partners that got signed gave the client its fastest credible route to market.
-
-For a US industry association, I built a market sizing framework for the Indian metals market using import-export data and demand-supply modeling, with a focus on energy storage applications. The findings were used to facilitate strategic connections for member companies.
-
-A German automotive parts manufacturer was having operational difficulties in India. The root causes were partly internal, partly external \u2014 captured through a structured Voice of Customer analysis and operational diagnostic. I developed the turnaround strategy that addressed both.
-
-I led the partner identification and negotiation process for a European primary cell manufacturer that needed a contract manufacturing arrangement in India. Shortlisted partners on technical capability, quality systems, and commercial terms. The partnership that resulted gave the client a viable India manufacturing base.
-
-I also built a full business plan \u2014 market positioning, pricing, financial model, and digital marketing strategy \u2014 for an early-stage cosmetic brand from zero. Every element was built to be both investor-ready and operationally executable, which are harder to reconcile than they sound.`,
+    description: `India market entry strategy for global clients. Understanding India\u2019s competitive structures, regulatory environments, and the gap between how global companies think about the market and what it actually is.`,
+    keyProjects: [
+      { industry: 'Industrial Conglomerate', description: 'Led full market entry for a $10B French conglomerate across automotive, pharma, and consumer electronics simultaneously \u2014 M&A/JV targets, partner origination, competitive intelligence.' },
+      { industry: 'Metals & Energy Storage', description: 'Built market sizing framework for Indian metals market using import-export and demand-supply modeling for a US industry association.' },
+      { industry: 'Automotive (Turnaround)', description: 'Developed turnaround strategy for a German auto parts manufacturer in India \u2014 Voice of Customer analysis and operational diagnostic.' },
+      { industry: 'Battery Manufacturing', description: 'Led partner identification and negotiation for a European primary cell manufacturer\u2019s contract manufacturing arrangement in India.' },
+      { industry: 'Cosmetics (Startup)', description: 'Built full business plan from zero \u2014 positioning, pricing, financial model, digital marketing \u2014 investor-ready and operationally executable.' },
+    ],
+    problemStatements: ['India market entry', 'Partner identification', 'Turnaround strategy', 'Business model design'],
+    frameworks: ['Market entry strategy', 'M&A / JV screening', 'Voice of Customer', 'Financial modeling'],
   },
   {
     id: 'madcue',
@@ -124,13 +137,13 @@ I also built a full business plan \u2014 market positioning, pricing, financial 
     status: 'BUILT',
     section: 'BUILT FROM ZERO',
     tags: ['startup', 'creator', 'content', 'design', 'community', 'media'],
-    description: `I built a creator economy and digital media platform at a time when that phrase didn't really exist yet. The idea was simple and hard: give interesting people \u2014 artists, adventurers, writers, makers \u2014 a platform with a coherent identity and a real audience, rather than just another social aggregator.
-
-What distinguished Madcue wasn't just what it covered but how it looked and felt. I defined the brand identity, the visual design language, and the editorial voice from the ground up. The platform had a distinct aesthetic \u2014 which sounds minor but isn't. In a space full of generic interfaces, having a clear creative identity was what made creators want to be on it.
-
-By the time I left: 150+ independent creators, 70,000 monthly viewers, audience tripled in eight months through structured PPC experiments on Facebook and Google. Exclusive interviews with globally recognized creators \u2014 Gavin Aung Than, Abhilash Tomy, Tashi Malik. The interviews were possible because the platform had a reputation worth lending.
-
-I ran all of it \u2014 product, operations, content strategy, creator acquisition, distribution. That's the useful part of building something at scale with no resources. Everything is your problem.`,
+    description: `Built a creator economy and digital media platform before the phrase existed. Defined brand identity, visual design language, and editorial voice from the ground up. 150+ independent creators, 70,000 monthly viewers, audience tripled in 8 months through structured PPC experiments. Exclusive interviews with globally recognized creators \u2014 Gavin Aung Than, Abhilash Tomy, Tashi Malik. Ran product, operations, content strategy, creator acquisition, and distribution end-to-end.`,
+    links: [
+      { label: 'Madcue on Facebook', url: 'https://www.facebook.com/madcue/' },
+      { label: 'Madcue on Instagram', url: 'https://www.instagram.com/madcue/' },
+    ],
+    problemStatements: ['Creator platform building', 'Audience growth', 'Brand identity design', 'Content strategy'],
+    frameworks: ['Growth hacking', 'PPC optimization', 'Community building', 'Editorial strategy'],
   },
   {
     id: 'parikshit',
@@ -141,15 +154,15 @@ I ran all of it \u2014 product, operations, content strategy, creator acquisitio
     status: 'BUILT',
     section: 'LEVELLING UP',
     tags: ['engineering', 'ISRO', 'nanosatellite', 'controls', 'research', 'IEEE'],
-    description: `As an undergraduate mechanical engineering student, I was the head of the attitude determination and control subsystem for Parikshit \u2014 a student satellite project developed under the guidance of ISRO, India's space research organization.
-
-My specific problem: designing the control mechanism for a nano-satellite traveling at up to 28,800 km/hr, ensuring angular velocities remained within one degree per second to satisfy payload specifications. The margin for error at those velocities is essentially zero. The system had to work.
-
-Five IEEE and journal publications between 2014 and 2016, including papers presented at the IEEE Aerospace Conference in Big Sky, Montana \u2014 one of the leading aerospace research forums. Topics included tether ejection systems, dynamics and control system design, software-in-loop satellite testing, and earthquake stabilization of buildings (a separate but related structural dynamics thread).
-
-Getting a research paper accepted at a major aerospace conference in your second year of university is the kind of thing that either confirms you're on the right path or convinces you to change direction. For me, it did both. I learned I could do the rigorous technical work. I also learned that the work I found most interesting lived at the intersection of systems and strategy \u2014 not pure engineering.
-
-That tension has defined every career choice since.`,
+    description: `Head of attitude determination and control subsystem for Parikshit \u2014 a student nano-satellite developed under ISRO guidance. Designed the control mechanism for a satellite traveling at 28,800 km/hr, maintaining angular velocities within 1\u00b0/s for payload specs. Five IEEE and journal publications (2014\u20132016), including papers at the IEEE Aerospace Conference in Big Sky, Montana.`,
+    links: [
+      { label: 'Tether Deployment \u2014 Dynamics & Control of Tethered Satellite Systems (IEEE Aerospace 2015)', url: 'https://ieeexplore.ieee.org/document/7119191' },
+      { label: 'Satellite ADCS \u2014 Attitude Determination & Control System Design (IEEE Aerospace 2016)', url: 'https://ieeexplore.ieee.org/document/7500699' },
+      { label: 'Software-in-Loop \u2014 SIL Testing for Nano-Satellite Subsystems (IEEE Aerospace 2016)', url: 'https://ieeexplore.ieee.org/document/7500756' },
+      { label: 'Structural Dynamics \u2014 Earthquake Stabilization Using Active Control (IJERT 2014)', url: 'https://www.ijert.org' },
+    ],
+    problemStatements: ['Satellite attitude control', 'Tether deployment dynamics', 'Hardware-in-loop testing'],
+    frameworks: ['Control systems engineering', 'Simulation & testing (SIL)', 'IEEE research methodology'],
   },
 ];
 
