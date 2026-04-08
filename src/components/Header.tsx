@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-
 const navItems = [
   { href: '/', label: 'Home' },
   { href: '/curiosities', label: 'Curiosities' },

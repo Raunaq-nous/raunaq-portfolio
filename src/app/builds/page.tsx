@@ -4,16 +4,29 @@ import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import StatusPill from '@/components/StatusPill';
+import { useMode } from '@/components/ModeContext';
+import ModeToggle from '@/components/ModeToggle';
 import { builds } from '@/data/builds';
 
 const allTags = Array.from(new Set(builds.flatMap((b) => b.tags)));
 
 export default function BuildsPage() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const { mode } = useMode();
 
   const filtered = activeTag
     ? builds.filter((b) => b.tags.includes(activeTag))
     : builds;
+
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <>
@@ -22,11 +35,16 @@ export default function BuildsPage() {
         <section className="grid-bg py-20">
           <div className="max-w-5xl mx-auto px-6">
             <p className="section-label mb-3">~/builds</p>
-            <h1 className="font-mono text-3xl sm:text-4xl font-bold mb-4">
-              My Builds
-            </h1>
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="font-mono text-3xl sm:text-4xl font-bold">
+                My Builds
+              </h1>
+              <ModeToggle />
+            </div>
             <p className="text-text-secondary max-w-xl">
-              Tools, systems, and experiments. Things I built because they needed to exist.
+              {mode === 'calm'
+                ? 'Tools, systems, and experiments. Things I built because they needed to exist.'
+                : 'Production tools with open-source repos. Click any build to see architecture, agent chains, and data pipelines.'}
             </p>
           </div>
         </section>
@@ -89,13 +107,38 @@ export default function BuildsPage() {
                   </div>
 
                   <div className="text-text-secondary text-sm leading-[1.75] whitespace-pre-line mb-5 max-w-3xl">
-                    {build.description}
+                    {mode === 'calm' ? build.calmDescription : build.description}
                   </div>
 
                   <div className="card rounded-lg px-5 py-3 mb-5 inline-block">
                     <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">What it does</p>
                     <p className="text-sm text-accent-muted italic">{build.punchline}</p>
                   </div>
+
+                  {/* Nerd mode: Process/Method section */}
+                  {mode === 'nerd' && build.process && (
+                    <div className="mb-5">
+                      <button
+                        onClick={() => toggleExpand(build.id)}
+                        className="flex items-center gap-2 text-xs font-mono text-accent hover:text-accent-muted transition-colors"
+                      >
+                        <span className="inline-block transition-transform" style={{ transform: expanded.has(build.id) ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                          &#9654;
+                        </span>
+                        {expanded.has(build.id) ? 'Hide' : 'Show'} how it works
+                      </button>
+                      {expanded.has(build.id) && (
+                        <div className="mt-4 card rounded-lg p-6 border-l-2 border-accent/30">
+                          <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-4">
+                            Process / Architecture
+                          </p>
+                          <div className="text-text-secondary text-sm leading-[1.85] whitespace-pre-line font-mono max-w-3xl">
+                            {build.process}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap gap-1.5">
                     {build.tags.map((tag) => (
