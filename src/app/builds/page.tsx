@@ -51,8 +51,8 @@ export default function BuildsPage() {
 
         {/* Filter bar */}
         <section className="border-y border-border bg-bg-secondary sticky top-14 z-40">
-          <div className="max-w-5xl mx-auto px-6 py-3">
-            <div className="flex flex-wrap gap-1.5">
+          <div className="max-w-5xl mx-auto px-6 py-3 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-1.5 whitespace-nowrap">
               <button
                 onClick={() => setActiveTag(null)}
                 className={`tag ${!activeTag ? 'tag-active' : ''}`}
@@ -87,7 +87,6 @@ export default function BuildsPage() {
                 >
                   <div className="flex flex-wrap items-center gap-3 mb-3">
                     <StatusPill status={build.status} />
-                    <StatusPill status={build.type} />
                   </div>
 
                   <div className="flex items-start justify-between gap-4 mb-4">
