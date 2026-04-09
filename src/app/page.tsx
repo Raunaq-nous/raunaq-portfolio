@@ -9,7 +9,7 @@ const cards = [
     title: 'Curiosities',
     count: 3,
     description: "What I'm thinking about, building toward, and can't stop reading about.",
-    tags: 'AI systems · Capital projects · Strategy tools',
+    tags: 'AI systems · Strategy tools · Finance',
     href: '/curiosities',
   },
   {
@@ -23,7 +23,7 @@ const cards = [
     title: 'Past Battles',
     count: 6,
     description: 'Where I\'ve worked and what happened.',
-    tags: 'Strategy · AI · Capital · Energy · Consumer',
+    tags: 'Strategy · AI · Energy · Consumer · Finance',
     href: '/past-battles',
   },
   {
@@ -52,10 +52,10 @@ export default function Home() {
 
                 <p className="text-text-secondary text-base leading-relaxed mb-4 fade-in-2">
                   I&apos;m a consulting problem solver who works where strategy, finance, and technology
-                  actually overlap. I spend my days on capital project decisions &mdash; the kind where
-                  someone has to look at a billion-dollar question and come back with something useful.
-                  Evenings and weekends, I build AI tools. Not because someone asked me to, but because
-                  the problems were right there and the tools weren&apos;t.
+                  actually overlap. I spend my days advising on high-stakes investment decisions &mdash;
+                  the kind where someone has to look at a billion-dollar question and come back with
+                  something useful. Evenings and weekends, I build AI tools. Not because someone asked
+                  me to, but because the problems were right there and the tools weren&apos;t.
                 </p>
                 <p className="text-text-secondary text-base leading-relaxed mb-4 fade-in-3">
                   Before any of this, I was designing attitude control systems for a nano-satellite
