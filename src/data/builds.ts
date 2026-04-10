@@ -38,7 +38,7 @@ The whole cycle runs in minutes. The same analysis used to take a weekend of man
   },
   {
     id: 'solar-cost',
-    name: 'Solar & Capital Project Cost Modeling System',
+    name: 'Solar & Infrastructure Cost Modeling System',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'Multi-agent', 'Interactive UI'],
@@ -84,12 +84,12 @@ The D3.js layer isn't decoration \u2014 it's the interface for project managers 
   },
   {
     id: 'capital-allocation',
-    name: 'Capital Projects Opportunity Tracker',
+    name: 'Portfolio Opportunity Tracker',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'LangChain', 'Portfolio analysis'],
-    calmDescription: 'Tracks your entire capital project portfolio — finds schedule issues, flags where failures are likely, and triggers reallocation opportunities before quarterly reviews.',
-    description: `Tracks all capital projects across an entire portfolio continuously. Finds issues in terms of schedule — where projects are slipping, where dependencies are breaking, where cost overruns are forming. Triggers opportunities where a failure is likely to occur before it shows up in a quarterly review. Surfaces where reallocation would improve outcomes. It's portfolio intelligence that runs continuously, not on a quarterly review cycle.`,
+    calmDescription: 'Tracks your entire project portfolio — finds schedule issues, flags where failures are likely, and triggers reallocation opportunities before quarterly reviews.',
+    description: `Tracks all projects across an entire portfolio continuously. Finds issues in terms of schedule — where projects are slipping, where dependencies are breaking, where cost overruns are forming. Triggers opportunities where a failure is likely to occur before it shows up in a quarterly review. Surfaces where reallocation would improve outcomes. It's portfolio intelligence that runs continuously, not on a quarterly review cycle.`,
     process: `How the tracker works:
 
 1. DATA INGESTION \u2014 Connects to project portfolio data: budget vs. actuals, milestone completion rates, schedule variance, external market signals. Handles messy data \u2014 different formats across business units, missing fields, lagging updates.
@@ -247,12 +247,12 @@ Compresses what used to be a 3-4 week survey cycle into hours. The rigor doesn't
   },
   {
     id: 'capital-watcher',
-    name: 'Capital Projects Watcher',
+    name: 'Portfolio Watcher',
     status: 'LIVE',
     type: 'TOOL',
-    tags: ['Python', 'Monitoring', 'Capital projects'],
+    tags: ['Python', 'Monitoring', 'Portfolio analysis'],
     calmDescription: 'Tracks project signals between quarterly reviews \u2014 where most problems actually start \u2014 and flags early warnings before they escalate.',
-    description: `A monitoring system that tracks capital project progress signals \u2014 budget consumption, milestone completion, schedule drift, external risk factors \u2014 and surfaces early warning flags before they become escalation issues. Built for the gap between quarterly reviews, where most project problems actually start.`,
+    description: `A monitoring system that tracks project progress signals \u2014 budget consumption, milestone completion, schedule drift, external risk factors \u2014 and surfaces early warning flags before they become escalation issues. Built for the gap between quarterly reviews, where most project problems actually start.`,
     punchline: 'Moves project oversight from reactive to proactive.',
     github: 'https://github.com/Raunaq-nous/Capital-Projects-Watcher',
   },
