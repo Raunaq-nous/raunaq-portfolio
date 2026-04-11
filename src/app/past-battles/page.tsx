@@ -7,22 +7,51 @@ import StatusPill from '@/components/StatusPill';
 import TagList from '@/components/TagList';
 import { battles, education } from '@/data/battles';
 
-const allTags = Array.from(new Set(battles.flatMap((b) => b.tags)));
-const allStatuses = Array.from(new Set(battles.map((b) => b.status)));
+// Build filter categories
 const allIndustries = Array.from(
   new Set(battles.flatMap((b) => (b.keyProjects || []).map((p) => p.industry)))
 );
+const allProblemStatements = Array.from(
+  new Set(battles.flatMap((b) => b.problemStatements || []))
+);
+const allFrameworks = Array.from(
+  new Set(battles.flatMap((b) => b.frameworks || []))
+);
+
+type FilterCategory = 'industry' | 'problem' | 'framework';
 
 export default function PastBattlesPage() {
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<FilterCategory | null>(null);
 
-  const filtered = activeTag
-    ? battles.filter(
-        (b) =>
-          b.tags.includes(activeTag) ||
-          b.status === activeTag ||
-          (b.keyProjects || []).some((p) => p.industry === activeTag)
-      )
+  const handleFilter = (value: string, category: FilterCategory) => {
+    if (activeFilter === value) {
+      setActiveFilter(null);
+      setActiveCategory(null);
+    } else {
+      setActiveFilter(value);
+      setActiveCategory(category);
+    }
+  };
+
+  const clearFilter = () => {
+    setActiveFilter(null);
+    setActiveCategory(null);
+  };
+
+  const filtered = activeFilter
+    ? battles.filter((b) => {
+        if (activeCategory === 'industry') {
+          return (b.keyProjects || []).some((p) => p.industry === activeFilter);
+        }
+        if (activeCategory === 'problem') {
+          return (b.problemStatements || []).includes(activeFilter);
+        }
+        if (activeCategory === 'framework') {
+          return (b.frameworks || []).includes(activeFilter);
+        }
+        return true;
+      })
     : battles;
 
   // Group by section
@@ -47,40 +76,59 @@ export default function PastBattlesPage() {
         {/* Filter bar */}
         <section className="border-y border-border bg-bg-secondary sticky top-14 z-40">
           <div className="max-w-5xl mx-auto px-6 py-3">
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                onClick={() => setActiveTag(null)}
-                className={`tag ${!activeTag ? 'tag-active' : ''}`}
-              >
-                All
-              </button>
-              {allStatuses.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setActiveTag(activeTag === s ? null : s)}
-                  className={`tag ${activeTag === s ? 'tag-active' : ''}`}
-                >
-                  {s}
-                </button>
-              ))}
-              {allIndustries.map((ind) => (
-                <button
-                  key={ind}
-                  onClick={() => setActiveTag(activeTag === ind ? null : ind)}
-                  className={`tag ${activeTag === ind ? 'tag-active' : ''}`}
-                >
-                  {ind}
-                </button>
-              ))}
-              {allTags.map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                  className={`tag ${activeTag === tag ? 'tag-active' : ''}`}
-                >
-                  #{tag}
-                </button>
-              ))}
+            <div className="space-y-2">
+              {/* Industries */}
+              <div>
+                <span className="text-text-muted text-[0.6rem] font-mono uppercase tracking-wider mr-2">Industries:</span>
+                <div className="inline-flex flex-wrap gap-1.5">
+                  {allIndustries.map((ind) => (
+                    <button
+                      key={ind}
+                      onClick={() => handleFilter(ind, 'industry')}
+                      className={`tag ${activeFilter === ind ? 'tag-active' : ''}`}
+                    >
+                      {ind}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Problem Statements */}
+              <div>
+                <span className="text-text-muted text-[0.6rem] font-mono uppercase tracking-wider mr-2">Problems:</span>
+                <div className="inline-flex flex-wrap gap-1.5">
+                  {allProblemStatements.map((ps) => (
+                    <button
+                      key={ps}
+                      onClick={() => handleFilter(ps, 'problem')}
+                      className={`tag ${activeFilter === ps ? 'tag-active' : ''}`}
+                    >
+                      {ps}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Frameworks */}
+              <div>
+                <span className="text-text-muted text-[0.6rem] font-mono uppercase tracking-wider mr-2">Frameworks:</span>
+                <div className="inline-flex flex-wrap gap-1.5">
+                  {allFrameworks.map((fw) => (
+                    <button
+                      key={fw}
+                      onClick={() => handleFilter(fw, 'framework')}
+                      className={`tag ${activeFilter === fw ? 'tag-active' : ''}`}
+                    >
+                      {fw}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Active filter indicator */}
+              {activeFilter && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-accent text-xs font-mono">Filtered: {activeFilter}</span>
+                  <button onClick={clearFilter} className="text-text-muted text-xs hover:text-accent transition-colors">&times; clear</button>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -123,7 +171,7 @@ export default function PastBattlesPage() {
                           </p>
                           <div className="space-y-3">
                             {battle.keyProjects
-                              .filter((p) => !activeTag || activeTag === p.industry || battle.tags.includes(activeTag) || battle.status === activeTag)
+                              .filter((p) => !activeFilter || activeCategory !== 'industry' || p.industry === activeFilter)
                               .map((project, i) => (
                                 <div key={i} className="card rounded-lg px-5 py-3">
                                   <span className="inline-block px-2 py-0.5 rounded text-[0.625rem] font-mono uppercase tracking-wider bg-accent/10 text-accent border border-accent/20 mb-2">
@@ -165,7 +213,7 @@ export default function PastBattlesPage() {
                       {battle.links && battle.links.length > 0 && (
                         <div className="mb-6">
                           <p className="text-text-muted text-xs font-mono uppercase tracking-wider mb-2">
-                            Links
+                            {battle.id === 'parikshit' ? 'IEEE Publications & Research' : 'Links'}
                           </p>
                           <div className="space-y-1.5">
                             {battle.links.map((link) => (

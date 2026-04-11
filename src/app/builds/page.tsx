@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import StatusPill from '@/components/StatusPill';
 import { useMode } from '@/components/ModeContext';
+import ModeToggle from '@/components/ModeToggle';
 import { builds } from '@/data/builds';
 
 const allTags = Array.from(new Set(builds.flatMap((b) => b.tags)));
@@ -34,9 +35,12 @@ export default function BuildsPage() {
         <section className="grid-bg py-20">
           <div className="max-w-5xl mx-auto px-6">
             <p className="section-label mb-3">~/builds</p>
-            <h1 className="font-mono text-3xl sm:text-4xl font-bold mb-4">
-              My Builds
-            </h1>
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="font-mono text-3xl sm:text-4xl font-bold">
+                My Builds
+              </h1>
+              <ModeToggle />
+            </div>
             <p className="text-text-secondary max-w-xl">
               {mode === 'calm'
                 ? 'Tools, systems, and experiments. Things I built because they needed to exist.'
@@ -47,8 +51,8 @@ export default function BuildsPage() {
 
         {/* Filter bar */}
         <section className="border-y border-border bg-bg-secondary sticky top-14 z-40">
-          <div className="max-w-5xl mx-auto px-6 py-3">
-            <div className="flex flex-wrap gap-1.5">
+          <div className="max-w-5xl mx-auto px-6 py-3 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-1.5 whitespace-nowrap">
               <button
                 onClick={() => setActiveTag(null)}
                 className={`tag ${!activeTag ? 'tag-active' : ''}`}
@@ -83,7 +87,6 @@ export default function BuildsPage() {
                 >
                   <div className="flex flex-wrap items-center gap-3 mb-3">
                     <StatusPill status={build.status} />
-                    <StatusPill status={build.type} />
                   </div>
 
                   <div className="flex items-start justify-between gap-4 mb-4">
