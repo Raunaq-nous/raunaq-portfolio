@@ -43,7 +43,7 @@ The whole cycle runs in minutes. The same analysis used to take a weekend of man
     type: 'TOOL',
     tags: ['Python', 'Multi-agent', 'Interactive UI'],
     calmDescription: 'Change an assumption, the cost model updates in real time. Built for conversations with clients, not just reports after them.',
-    description: `A multi-agent cost modeling system for capital-intensive projects, with a particular focus on solar and energy infrastructure. Takes project-specific variables \u2014 site conditions, equipment specs, financing assumptions \u2014 and generates detailed cost profiles across configurations. The UI is built to be interactive, not just a report generator. You change an assumption, the model responds in real time.`,
+    description: `A multi-agent cost modeling system for large-scale infrastructure projects, with a particular focus on solar and energy infrastructure. Takes project-specific variables \u2014 site conditions, equipment specs, financing assumptions \u2014 and generates detailed cost profiles across configurations. The UI is built to be interactive, not just a report generator. You change an assumption, the model responds in real time.`,
     process: `The workflow:
 
 1. PROJECT SETUP \u2014 Define site parameters: location, terrain, grid connection distance, solar irradiance data. Select equipment configuration: module type, inverter specs, tracker vs. fixed-tilt.

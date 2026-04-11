@@ -15,7 +15,7 @@ export const curiosities: Curiosity[] = [
     role: 'BUILDER + PRACTITIONER',
     year: '2025',
     status: 'ACTIVE',
-    description: `The thing that gets me about capital-intensive industries \u2014 energy, infrastructure, mining \u2014 is that the analytical work is enormous and most of it is still done manually. Spreadsheets that shouldn't exist. Documents that can't be searched. Financial models rebuilt from scratch every engagement.
+    description: `The thing that gets me about large-scale industries \u2014 energy, infrastructure, mining \u2014 is that the analytical work is enormous and most of it is still done manually. Spreadsheets that shouldn't exist. Documents that can't be searched. Financial models rebuilt from scratch every engagement.
 
 I've been building AI systems to address this \u2014 not as a research exercise but as working tools. A multi-agent financial modeling engine. A RAG-based document intelligence system for contracts and regulatory libraries. A workplan generator that automates project schedule logic. A schedule optimization platform for EPC environments. An allocation trigger system that surfaces where money should move before anyone thinks to ask.
 

@@ -36,7 +36,6 @@ export default function Header() {
               {item.label}
             </Link>
           ))}
-          <ModeToggle />
         </nav>
 
         <button
@@ -75,9 +74,6 @@ export default function Header() {
               {item.label}
             </Link>
           ))}
-          <div className="pt-2 border-t border-border">
-            <ModeToggle />
-          </div>
         </div>
       )}
     </header>
