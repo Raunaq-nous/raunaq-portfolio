@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useMode } from '@/components/ModeContext';
 
 const cards = [
   {
@@ -37,8 +36,6 @@ const cards = [
 ];
 
 export default function Home() {
-  const { mode } = useMode();
-
   return (
     <>
       <Header />
@@ -114,7 +111,7 @@ export default function Home() {
                     </span>
                   </div>
                   <p className="text-text-secondary text-sm leading-relaxed mb-4">
-                    {mode === 'calm' ? card.calm : card.nerd}
+                    {card.description}
                   </p>
                   <p className="text-text-muted text-xs font-mono">
                     {card.tags}
