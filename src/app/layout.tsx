@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ModeProvider } from '@/components/ModeContext';
 import './globals.css';
 import { ModeProvider } from '@/components/ModeContext';
 

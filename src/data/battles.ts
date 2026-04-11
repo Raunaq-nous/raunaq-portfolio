@@ -21,6 +21,8 @@ export interface Battle {
   keyProjects?: KeyProject[];
   links?: BattleLink[];
   tools?: BattleLink[];
+  problemStatements?: string[];
+  frameworks?: string[];
 }
 
 export interface Education {
@@ -35,24 +37,21 @@ export const battles: Battle[] = [
   {
     id: 'bain',
     company: 'Bain & Company',
-    role: 'Project Leader \u2014 Capital Projects & Infrastructure',
-    period: 'Jun 2025 \u2013 Present',
+    role: 'Project Leader',
+    period: 'Jun 2025 – Present',
     location: 'Mumbai / Gurgaon',
     status: 'CURRENT',
     section: 'NOW',
-    tags: ['strategy', 'energy', 'AI', 'capitalprojects', 'consulting'],
-    description: `Leading cross-functional teams on capital project advisory engagements across oil & gas, solar, nuclear, and mining \u2014 working directly with C-suites and boards on high-stakes investment decisions. Simultaneously building an AI toolkit that makes the analytical work faster and more rigorous.`,
-    keyProjects: [
-      { industry: 'Oil & Gas', description: 'Designed an AI-augmented evaluation framework for a South American energy company that revived a shelved upstream extraction project \u2014 C-suite approved the investment decision.' },
-      { industry: 'Nuclear', description: 'Built the decision model for a North American utility\u2019s multi-billion-dollar, multi-plant new-build program \u2014 covering sequencing, governance, operating model, and contractor selection.' },
-      { industry: 'Solar', description: 'Led performance analysis on an underperforming utility-scale solar project \u2014 identified CapEx/OpEx optimization levers and built the investment-committee-ready case.' },
-    ],
+    tags: ['strategy', 'energy', 'AI', 'consulting'],
+    description: `Leading cross-functional teams on advisory engagements across energy, infrastructure, and mining — working directly with C-suites and boards on high-stakes investment decisions. Simultaneously building an AI toolkit that makes the analytical work faster and more rigorous.`,
+    problemStatements: ['Investment decision modeling', 'Portfolio performance tracking', 'Schedule and cost overrun prevention'],
+    frameworks: ['Financial modeling', 'Multi-agent AI', 'Decision analysis', 'Performance benchmarking'],
     tools: [
       { label: 'Financial Modeling Engine', url: 'https://github.com/Raunaq-nous/FInancial-Modelling' },
-      { label: 'EPC Scheduling Platform', url: 'https://github.com/Raunaq-nous/Solar-Cost-Modelling' },
+      { label: 'Scheduling Platform', url: 'https://github.com/Raunaq-nous/Solar-Cost-Modelling' },
       { label: 'Document Intelligence (RAG)', url: 'https://github.com/Raunaq-nous/Universal-RAG' },
-      { label: 'Capital Allocation Tracker', url: 'https://github.com/Raunaq-nous/Capital-Projects-Watcher' },
-      { label: 'Solar Benchmarking', url: 'https://github.com/Raunaq-nous/Solar-Project-Benchmarking' },
+      { label: 'Portfolio Tracker', url: 'https://github.com/Raunaq-nous/Capital-Projects-Watcher' },
+      { label: 'Project Benchmarking', url: 'https://github.com/Raunaq-nous/Solar-Project-Benchmarking' },
     ],
   },
   {
@@ -76,6 +75,8 @@ export const battles: Battle[] = [
       { industry: 'Logistics', description: 'Built strategic growth framework integrating demand forecasting, competitive supply assessment, and business model viability analysis.' },
       { industry: 'E-commerce', description: 'Built market sizing, competitive dynamics, and operational feasibility analysis across multiple expansion directions for leadership decision-making.' },
     ],
+    problemStatements: ['Market entry strategy', 'GTM and pricing', 'M&A roadmapping', 'Financial modeling for fundraising', 'Competitive repositioning'],
+    frameworks: ['Go-to-market strategy', 'Financial modeling', 'Competitive intelligence', 'Market sizing', 'Pricing strategy'],
     tools: [
       { label: 'AI Proposal Builder', url: 'https://github.com/Raunaq-nous/Proposal-Builder' },
       { label: 'Survey Intelligence Platform', url: 'https://github.com/Raunaq-nous/Survey-Tool' },
@@ -99,6 +100,8 @@ export const battles: Battle[] = [
       { industry: 'Public Sector IT', description: 'Mapped IT solution spending across Canadian public sector \u2014 structured taxonomy of spending patterns and enterprise engagement opportunities.' },
       { industry: 'EV Infrastructure', description: 'Ran strategic landscape analysis for EV charging infrastructure \u2014 key technologies, deployment models, and investment opportunities in an emerging market.' },
     ],
+    problemStatements: ['Competitive intelligence', 'Market entry assessment', 'Product roadmap shaping', 'Public sector opportunity mapping'],
+    frameworks: ['Competitive intelligence', 'GTM strategy', 'Technology landscape analysis'],
   },
   {
     id: 'tecnova',
@@ -117,6 +120,8 @@ export const battles: Battle[] = [
       { industry: 'Battery Manufacturing', description: 'Led partner identification and negotiation for a European primary cell manufacturer\u2019s contract manufacturing arrangement in India.' },
       { industry: 'Cosmetics (Startup)', description: 'Built full business plan from zero \u2014 positioning, pricing, financial model, digital marketing \u2014 investor-ready and operationally executable.' },
     ],
+    problemStatements: ['India market entry', 'Partner identification', 'Turnaround strategy', 'Business model design'],
+    frameworks: ['Market entry strategy', 'M&A / JV screening', 'Voice of Customer', 'Financial modeling'],
   },
   {
     id: 'madcue',
@@ -132,6 +137,8 @@ export const battles: Battle[] = [
       { label: 'Madcue on Facebook', url: 'https://www.facebook.com/madcue/' },
       { label: 'Madcue on Instagram', url: 'https://www.instagram.com/madcue/' },
     ],
+    problemStatements: ['Creator platform building', 'Audience growth', 'Brand identity design', 'Content strategy'],
+    frameworks: ['Growth hacking', 'PPC optimization', 'Community building', 'Editorial strategy'],
   },
   {
     id: 'parikshit',
@@ -145,10 +152,12 @@ export const battles: Battle[] = [
     description: `Head of attitude determination and control subsystem for Parikshit \u2014 a student nano-satellite developed under ISRO guidance. Designed the control mechanism for a satellite traveling at 28,800 km/hr, maintaining angular velocities within 1\u00b0/s for payload specs. Five IEEE and journal publications (2014\u20132016), including papers at the IEEE Aerospace Conference in Big Sky, Montana.`,
     links: [
       { label: 'Tether Deployment \u2014 Dynamics & Control of Tethered Satellite Systems (IEEE Aerospace 2015)', url: 'https://ieeexplore.ieee.org/document/7119191' },
-      { label: 'Satellite ADCS \u2014 Attitude Determination & Control System Design (IEEE Aerospace 2016)', url: 'https://ieeexplore.ieee.org/document/7500tried' },
+      { label: 'Satellite ADCS \u2014 Attitude Determination & Control System Design (IEEE Aerospace 2016)', url: 'https://ieeexplore.ieee.org/document/7500699' },
       { label: 'Software-in-Loop \u2014 SIL Testing for Nano-Satellite Subsystems (IEEE Aerospace 2016)', url: 'https://ieeexplore.ieee.org/document/7500756' },
       { label: 'Structural Dynamics \u2014 Earthquake Stabilization Using Active Control (IJERT 2014)', url: 'https://www.ijert.org' },
     ],
+    problemStatements: ['Satellite attitude control', 'Tether deployment dynamics', 'Hardware-in-loop testing'],
+    frameworks: ['Control systems engineering', 'Simulation & testing (SIL)', 'IEEE research methodology'],
   },
 ];
 
