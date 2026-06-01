@@ -16,10 +16,8 @@ export const skillSections: SkillSection[] = [
     label: 'AI & Machine Learning',
     skills: [
       { title: 'Agent Skills with Anthropic', issuer: 'Anthropic', year: '2026', tag: 'AI', credential: 'Show credential' },
-      { title: 'Agentic AI', issuer: 'Certified', year: '2025', tag: 'AI' },
-      { title: 'Build RAG Applications: Get Started', issuer: 'LinkedIn Learning', year: '2024', tag: 'RAG' },
-      { title: 'Vector Databases for RAG: An Introduction', issuer: 'LinkedIn Learning', year: '2024', tag: 'RAG' },
-      { title: 'Introduction to Large Language Models', issuer: 'Certified', year: '2024', tag: 'LLMs' },
+      { title: 'Build RAG Applications: Get Started', issuer: '', year: '2024', tag: 'RAG' },
+      { title: 'Vector Databases for RAG: An Introduction', issuer: '', year: '2024', tag: 'RAG' },
       { title: 'AI Engineering', issuer: 'IBM', year: '2024', tag: 'AI' },
     ],
   },
@@ -28,8 +26,6 @@ export const skillSections: SkillSection[] = [
     skills: [
       { title: 'Business & Financial Modeling Specialization', issuer: 'Wharton School', year: '', tag: 'finance' },
       { title: 'Business Strategy: Competitive Advantage', issuer: 'Wharton School', year: '', tag: 'strategy' },
-      { title: 'Performance Improvement Projects for Management Consultants', issuer: 'Certified', year: '2024', tag: 'consulting' },
-      { title: 'Venture Capital Analyst Fundamentals', issuer: 'Certified', year: '', tag: 'VC' },
     ],
   },
   {
@@ -37,7 +33,6 @@ export const skillSections: SkillSection[] = [
     skills: [
       { title: "CS50's Introduction to Programming with Python", issuer: 'Harvard University', year: '', tag: 'python' },
       { title: 'Introduction to Git and GitHub', issuer: 'Google', year: '2025', tag: 'git' },
-      { title: 'Introduction to IT & Cybersecurity', issuer: 'Certified', year: '2024', tag: 'IT' },
     ],
   },
 ];
@@ -72,7 +67,7 @@ export const skillToBuildMap: Record<string, string[]> = {
   'Knowledge graphs': ['rag-engine'],
 };
 
-export const linkedinSkills = [
+export const domainSkills = [
   'AI Agents', 'Vector Databases', 'Retrieval-Augmented Generation (RAG)',
   'Financial Modeling', 'Go-to-Market Strategy', 'Market Research',
   'Business Development', 'Data Analysis', 'Strategic Initiatives',

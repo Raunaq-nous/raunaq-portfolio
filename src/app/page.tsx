@@ -32,7 +32,7 @@ const cards = [
   },
   {
     title: 'Skills & Learning',
-    count: 14,
+    count: 8,
     calm: "What I know, what I'm learning, and where I've applied it.",
     nerd: 'Certifications from Anthropic, Wharton, Harvard, IBM. Stack: Python, LangChain, Next.js, RAG, multi-agent systems.',
     tags: 'AI · consulting · finance · engineering',
