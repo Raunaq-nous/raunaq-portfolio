@@ -111,7 +111,7 @@ export default function SkillsPage() {
                           {build.name}
                         </p>
                         <p className="text-text-secondary text-xs leading-relaxed">
-                          {build.calmDescription}
+                          {build.calm}
                         </p>
                         {build.github && (
                           <a

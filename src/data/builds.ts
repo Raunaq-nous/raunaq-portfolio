@@ -4,8 +4,8 @@ export interface Build {
   status: 'LIVE';
   type: 'TOOL' | 'PLATFORM';
   tags: string[];
-  description: string;
-  calmDescription: string;
+  calm: string;
+  nerd: string;
   punchline: string;
   process?: string;
   github?: string;
@@ -18,19 +18,19 @@ export const builds: Build[] = [
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'LangChain', 'Streamlit', 'Multi-agent'],
-    calmDescription: 'Drop in your assumptions, get a full financial comparison across multiple project concepts. CapEx, OpEx, IRR, sensitivity \u2014 all at once.',
-    description: `A production-grade financial modeling engine built on agentic architecture. It doesn't just run a model \u2014 it reasons across inputs, compares scenarios dynamically, and presents structured output. CapEx, OpEx, IRR, sensitivity \u2014 all computed across multiple project concepts simultaneously. Built because I was tired of rebuilding the same model from scratch every time the assumptions changed.`,
+    calm: 'Type in your assumptions and get a full financial picture across different options in seconds. The comparison that used to eat a weekend now happens while you are still talking. I built it because I was tired of rebuilding the same models by hand.',
+    nerd: 'Multi-agent system that builds and compares financial models in parallel: CapEx, OpEx, IRR, and sensitivity. Python, LangChain, Streamlit.',
     process: `How it works under the hood:
 
-1. INPUT \u2014 You feed it a project brief: extraction method, location, equipment, financing terms. Can handle multiple project concepts in a single run.
+1. INPUT: You feed it a project brief with extraction method, location, equipment, financing terms. Handles multiple project concepts in a single run.
 
-2. AGENT DECOMPOSITION \u2014 A planner agent breaks the brief into sub-tasks: CapEx estimation, OpEx profiling, revenue modeling, sensitivity parameters. Each gets assigned to a specialist agent.
+2. AGENT DECOMPOSITION: A planner agent breaks the brief into sub-tasks: CapEx estimation, OpEx profiling, revenue modeling, sensitivity parameters. Each gets assigned to a specialist agent.
 
-3. PARALLEL MODELING \u2014 Specialist agents run simultaneously. The CapEx agent pulls cost benchmarks and adjusts for site-specific factors. The OpEx agent models operating expenses with escalation curves. The revenue agent builds production profiles and pricing scenarios.
+3. PARALLEL MODELING: Specialist agents run simultaneously. The CapEx agent pulls cost benchmarks and adjusts for site-specific factors. The OpEx agent models operating expenses with escalation curves. The revenue agent builds production profiles and pricing scenarios.
 
-4. CROSS-VALIDATION \u2014 A reviewer agent checks outputs against each other. Does the CapEx-to-revenue ratio make sense? Are the IRR assumptions consistent with the discount rate? Flags contradictions before you see them.
+4. CROSS-VALIDATION: A reviewer agent checks outputs against each other. Does the CapEx-to-revenue ratio make sense? Are the IRR assumptions consistent with the discount rate? Flags contradictions before you see them.
 
-5. STRUCTURED OUTPUT \u2014 Comparison table across all project concepts. Sensitivity analysis on key variables. Formatted for investment committee review, not just a spreadsheet dump.
+5. STRUCTURED OUTPUT: Comparison table across all project concepts. Sensitivity analysis on key variables. Formatted for investment committee review, not just a spreadsheet dump.
 
 The whole cycle runs in minutes. The same analysis used to take a weekend of manual Excel work.`,
     punchline: 'Multi-scenario financial comparison at the speed of a conversation, not a weekend.',
@@ -38,39 +38,39 @@ The whole cycle runs in minutes. The same analysis used to take a weekend of man
   },
   {
     id: 'solar-cost',
-    name: 'Solar & Infrastructure Cost Modeling System',
+    name: 'Project Economics & Investment Modeling',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'Multi-agent', 'Interactive UI'],
-    calmDescription: 'Change an assumption, the cost model updates in real time. Built for conversations with clients, not just reports after them.',
-    description: `A multi-agent cost modeling system for large-scale infrastructure projects, with a particular focus on solar and energy infrastructure. Takes project-specific variables \u2014 site conditions, equipment specs, financing assumptions \u2014 and generates detailed cost profiles across configurations. The UI is built to be interactive, not just a report generator. You change an assumption, the model responds in real time.`,
+    calm: 'Change one assumption and watch the whole picture update instantly. Built for live conversations, so you can answer the "but what if" questions in the room instead of promising to follow up.',
+    nerd: 'Real-time investment and cost model with a multi-agent backend and an interactive UI that recomputes on every input change. Python.',
     process: `The workflow:
 
-1. PROJECT SETUP \u2014 Define site parameters: location, terrain, grid connection distance, solar irradiance data. Select equipment configuration: module type, inverter specs, tracker vs. fixed-tilt.
+1. PROJECT SETUP: Define site parameters (location, terrain, grid connection, irradiance data). Select equipment configuration (module type, inverter specs, tracker vs. fixed-tilt).
 
-2. COST ENGINE \u2014 Multi-agent system pulls from cost databases and applies adjustment factors. Hard costs (modules, racking, electrical BOS), soft costs (permitting, interconnection, EPC margin), and financing costs (debt terms, tax equity structures) are modeled independently.
+2. COST ENGINE: Multi-agent system pulls from cost databases and applies adjustment factors. Hard costs (modules, racking, electrical BOS), soft costs (permitting, interconnection, margin), and financing costs (debt terms, tax equity structures) modeled independently.
 
-3. CONFIGURATION SWEEP \u2014 Runs across multiple configurations simultaneously. Want to compare bifacial vs. monofacial modules with single-axis trackers? It generates cost profiles for each permutation.
+3. CONFIGURATION SWEEP: Runs across multiple configurations simultaneously. Compare bifacial vs. monofacial modules with single-axis trackers? It generates cost profiles for each permutation.
 
-4. INTERACTIVE UI \u2014 Sliders and inputs for every major assumption. Move a slider, the waterfall chart updates instantly. This is the key design decision: it's built for live client conversations where someone says "what if we change the module supplier?"
+4. INTERACTIVE UI: Sliders and inputs for every major assumption. Move a slider, the waterfall chart updates instantly. Built for live conversations where someone says "what if we change the supplier?"
 
-5. OUTPUT \u2014 Detailed cost breakdown by category, LCOE calculation, comparison across configurations, exportable to PDF/Excel.`,
-    punchline: 'Makes cost estimation for complex projects fast enough to use during a client conversation, not just after one.',
+5. OUTPUT: Detailed cost breakdown by category, LCOE calculation, comparison across configurations, exportable to PDF/Excel.`,
+    punchline: 'Makes cost estimation fast enough to use during a conversation, not just after one.',
     github: 'https://github.com/Raunaq-nous/Solar-Cost-Modelling',
   },
   {
     id: 'scheduling',
-    name: 'AI-Powered Scheduling Platform for EPC Projects',
+    name: 'AI Scheduling Platform for Large Capital Projects',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['React', 'FastAPI', 'D3.js', 'Multi-objective optimization'],
-    calmDescription: 'Feed it your project constraints, get an optimized schedule with visual timelines. Handles the dependency chaos that breaks most scheduling tools.',
-    description: `Engineering, Procurement, and Construction projects are scheduling nightmares. Dependencies compound. Delays cascade. Most scheduling tools are either too simple or require a full-time specialist. This is a multi-objective scheduling platform that ingests project constraints \u2014 resources, dependencies, milestones, risk buffers \u2014 and optimizes sequencing automatically. The D3.js visualizations make the output usable, not just technically correct.`,
+    calm: 'Give it your project constraints and it hands back a workable schedule with clear timelines. It untangles the dependency mess that breaks most scheduling tools, fast enough to use during the kickoff.',
+    nerd: 'Multi-objective schedule optimizer with dependency resolution and visual timelines. React, FastAPI, D3.js.',
     process: `Architecture:
 
-FRONTEND (React + D3.js) \u2014 Interactive Gantt chart with drag-to-adjust, dependency visualization, critical path highlighting. Resource histogram overlay shows where you're over-allocated.
+FRONTEND (React + D3.js): Interactive Gantt chart with drag-to-adjust, dependency visualization, critical path highlighting. Resource histogram overlay shows where you are over-allocated.
 
-BACKEND (FastAPI) \u2014 Constraint solver using multi-objective optimization. Balances three competing objectives: minimize total duration, level resource usage, maximize float on non-critical paths.
+BACKEND (FastAPI): Constraint solver using multi-objective optimization. Balances three competing objectives: minimize total duration, level resource usage, maximize float on non-critical paths.
 
 THE SOLVE PROCESS:
 1. Parse task list with dependencies (FS, SS, FF, SF relationships)
@@ -79,28 +79,28 @@ THE SOLVE PROCESS:
 4. Apply resource leveling without violating hard dependencies
 5. Generate risk-adjusted schedule with Monte Carlo simulation on task durations
 
-The D3.js layer isn't decoration \u2014 it's the interface for project managers to override and adjust. Click a task, see its dependency chain. Drag to reschedule, watch cascading impacts in real time.`,
-    punchline: 'Turns a week of schedule analysis into something that runs while you\'re in the kickoff meeting.',
+The D3.js layer is not decoration. It is the interface for project managers to override and adjust. Click a task, see its dependency chain. Drag to reschedule, watch cascading impacts in real time.`,
+    punchline: 'Turns a week of schedule analysis into something that runs while you are in the kickoff meeting.',
   },
   {
     id: 'capital-allocation',
     name: 'Portfolio Opportunity Tracker',
     status: 'LIVE',
     type: 'TOOL',
-    tags: ['Python', 'LangChain', 'Portfolio analysis'],
-    calmDescription: 'Tracks your entire project portfolio — finds schedule issues, flags where failures are likely, and triggers reallocation opportunities before quarterly reviews.',
-    description: `Tracks all projects across an entire portfolio continuously. Finds issues in terms of schedule — where projects are slipping, where dependencies are breaking, where cost overruns are forming. Triggers opportunities where a failure is likely to occur before it shows up in a quarterly review. Surfaces where reallocation would improve outcomes. It's portfolio intelligence that runs continuously, not on a quarterly review cycle.`,
+    tags: ['Python', 'LangChain', 'Portfolio analysis', 'Monitoring'],
+    calm: 'Watches your whole set of projects all the time, not just at review season. It spots where things are slipping, where something is about to break, and where you should move money before anyone has even asked.',
+    nerd: 'Continuous portfolio monitoring with risk and anomaly detection across schedule and cost signals, plus reallocation flags. Python, LangChain.',
     process: `How the tracker works:
 
-1. DATA INGESTION \u2014 Connects to project portfolio data: budget vs. actuals, milestone completion rates, schedule variance, external market signals. Handles messy data \u2014 different formats across business units, missing fields, lagging updates.
+1. DATA INGESTION: Connects to project portfolio data: budget vs. actuals, milestone completion rates, schedule variance, external market signals. Handles messy data across business units, missing fields, lagging updates.
 
-2. DRIFT DETECTION \u2014 For each project, compares current performance trajectory against the original investment thesis. Is the IRR tracking? Are costs escalating faster than the contingency buffer? Is the strategic rationale still valid given market changes?
+2. DRIFT DETECTION: For each project, compares current performance trajectory against the original investment thesis. Is the IRR tracking? Are costs escalating faster than the contingency buffer? Is the strategic rationale still valid given market changes?
 
-3. TRIGGER LOGIC \u2014 LangChain agents evaluate conditions against configurable thresholds. "If project X is >15% over budget AND milestone completion is <60% at midpoint, flag for reallocation review." Triggers are composable and stack.
+3. TRIGGER LOGIC: LangChain agents evaluate conditions against configurable thresholds. "If project X is >15% over budget AND milestone completion is <60% at midpoint, flag for reallocation review." Triggers are composable and stack.
 
-4. OPPORTUNITY MAPPING \u2014 When capital is flagged for potential reallocation, the system identifies where it could go instead. Ranks alternative projects by strategic fit, expected return, and execution readiness.
+4. OPPORTUNITY MAPPING: When funds are flagged for potential reallocation, the system identifies where they could go instead. Ranks alternative projects by strategic fit, expected return, and execution readiness.
 
-5. CONTINUOUS OUTPUT \u2014 Dashboard with traffic-light indicators per project. Weekly digest of new triggers. Designed to replace the quarterly review cycle with always-on portfolio intelligence.`,
+5. CONTINUOUS OUTPUT: Dashboard with traffic-light indicators per project. Weekly digest of new triggers. Replaces the quarterly review cycle with always-on portfolio intelligence.`,
     punchline: 'Portfolio intelligence that runs continuously, not on a quarterly review cycle.',
     github: 'https://github.com/Raunaq-nous/Capital-Projects-Watcher',
   },
@@ -110,21 +110,21 @@ The D3.js layer isn't decoration \u2014 it's the interface for project managers 
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'LangChain', 'Vector databases', 'RAG'],
-    calmDescription: 'Ask a question about any document in your library \u2014 contracts, regulations, specs \u2014 and get the answer with the exact source passage.',
-    description: `Built to solve a specific problem: large organizations have enormous libraries of contracts, regulatory documents, and technical specifications that are effectively unsearchable. This RAG-based engine makes them queryable in natural language. Ask it about a liability clause, a regulatory threshold, a contractual obligation \u2014 it retrieves the relevant passage and its context, not just a keyword match.`,
+    calm: 'Ask a plain question about any document you have (contracts, regulations, specs) and get a straight answer with the exact passage it came from. Turns a pile of documents into something you can just talk to.',
+    nerd: 'Retrieval-augmented generation over a document corpus with source-grounded answers. Vector search plus LangChain. Generalizes across document types without rebuilding the pipeline. Python.',
     process: `The RAG pipeline:
 
-1. DOCUMENT INGESTION \u2014 Handles PDFs, Word docs, scanned images (OCR), structured data. Chunking strategy matters: uses semantic chunking with overlap, not fixed-size splits. Preserves document structure (headings, tables, clause numbers).
+1. DOCUMENT INGESTION: Handles PDFs, Word docs, scanned images (OCR), structured data. Uses semantic chunking with overlap, not fixed-size splits. Preserves document structure (headings, tables, clause numbers).
 
-2. EMBEDDING \u2014 Each chunk gets embedded using a fine-tuned model. Metadata tags attached: document type, date, section, source file. This metadata enables filtered retrieval later.
+2. EMBEDDING: Each chunk gets embedded using a fine-tuned model. Metadata tags attached: document type, date, section, source file. Enables filtered retrieval later.
 
-3. VECTOR STORE \u2014 Chunks indexed in a vector database with HNSW indexing for fast approximate nearest-neighbor search. Supports hybrid retrieval: vector similarity + BM25 keyword matching.
+3. VECTOR STORE: Chunks indexed in a vector database with HNSW indexing for fast approximate nearest-neighbor search. Supports hybrid retrieval: vector similarity + BM25 keyword matching.
 
-4. QUERY PROCESSING \u2014 User query gets decomposed if complex. "What are the liability caps across all vendor contracts?" becomes multiple sub-queries, one per contract, with results aggregated.
+4. QUERY PROCESSING: User query gets decomposed if complex. "What are the liability caps across all vendor contracts?" becomes multiple sub-queries, one per contract, with results aggregated.
 
-5. RETRIEVAL + GENERATION \u2014 Retrieved chunks are ranked by relevance, de-duplicated, and passed to the LLM with the original query. Every claim in the output links back to the specific chunk and page number. No hallucination without a source.
+5. RETRIEVAL + GENERATION: Retrieved chunks ranked by relevance, de-duplicated, and passed to the LLM with the original query. Every claim in the output links back to the specific chunk and page number.
 
-Built for environments where "I think the contract says..." isn't good enough. You need to know exactly what it says and where.`,
+Built for environments where "I think the contract says..." is not good enough. You need to know exactly what it says and where.`,
     punchline: 'Turns a document library into a knowledge base you can have a conversation with.',
     github: 'https://github.com/Raunaq-nous/Universal-RAG',
   },
@@ -134,19 +134,19 @@ Built for environments where "I think the contract says..." isn't good enough. Y
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'LangChain', 'Multi-agent LLMs', 'Streamlit'],
-    calmDescription: 'Describe your project, get a structured workplan with tasks, dependencies, and timeline. Not a template \u2014 it actually thinks about your project.',
-    description: `Project workplans are one of those things everyone knows needs to exist but nobody wants to build from scratch. This multi-agent system takes a project brief and generates a structured workplan \u2014 tasks, owners, dependencies, milestones, timeline \u2014 using LLM reasoning chains that check each output against the others for consistency. It's not a template filler. It actually thinks about the project.`,
+    calm: 'Describe a project and get back a real workplan with tasks, dependencies, and a timeline. Not a template you fill in. It reasons about your specific project.',
+    nerd: 'Multi-agent LLM system that decomposes a project brief into a structured workplan. Python, LangChain, Streamlit.',
     process: `Agent chain:
 
-1. SCOPE AGENT \u2014 Reads the project brief and extracts: objectives, constraints, deliverables, team composition, timeline bounds. Asks clarifying questions if the brief is ambiguous.
+1. SCOPE AGENT: Reads the project brief and extracts objectives, constraints, deliverables, team composition, timeline bounds. Asks clarifying questions if the brief is ambiguous.
 
-2. DECOMPOSITION AGENT \u2014 Breaks deliverables into work packages, then into tasks. Each task gets: description, estimated duration, skill requirements, dependencies on other tasks.
+2. DECOMPOSITION AGENT: Breaks deliverables into work packages, then into tasks. Each task gets: description, estimated duration, skill requirements, dependencies on other tasks.
 
-3. SEQUENCING AGENT \u2014 Builds the dependency graph. Identifies the critical path. Flags tasks that can run in parallel. Applies resource constraints to avoid over-allocation.
+3. SEQUENCING AGENT: Builds the dependency graph. Identifies the critical path. Flags tasks that can run in parallel. Applies resource constraints to avoid over-allocation.
 
-4. CONSISTENCY CHECKER \u2014 Cross-validates: Do all deliverables have tasks? Do task durations add up to less than the timeline? Are there circular dependencies? This is the agent that catches the mistakes the other agents make.
+4. CONSISTENCY CHECKER: Cross-validates. Do all deliverables have tasks? Do task durations add up to less than the timeline? Are there circular dependencies? This is the agent that catches the mistakes the other agents make.
 
-5. OUTPUT \u2014 Structured workplan in Gantt format via Streamlit. Exportable to Excel/PDF. Includes a risk register based on the assumptions the agents made during decomposition.
+5. OUTPUT: Structured workplan in Gantt format via Streamlit. Exportable to Excel/PDF. Includes a risk register based on the assumptions the agents made during decomposition.
 
 The key insight: four specialized agents checking each other produce better workplans than one general agent trying to do everything.`,
     punchline: 'Gets you from blank page to structured workplan in the time it takes to write the brief.',
@@ -157,32 +157,25 @@ The key insight: four specialized agents checking each other produce better work
     status: 'LIVE',
     type: 'PLATFORM',
     tags: ['TypeScript', 'Next.js', 'Tailwind CSS', 'AI agents'],
-    calmDescription: 'Describe a business problem, get structured strategic guidance. Like working with a very fast, very well-read thinking partner.',
-    description: `The big one. An AI-native platform for strategic problem-solving, built on the premise that the most valuable parts of consulting \u2014 the frameworks, the judgment, the structured thinking \u2014 can be made more accessible through well-designed AI interfaces.
-
-It has three layers:
-\u2022 A natural language AI console: describe a business problem, get structured guidance and tool recommendations
-\u2022 A marketplace of 12+ purpose-built AI consulting tools across Strategy, Operations, Finance, Research, and Innovation
-\u2022 A library of 12+ established consulting frameworks enhanced with AI analysis
-
-It is designed to feel like working with a very well-read, very fast thinking partner. Not a chatbot. A workspace.`,
+    calm: 'Describe a business problem and get structured strategic guidance back. Like a very fast, very well read thinking partner who has read every framework so you do not have to.',
+    nerd: 'Agent-based platform with a natural-language console, a marketplace of purpose-built tools, and an AI-enhanced framework library. TypeScript, Next.js, Tailwind. Not a chatbot on a database.',
     process: `Platform architecture:
 
 LAYER 1: AI CONSOLE
-Natural language interface. You describe a business problem: "We're a mid-market SaaS company losing enterprise deals to a competitor with deeper integrations." The console classifies the problem type (competitive strategy), suggests relevant frameworks (Porter's Five Forces, Value Chain Analysis), and recommends which tools from the marketplace to run.
+Natural language interface. You describe a business problem and the console classifies the problem type, suggests relevant frameworks, and recommends which tools from the marketplace to run.
 
 LAYER 2: TOOL MARKETPLACE (12+ tools)
 Each tool is a purpose-built AI workflow:
-\u2022 Strategy: Competitive analysis, market sizing, scenario planning
-\u2022 Operations: Process optimization, cost structure analysis
-\u2022 Finance: Financial modeling, valuation, unit economics
-\u2022 Research: Market research synthesis, expert interview analysis
-\u2022 Innovation: Opportunity assessment, build-vs-buy analysis
+- Strategy: Competitive analysis, market sizing, scenario planning
+- Operations: Process optimization, cost structure analysis
+- Finance: Financial modeling, valuation, unit economics
+- Research: Market research synthesis, expert interview analysis
+- Innovation: Opportunity assessment, build-vs-buy analysis
 
 Each tool has structured inputs, runs multi-step reasoning, and outputs in consulting-grade format.
 
 LAYER 3: FRAMEWORK LIBRARY
-12+ proven consulting frameworks (BCG Matrix, McKinsey 7S, Blue Ocean, etc.) enhanced with AI. You don't just read about the framework \u2014 you apply it to your specific context with AI-assisted analysis.
+12+ proven consulting frameworks (BCG Matrix, McKinsey 7S, Blue Ocean, etc.) enhanced with AI. You apply them to your specific context with AI-assisted analysis, not just read about them.
 
 Built in TypeScript/Next.js with Tailwind CSS. The design principle: it should feel like a workspace, not a chatbot.`,
     punchline: 'What consulting looks like when the analytical parts are automated and the judgment stays human.',
@@ -194,45 +187,34 @@ Built in TypeScript/Next.js with Tailwind CSS. The design principle: it should f
     status: 'LIVE',
     type: 'PLATFORM',
     tags: ['Python', 'AI agents', 'Research automation'],
-    calmDescription: 'Give it a research brief, get back a designed survey, collected responses, and a structured insight report. The whole cycle.',
-    description: `Survey research is full of manual steps that don't need to be manual. Questionnaire design. Distribution. Response analysis. Insight synthesis. This platform automates the entire lifecycle \u2014 from designing the survey instrument based on a research brief, through to generating structured insight reports from the responses. Built for consulting and research contexts where speed and rigor both matter.`,
+    calm: 'Hand it a research question and it designs the survey, gathers the responses, and writes up the insights. The full research cycle, minus the weeks.',
+    nerd: 'End-to-end survey pipeline: design, collection, and automated insight reporting via AI agents. Python.',
     process: `End-to-end pipeline:
 
-1. BRIEF \u2192 QUESTIONNAIRE \u2014 Feed it a research brief ("Understand why enterprise customers are churning in EMEA"). AI designs the survey: question types, skip logic, scale calibration, bias checks. You review and edit before it goes out.
+1. BRIEF to QUESTIONNAIRE: Feed it a research brief. AI designs the survey: question types, skip logic, scale calibration, bias checks. You review and edit before it goes out.
 
-2. DISTRIBUTION \u2014 Configurable distribution channels. Tracks response rates and sends reminders. Handles quota management if you need specific demographic splits.
+2. DISTRIBUTION: Configurable distribution channels. Tracks response rates and sends reminders. Handles quota management for specific demographic splits.
 
-3. RESPONSE ANALYSIS \u2014 As responses come in, the system runs: quantitative analysis (cross-tabs, statistical significance), qualitative coding (theme extraction from open-text responses), and sentiment analysis.
+3. RESPONSE ANALYSIS: As responses come in, the system runs quantitative analysis (cross-tabs, statistical significance), qualitative coding (theme extraction from open-text responses), and sentiment analysis.
 
-4. INSIGHT SYNTHESIS \u2014 Aggregates findings into a structured report: executive summary, key findings with supporting data, segment-level breakdowns, and recommended actions. Every insight links back to the underlying data.
+4. INSIGHT SYNTHESIS: Aggregates findings into a structured report: executive summary, key findings with supporting data, segment-level breakdowns, and recommended actions. Every insight links back to the underlying data.
 
-5. EXPORT \u2014 Report in your format. Charts that are actually readable. Data tables that don't need reformatting.
+5. EXPORT: Report in your format. Charts that are actually readable. Data tables that do not need reformatting.
 
-Compresses what used to be a 3-4 week survey cycle into hours. The rigor doesn't decrease \u2014 the manual labor does.`,
+Compresses what used to be a 3-4 week survey cycle into hours.`,
     punchline: 'Compresses a multi-week survey research cycle into something that runs in hours.',
     github: 'https://github.com/Raunaq-nous/Survey-Tool',
   },
   {
     id: 'solar-benchmark',
-    name: 'Solar Project Benchmarking Tool',
+    name: 'Capital Project Benchmarking',
     status: 'LIVE',
     type: 'TOOL',
-    tags: ['Python', 'Data analysis', 'Energy'],
-    calmDescription: 'Compare your solar project against similar ones and find exactly where value is leaking.',
-    description: `A structured benchmarking system for solar project performance. Takes project-specific data \u2014 generation output, cost structure, equipment degradation, O&M spend \u2014 and benchmarks it against comparable projects to identify where performance gaps exist and what's driving them. Built from real engagement work in solar project improvement.`,
+    tags: ['Python', 'Data analysis', 'Benchmarking'],
+    calm: 'Compare a project against similar ones and see exactly where value is leaking out. Tells you how you actually stack up, not how you would like to think you do.',
+    nerd: 'Benchmarking engine that scores a project against a peer set and surfaces value-leakage points. Python, data analysis.',
     punchline: 'Tells you how your project actually compares and where the value is leaking.',
     github: 'https://github.com/Raunaq-nous/Solar-Project-Benchmarking',
-  },
-  {
-    id: 'universal-rag',
-    name: 'Universal RAG System',
-    status: 'LIVE',
-    type: 'TOOL',
-    tags: ['Python', 'RAG', 'Vector databases', 'LangChain'],
-    calmDescription: 'RAG infrastructure that works across document types and domains without rebuilding the pipeline each time.',
-    description: `A flexible retrieval-augmented generation system designed to work across different document types and domains without rebuilding the pipeline each time. Handles PDFs, Word documents, structured data, web pages \u2014 chunks, embeds, indexes, and retrieves with configurable retrieval strategies. The "universal" is intentional: it was built to be reused, not redone.`,
-    punchline: 'RAG infrastructure you don\'t have to rebuild from scratch for every project.',
-    github: 'https://github.com/Raunaq-nous/Universal-RAG',
   },
   {
     id: 'proposal',
@@ -240,20 +222,39 @@ Compresses what used to be a 3-4 week survey cycle into hours. The rigor doesn't
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'LangChain', 'Document generation'],
-    calmDescription: 'Describe the client and scope, get a first draft of a commercial proposal. Not fill-in-the-blank \u2014 it adapts to context.',
-    description: `Generates structured commercial proposals from a brief. Takes the client context, scope description, and pricing inputs \u2014 outputs a formatted proposal with executive summary, scope of work, methodology, timeline, and commercial terms. Not a template with fill-in-the-blank fields. An actual reasoning system that adapts the content to the context.`,
+    calm: 'Describe the client and the scope and get a real first draft of a proposal. It adapts to context instead of making you fill in blanks.',
+    nerd: 'Context-aware proposal generation with document assembly. Python, LangChain.',
     punchline: 'First draft of a client proposal in the time it takes to write the brief.',
     github: 'https://github.com/Raunaq-nous/Proposal-Builder',
   },
   {
-    id: 'capital-watcher',
-    name: 'Portfolio Watcher',
+    id: 'parents-health',
+    name: "Parents' Health Companion",
     status: 'LIVE',
     type: 'TOOL',
-    tags: ['Python', 'Monitoring', 'Portfolio analysis'],
-    calmDescription: 'Tracks project signals between quarterly reviews \u2014 where most problems actually start \u2014 and flags early warnings before they escalate.',
-    description: `A monitoring system that tracks project progress signals \u2014 budget consumption, milestone completion, schedule drift, external risk factors \u2014 and surfaces early warning flags before they become escalation issues. Built for the gap between quarterly reviews, where most project problems actually start.`,
-    punchline: 'Moves project oversight from reactive to proactive.',
-    github: 'https://github.com/Raunaq-nous/Capital-Projects-Watcher',
+    tags: ['health', 'notifications', 'preventive care', 'Python'],
+    calm: "One calm place to look after your parents' health before something goes wrong. It holds their full medical history, medications, diet, and daily routine, and nudges them and you at the right moments. The whole point is to catch things early instead of reacting late. I built it because looking after aging parents from a distance is genuinely hard and there was no single, calm place to do it.",
+    nerd: 'Medical history store, medication and diet tracking, a scheduled adherence and notification engine, preventive-health flags, and shared parent plus caregiver access. Built for proactive elder care, not record keeping.',
+    punchline: 'Proactive elder care, not reactive record keeping.',
+  },
+  {
+    id: 'hitman',
+    name: 'Hitman',
+    status: 'LIVE',
+    type: 'PLATFORM',
+    tags: ['proprietary algorithm', 'prediction', 'analytics', 'cricket'],
+    calm: 'A skill based cricket game. No luck, no pay to win. You make ball by ball predictions and a scoring engine rewards you purely on how well you read the game. Compete across different match scenarios and competitions, ranked on skill alone.',
+    nerd: 'Proprietary skill-based scoring algorithm over a ball-by-ball prediction model, with matchmaking, competitions, and skill analytics. Designed so outcomes track skill, not chance or spend.',
+    punchline: 'Cricket predictions scored on skill, not luck.',
+  },
+  {
+    id: 'career-os',
+    name: 'Career OS',
+    status: 'LIVE',
+    type: 'PLATFORM',
+    tags: ['AI agents', 'simulation', 'personalization', 'careers'],
+    calm: "The tool version of an idea I cannot let go of, that you can learn a career faster by simulating it. It builds a personalized plan around the roles and skills you are targeting, then puts you through real world style scenarios to build real expertise. It learns your profile as you go, so it stays personal to you.",
+    nerd: 'Hyper-personalized skill graph, target-role decomposition, a scenario simulation engine, and an iterative feedback loop. Carries a digital avatar of the user profile so personalization compounds over sessions.',
+    punchline: 'Compress years of showing up into a shorter stretch of actually doing.',
   },
 ];

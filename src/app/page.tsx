@@ -16,9 +16,9 @@ const cards = [
   },
   {
     title: 'Builds',
-    count: 12,
+    count: 13,
     calm: 'Tools I made because they should exist. Some are serious. All are real.',
-    nerd: '12 production tools. Financial modeling, RAG engines, scheduling, survey automation. Repos linked.',
+    nerd: '13 production tools. Financial modeling, RAG engines, scheduling, survey automation. Repos linked.',
     tags: 'Python · TypeScript · LangChain · React',
     href: '/builds',
   },
