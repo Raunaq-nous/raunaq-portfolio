@@ -4,24 +4,25 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import ModeToggle from './ModeToggle';
+import { useMode } from './ModeContext';
 
 const navItems = [
-  { href: '/', label: 'Home' },
-  { href: '/curiosities', label: 'Curiosities' },
-  { href: '/builds', label: 'Builds' },
-  { href: '/past-battles', label: 'Past Battles' },
-  { href: '/skills', label: 'Skills' },
-  { href: '/research', label: 'Research' },
+  { href: '/',             calm: 'Home',         nerd: '~/'             },
+  { href: '/builds',       calm: 'Builds',       nerd: 'cd builds'      },
+  { href: '/research',     calm: 'Research',     nerd: 'cd research'    },
+  { href: '/past-battles', calm: 'Past Battles', nerd: 'cd past-battles'},
+  { href: '/curiosities',  calm: 'Curiosities',  nerd: 'cd curiosities' },
 ];
 
 export default function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { mode } = useMode();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/85 backdrop-blur-xl border-b border-border">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/90 backdrop-blur-xl border-b border-border">
       <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-        <Link href="/" className="font-mono text-sm text-text-primary tracking-tight">
+        <Link href="/" className="font-mono text-sm font-semibold text-text-primary tracking-tight">
           raunaq<span className="text-accent">.</span>
         </Link>
 
@@ -30,13 +31,13 @@ export default function Header() {
             <Link
               key={item.href}
               href={item.href}
-              className={`text-xs font-mono tracking-wide transition-colors ${
+              className={`text-sm font-mono tracking-wide transition-colors ${
                 pathname === item.href
                   ? 'text-accent'
                   : 'text-text-muted hover:text-text-primary'
               }`}
             >
-              {item.label}
+              {mode === 'nerd' ? item.nerd : item.calm}
             </Link>
           ))}
           <ModeToggle />
@@ -74,11 +75,11 @@ export default function Header() {
               key={item.href}
               href={item.href}
               onClick={() => setOpen(false)}
-              className={`block text-xs font-mono tracking-wide ${
+              className={`block text-sm font-mono tracking-wide ${
                 pathname === item.href ? 'text-accent' : 'text-text-muted'
               }`}
             >
-              {item.label}
+              {mode === 'nerd' ? item.nerd : item.calm}
             </Link>
           ))}
         </div>
