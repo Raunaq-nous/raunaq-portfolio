@@ -1,10 +1,15 @@
+'use client';
+
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import StatusPill from '@/components/StatusPill';
 import TagList from '@/components/TagList';
+import { useMode } from '@/components/ModeContext';
 import { curiosities } from '@/data/curiosities';
 
 export default function CuriositiesPage() {
+  const { mode } = useMode();
+
   return (
     <>
       <Header />
@@ -16,7 +21,9 @@ export default function CuriositiesPage() {
               My Current Curiosities
             </h1>
             <p className="text-text-secondary max-w-xl">
-              What I&apos;m building, thinking about, and actively working on.
+              {mode === 'calm'
+                ? "What I'm building, thinking about, and actively working on."
+                : 'Active research threads and production systems. Toggle to calm for the plain version.'}
             </p>
           </div>
         </section>
@@ -37,8 +44,8 @@ export default function CuriositiesPage() {
                   <h2 className="font-mono text-xl font-semibold text-text-primary mb-5">
                     {c.title}
                   </h2>
-                  <div className="text-text-secondary text-sm leading-[1.75] whitespace-pre-line mb-6 max-w-3xl">
-                    {c.description}
+                  <div key={mode} className="text-text-secondary text-sm leading-[1.75] whitespace-pre-line mb-6 max-w-3xl mode-fade">
+                    {mode === 'calm' ? c.calm : c.nerd}
                   </div>
                   <TagList tags={c.tags} />
                 </article>
