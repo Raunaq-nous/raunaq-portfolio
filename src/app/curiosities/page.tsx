@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import StatusPill from '@/components/StatusPill';
@@ -9,6 +10,11 @@ import { curiosities } from '@/data/curiosities';
 
 export default function CuriositiesPage() {
   const { mode } = useMode();
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const toggle = (id: string) => {
+    setExpanded(expanded === id ? null : id);
+  };
 
   return (
     <>
@@ -22,7 +28,7 @@ export default function CuriositiesPage() {
             </h1>
             <p className="text-text-secondary max-w-xl">
               {mode === 'calm'
-                ? "What I'm building, thinking about, and actively working on."
+                ? "What I'm building, thinking about, and cannot stop reading about."
                 : 'Active research threads and production systems. Toggle to calm for the plain version.'}
             </p>
           </div>
@@ -30,26 +36,44 @@ export default function CuriositiesPage() {
 
         <section className="border-t border-border">
           <div className="max-w-5xl mx-auto px-6 py-12">
-            <div className="space-y-0">
-              {curiosities.map((c, i) => (
-                <article
-                  key={c.id}
-                  className={`py-10 ${i < curiosities.length - 1 ? 'border-b border-border' : ''}`}
-                >
-                  <div className="flex flex-wrap items-center gap-3 mb-4">
-                    <StatusPill status={c.status} />
-                    <span className="section-label">{c.role}</span>
-                    <span className="text-text-muted text-xs font-mono">{c.year}</span>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {curiosities.map((c) => {
+                const isOpen = expanded === c.id;
+
+                return (
+                  <div key={c.id} className="flex flex-col">
+                    <button
+                      onClick={() => toggle(c.id)}
+                      className={`card rounded-lg p-6 text-left transition-all flex flex-col flex-1 ${
+                        isOpen ? 'border-accent/40' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <StatusPill status={c.status} />
+                        <span className="text-text-muted text-xs font-mono">{c.year}</span>
+                      </div>
+                      <h2 className="font-mono text-sm font-semibold text-text-primary mb-3 leading-snug">
+                        {c.title}
+                      </h2>
+                      <p className="section-label mb-3">{c.role}</p>
+                      <div className="mt-auto pt-3">
+                        <TagList tags={c.tags} />
+                      </div>
+                      <p className="text-accent text-xs font-mono mt-4">
+                        {isOpen ? '− collapse' : '+ read more'}
+                      </p>
+                    </button>
+
+                    {isOpen && (
+                      <div className="card rounded-lg rounded-t-none border-t-0 px-6 py-6 mode-fade">
+                        <div key={mode} className="text-text-secondary text-sm leading-[1.75] whitespace-pre-line max-w-3xl mode-fade">
+                          {mode === 'calm' ? c.calm : c.nerd}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <h2 className="font-mono text-xl font-semibold text-text-primary mb-5">
-                    {c.title}
-                  </h2>
-                  <div key={mode} className="text-text-secondary text-sm leading-[1.75] whitespace-pre-line mb-6 max-w-3xl mode-fade">
-                    {mode === 'calm' ? c.calm : c.nerd}
-                  </div>
-                  <TagList tags={c.tags} />
-                </article>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
