@@ -223,15 +223,14 @@ export default function PastBattlesPage() {
                         {battle.links && battle.links.length > 0 && (
                           <div className="mb-6">
                             <p className="text-text-muted text-xs font-mono uppercase tracking-wider mb-2">
-                              {battle.id === 'parikshit' ? 'IEEE Publications & Research' : 'Links'}
+                              {battle.id === 'parikshit' ? 'Research' : 'Links'}
                             </p>
                             <div className="space-y-1.5">
                               {battle.links.map((link) => (
                                 <a
                                   key={link.url}
                                   href={link.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                  {...(link.url.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                                   className="block text-sm text-accent-muted hover:text-accent transition-colors"
                                 >
                                   &rarr; {link.label}
