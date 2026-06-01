@@ -14,12 +14,12 @@ export interface Build {
 export const builds: Build[] = [
   {
     id: 'financial-modelling',
-    name: 'Agentic Financial Modeling Platform',
+    name: 'Abacus',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'LangChain', 'Streamlit', 'Multi-agent'],
-    calm: 'Type in your assumptions and get a full financial picture across different options in seconds. The comparison that used to eat a weekend now happens while you are still talking. I built it because I was tired of rebuilding the same models by hand.',
-    nerd: 'Multi-agent system that builds and compares financial models in parallel: CapEx, OpEx, IRR, and sensitivity. Python, LangChain, Streamlit.',
+    calm: 'A financial model that argues with itself until the numbers make sense. You hand it your assumptions, it builds and compares every scenario, and the comparison that used to eat a weekend is done before the coffee is cold.',
+    nerd: '`multi-agent modeling engine`. Agents build, challenge, and reconcile competing models in parallel. CapEx, OpEx, IRR, sensitivity. Python, LangChain, Streamlit.',
     process: `How it works under the hood:
 
 1. INPUT: You feed it a project brief with extraction method, location, equipment, financing terms. Handles multiple project concepts in a single run.
@@ -38,12 +38,12 @@ The whole cycle runs in minutes. The same analysis used to take a weekend of man
   },
   {
     id: 'solar-cost',
-    name: 'Project Economics & Investment Modeling',
+    name: 'Groundwork',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'Multi-agent', 'Interactive UI'],
-    calm: 'Change one assumption and watch the whole picture update instantly. Built for live conversations, so you can answer the "but what if" questions in the room instead of promising to follow up.',
-    nerd: 'Real-time investment and cost model with a multi-agent backend and an interactive UI that recomputes on every input change. Python.',
+    calm: 'The money math for very big builds, live. Change one assumption and the whole picture moves, so you can answer the awkward "but what if" while you are still in the room.',
+    nerd: '`real-time investment model`. Multi-agent backend, interactive UI, full recompute on every input. Python.',
     process: `The workflow:
 
 1. PROJECT SETUP: Define site parameters (location, terrain, grid connection, irradiance data). Select equipment configuration (module type, inverter specs, tracker vs. fixed-tilt).
@@ -60,12 +60,12 @@ The whole cycle runs in minutes. The same analysis used to take a weekend of man
   },
   {
     id: 'scheduling',
-    name: 'AI Scheduling Platform for Large Capital Projects',
+    name: 'Critical Path',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['React', 'FastAPI', 'D3.js', 'Multi-objective optimization'],
-    calm: 'Give it your project constraints and it hands back a workable schedule with clear timelines. It untangles the dependency mess that breaks most scheduling tools, fast enough to use during the kickoff.',
-    nerd: 'Multi-objective schedule optimizer with dependency resolution and visual timelines. React, FastAPI, D3.js.',
+    calm: 'Hands you a workable schedule for a huge project and untangles the dependency mess that breaks normal planning tools. Fast enough to use during the kickoff.',
+    nerd: '`multi-objective scheduler`. Dependency resolution plus visual timelines. React, FastAPI, D3.js.',
     process: `Architecture:
 
 FRONTEND (React + D3.js): Interactive Gantt chart with drag-to-adjust, dependency visualization, critical path highlighting. Resource histogram overlay shows where you are over-allocated.
@@ -84,12 +84,12 @@ The D3.js layer is not decoration. It is the interface for project managers to o
   },
   {
     id: 'capital-allocation',
-    name: 'Portfolio Opportunity Tracker',
+    name: 'Watchtower',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'LangChain', 'Portfolio analysis', 'Monitoring'],
-    calm: 'Watches your whole set of projects all the time, not just at review season. It spots where things are slipping, where something is about to break, and where you should move money before anyone has even asked.',
-    nerd: 'Continuous portfolio monitoring with risk and anomaly detection across schedule and cost signals, plus reallocation flags. Python, LangChain.',
+    calm: 'Watches every project all the time, not just at review season. It spots the slip, the thing about to break, and where to move money before anyone has thought to ask.',
+    nerd: '`continuous portfolio monitor`. Risk and anomaly detection across schedule and cost signals, reallocation flags. Python, LangChain.',
     process: `How the tracker works:
 
 1. DATA INGESTION: Connects to project portfolio data: budget vs. actuals, milestone completion rates, schedule variance, external market signals. Handles messy data across business units, missing fields, lagging updates.
@@ -106,12 +106,12 @@ The D3.js layer is not decoration. It is the interface for project managers to o
   },
   {
     id: 'rag-engine',
-    name: 'RAG Document Intelligence Engine',
+    name: 'Needle',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'LangChain', 'Vector databases', 'RAG'],
-    calm: 'Ask a plain question about any document you have (contracts, regulations, specs) and get a straight answer with the exact passage it came from. Turns a pile of documents into something you can just talk to.',
-    nerd: 'Retrieval-augmented generation over a document corpus with source-grounded answers. Vector search plus LangChain. Generalizes across document types without rebuilding the pipeline. Python.',
+    calm: 'Finds the one line that matters in a mountain of documents. Ask a plain question about a contract, a regulation, a spec, and it answers with the exact passage it came from.',
+    nerd: '`source-grounded RAG`. Vector retrieval with citation to the source span, generalizes across document types without rebuilding the pipeline. Python, LangChain.',
     process: `The RAG pipeline:
 
 1. DOCUMENT INGESTION: Handles PDFs, Word docs, scanned images (OCR), structured data. Uses semantic chunking with overlap, not fixed-size splits. Preserves document structure (headings, tables, clause numbers).
@@ -130,12 +130,12 @@ Built for environments where "I think the contract says..." is not good enough. 
   },
   {
     id: 'workplan',
-    name: 'Multi-Agent Workplan Generator',
+    name: 'Blueprint',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'LangChain', 'Multi-agent LLMs', 'Streamlit'],
-    calm: 'Describe a project and get back a real workplan with tasks, dependencies, and a timeline. Not a template you fill in. It reasons about your specific project.',
-    nerd: 'Multi-agent LLM system that decomposes a project brief into a structured workplan. Python, LangChain, Streamlit.',
+    calm: 'Turns a one paragraph brief into a real plan with tasks, dependencies, and a timeline. Not a template, it actually thinks about your project.',
+    nerd: '`multi-agent planner`. Decomposes a brief into a structured workplan via cooperating agents. Python, LangChain, Streamlit.',
     process: `Agent chain:
 
 1. SCOPE AGENT: Reads the project brief and extracts objectives, constraints, deliverables, team composition, timeline bounds. Asks clarifying questions if the brief is ambiguous.
@@ -153,12 +153,12 @@ The key insight: four specialized agents checking each other produce better work
   },
   {
     id: 'haus-nous',
-    name: 'AI-First Strategy Consulting Platform',
+    name: 'Haus Nous',
     status: 'LIVE',
     type: 'PLATFORM',
     tags: ['TypeScript', 'Next.js', 'Tailwind CSS', 'AI agents'],
-    calm: 'Describe a business problem and get structured strategic guidance back. Like a very fast, very well read thinking partner who has read every framework so you do not have to.',
-    nerd: 'Agent-based platform with a natural-language console, a marketplace of purpose-built tools, and an AI-enhanced framework library. TypeScript, Next.js, Tailwind. Not a chatbot on a database.',
+    calm: 'A thinking partner that has read every strategy framework so you do not have to. Describe a business problem, get structured guidance back, fast.',
+    nerd: '`agent platform`. Natural-language console, a marketplace of purpose-built tools, AI-enhanced framework library. TypeScript, Next.js, Tailwind. Not a chatbot on a database.',
     process: `Platform architecture:
 
 LAYER 1: AI CONSOLE
@@ -183,12 +183,12 @@ Built in TypeScript/Next.js with Tailwind CSS. The design principle: it should f
   },
   {
     id: 'survey',
-    name: 'AI Survey Intelligence Platform',
+    name: 'Pulse',
     status: 'LIVE',
     type: 'PLATFORM',
     tags: ['Python', 'AI agents', 'Research automation'],
-    calm: 'Hand it a research question and it designs the survey, gathers the responses, and writes up the insights. The full research cycle, minus the weeks.',
-    nerd: 'End-to-end survey pipeline: design, collection, and automated insight reporting via AI agents. Python.',
+    calm: 'The whole survey, minus the weeks. Give it a question and it designs the survey, gathers responses, and writes up what it found.',
+    nerd: '`survey pipeline`. End-to-end design, collection, automated insight reporting via agents. Python.',
     process: `End-to-end pipeline:
 
 1. BRIEF to QUESTIONNAIRE: Feed it a research brief. AI designs the survey: question types, skip logic, scale calibration, bias checks. You review and edit before it goes out.
@@ -207,34 +207,34 @@ Compresses what used to be a 3-4 week survey cycle into hours.`,
   },
   {
     id: 'solar-benchmark',
-    name: 'Capital Project Benchmarking',
+    name: 'Yardstick',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'Data analysis', 'Benchmarking'],
-    calm: 'Compare a project against similar ones and see exactly where value is leaking out. Tells you how you actually stack up, not how you would like to think you do.',
-    nerd: 'Benchmarking engine that scores a project against a peer set and surfaces value-leakage points. Python, data analysis.',
+    calm: 'Shows exactly where value is leaking out of a project by holding it against its peers. How you actually compare, not how you would like to think you do.',
+    nerd: '`benchmarking engine`. Scores a project against a peer set, surfaces value-leakage points. Python, data analysis.',
     punchline: 'Tells you how your project actually compares and where the value is leaking.',
     github: 'https://github.com/Raunaq-nous/Solar-Project-Benchmarking',
   },
   {
     id: 'proposal',
-    name: 'AI Proposal Builder',
+    name: 'First Draft',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Python', 'LangChain', 'Document generation'],
-    calm: 'Describe the client and the scope and get a real first draft of a proposal. It adapts to context instead of making you fill in blanks.',
-    nerd: 'Context-aware proposal generation with document assembly. Python, LangChain.',
+    calm: 'A real first draft of a client proposal before the coffee kicks in. It adapts to the client and scope instead of making you fill in blanks.',
+    nerd: '`proposal generator`. Context-aware drafting with document assembly. Python, LangChain.',
     punchline: 'First draft of a client proposal in the time it takes to write the brief.',
     github: 'https://github.com/Raunaq-nous/Proposal-Builder',
   },
   {
     id: 'parents-health',
-    name: "Parents' Health Companion",
+    name: 'Kavach',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['health', 'notifications', 'preventive care', 'Python'],
-    calm: "One calm place to look after your parents' health before something goes wrong. It holds their full medical history, medications, diet, and daily routine, and nudges them and you at the right moments. The whole point is to catch things early instead of reacting late. I built it because looking after aging parents from a distance is genuinely hard and there was no single, calm place to do it.",
-    nerd: 'Medical history store, medication and diet tracking, a scheduled adherence and notification engine, preventive-health flags, and shared parent plus caregiver access. Built for proactive elder care, not record keeping.',
+    calm: "One calm place to look after your parents' health before something goes wrong. It holds their history, medications, diet, and routine, and nudges them and you at the right moments. I built it because caring for aging parents from a distance is hard and there was no single calm place to do it.",
+    nerd: '`preventive elder-care app`. Medical-history store, medication and diet tracking, scheduled adherence and notification engine, preventive-health flags, shared parent and caregiver access.',
     punchline: 'Proactive elder care, not reactive record keeping.',
   },
   {
@@ -243,8 +243,8 @@ Compresses what used to be a 3-4 week survey cycle into hours.`,
     status: 'LIVE',
     type: 'PLATFORM',
     tags: ['proprietary algorithm', 'prediction', 'analytics', 'cricket'],
-    calm: 'A skill based cricket game. No luck, no pay to win. You make ball by ball predictions and a scoring engine rewards you purely on how well you read the game. Compete across different match scenarios and competitions, ranked on skill alone.',
-    nerd: 'Proprietary skill-based scoring algorithm over a ball-by-ball prediction model, with matchmaking, competitions, and skill analytics. Designed so outcomes track skill, not chance or spend.',
+    calm: 'Cricket, scored on skill alone. No luck, no pay to win. You read the game ball by ball, and a scoring engine rewards you purely on how well you called it.',
+    nerd: '`skill-based scoring engine`. Proprietary algorithm over a ball-by-ball prediction model, with matchmaking, competitions, and skill analytics. Outcomes track skill, not chance.',
     punchline: 'Cricket predictions scored on skill, not luck.',
   },
   {
@@ -253,8 +253,8 @@ Compresses what used to be a 3-4 week survey cycle into hours.`,
     status: 'LIVE',
     type: 'PLATFORM',
     tags: ['AI agents', 'simulation', 'personalization', 'careers'],
-    calm: "The tool version of an idea I cannot let go of, that you can learn a career faster by simulating it. It builds a personalized plan around the roles and skills you are targeting, then puts you through real world style scenarios to build real expertise. It learns your profile as you go, so it stays personal to you.",
-    nerd: 'Hyper-personalized skill graph, target-role decomposition, a scenario simulation engine, and an iterative feedback loop. Carries a digital avatar of the user profile so personalization compounds over sessions.',
+    calm: 'An idea I cannot let go of, that you can learn a career faster by simulating it. It builds a plan around the roles and skills you are aiming for, then drops you into real-world scenarios so you build the reps without burning the years.',
+    nerd: '`career simulation engine`. Hyper-personalized skill graph, target-role decomposition, scenario generation, iterative feedback loop, and a digital avatar of the user profile.',
     punchline: 'Compress years of showing up into a shorter stretch of actually doing.',
   },
 ];

@@ -53,10 +53,15 @@ export default function SkillsPage() {
                           {skill.year && <> &middot; {skill.year}</>}
                         </p>
                       </div>
-                      {skill.credential && (
-                        <span className="text-accent text-xs font-mono flex-shrink-0">
-                          {skill.credential}
-                        </span>
+                      {skill.credentialUrl && (
+                        <a
+                          href={skill.credentialUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-accent text-xs font-mono flex-shrink-0 hover:underline"
+                        >
+                          credential &rarr;
+                        </a>
                       )}
                     </div>
                   ))}

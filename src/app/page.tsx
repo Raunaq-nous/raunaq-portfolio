@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import SkillsModule from '@/components/SkillsModule';
 import { useMode } from '@/components/ModeContext';
 
 const cards = [
@@ -29,14 +30,6 @@ const cards = [
     nerd: '6 roles across consulting, growth advisory, competitive intelligence, market entry, and a startup.',
     tags: 'strategy · AI · energy · consumer · finance',
     href: '/past-battles',
-  },
-  {
-    title: 'Skills & Learning',
-    count: 8,
-    calm: "What I know, what I'm learning, and where I've applied it.",
-    nerd: 'Certifications from Anthropic, Wharton, Harvard, IBM. Stack: Python, LangChain, Next.js, RAG, multi-agent systems.',
-    tags: 'AI · consulting · finance · engineering',
-    href: '/skills',
   },
   {
     title: 'Research',
@@ -132,6 +125,9 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* Skills Module */}
+        <SkillsModule />
 
         {/* Card Grid */}
         <section className="border-t border-border">
