@@ -8,18 +8,16 @@ export default function ModeToggle() {
   return (
     <button
       onClick={toggle}
-      className="relative flex items-center w-[7.5rem] h-8 rounded-full border border-border transition-all overflow-hidden"
+      className="relative flex items-center w-32 h-8 rounded-full border border-border/60 bg-bg-secondary/50 transition-all overflow-hidden hover:border-accent/30"
       aria-label={`Switch to ${mode === 'calm' ? 'nerd' : 'calm'} mode`}
     >
-      {/* Sliding background */}
       <span
-        className={`absolute top-0.5 h-[calc(100%-4px)] w-[calc(50%-2px)] rounded-full transition-all duration-300 ease-in-out ${
+        className={`absolute top-[3px] h-[calc(100%-6px)] w-[calc(50%-3px)] rounded-full transition-all duration-300 ease-out ${
           mode === 'calm'
-            ? 'left-0.5 bg-white/90'
-            : 'left-[calc(50%+2px)] bg-emerald-500/20 border border-emerald-500/40'
+            ? 'left-[3px] bg-white/90 shadow-sm'
+            : 'left-[calc(50%+1px)] bg-emerald-500/15 border border-emerald-500/30'
         }`}
       />
-      {/* Calm label */}
       <span
         className={`relative z-10 flex-1 text-center text-[0.6rem] font-mono uppercase tracking-wider transition-colors duration-300 ${
           mode === 'calm' ? 'text-[#0a0f1e] font-semibold' : 'text-text-muted'
@@ -27,9 +25,8 @@ export default function ModeToggle() {
       >
         calm
       </span>
-      {/* Nerd label */}
       <span
-        className={`relative z-10 flex-1 text-center text-[0.6rem] font-mono uppercase tracking-wider transition-colors duration-300 ${
+        className={`relative z-10 flex-1 text-center text-[0.6rem] font-mono tracking-wider transition-colors duration-300 ${
           mode === 'nerd' ? 'text-emerald-400 font-semibold' : 'text-text-muted'
         }`}
       >
