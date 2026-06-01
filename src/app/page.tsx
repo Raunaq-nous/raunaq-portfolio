@@ -3,39 +3,54 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { useMode } from '@/components/ModeContext';
 
 const cards = [
   {
     title: 'Curiosities',
     count: 3,
-    description: "What I'm thinking about, building toward, and can't stop reading about.",
-    tags: 'AI systems · Strategy tools · Finance',
+    calm: "What I'm thinking about, building toward, and can't stop reading about.",
+    nerd: 'Active research threads and production systems. Architecture, stack, the hard part.',
+    tags: 'AI systems · strategy tools · finance',
     href: '/curiosities',
   },
   {
     title: 'Builds',
     count: 12,
-    description: 'Tools I made because they should exist. Some are serious. All are real.',
+    calm: 'Tools I made because they should exist. Some are serious. All are real.',
+    nerd: '12 production tools. Financial modeling, RAG engines, scheduling, survey automation. Repos linked.',
     tags: 'Python · TypeScript · LangChain · React',
     href: '/builds',
   },
   {
     title: 'Past Battles',
     count: 6,
-    description: 'Where I\'ve worked and what happened.',
-    tags: 'Strategy · AI · Energy · Consumer · Finance',
+    calm: "Where I've worked and what happened.",
+    nerd: '6 roles across consulting, growth advisory, competitive intelligence, market entry, and a startup.',
+    tags: 'strategy · AI · energy · consumer · finance',
     href: '/past-battles',
   },
   {
     title: 'Skills & Learning',
     count: 14,
-    description: 'What I know, what I\'m learning, and where I\'ve applied it.',
-    tags: 'AI · Consulting · Finance · Engineering',
+    calm: "What I know, what I'm learning, and where I've applied it.",
+    nerd: 'Certifications from Anthropic, Wharton, Harvard, IBM. Stack: Python, LangChain, Next.js, RAG, multi-agent systems.',
+    tags: 'AI · consulting · finance · engineering',
     href: '/skills',
+  },
+  {
+    title: 'Research',
+    count: 5,
+    calm: 'Papers I worked on, and the AI questions I am chewing on now.',
+    nerd: 'IEEE publications, ongoing research threads in multi-agent finance, document intelligence, and portfolio monitoring.',
+    tags: 'IEEE · satellite ADCS · AI · document intelligence',
+    href: '/research',
   },
 ];
 
 export default function Home() {
+  const { mode } = useMode();
+
   return (
     <>
       <Header />
@@ -50,29 +65,55 @@ export default function Home() {
                   THINK.<br />BUILD.<br />SOLVE.
                 </h1>
 
-                <p className="text-text-secondary text-base leading-relaxed mb-4 fade-in-2">
-                  I&apos;m a consulting problem solver who works where strategy, finance, and technology
-                  actually overlap. I spend my days advising on high-stakes investment decisions &mdash;
-                  the kind where someone has to look at a billion-dollar question and come back with
-                  something useful. Evenings and weekends, I build AI tools. Not because someone asked
-                  me to, but because the problems were right there and the tools weren&apos;t.
-                </p>
-                <p className="text-text-secondary text-base leading-relaxed mb-4 fade-in-3">
-                  Before any of this, I was designing attitude control systems for a nano-satellite
-                  at 28,800 km/hr under ISRO. Five IEEE papers by the time I graduated. Turns out,
-                  figuring out how to stop a satellite from spinning taught me more about structured
-                  problem-solving than any MBA ever could. I just traded angular velocities for IRR calculations.
-                </p>
-                <p className="text-text-secondary text-base leading-relaxed mb-10 fade-in-3">
-                  Most of what I enjoy doesn&apos;t come with a playbook. It&apos;s messy, ambiguous
-                  stuff &mdash; the kind where you have to figure out the question before you can
-                  figure out the answer. Sometimes the fastest path is just building the thing yourself.
-                </p>
+                <div key={mode} className="mode-fade">
+                  {mode === 'calm' ? (
+                    <>
+                      <p className="text-text-secondary text-base leading-relaxed mb-4 fade-in-2">
+                        I like problems that don&apos;t come with instructions. The kind where you have
+                        to work out the question before you can touch the answer.
+                      </p>
+                      <p className="text-text-secondary text-base leading-relaxed mb-4 fade-in-3">
+                        These days that mostly means expensive decisions in large, capital heavy industries.
+                        Someone has a very big question and a lot riding on it, and I help them get to an
+                        answer they can actually act on. Nights and weekends, I build AI tools, usually
+                        because I ran into a problem during the day and the tool I wanted did not exist yet.
+                      </p>
+                      <p className="text-text-secondary text-base leading-relaxed mb-10 fade-in-3">
+                        Before any of this I was working out how to stop a nanosatellite from tumbling
+                        in orbit. That is where I learned that a messy problem is just a clean problem
+                        you have not broken down yet. I swapped angular velocities for cash flows, but
+                        the job is basically the same. Take something tangled and make it make sense.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-text-secondary text-base leading-relaxed mb-4 fade-in-2">
+                        I like problems that don&apos;t come with instructions. The kind where you have
+                        to work out the question before you can touch the answer.
+                      </p>
+                      <p className="text-text-secondary text-base leading-relaxed mb-4 fade-in-3">
+                        These days that means expensive decisions in large, capital heavy industries,
+                        and the AI systems I build to make that work faster. Mostly Python, LangChain,
+                        and multi-agent setups for the analytical tools, with TypeScript and Next.js
+                        when something needs a real front end. The pattern is always the same. Take a
+                        slow manual process and turn it into something that runs while you are still
+                        in the room.
+                      </p>
+                      <p className="text-text-secondary text-base leading-relaxed mb-10 fade-in-3">
+                        Before any of this I ran the attitude determination and control subsystem on a
+                        student nanosatellite built under ISRO. The job was to hold its orientation
+                        within spec while it moved at orbital speed, which comes down to reading noisy
+                        sensor data and feeding a control loop that corrects the spin. That is where I
+                        learned that a messy problem is just a clean problem you have not broken down
+                        yet. I swapped angular velocities for cash flows, but the work is basically the same.
+                      </p>
+                    </>
+                  )}
+                </div>
 
                 <div className="fade-in-4">
                   <p className="text-text-muted text-xs font-mono leading-relaxed">
-                    Currently consulting at the intersection of strategy, finance &amp; AI.
-                    Building tools on GitHub. 12 repos. 5 IEEE publications. Wharton, Harvard, Anthropic certified.
+                    Right now: solving expensive problems by day, building tools by night.
                   </p>
                 </div>
               </div>
@@ -110,8 +151,8 @@ export default function Home() {
                       {card.count}
                     </span>
                   </div>
-                  <p className="text-text-secondary text-sm leading-relaxed mb-4">
-                    {card.description}
+                  <p key={mode} className="text-text-secondary text-sm leading-relaxed mb-4 mode-fade">
+                    {mode === 'calm' ? card.calm : card.nerd}
                   </p>
                   <p className="text-text-muted text-xs font-mono">
                     {card.tags}
