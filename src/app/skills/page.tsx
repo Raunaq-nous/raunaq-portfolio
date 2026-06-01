@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { skillSections, technicalSkills, linkedinSkills, skillToBuildMap } from '@/data/skills';
+import { skillSections, technicalSkills, domainSkills, skillToBuildMap } from '@/data/skills';
 import { builds } from '@/data/builds';
 
 export default function SkillsPage() {
@@ -134,10 +134,10 @@ export default function SkillsPage() {
             {/* LinkedIn Verified */}
             <div className="mb-12">
               <p className="section-label mb-6 pb-3 border-b border-border">
-                LINKEDIN VERIFIED SKILLS
+                SKILLS
               </p>
               <div className="flex flex-wrap gap-2">
-                {linkedinSkills.map((skill) => (
+                {domainSkills.map((skill) => (
                   <span
                     key={skill}
                     className="px-3 py-1.5 rounded-md border border-border text-text-secondary text-xs hover:border-accent/40 transition-colors"
