@@ -31,7 +31,7 @@ export default function Header() {
             <Link
               key={item.href}
               href={item.href}
-              className={`text-sm font-mono tracking-wide transition-colors ${
+              className={`text-base font-mono tracking-wide transition-colors ${
                 pathname === item.href
                   ? 'text-accent'
                   : 'text-text-muted hover:text-text-primary'
@@ -75,7 +75,7 @@ export default function Header() {
               key={item.href}
               href={item.href}
               onClick={() => setOpen(false)}
-              className={`block text-sm font-mono tracking-wide ${
+              className={`block text-base font-mono tracking-wide ${
                 pathname === item.href ? 'text-accent' : 'text-text-muted'
               }`}
             >
