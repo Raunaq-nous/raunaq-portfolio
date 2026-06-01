@@ -115,7 +115,7 @@ export default function Home() {
               <div className="flex-shrink-0 fade-in-2">
                 <div className="w-48 h-48 md:w-56 md:h-56 rounded-2xl overflow-hidden border-2 border-border hover:border-accent/40 transition-colors bg-[#1a2035]">
                   <img
-                    src={`${process.env.__NEXT_ROUTER_BASEPATH || ''}/profile.jpg`}
+                    src={`${process.env.__NEXT_ROUTER_BASEPATH || ''}/Rakesh_Raunaq_Set%202_lres_Headshot.jpeg`}
                     alt="Raunaq Rakesh"
                     className="w-full h-full object-cover"
                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
