@@ -6,30 +6,30 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Hanken Grotesk', 'system-ui', 'sans-serif'],
+        serif: ['Newsreader', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       colors: {
         bg: {
-          primary: '#0a0f1e',
-          secondary: '#111827',
-          card: '#1a2035',
-          tag: '#0f1e3a',
+          primary: 'rgb(var(--bg-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--bg-secondary) / <alpha-value>)',
+          card: 'rgb(var(--bg-card) / <alpha-value>)',
+          tag: 'rgb(var(--bg-tag) / <alpha-value>)',
         },
         accent: {
-          DEFAULT: '#2563EB',
-          dark: '#1d4ed8',
-          light: '#3b82f6',
-          muted: '#60a5fa',
+          DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)',
+          muted: 'rgb(var(--color-accent-muted) / <alpha-value>)',
+          2: 'rgb(var(--color-accent2) / <alpha-value>)',
         },
         text: {
-          primary: '#f0f0ec',
-          secondary: '#9ca3af',
-          muted: '#6b7280',
+          primary: 'rgb(var(--color-ink) / <alpha-value>)',
+          secondary: 'rgb(var(--color-secondary) / <alpha-value>)',
+          muted: 'rgb(var(--color-muted) / <alpha-value>)',
         },
         border: {
-          DEFAULT: '#1f2d45',
-          hover: '#2563EB',
+          DEFAULT: 'rgb(var(--color-border) / <alpha-value>)',
+          hover: 'rgb(var(--color-accent) / <alpha-value>)',
         },
       },
     },

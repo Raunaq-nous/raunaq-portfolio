@@ -16,13 +16,16 @@ export function ModeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem('site-mode') as Mode | null;
-    if (saved === 'calm' || saved === 'nerd') setMode(saved);
+    const initial: Mode = (saved === 'calm' || saved === 'nerd') ? saved : 'calm';
+    setMode(initial);
+    document.documentElement.setAttribute('data-mode', initial);
   }, []);
 
   const toggle = () => {
-    const next = mode === 'calm' ? 'nerd' : 'calm';
+    const next: Mode = mode === 'calm' ? 'nerd' : 'calm';
     setMode(next);
     localStorage.setItem('site-mode', next);
+    document.documentElement.setAttribute('data-mode', next);
   };
 
   return (
