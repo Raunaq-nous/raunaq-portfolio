@@ -3,7 +3,7 @@ export interface Skill {
   issuer: string;
   year: string;
   tag: string;
-  credential?: string;
+  credentialUrl?: string;
 }
 
 export interface SkillSection {
@@ -15,7 +15,7 @@ export const skillSections: SkillSection[] = [
   {
     label: 'AI & Machine Learning',
     skills: [
-      { title: 'Agent Skills with Anthropic', issuer: 'Anthropic', year: '2026', tag: 'AI', credential: 'Show credential' },
+      { title: 'Agent Skills with Anthropic', issuer: 'Anthropic', year: '2026', tag: 'AI' },
       { title: 'Build RAG Applications: Get Started', issuer: '', year: '2024', tag: 'RAG' },
       { title: 'Vector Databases for RAG: An Introduction', issuer: '', year: '2024', tag: 'RAG' },
       { title: 'AI Engineering', issuer: 'IBM', year: '2024', tag: 'AI' },
@@ -42,6 +42,22 @@ export const technicalSkills = [
   'FastAPI', 'D3.js', 'SQL', 'GitHub', 'RAG systems', 'Vector databases',
   'Multi-agent LLMs', 'Knowledge graphs', 'Agentic AI', 'AI ADKs',
   'Claude Code', 'Advanced Excel', 'Financial modeling',
+];
+
+// Grouped for the compact home module
+export const skillGroups: { label: string; skills: string[] }[] = [
+  {
+    label: 'AI',
+    skills: ['Python', 'LangChain', 'Streamlit', 'RAG systems', 'Vector databases', 'Multi-agent LLMs', 'Agentic AI', 'AI ADKs', 'Claude Code', 'Knowledge graphs'],
+  },
+  {
+    label: 'Engineering',
+    skills: ['TypeScript', 'Next.js', 'React', 'FastAPI', 'D3.js', 'SQL', 'GitHub'],
+  },
+  {
+    label: 'Strategy & Finance',
+    skills: ['Financial modeling', 'Advanced Excel'],
+  },
 ];
 
 // Map technical skills to related build IDs
