@@ -11,6 +11,7 @@ const navItems = [
   { href: '/builds', label: 'Builds' },
   { href: '/past-battles', label: 'Past Battles' },
   { href: '/skills', label: 'Skills' },
+  { href: '/research', label: 'Research' },
 ];
 
 export default function Header() {
