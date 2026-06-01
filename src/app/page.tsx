@@ -8,7 +8,7 @@ import { useMode } from '@/components/ModeContext';
 const cards = [
   {
     title: 'Curiosities',
-    count: 3,
+    count: 5,
     calm: "What I'm thinking about, building toward, and can't stop reading about.",
     nerd: 'Active research threads and production systems. Architecture, stack, the hard part.',
     tags: 'AI systems · strategy tools · finance',
