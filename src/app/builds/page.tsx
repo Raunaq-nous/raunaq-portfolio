@@ -102,7 +102,7 @@ export default function BuildsPage() {
                   </div>
 
                   <div key={mode} className="text-text-secondary text-sm leading-[1.75] whitespace-pre-line mb-5 max-w-3xl mode-fade">
-                    {mode === 'calm' ? build.calmDescription : build.description}
+                    {mode === 'calm' ? build.calm : build.nerd}
                   </div>
 
                   <div className="card rounded-lg px-5 py-3 mb-5 inline-block">

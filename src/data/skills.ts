@@ -51,7 +51,7 @@ export const technicalSkills = [
 
 // Map technical skills to related build IDs
 export const skillToBuildMap: Record<string, string[]> = {
-  'Python': ['financial-modelling', 'solar-cost', 'capital-allocation', 'rag-engine', 'workplan', 'survey', 'solar-benchmark', 'universal-rag', 'proposal', 'capital-watcher'],
+  'Python': ['financial-modelling', 'solar-cost', 'capital-allocation', 'rag-engine', 'workplan', 'survey', 'solar-benchmark', 'proposal', 'parents-health'],
   'LangChain': ['financial-modelling', 'capital-allocation', 'rag-engine', 'workplan', 'proposal'],
   'Streamlit': ['financial-modelling', 'workplan'],
   'TypeScript': ['haus-nous'],
@@ -59,15 +59,15 @@ export const skillToBuildMap: Record<string, string[]> = {
   'React': ['scheduling', 'haus-nous'],
   'FastAPI': ['scheduling'],
   'D3.js': ['scheduling'],
-  'RAG systems': ['rag-engine', 'universal-rag'],
-  'Vector databases': ['rag-engine', 'universal-rag'],
+  'RAG systems': ['rag-engine'],
+  'Vector databases': ['rag-engine'],
   'Multi-agent LLMs': ['financial-modelling', 'solar-cost', 'workplan', 'survey'],
   'Agentic AI': ['financial-modelling', 'capital-allocation', 'haus-nous'],
   'AI ADKs': ['haus-nous'],
   'Claude Code': ['haus-nous'],
   'Financial modeling': ['financial-modelling', 'solar-cost'],
   'Advanced Excel': ['financial-modelling', 'solar-cost'],
-  'SQL': ['capital-allocation', 'capital-watcher'],
+  'SQL': ['capital-allocation'],
   'GitHub': ['financial-modelling', 'solar-cost', 'scheduling', 'capital-allocation', 'rag-engine', 'workplan', 'haus-nous', 'survey'],
   'Knowledge graphs': ['rag-engine'],
 };
