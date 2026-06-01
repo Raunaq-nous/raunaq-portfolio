@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import ModeToggle from './ModeToggle';
+
 const navItems = [
   { href: '/', label: 'Home' },
   { href: '/curiosities', label: 'Curiosities' },
@@ -36,28 +38,32 @@ export default function Header() {
               {item.label}
             </Link>
           ))}
+          <ModeToggle />
         </nav>
 
-        <button
-          onClick={() => setOpen(!open)}
-          className="md:hidden text-text-muted p-2"
-          aria-label="Menu"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            {open ? (
-              <>
-                <line x1="3" y1="3" x2="13" y2="13" />
-                <line x1="13" y1="3" x2="3" y2="13" />
-              </>
-            ) : (
-              <>
-                <line x1="2" y1="4" x2="14" y2="4" />
-                <line x1="2" y1="8" x2="14" y2="8" />
-                <line x1="2" y1="12" x2="14" y2="12" />
-              </>
-            )}
-          </svg>
-        </button>
+        <div className="flex items-center gap-3 md:hidden">
+          <ModeToggle />
+          <button
+            onClick={() => setOpen(!open)}
+            className="text-text-muted p-2"
+            aria-label="Menu"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              {open ? (
+                <>
+                  <line x1="3" y1="3" x2="13" y2="13" />
+                  <line x1="13" y1="3" x2="3" y2="13" />
+                </>
+              ) : (
+                <>
+                  <line x1="2" y1="4" x2="14" y2="4" />
+                  <line x1="2" y1="8" x2="14" y2="8" />
+                  <line x1="2" y1="12" x2="14" y2="12" />
+                </>
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
       {open && (
