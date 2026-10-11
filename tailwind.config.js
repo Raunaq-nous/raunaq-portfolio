@@ -1,36 +1,29 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: [
-    './src/**/*.{js,ts,jsx,tsx,mdx}',
-  ],
+  content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Hanken Grotesk', 'system-ui', 'sans-serif'],
-        serif: ['Newsreader', 'Georgia', 'serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+        sans: ['Geist', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       colors: {
-        bg: {
-          primary: 'rgb(var(--bg-primary) / <alpha-value>)',
-          secondary: 'rgb(var(--bg-secondary) / <alpha-value>)',
-          card: 'rgb(var(--bg-card) / <alpha-value>)',
-          tag: 'rgb(var(--bg-tag) / <alpha-value>)',
+        ink: {
+          DEFAULT: '#090909',
+          2: '#101010',
+          3: '#161616',
         },
-        accent: {
-          DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)',
-          muted: 'rgb(var(--color-accent-muted) / <alpha-value>)',
-          2: 'rgb(var(--color-accent2) / <alpha-value>)',
+        paper: '#F1F0EC',
+        grey: {
+          1: '#B9B7B1',
+          2: '#8C8A85',
+          3: '#5F5E5A',
+          4: '#3A3936',
         },
-        text: {
-          primary: 'rgb(var(--color-ink) / <alpha-value>)',
-          secondary: 'rgb(var(--color-secondary) / <alpha-value>)',
-          muted: 'rgb(var(--color-muted) / <alpha-value>)',
-        },
-        border: {
-          DEFAULT: 'rgb(var(--color-border) / <alpha-value>)',
-          hover: 'rgb(var(--color-accent) / <alpha-value>)',
-        },
+        line: '#242422',
+      },
+      letterSpacing: {
+        label: '0.14em',
       },
     },
   },

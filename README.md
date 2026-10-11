@@ -95,3 +95,32 @@ raunaq-portfolio/
   <i>"Sometimes the fastest path is just building the thing yourself."</i><br><br>
   <a href="https://github.com/Raunaq-nous">GitHub Profile</a>
 </div>
+
+---
+
+## Editing content and media
+
+All content is data-driven. Components never hold copy or asset paths.
+
+| What | Where |
+| --- | --- |
+| Name, descriptor, bio, thinking statements, contact links | `src/data/site.ts` |
+| Projects (copy, tags, repos, architecture write-ups) | `src/data/builds.ts` |
+| Project slug, category, featured order | `src/data/projects.ts` |
+| Experience timeline | `src/data/battles.ts` |
+| Papers and research threads | `src/data/research.ts`, `src/data/curiosities.ts` |
+| Portrait, project covers, screenshots, videos | `src/data/assets.ts` (files go in `public/media/`) |
+| Knowledge Atlas clusters, nodes and relationships | `src/data/atlas.ts` |
+
+Any media slot without an asset renders a labelled placeholder. To replace one, add an entry
+to `projectMediaOverrides` in `src/data/assets.ts`, for example:
+
+```ts
+abacus: {
+  cover: { asset: { src: '/media/projects/abacus/cover.jpg', alt: 'Abacus scenario view', width: 2400, height: 1350 } },
+  videos: [{ asset: { src: '/media/projects/abacus/demo.mp4', poster: '/media/projects/abacus/poster.jpg' } }],
+},
+```
+
+Atlas nodes are derived from the data files above. Add extra nodes or links through `extraNodes`
+and `extraEdges` in `src/data/atlas.ts`; positions and coordinates are computed automatically.

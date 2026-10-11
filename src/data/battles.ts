@@ -158,7 +158,7 @@ export const battles: Battle[] = [
     industries: ['Aerospace'],
     description: `Head of attitude determination and control subsystem for Parikshit, a student nano-satellite developed under ISRO guidance. Designed the control mechanism for a satellite traveling at 28,800 km/hr, maintaining angular velocities within 1°/s for payload specs. Five IEEE and journal publications (2014–2016), including papers at the IEEE Aerospace Conference in Big Sky, Montana.`,
     links: [
-      { label: 'See all publications', url: '/research' },
+      { label: 'See all publications', url: '/atlas/?cluster=ideas' },
     ],
     problemStatements: ['Satellite attitude control', 'Tether deployment dynamics', 'Hardware-in-loop testing'],
     frameworks: ['Control systems engineering', 'Simulation & testing (SIL)', 'IEEE research methodology'],
