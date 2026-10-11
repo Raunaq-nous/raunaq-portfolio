@@ -100,27 +100,36 @@ raunaq-portfolio/
 
 ## Editing content and media
 
-All content is data-driven. Components never hold copy or asset paths.
+All content is data-driven. Components never hold copy or asset paths. Every section has calm and
+nerd copy; the toggle in the navigation switches between them (calm is light, nerd is the terminal).
 
 | What | Where |
 | --- | --- |
-| Name, descriptor, bio, thinking statements, contact links | `src/data/site.ts` |
-| Projects (copy, tags, repos, architecture write-ups) | `src/data/builds.ts` |
-| Project slug, category, featured order | `src/data/projects.ts` |
-| Experience timeline | `src/data/battles.ts` |
-| Papers and research threads | `src/data/research.ts`, `src/data/curiosities.ts` |
-| Portrait, project covers, screenshots, videos | `src/data/assets.ts` (files go in `public/media/`) |
-| Knowledge Atlas clusters, nodes and relationships | `src/data/atlas.ts` |
+| Name, descriptor, calm and nerd bio, contact links | `src/data/site.ts` |
+| Builds (calm and nerd copy, tags, repo, live demo, origin role) | `src/data/builds.ts` |
+| Build slug, category, featured order | `src/data/projects.ts` |
+| Experience timeline (roles, engagements, industries) | `src/data/battles.ts` |
+| Papers, research threads, curiosities | `src/data/research.ts`, `src/data/curiosities.ts` |
+| Portrait, interface captures, demo videos, codebase graphs | `src/data/assets.ts` (files in `public/media/`) |
+| Knowledge Atlas segments, nodes and relationships | `src/data/atlas.ts` |
 
-Any media slot without an asset renders a labelled placeholder. To replace one, add an entry
-to `projectMediaOverrides` in `src/data/assets.ts`, for example:
+### Media per build
 
-```ts
-abacus: {
-  cover: { asset: { src: '/media/projects/abacus/cover.jpg', alt: 'Abacus scenario view', width: 2400, height: 1350 } },
-  videos: [{ asset: { src: '/media/projects/abacus/demo.mp4', poster: '/media/projects/abacus/poster.jpg' } }],
-},
-```
+Each build has three kinds of media, all registered in `src/data/assets.ts`:
+
+- **Interface captures**: real screens of the tool, listed in `captures` (files in `public/media/projects/<slug>/`).
+- **Demo video**: add `demo: { asset: { src: '/media/projects/<slug>/demo.mp4' } }` to `projectMediaOverrides`.
+- **Codebase graph**: add `codeGraph: { asset: { src, alt, width, height } }` to `projectMediaOverrides`.
+
+Slots without an asset render a labelled placeholder.
+
+### Paper snapshots
+
+Run the **Capture paper snapshots** workflow (Actions tab, workflow_dispatch). It screenshots the
+IEEE Xplore page for each paper into `public/media/snapshots/` and commits them. Then run
+**Deploy to GitHub Pages** to publish. Missing snapshots fall back to a labelled card.
+
+### Atlas
 
 Atlas nodes are derived from the data files above. Add extra nodes or links through `extraNodes`
 and `extraEdges` in `src/data/atlas.ts`; positions and coordinates are computed automatically.

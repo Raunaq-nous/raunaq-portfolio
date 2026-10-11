@@ -8,6 +8,7 @@ import PixelImage from './PixelImage';
 import { mediaFor } from '@/data/assets';
 import { getProject, parseProcess, projects, relatedProjects, splitSystemLabel } from '@/data/projects';
 import { useNoHover } from '@/lib/motion';
+import { useMode } from './ModeContext';
 
 function Section({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (
@@ -22,7 +23,8 @@ function Section({ n, title, children }: { n: string; title: string; children: R
 
 export default function ProjectDetail({ slug }: { slug: string }) {
   const project = getProject(slug)!;
-  const media = mediaFor(slug);
+  const media = mediaFor(slug, project.name);
+  const { mode } = useMode();
   const noHover = useNoHover();
   const [coverOpen, setCoverOpen] = useState(false);
   const system = splitSystemLabel(project.nerd);
@@ -72,11 +74,18 @@ export default function ProjectDetail({ slug }: { slug: string }) {
           </div>
           <div className="lg:col-span-3 lg:self-end">
             <p className="text-[17px] leading-snug text-grey-1">{project.punchline}</p>
-            {project.github && (
-              <a href={project.github} target="_blank" rel="noopener noreferrer" className="label link-quiet mt-5 inline-block text-paper">
-                Repository <span aria-hidden>↗</span>
-              </a>
-            )}
+            <div className="mt-5 flex flex-wrap gap-5">
+              {project.live && (
+                <a href={project.live} target="_blank" rel="noopener noreferrer" className="label link-quiet text-paper">
+                  Live demo <span aria-hidden>↗</span>
+                </a>
+              )}
+              {project.github && (
+                <a href={project.github} target="_blank" rel="noopener noreferrer" className="label link-quiet text-paper">
+                  Repository <span aria-hidden>↗</span>
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -100,7 +109,7 @@ export default function ProjectDetail({ slug }: { slug: string }) {
 
       <div className="wrap mt-24 space-y-24 lg:mt-36 lg:space-y-36">
         <Section n={num()} title="Overview">
-          <p className="headline max-w-4xl text-[clamp(26px,2.8vw,44px)]">{project.calm}</p>
+          <p key={mode} className="mode-fade headline max-w-4xl text-[clamp(26px,2.8vw,44px)]">{mode === 'calm' ? project.calm : system.text}</p>
         </Section>
 
         <Section n={num()} title="System">
@@ -139,19 +148,29 @@ export default function ProjectDetail({ slug }: { slug: string }) {
           </Section>
         )}
 
-        <Section n={num()} title="Media">
-          <div className="space-y-16">
-            {media.videos.map((v, i) => (
-              <VideoMedia key={i} slot={v} title={project.name} code={code} index={i} />
-            ))}
+        {media.screenshots.length > 0 && (
+          <Section n={num()} title="Interface">
+            <p className="mb-8 max-w-xl text-[14px] text-grey-2">
+              Captured from the tool running locally on synthetic or demo data.
+            </p>
             <div className="grid gap-10 md:grid-cols-12">
               {media.screenshots.map((s, i) => (
-                <div key={i} className={i % 2 === 0 ? 'md:col-span-7' : 'md:col-span-4 md:col-start-9 md:mt-32'}>
+                <div key={s.label} className={i % 3 === 0 ? 'md:col-span-12' : i % 3 === 1 ? 'md:col-span-7' : 'md:col-span-5 md:mt-24'}>
                   <ImageMedia slot={s} title={project.name} code={code} seed={idx * 10 + i + 1} />
                 </div>
               ))}
             </div>
+          </Section>
+        )}
+
+        <Section n={num()} title="Demo and codebase">
+          <div className="grid gap-10 md:grid-cols-2">
+            <VideoMedia slot={media.demo} title={project.name} code={code} index={0} />
+            <ImageMedia slot={media.codeGraph} title={project.name} code={code} seed={idx * 10 + 9} annotate="none" />
           </div>
+          <p className="mt-6 max-w-xl text-[14px] text-grey-2">
+            Two slots for every tool: a short demo video, and a knowledge graph of the codebase and its tech layers.
+          </p>
         </Section>
 
         {related.length > 0 && (

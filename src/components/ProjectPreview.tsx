@@ -9,6 +9,8 @@ import { mediaFor } from '@/data/assets';
 import type { Project } from '@/data/projects';
 import { useNoHover } from '@/lib/motion';
 import type { PreviewLayout } from '@/lib/layouts';
+import { useMode } from './ModeContext';
+import { splitSystemLabel } from '@/data/projects';
 
 
 const imageBox: Record<PreviewLayout, { cls: string; aspect: string }> = {
@@ -32,7 +34,8 @@ const textBox: Record<PreviewLayout, string> = {
 export default function ProjectPreview({ project, layout, index }: { project: Project; layout: PreviewLayout; index: number }) {
   const noHover = useNoHover();
   const [revealed, setRevealed] = useState(false);
-  const media = mediaFor(project.slug);
+  const media = mediaFor(project.slug, project.name);
+  const { mode } = useMode();
   const cover = media.cover;
   const href = `/work/${project.slug}/`;
   const wideText = layout === 'full' || layout === 'bleed';
@@ -93,7 +96,9 @@ export default function ProjectPreview({ project, layout, index }: { project: Pr
           </h3>
         </div>
         <div className={wideText ? 'mt-4 lg:col-span-4 lg:col-start-9 lg:mt-0 lg:self-end' : 'mt-4'}>
-          <p className="max-w-md text-[15px] leading-relaxed text-grey-1">{project.punchline}</p>
+          <p key={mode} className="mode-fade max-w-md text-[15px] leading-relaxed text-grey-1">
+            {mode === 'calm' ? project.punchline : `${splitSystemLabel(project.nerd).label ?? ''}. ${project.tags.join(', ')}`}
+          </p>
           <Link href={href} className="label link-quiet mt-4 inline-block text-paper">
             View project
           </Link>

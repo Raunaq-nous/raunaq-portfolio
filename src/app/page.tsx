@@ -2,8 +2,8 @@ import SiteNav from '@/components/SiteNav';
 import Hero from '@/components/Hero';
 import SelectedWork from '@/components/SelectedWork';
 import AtlasInvite from '@/components/AtlasInvite';
-import Thinking from '@/components/Thinking';
-import Experience from '@/components/Experience';
+import ExperienceJourney from '@/components/experience/ExperienceJourney';
+import Curiosities from '@/components/Curiosities';
 import About from '@/components/About';
 import Contact from '@/components/Contact';
 
@@ -14,9 +14,9 @@ export default function Home() {
       <main>
         <Hero />
         <SelectedWork />
+        <ExperienceJourney />
         <AtlasInvite />
-        <Thinking />
-        <Experience />
+        <Curiosities />
         <About />
         <Contact />
       </main>

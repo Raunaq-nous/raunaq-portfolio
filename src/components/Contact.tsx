@@ -1,4 +1,5 @@
 import Reveal from './Reveal';
+import SectionLabel from './SectionLabel';
 import { site } from '@/data/site';
 
 const SLICES = 7;
@@ -36,13 +37,16 @@ export default function Contact() {
   return (
     <section id="contact" className="wrap pb-10 pt-40 lg:pt-64" aria-labelledby="contact-title">
       <Reveal>
-        <p className="label text-grey-2">06 / Contact</p>
-        <h2 id="contact-title" className="display mt-10 text-[clamp(44px,8.6vw,156px)]" aria-label="Bring a problem that does not come with instructions.">
+        <SectionLabel n="06" calm="Contact" path="contact" cmd="ping raunaq" />
+        <h2 id="contact-title" className="display mt-10 text-[clamp(52px,11vw,200px)]" aria-label="Think. Build. Solve.">
           <span className="block">
-            <SlicedLine text="Bring a problem" />
+            <SlicedLine text="Think." />
           </span>
-          <span className="block text-grey-2 lg:pl-[10vw]">
-            <SlicedLine text="without instructions." />
+          <span className="block lg:pl-[10vw]">
+            <SlicedLine text="Build." />
+          </span>
+          <span className="block text-grey-2 lg:pl-[20vw]">
+            <SlicedLine text="Solve." />
           </span>
         </h2>
       </Reveal>
@@ -67,7 +71,7 @@ export default function Contact() {
         <span>
           {site.name} / {new Date().getFullYear()}
         </span>
-        <span>{site.tagline}</span>
+        <span>{site.descriptor}</span>
         <a href="#top" className="link-quiet hover:text-paper">
           Back to top
         </a>
