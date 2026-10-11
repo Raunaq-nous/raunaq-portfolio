@@ -30,7 +30,10 @@ for (const [id, url] of Object.entries(papers)) {
     }
     await page.waitForTimeout(1500);
     const title = await page.title();
-    if (/access denied|robot|captcha/i.test(title)) throw new Error(`blocked: ${title}`);
+    const text = await page.locator('body').innerText().catch(() => '');
+    if (!title || /access denied|robot|captcha/i.test(title) || /unable to load page|error code: 4\d\d/i.test(text)) {
+      throw new Error(`blocked or error page: ${title || text.slice(0, 80)}`);
+    }
     await page.screenshot({ path: `${out}/paper-${id}.jpg`, type: 'jpeg', quality: 80 });
     results[id] = { ok: true, title };
   } catch (e) {
