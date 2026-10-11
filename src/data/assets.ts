@@ -36,44 +36,82 @@ export interface VideoSlot {
 
 export interface ProjectMedia {
   cover: ImageSlot;
+  /** Real interface captures of the running tool. */
   screenshots: ImageSlot[];
-  videos: VideoSlot[];
+  /** Short demo video of the tool. */
+  demo: VideoSlot;
+  /** Knowledge graph of the tool's codebase and tech layers. */
+  codeGraph: ImageSlot;
 }
 
 export const portrait: ImageAsset = {
   src: '/media/portrait/raunaq-rakesh.jpg',
-  alt: 'Portrait of Raunaq Rakesh',
-  width: 2000,
-  height: 2000,
-  focus: [0.5, 0.36],
+  alt: 'Raunaq Rakesh at his desk, holding a cat',
+  width: 1200,
+  height: 1130,
+  focus: [0.4, 0.42],
 };
 
-// Per-project overrides, keyed by project slug. Add real media here as it becomes available.
-// Example:
+// Interface captures taken from each tool running locally (synthetic or demo data only).
+// Width and height are the stored file size.
+const SHOT_W = 1600;
+const SHOT_H = 1000;
+
+const captures: Record<string, string[]> = {
+  'bhoomi-setu': ['01-home', '02-case', '03-verification', '04-documents', '05-survey-record', '06-next-action'],
+  kavach: ['01-dashboard', '02-family', '03-extraction-review', '04-upload', '05-permissions', '06-reminders'],
+  hitman: ['01-home', '02-schedule', '03-standings', '04-squads', '05-leagues'],
+  'momentum-os': ['01-home-base', '02-dashboard', '03-analytics', '04-focus', '05-systems', '06-achievements'],
+  cartograph: ['01-portfolio', '02-process', '03-provenance'],
+  'career-os': ['02-onboarding-role', '01-login', '03-onboarding-profile', '04-invite'],
+};
+
+function labelFor(file: string) {
+  return file
+    .replace(/^\d+-/, '')
+    .split('-')
+    .map((w, i) => (i === 0 ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
+// Additional per-project overrides (demo videos, codebase graphs, hand-picked covers). Example:
 //   abacus: {
-//     cover: { asset: { src: '/media/projects/abacus/cover.jpg', alt: 'Abacus scenario view', width: 2400, height: 1500 } },
-//     videos: [{ asset: { src: '/media/projects/abacus/demo.mp4', poster: '/media/projects/abacus/poster.jpg' } }],
+//     demo: { asset: { src: '/media/projects/abacus/demo.mp4', poster: '/media/projects/abacus/poster.jpg' } },
+//     codeGraph: { asset: { src: '/media/projects/abacus/codebase.png', alt: 'Abacus codebase graph', width: 2400, height: 1500 } },
 //   },
 type SlotOverride<T> = Partial<Omit<T, 'kind'>>;
 interface ProjectMediaOverride {
   cover?: SlotOverride<ImageSlot>;
-  screenshots?: SlotOverride<ImageSlot>[];
-  videos?: SlotOverride<VideoSlot>[];
+  demo?: SlotOverride<VideoSlot>;
+  codeGraph?: SlotOverride<ImageSlot>;
 }
 
 const projectMediaOverrides: Record<string, ProjectMediaOverride> = {};
 
-export function mediaFor(slug: string): ProjectMedia {
+export function hasCaptures(slug: string) {
+  return !!captures[slug]?.length;
+}
+
+export function mediaFor(slug: string, name = slug): ProjectMedia {
   const o = projectMediaOverrides[slug] ?? {};
-  const shotDefaults: ImageSlot[] = [
-    { kind: 'image', label: 'Interface', aspect: 16 / 10 },
-    { kind: 'image', label: 'Detail', aspect: 4 / 5 },
-  ];
-  const videoDefaults: VideoSlot[] = [{ kind: 'video', label: 'Walkthrough', aspect: 16 / 9 }];
+  const files = captures[slug] ?? [];
+  const screenshots: ImageSlot[] = files.map((f) => ({
+    kind: 'image',
+    label: labelFor(f),
+    aspect: SHOT_W / SHOT_H,
+    asset: { src: `/media/projects/${slug}/${f}.jpg`, alt: `${name}: ${labelFor(f).toLowerCase()} screen`, width: SHOT_W, height: SHOT_H, focus: [0.5, 0] },
+  }));
 
   return {
-    cover: { kind: 'image', label: 'Cover', aspect: 16 / 9, ...o.cover },
-    screenshots: (o.screenshots ?? shotDefaults).map((s, i) => ({ ...shotDefaults[i % shotDefaults.length], ...s, kind: 'image' })),
-    videos: (o.videos ?? videoDefaults).map((v, i) => ({ ...videoDefaults[i % videoDefaults.length], ...v, kind: 'video' })),
+    cover: { kind: 'image', label: 'Cover', aspect: 16 / 9, asset: screenshots[0]?.asset, ...o.cover },
+    screenshots,
+    demo: { kind: 'video', label: 'Demo video', aspect: 16 / 9, ...o.demo },
+    codeGraph: { kind: 'image', label: 'Codebase graph', aspect: 16 / 9, ...o.codeGraph },
   };
+}
+
+// Snapshots of the published papers. Captured by .github/workflows/capture-snapshots.yml
+// (IEEE Xplore is not reachable from the build sandbox). Missing files fall back to a card.
+export function paperSnapshot(id: string): string {
+  return `/media/snapshots/paper-${id}.jpg`;
 }

@@ -41,6 +41,7 @@ uniform float uTime;
 uniform float uMode;
 uniform float uMono;
 uniform float uDpr;
+uniform float uStrength;
 
 float h21(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -84,17 +85,17 @@ void main() {
   float db = fieldAt(bc / uRes);
 
   float th = h21(bid + region * 7.0);
-  float big = step(th * 0.85 + 0.1, db);
+  float big = step((th * 0.85 + 0.1) / uStrength, db);
 
   vec2 sbs = max(bs * 0.25, vec2(3.0 * u));
   vec2 sid = floor(px / sbs);
-  float small = (1.0 - big) * step(h21(sid + 11.0) * 0.7 + 0.22, d);
+  float small = (1.0 - big) * step((h21(sid + 11.0) * 0.7 + 0.22) / uStrength, d);
 
   vec2 q = px;
   if (big > 0.5) {
     q = bc;
     float sh = h21(bid + vec2(tick * 0.13, 2.0));
-    if (sh > 0.6) q.x += (floor(sh * 7.0) - 3.5) * bs.x * 0.6 * db;
+    if (sh > 0.6 - 0.12 * (uStrength - 1.0)) q.x += (floor(sh * 7.0) - 3.5) * bs.x * 0.6 * db * uStrength;
     if (sh < 0.16) q.y += bs.y * (sh < 0.08 ? 1.0 : -1.0);
     // Vertical striation: repeat a narrow slice across the fragment.
     if (rh > 0.67 || h21(bid + 5.0) > 0.72) {
@@ -108,7 +109,7 @@ void main() {
   // Horizontal scanline displacement.
   float band = floor(px.y / (7.0 * u));
   float bh = h21(vec2(band, tick + 1.0));
-  q.x += step(0.84, bh) * step(0.12, d) * (bh - 0.92) * 220.0 * u * d * d;
+  q.x += step(0.84 - 0.08 * (uStrength - 1.0), bh) * step(0.12, d) * (bh - 0.92) * 220.0 * u * d * d * uStrength;
 
   vec3 c = samp(q / uRes);
   float l = dot(c, vec3(0.299, 0.587, 0.114));
@@ -137,6 +138,8 @@ export interface PixelImageProps {
   naturalSize?: [number, number];
   /** Forces full reconstruction (used for tap-to-reveal on touch devices). */
   revealed?: boolean;
+  /** Multiplies the size and intensity of the distortion. 1 is the default. */
+  strength?: number;
   className?: string;
   priority?: boolean;
 }
@@ -160,6 +163,7 @@ export default function PixelImage({
   fieldLabel,
   naturalSize,
   revealed = false,
+  strength = 1,
   className = '',
   priority = false,
 }: PixelImageProps) {
@@ -264,6 +268,7 @@ export default function PixelImage({
     const uMode = U('uMode');
     const uMono = U('uMono');
     const uDpr = U('uDpr');
+    gl.uniform1f(U('uStrength'), strength);
     gl.uniform1i(U('uTex'), 0);
     gl.uniform1i(U('uField'), 1);
     gl.uniform1f(uMode, mode === 'reveal' ? 1 : 0);
@@ -345,11 +350,11 @@ export default function PixelImage({
       const p = pointer;
       p.speed *= Math.exp(-dt * 6);
       const distort = mode === 'distort';
-      const decay = distort ? 0.75 : p.inside ? 0.28 : 0.85;
+      const decay = distort ? 0.75 / strength : p.inside ? 0.28 : 0.85;
       const stamping = p.inside || p.hold;
-      const rx = distort ? 0.17 : 0.26;
-      const ry = distort ? 0.095 : 0.13;
-      const amt = distort ? (p.hold ? 1.6 : 1.0 + Math.min(p.speed, 4) * 4) : 4.5;
+      const rx = distort ? 0.17 * Math.sqrt(strength) : 0.26;
+      const ry = distort ? 0.095 * Math.sqrt(strength) : 0.13;
+      const amt = distort ? (p.hold ? 1.6 * strength : (1.0 + Math.min(p.speed, 4) * 4) * strength) : 4.5;
       const aspect = h / w;
       let any = false;
       for (let j = 0; j < FH; j++) {
@@ -551,7 +556,7 @@ export default function PixelImage({
       setGlReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, placeholderKey, mode, reduced, monochrome, annotate]);
+  }, [src, placeholderKey, mode, reduced, monochrome, annotate, strength]);
 
   const nat = natural;
   const showFallbackImg = !glReady && fallback;
@@ -584,30 +589,30 @@ export default function PixelImage({
       />
 
       {annotate !== 'none' && (
-        <div className="pointer-events-none absolute inset-0 select-none font-mono text-[10px] uppercase tracking-label text-paper/80 mix-blend-difference" aria-hidden>
+        <div className="pointer-events-none absolute inset-0 select-none font-mono text-[10px] uppercase tracking-label text-[#f1f0ec] mix-blend-difference" aria-hidden>
           {/* Static frame annotations */}
           <span className="absolute left-3 top-3">{fieldLabel ?? 'FIELD'}</span>
           {nat && (
-            <span className="absolute bottom-3 left-3 text-paper/50">
+            <span className="absolute bottom-3 left-3 text-[#f1f0ec]/70">
               {nat[0]} × {nat[1]} PX
             </span>
           )}
-          <span className="absolute right-3 top-3 text-paper/50">{mode === 'distort' ? 'SAMPLING' : 'RECONSTRUCT'}</span>
+          <span className="absolute right-3 top-3 text-[#f1f0ec]/70">{mode === 'distort' ? 'SAMPLING' : 'RECONSTRUCT'}</span>
           <span className="corner-ticks absolute inset-0" />
 
           {/* Tracking box */}
           <div ref={boxRef} className="track-box absolute left-0 top-0 opacity-0" style={{ transformOrigin: 'center' }}>
-            <span ref={boxLabelRef} className="absolute -top-4 left-0 whitespace-nowrap text-[9px] text-paper/80" />
+            <span ref={boxLabelRef} className="absolute -top-4 left-0 whitespace-nowrap text-[9px] text-[#f1f0ec]" />
           </div>
           {annotate === 'project' && (
             <div ref={measureRef} className="measure absolute left-0 top-0 opacity-0">
-              <span ref={measureLabelRef} className="absolute -top-4 left-1 whitespace-nowrap text-[9px] text-paper/70" />
+              <span ref={measureLabelRef} className="absolute -top-4 left-1 whitespace-nowrap text-[9px] text-[#f1f0ec]/80" />
             </div>
           )}
 
           {/* Crosshair and live coordinates */}
           <div ref={crossRef} className="crosshair absolute left-0 top-0 opacity-0 transition-opacity duration-300">
-            <div ref={readoutRef} className="absolute left-3 top-3 whitespace-nowrap text-[9px] text-paper/90" />
+            <div ref={readoutRef} className="absolute left-3 top-3 whitespace-nowrap text-[9px] text-[#f1f0ec]" />
           </div>
         </div>
       )}

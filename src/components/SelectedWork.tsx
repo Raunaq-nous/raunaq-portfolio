@@ -2,6 +2,8 @@ import Link from 'next/link';
 import ProjectPreview from './ProjectPreview';
 import { layoutCycle } from '@/lib/layouts';
 import Reveal from './Reveal';
+import SectionLabel from './SectionLabel';
+import ModeText from './ModeText';
 import WorkIndex from './WorkIndex';
 import { featuredProjects, projects } from '@/data/projects';
 
@@ -9,7 +11,7 @@ export default function SelectedWork() {
   return (
     <section id="work" className="wrap pt-24 lg:pt-40" aria-labelledby="work-title">
       <Reveal className="grid gap-6 lg:grid-cols-12">
-        <p className="label text-grey-2 lg:col-span-3">01 / Selected work</p>
+        <SectionLabel n="01" calm="Selected work" path="work" cmd="ls --featured" className="lg:col-span-3" />
         <div className="lg:col-span-9">
           <div className="draw-line h-px w-full bg-line" />
           <h2 id="work-title" className="headline mt-8 text-[clamp(48px,8vw,140px)]">
@@ -19,7 +21,10 @@ export default function SelectedWork() {
             </span>
           </h2>
           <p className="mt-6 max-w-lg text-[17px] leading-snug text-grey-1">
-            Tools I made because they should exist. Some are serious. All are real.
+            <ModeText
+              calm="Tools I made because they should exist. Some are serious. All are real."
+              nerd={`${projects.length} production tools. Financial modeling, RAG engines, scheduling, survey automation, verification and more. Repos linked.`}
+            />
           </p>
         </div>
       </Reveal>

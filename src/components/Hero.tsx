@@ -1,6 +1,7 @@
 import PixelImage from './PixelImage';
 import { portrait } from '@/data/assets';
 import { site } from '@/data/site';
+import ModeText from './ModeText';
 
 export default function Hero() {
   return (
@@ -14,6 +15,7 @@ export default function Hero() {
           focus={portrait.focus}
           monochrome={1}
           annotate="hero"
+          strength={2}
           fieldLabel="FIELD 01 / PORTRAIT"
           naturalSize={[portrait.width, portrait.height]}
           priority
@@ -24,10 +26,8 @@ export default function Hero() {
       {/* Editorial column */}
       <div className="wrap relative z-10 flex flex-col pb-10 pt-8 lg:pointer-events-none lg:min-h-[100svh] lg:pb-8 lg:pt-[96px]">
         <div className="grid max-w-[44vw] grid-cols-2 gap-6 text-grey-2 max-lg:hidden">
-          <p className="label">
-            Portfolio
-            <br />
-            Index 00
+          <p className="label normal-case tracking-normal">
+            <ModeText calm="PORTFOLIO / INDEX 00" nerd="raunaq@portfolio:~ $ whoami" />
           </p>
           <p className="label">
             Strategy / Finance / AI

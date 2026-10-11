@@ -9,11 +9,16 @@ export interface Build {
   punchline: string;
   process?: string;
   github?: string;
+  /** Public demo deployment, when one exists. */
+  live?: string;
+  /** Where the build came from: built during a role, or independently. */
+  origin: 'bain' | 'aranca' | 'independent';
 }
 
 export const builds: Build[] = [
   {
     id: 'financial-modelling',
+    origin: 'bain',
     name: 'Abacus',
     status: 'LIVE',
     type: 'TOOL',
@@ -38,6 +43,7 @@ The whole cycle runs in minutes. The same analysis used to take a weekend of man
   },
   {
     id: 'solar-cost',
+    origin: 'bain',
     name: 'Groundwork',
     status: 'LIVE',
     type: 'TOOL',
@@ -60,6 +66,7 @@ The whole cycle runs in minutes. The same analysis used to take a weekend of man
   },
   {
     id: 'scheduling',
+    origin: 'bain',
     name: 'Critical Path',
     status: 'LIVE',
     type: 'TOOL',
@@ -84,6 +91,7 @@ The D3.js layer is not decoration. It is the interface for project managers to o
   },
   {
     id: 'capital-allocation',
+    origin: 'bain',
     name: 'Watchtower',
     status: 'LIVE',
     type: 'TOOL',
@@ -106,6 +114,7 @@ The D3.js layer is not decoration. It is the interface for project managers to o
   },
   {
     id: 'rag-engine',
+    origin: 'bain',
     name: 'Needle',
     status: 'LIVE',
     type: 'TOOL',
@@ -130,6 +139,7 @@ Built for environments where "I think the contract says..." is not good enough. 
   },
   {
     id: 'workplan',
+    origin: 'bain',
     name: 'Blueprint',
     status: 'LIVE',
     type: 'TOOL',
@@ -153,6 +163,7 @@ The key insight: four specialized agents checking each other produce better work
   },
   {
     id: 'haus-nous',
+    origin: 'aranca',
     name: 'Haus Nous',
     status: 'LIVE',
     type: 'PLATFORM',
@@ -183,6 +194,7 @@ Built in TypeScript/Next.js with Tailwind CSS. The design principle: it should f
   },
   {
     id: 'survey',
+    origin: 'aranca',
     name: 'Pulse',
     status: 'LIVE',
     type: 'PLATFORM',
@@ -207,6 +219,7 @@ Compresses what used to be a 3-4 week survey cycle into hours.`,
   },
   {
     id: 'solar-benchmark',
+    origin: 'bain',
     name: 'Yardstick',
     status: 'LIVE',
     type: 'TOOL',
@@ -218,6 +231,7 @@ Compresses what used to be a 3-4 week survey cycle into hours.`,
   },
   {
     id: 'proposal',
+    origin: 'aranca',
     name: 'First Draft',
     status: 'LIVE',
     type: 'TOOL',
@@ -229,16 +243,19 @@ Compresses what used to be a 3-4 week survey cycle into hours.`,
   },
   {
     id: 'parents-health',
+    origin: 'independent',
     name: 'Kavach',
     status: 'LIVE',
     type: 'TOOL',
-    tags: ['health', 'notifications', 'preventive care', 'Python'],
+    tags: ['Next.js', 'NestJS', 'OCR', 'AI summaries', 'Preventive care'],
     calm: "One calm place to look after your parents' health before something goes wrong. It holds their history, medications, diet, and routine, and nudges them and you at the right moments. I built it because caring for aging parents from a distance is hard and there was no single calm place to do it.",
     nerd: '`preventive elder-care app`. Medical-history store, medication and diet tracking, scheduled adherence and notification engine, preventive-health flags, shared parent and caregiver access.',
     punchline: 'Proactive elder care, not reactive record keeping.',
+    github: 'https://github.com/Raunaq-nous/Maate',
   },
   {
     id: 'hitman',
+    origin: 'independent',
     name: 'Hitman',
     status: 'LIVE',
     type: 'PLATFORM',
@@ -246,9 +263,11 @@ Compresses what used to be a 3-4 week survey cycle into hours.`,
     calm: 'Cricket, scored on skill alone. No luck, no pay to win. You read the game ball by ball, and a scoring engine rewards you purely on how well you called it.',
     nerd: '`skill-based scoring engine`. Proprietary algorithm over a ball-by-ball prediction model, with matchmaking, competitions, and skill analytics. Outcomes track skill, not chance.',
     punchline: 'Cricket predictions scored on skill, not luck.',
+    github: 'https://github.com/Raunaq-nous/Hitman',
   },
   {
     id: 'career-os',
+    origin: 'independent',
     name: 'Career OS',
     status: 'LIVE',
     type: 'PLATFORM',
@@ -256,5 +275,65 @@ Compresses what used to be a 3-4 week survey cycle into hours.`,
     calm: 'An idea I cannot let go of, that you can learn a career faster by simulating it. It builds a plan around the roles and skills you are aiming for, then drops you into real-world scenarios so you build the reps without burning the years.',
     nerd: '`career simulation engine`. Hyper-personalized skill graph, target-role decomposition, scenario generation, iterative feedback loop, and a digital avatar of the user profile.',
     punchline: 'Compress years of showing up into a shorter stretch of actually doing.',
+    github: 'https://github.com/Raunaq-nous/TheWhiteKnight',
+    live: 'https://raunaq-nous.github.io/TheWhiteKnight',
+  },
+  {
+    id: 'bhoomi-setu',
+    origin: 'independent',
+    name: 'Bhoomi Setu',
+    status: 'LIVE',
+    type: 'PLATFORM',
+    tags: ['Next.js', 'TypeScript', 'Deterministic verification', 'MapLibre', 'Gemini / OpenAI'],
+    calm: 'Land records rarely agree with each other. Old documents say one thing, the survey says another, the map says a third. Bhoomi Setu lays them side by side for one family, shows where they match and where they do not, and suggests the one sensible thing to prepare next. It never pretends to be a government portal or hands out a legal verdict.',
+    nerd: '`evidence-first verification`. AI suggests structured facts from documents, then deterministic code, not an LLM, compares them and returns PASS, POTENTIAL_ISSUE or INSUFFICIENT_EVIDENCE with the evidence span attached. Three-way parcel area reconciliation across historical record, survey and mapped geometry (Turf), MapLibre parcel views, English and Hindi. Next.js, TypeScript, Zod, Postgres.',
+    process: `The evidence pipeline:
+
+1. CASE: A synthetic family case is reconstructed around documents, family context, parcels and a survey record.
+
+2. STRUCTURED EXTRACTION: Gemini or OpenAI suggests candidate facts from document text. Every candidate must pass schema, evidence-span and semantic-grounding checks before it is kept.
+
+3. DETERMINISTIC VERIFICATION: Code compares identifiers and numbers, keeps the evidence references, and returns PASS, POTENTIAL_ISSUE or INSUFFICIENT_EVIDENCE. Missing facts stay uncertain.
+
+4. PARCEL INTELLIGENCE: Validates GeoJSON, calculates area with Turf and compares exactly three perspectives: historical, survey and mapped geometry.
+
+5. CONTEXT: Official-style records and two-date Earth Observation imagery sit behind provider boundaries. They add context and never change the verification result.
+
+6. NEXT ACTION: A review packet and one practical next step. Nothing is ever submitted anywhere.`,
+    punchline: 'Turns a pile of disagreeing land records into one traceable picture.',
+    github: 'https://github.com/Raunaq-nous/Bhoomi-Setu',
+    live: 'https://bhoomi-setu-xi.vercel.app',
+  },
+  {
+    id: 'momentum-os',
+    origin: 'independent',
+    name: 'Momentum OS',
+    status: 'LIVE',
+    type: 'PLATFORM',
+    tags: ['Next.js', 'TypeScript', 'Zustand', 'IndexedDB', 'Recharts'],
+    calm: 'A personal operating system for getting things done. Tasks, habits, goals, focus sessions and reviews live in one place, and it keeps score so you can see whether the system is actually working. The tagline says it: build systems, not motivation.',
+    nerd: '`personal productivity OS`. Mission control with a computed life score, a habit engine with a 365-day heatmap, tasks in six views (list, kanban, Gantt, calendar, board, table), six goal horizons, Recharts analytics and an XP and achievements layer. Local-first on IndexedDB via Dexie with optional Supabase sync. Next.js 15, Zustand, Framer Motion, Web Audio soundscapes.',
+    punchline: 'Build systems, not motivation.',
+    github: 'https://github.com/Raunaq-nous/Momentum_OS',
+  },
+  {
+    id: 'cartograph',
+    origin: 'independent',
+    name: 'Cartograph',
+    status: 'LIVE',
+    type: 'PLATFORM',
+    tags: ['Python', 'Multi-agent', 'Anthropic API', 'Deterministic value model', 'Evals'],
+    calm: 'Maps how work actually gets done inside a business, then prices what it would cost to do it differently. Every figure traces back to the evidence behind it, so whoever presents a page can say where the number came from and how much of it is evidenced versus assumed.',
+    nerd: '`evidence-backed transformation engine`. Specialist agents map current and future state across a process taxonomy, score each process on nine dimensions, and a reconciler nets overlapping savings at portfolio level instead of double counting them. Models estimate, code computes: the value arithmetic is deterministic Python. Every claim carries evidence IDs, confidence is computed rather than self-reported, and each run pins its models, prompts and inputs in a manifest. Golden-set evals gate every change. React run viewer.',
+    process: `Design principles:
+
+1. MODELS ESTIMATE, CODE COMPUTES: Language models supply parameters and judgement. Arithmetic happens in Python, where it is testable and cannot hallucinate.
+
+2. CLAIMS CARRY EVIDENCE: Every generated claim references the evidence that supports it, or is explicitly marked unsupported. Confidence is derived from evidence.
+
+3. THE PORTFOLIO RECONCILES: Per-process results roll up to a portfolio view that adds up. Overlapping savings are netted, not double counted.
+
+4. RUNS ARE REPRODUCIBLE: Every run pins its models, prompts, schema version and inputs in a manifest, so any figure can be re-derived.`,
+    punchline: 'Where did this number come from? Cartograph always knows.',
   },
 ];

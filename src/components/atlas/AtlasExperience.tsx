@@ -3,15 +3,17 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { clusters, clusterOf, neighbours, nodes, type AtlasNode, type ClusterId, type NodeKind } from '@/data/atlas';
+import { clusters, clusterOf, neighbours, nodes, overviewOf, timeline, type AtlasNode, type ClusterId, type NodeKind } from '@/data/atlas';
 import { asset } from '@/lib/asset';
 import { hasWebGL, prefersReducedMotion } from '@/lib/motion';
 import ModelViewer from './ModelViewer';
 import type { AtlasEngine } from './AtlasEngine';
 
 const KIND_LABEL: Record<NodeKind, string> = {
-  project: 'Project',
-  code: 'Repository',
+  experience: 'Role',
+  engagement: 'Engagement',
+  project: 'Build',
+  industry: 'Industry',
   idea: 'Idea',
   paper: 'Paper',
   model: '3D object',
@@ -19,8 +21,10 @@ const KIND_LABEL: Record<NodeKind, string> = {
 };
 
 const ACTION_LABEL: Record<NodeKind, string> = {
+  experience: 'Overview',
+  engagement: 'Read',
   project: 'Open project',
-  code: 'View system',
+  industry: 'Read',
   idea: 'Read',
   paper: 'Read',
   model: 'Inspect object',
@@ -29,6 +33,21 @@ const ACTION_LABEL: Record<NodeKind, string> = {
 
 const byId = (id: string | null) => (id ? nodes.find((n) => n.id === id) ?? null : null);
 const fmt = (v: number) => `${v < 0 ? '-' : '+'}${Math.abs(v).toFixed(1).padStart(4, '0')}`;
+const expIds = timeline.map((b) => `exp:${b.id}`);
+
+function Thumb({ src, label }: { src?: string; label: string }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className="relative block aspect-[16/10] overflow-hidden border border-paper/15 bg-paper/5">
+      {src && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={asset(src)} alt="" className="h-full w-full object-cover object-top grayscale" loading="lazy" onError={() => setFailed(true)} />
+      ) : (
+        <span className="label absolute inset-0 grid place-items-center text-[8px] text-grey-3">{label}</span>
+      )}
+    </span>
+  );
+}
 
 export default function AtlasExperience() {
   const router = useRouter();
@@ -38,57 +57,95 @@ export default function AtlasExperience() {
   const engineRef = useRef<AtlasEngine | null>(null);
 
   const [webgl, setWebgl] = useState<boolean | null>(null);
-  const [active, setActive] = useState<ClusterId | null>(null);
+  const [segs, setSegs] = useState<ClusterId[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [hover, setHover] = useState<{ cluster: ClusterId | null; node: string | null }>({ cluster: null, node: null });
+  const [hover, setHover] = useState<{ node: string | null; x: number; y: number }>({ node: null, x: 0, y: 0 });
+  const [touring, setTouring] = useState(false);
+  const [tourIndex, setTourIndex] = useState(-1);
   const [indexOpen, setIndexOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [reader, setReader] = useState<AtlasNode | null>(null);
   const [viewer, setViewer] = useState<AtlasNode | null>(null);
 
   const selectedNode = byId(selected);
+  const activeExp = selectedNode?.kind === 'experience' ? selectedNode.id : selectedNode?.owner ? `exp:${selectedNode.owner}` : null;
 
   // ------------------------------------------------------------ actions
-
-  const pickCluster = useCallback((id: ClusterId | null) => {
-    setActive(id);
-    setSelected(null);
-    engineRef.current?.selectNode(null, false);
-    engineRef.current?.enterCluster(id);
-  }, []);
 
   const pickNode = useCallback((id: string, fly = true) => {
     const n = byId(id);
     if (!n) return;
-    setActive(n.cluster);
     setSelected(id);
     engineRef.current?.selectNode(id, fly);
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelected(null);
+    engineRef.current?.resetView();
+  }, []);
+
+  const toggleSeg = useCallback((id: ClusterId) => {
+    setSegs((cur) => {
+      const next = cur.includes(id) ? cur.filter((s) => s !== id) : [...cur, id];
+      engineRef.current?.setSegments(next);
+      return next;
+    });
   }, []);
 
   const openNode = useCallback(
     (n: AtlasNode) => {
       if (n.kind === 'project' && n.href) router.push(`${n.href}/`);
       else if (n.kind === 'model') setViewer(n);
+      else if (n.kind === 'experience') pickNode(n.id);
       else setReader(n);
     },
-    [router],
+    [router, pickNode],
   );
+
+  const stopTour = useCallback(() => {
+    setTouring(false);
+  }, []);
 
   const back = useCallback(() => {
     if (viewer) return setViewer(null);
     if (reader) return setReader(null);
     if (searchOpen) return setSearchOpen(false);
     if (indexOpen && webgl) return setIndexOpen(false);
+    if (touring) return stopTour();
     if (selected) {
-      setSelected(null);
-      engineRef.current?.selectNode(null, false);
-      return;
+      const n = byId(selected);
+      if (n && n.kind !== 'experience' && n.owner) return pickNode(`exp:${n.owner}`);
+      return clearSelection();
     }
-    if (active) pickCluster(null);
-  }, [viewer, reader, searchOpen, indexOpen, webgl, selected, active, pickCluster]);
+    if (segs.length) {
+      setSegs([]);
+      engineRef.current?.setSegments([]);
+    }
+  }, [viewer, reader, searchOpen, indexOpen, webgl, touring, selected, segs.length, stopTour, pickNode, clearSelection]);
 
-  const cbRef = useRef({ pickCluster, pickNode, back });
-  cbRef.current = { pickCluster, pickNode, back };
+  const cbRef = useRef({ pickNode, back, clearSelection });
+  cbRef.current = { pickNode, back, clearSelection };
+
+  // ------------------------------------------------------------ time travel tour
+
+  useEffect(() => {
+    if (!touring) return;
+    let i = 0;
+    const step = () => {
+      if (i >= expIds.length) {
+        setTouring(false);
+        setTourIndex(-1);
+        return;
+      }
+      setTourIndex(i);
+      setSelected(expIds[i]);
+      engineRef.current?.focusExperience(expIds[i], 'street', i === 0 ? 1800 : 1600);
+      i++;
+    };
+    step();
+    const t = window.setInterval(step, 4600);
+    return () => window.clearInterval(t);
+  }, [touring]);
 
   // ------------------------------------------------------------ engine lifecycle
 
@@ -111,16 +168,24 @@ export default function AtlasExperience() {
         overlayRef.current,
         camRef.current,
         {
-          onHover: (h) => setHover(h),
-          onPickCluster: (id) => cbRef.current.pickCluster(id),
-          onPickNode: (id) => cbRef.current.pickNode(id),
+          onHover: (h) => setHover((cur) => (cur.node === h.node && Math.abs(cur.x - h.x) < 2 && Math.abs(cur.y - h.y) < 2 ? cur : h)),
+          onPickNode: (id) => {
+            setTouring(false);
+            cbRef.current.pickNode(id);
+          },
           onPickEmpty: () => undefined,
         },
         { reduced: prefersReducedMotion(), lowPower, assemble: true },
       );
       engineRef.current = engine;
-      const c = new URLSearchParams(window.location.search).get('cluster') as ClusterId | null;
-      if (c && clusters.some((x) => x.id === c)) setTimeout(() => cbRef.current.pickCluster(c), 900);
+      const params = new URLSearchParams(window.location.search);
+      const seg = params.get('segment') as ClusterId | null;
+      if (seg && clusters.some((c) => c.id === seg)) {
+        setSegs([seg]);
+        engine.setSegments([seg]);
+      }
+      const exp = params.get('role');
+      if (exp && expIds.includes(`exp:${exp}`)) setTimeout(() => cbRef.current.pickNode(`exp:${exp}`), 900);
     });
     return () => {
       disposed = true;
@@ -138,24 +203,30 @@ export default function AtlasExperience() {
       } else if (e.key === '/' && !typing) {
         e.preventDefault();
         setSearchOpen(true);
+      } else if (!typing && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+        const cur = expIds.indexOf(activeExp ?? '');
+        const next = e.key === 'ArrowRight' ? Math.min(expIds.length - 1, cur + 1) : Math.max(0, cur - 1);
+        if (next >= 0) cbRef.current.pickNode(expIds[next === -1 ? 0 : next]);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [activeExp]);
 
   // ------------------------------------------------------------ render
 
-  const instruction = !active
-    ? 'Select a cluster to explore'
+  const instruction = touring
+    ? `Time travel / ${String(tourIndex + 1).padStart(2, '0')} of ${String(expIds.length).padStart(2, '0')}`
     : selected
-      ? 'Esc to return to the cluster'
-      : 'Select a node / Esc to return to the Atlas';
+      ? 'Esc to step back / arrow keys move along the timeline'
+      : 'Hover a role for an overview, click to step inside';
 
-  const hoverCluster = hover.cluster ? clusterOf(hover.cluster) : null;
+  const hoverNode = byId(hover.node);
+  const showHover = hoverNode && hoverNode.id !== selected && !touring;
+  const expIdx = activeExp ? expIds.indexOf(activeExp) : -1;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-ink text-paper">
+    <div className="force-dark fixed inset-0 overflow-hidden bg-ink text-paper">
       <h1 className="sr-only">Knowledge Atlas</h1>
       <div ref={sceneRef} className="absolute inset-0" />
       <div ref={overlayRef} className="atlas-overlay opacity-0" aria-hidden />
@@ -167,18 +238,18 @@ export default function AtlasExperience() {
             Raunaq
           </Link>
           <span aria-hidden className="max-sm:hidden">/</span>
-          <button type="button" onClick={() => pickCluster(null)} className={`link-quiet ${active ? 'hover:text-paper' : 'text-paper'}`}>
+          <button type="button" onClick={clearSelection} className={`link-quiet ${selected ? 'hover:text-paper' : 'text-paper'}`}>
             Atlas
           </button>
-          {active && (
+          {activeExp && (
             <>
               <span aria-hidden>/</span>
-              <button type="button" onClick={() => pickCluster(active)} className={`link-quiet truncate ${selected ? 'hover:text-paper' : 'text-paper'}`}>
-                {clusterOf(active).label}
+              <button type="button" onClick={() => pickNode(activeExp)} className="link-quiet truncate hover:text-paper">
+                {byId(activeExp)?.title}
               </button>
             </>
           )}
-          {selectedNode && (
+          {selectedNode && selectedNode.kind !== 'experience' && (
             <>
               <span aria-hidden className="max-sm:hidden">/</span>
               <span className="truncate text-paper max-sm:hidden">{selectedNode.title}</span>
@@ -202,25 +273,23 @@ export default function AtlasExperience() {
         </div>
       </header>
 
-      {/* Categories */}
+      {/* Segments */}
       {webgl && (
-        <nav
-          className="wrap pointer-events-none absolute inset-x-0 bottom-24 z-20 md:bottom-auto md:top-1/2 md:w-auto md:-translate-y-1/2"
-          aria-label="Atlas categories"
-        >
+        <nav className="wrap pointer-events-none absolute inset-x-0 bottom-28 z-20 md:bottom-auto md:top-1/2 md:w-auto md:-translate-y-1/2" aria-label="Atlas segments">
+          <p className="label mb-2 text-grey-3 max-md:hidden">Segments</p>
           <ul className="pointer-events-auto flex max-w-full gap-2 overflow-x-auto md:inline-flex md:flex-col md:gap-0">
             {clusters.map((c) => {
               const count = nodes.filter((n) => n.cluster === c.id).length;
-              const on = active === c.id;
-              const hov = hover.cluster === c.id;
+              const on = segs.includes(c.id);
               return (
                 <li key={c.id}>
                   <button
                     type="button"
-                    onClick={() => pickCluster(on ? null : c.id)}
+                    onClick={() => toggleSeg(c.id)}
                     aria-pressed={on}
+                    title={c.description}
                     className={`label flex w-max items-baseline gap-3 border px-3 py-2 transition-colors md:border-0 md:border-l md:py-2.5 ${
-                      on ? 'border-paper text-paper' : hov ? 'border-paper/60 text-paper' : 'border-paper/15 text-grey-2 hover:text-paper'
+                      on ? 'border-paper text-paper' : 'border-paper/15 text-grey-2 hover:text-paper'
                     }`}
                   >
                     <span className="text-grey-3">{c.code}</span>
@@ -234,46 +303,54 @@ export default function AtlasExperience() {
         </nav>
       )}
 
+      {/* Hover overview */}
+      {showHover && (
+        <div
+          className="pointer-events-none absolute z-30 w-72 border border-paper/25 bg-ink/90 p-4 backdrop-blur max-md:hidden"
+          style={{ left: Math.min(hover.x + 18, (typeof window !== 'undefined' ? window.innerWidth : 1400) - 300), top: Math.max(64, hover.y - 20) }}
+        >
+          <HoverCard node={hoverNode} />
+        </div>
+      )}
+
       {/* Bottom bar */}
       {webgl && (
         <footer className="wrap pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-6 pb-5">
-          <div className="label space-y-1" aria-live="polite">
+          <div className="label space-y-2" aria-live="polite">
+            <div className="pointer-events-auto flex items-center gap-2">
+              <button type="button" onClick={() => expIdx > 0 && pickNode(expIds[expIdx - 1])} disabled={expIdx <= 0} className="border border-paper/40 px-2.5 py-1.5 hover:bg-paper hover:text-ink disabled:opacity-30" aria-label="Previous role">
+                ←
+              </button>
+              <button type="button" onClick={() => (touring ? stopTour() : setTouring(true))} aria-pressed={touring} className="border border-paper px-3 py-1.5 text-paper hover:bg-paper hover:text-ink">
+                {touring ? 'Stop' : 'Time travel'}
+              </button>
+              <button type="button" onClick={() => pickNode(expIds[Math.min(expIds.length - 1, expIdx + 1)])} disabled={expIdx >= expIds.length - 1} className="border border-paper/40 px-2.5 py-1.5 hover:bg-paper hover:text-ink disabled:opacity-30" aria-label="Next role">
+                →
+              </button>
+            </div>
             <p className="text-paper">{instruction}</p>
-            <p className="text-grey-3 max-md:hidden">
-              {hoverCluster && !active ? `${hoverCluster.code} / ${hoverCluster.description}` : 'Drag to orbit / scroll to zoom / right-drag to pan / press / to search'}
-            </p>
+            <p className="text-grey-3 max-md:hidden">Drag to orbit / scroll to zoom / right-drag to pan / press / to search</p>
           </div>
           <div className="label pointer-events-auto flex flex-col items-end gap-2 text-right">
             <span ref={camRef} className="text-grey-3 max-md:hidden" aria-hidden />
             <span className="flex gap-4 text-grey-2">
-              <Link href="/#work" className="link-quiet hover:text-paper">
-                Work
-              </Link>
-              <Link href="/#about" className="link-quiet hover:text-paper">
-                About
-              </Link>
-              <Link href="/#contact" className="link-quiet hover:text-paper">
-                Contact
-              </Link>
+              <Link href="/#work" className="link-quiet hover:text-paper">Work</Link>
+              <Link href="/#experience" className="link-quiet hover:text-paper">Experience</Link>
+              <Link href="/#contact" className="link-quiet hover:text-paper">Contact</Link>
             </span>
           </div>
         </footer>
       )}
 
-      {/* Selected node */}
-      {selectedNode && !reader && !viewer && (
-        <NodePanel
-          node={selectedNode}
-          onClose={() => {
-            setSelected(null);
-            engineRef.current?.selectNode(null, false);
-          }}
-          onOpen={() => openNode(selectedNode)}
-          onPick={(id) => pickNode(id)}
-        />
+      {/* Selection panels */}
+      {selectedNode && !reader && !viewer && selectedNode.kind === 'experience' && (
+        <ExperiencePanel expId={selectedNode.id} onClose={clearSelection} onPick={(id) => { setTouring(false); pickNode(id); }} onOpen={openNode} />
+      )}
+      {selectedNode && !reader && !viewer && selectedNode.kind !== 'experience' && (
+        <NodePanel node={selectedNode} onClose={() => (selectedNode.owner ? pickNode(`exp:${selectedNode.owner}`) : clearSelection())} onOpen={() => openNode(selectedNode)} onPick={(id) => pickNode(id)} />
       )}
 
-      {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onPick={(id) => { setSearchOpen(false); setIndexOpen(false); pickNode(id); }} />}
+      {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onPick={(id) => { setSearchOpen(false); setIndexOpen(false); setTouring(false); pickNode(id); }} />}
 
       {indexOpen && (
         <IndexPanel
@@ -296,12 +373,155 @@ export default function AtlasExperience() {
 
 // ------------------------------------------------------------ panels
 
+function HoverCard({ node }: { node: AtlasNode }) {
+  if (node.kind === 'experience') {
+    const o = overviewOf(node.id);
+    return (
+      <div className="space-y-3">
+        <p className="label text-grey-3">
+          {node.code} / {o.battle.period.replace('–', 'to')}
+        </p>
+        <p className="text-[20px] leading-tight tracking-tight">{node.title}</p>
+        <p className="label text-grey-2">{o.battle.role}</p>
+        <dl className="label grid grid-cols-2 gap-y-1 text-grey-2">
+          <dt>Engagements</dt>
+          <dd className="text-right text-paper">{String(o.engagements.length).padStart(2, '0')}</dd>
+          <dt>Builds</dt>
+          <dd className="text-right text-paper">{String(o.builds.length).padStart(2, '0')}</dd>
+          <dt>Industries</dt>
+          <dd className="text-right text-paper">{String(o.industries.length).padStart(2, '0')}</dd>
+          {o.papers.length > 0 && (
+            <>
+              <dt>Papers</dt>
+              <dd className="text-right text-paper">{String(o.papers.length).padStart(2, '0')}</dd>
+            </>
+          )}
+        </dl>
+        {o.engagements.length > 0 && (
+          <ul className="space-y-1 text-[12px] text-grey-1">
+            {o.engagements.slice(0, 4).map((e) => (
+              <li key={e.id} className="truncate">
+                <span className="text-grey-3">- </span>
+                {e.title}
+              </li>
+            ))}
+            {o.engagements.length > 4 && <li className="label text-grey-3">+ {o.engagements.length - 4} more</li>}
+          </ul>
+        )}
+        <p className="label text-grey-3">Click to step inside</p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <p className="label text-grey-3">
+        {node.code} / {KIND_LABEL[node.kind]}
+      </p>
+      {node.thumb && <Thumb src={node.thumb} label={node.code} />}
+      <p className="text-[16px] leading-snug tracking-tight">{node.title}</p>
+      <p className="line-clamp-3 text-[12px] text-grey-1">{node.summary}</p>
+    </div>
+  );
+}
+
+function ExperiencePanel({ expId, onClose, onPick, onOpen }: { expId: string; onClose: () => void; onPick: (id: string) => void; onOpen: (n: AtlasNode) => void }) {
+  const node = byId(expId)!;
+  const o = overviewOf(expId);
+  const b = o.battle;
+  return (
+    <aside
+      className="thin-scroll absolute inset-x-0 bottom-0 z-30 max-h-[62vh] overflow-y-auto border-t rule bg-ink/92 p-6 backdrop-blur md:inset-x-auto md:bottom-24 md:right-[var(--gutter)] md:top-20 md:max-h-none md:w-[420px] md:border"
+      aria-label={`${node.title} overview`}
+    >
+      <div className="label flex justify-between text-grey-3">
+        <span>
+          {node.code} / Role / {b.period.replace('–', 'to')}
+        </span>
+        <button type="button" onClick={onClose} className="link-quiet text-grey-1 hover:text-paper">
+          Close
+        </button>
+      </div>
+      <h2 className="mt-5 text-[30px] leading-[1.02] tracking-tight">{node.title}</h2>
+      <p className="label mt-2 text-grey-2">
+        {b.role} / {b.location}
+      </p>
+      {b.description ? <p className="mt-4 text-[14px] leading-relaxed text-grey-1">{b.description}</p> : <p className="label mt-4 text-grey-3">Details to be added</p>}
+      <p className="label mt-4 text-grey-3">
+        X {fmt(node.position[0])} / Y {fmt(node.position[1])} / Z {fmt(node.position[2])}
+      </p>
+
+      {o.engagements.length > 0 && (
+        <section className="mt-8">
+          <p className="label mb-2 text-grey-3">Engagements / {String(o.engagements.length).padStart(2, '0')}</p>
+          <ul className="space-y-2">
+            {o.engagements.map((e) => (
+              <li key={e.id}>
+                <button type="button" onClick={() => onPick(e.id)} className="group block w-full border border-paper/15 p-3 text-left hover:border-paper/50">
+                  <span className="label text-grey-2">{e.title}</span>
+                  <span className="mt-1 line-clamp-2 block text-[13px] text-grey-1 group-hover:text-paper">{e.summary}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {o.builds.length > 0 && (
+        <section className="mt-8">
+          <p className="label mb-2 text-grey-3">Builds / {String(o.builds.length).padStart(2, '0')}</p>
+          <ul className="grid grid-cols-2 gap-3">
+            {o.builds.map((p) => (
+              <li key={p.id}>
+                <button type="button" onClick={() => onPick(p.id)} className="group block w-full text-left">
+                  <Thumb src={p.thumb} label={p.code} />
+                  <span className="mt-1.5 block text-[13px] group-hover:underline">{p.title}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {o.papers.length > 0 && (
+        <section className="mt-8">
+          <p className="label mb-2 text-grey-3">Papers / {String(o.papers.length).padStart(2, '0')}</p>
+          <ul className="grid grid-cols-2 gap-3">
+            {o.papers.map((p) => (
+              <li key={p.id}>
+                <button type="button" onClick={() => onOpen(p)} className="group block w-full text-left">
+                  <Thumb src={p.thumb} label="IEEE" />
+                  <span className="mt-1.5 line-clamp-2 block text-[12px] group-hover:underline">{p.title}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {o.industries.length > 0 && (
+        <section className="mt-8">
+          <p className="label mb-2 text-grey-3">Industries / {String(o.industries.length).padStart(2, '0')}</p>
+          <ul className="flex flex-wrap gap-1.5">
+            {o.industries.map((i) => (
+              <li key={i.id}>
+                <button type="button" onClick={() => onPick(i.id)} className="label border border-paper/20 px-2 py-1 text-grey-1 hover:border-paper hover:text-paper">
+                  {i.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </aside>
+  );
+}
+
 function NodePanel({ node, onClose, onOpen, onPick }: { node: AtlasNode; onClose: () => void; onOpen: () => void; onPick: (id: string) => void }) {
   const related = neighbours(node.id);
   const c = clusterOf(node.cluster);
   return (
     <aside
-      className="thin-scroll absolute inset-x-0 bottom-0 z-30 max-h-[58vh] overflow-y-auto border-t rule bg-ink/90 p-6 backdrop-blur md:inset-x-auto md:bottom-20 md:right-[var(--gutter)] md:top-20 md:max-h-none md:w-[380px] md:border"
+      className="thin-scroll absolute inset-x-0 bottom-0 z-30 max-h-[58vh] overflow-y-auto border-t rule bg-ink/90 p-6 backdrop-blur md:inset-x-auto md:bottom-24 md:right-[var(--gutter)] md:top-20 md:max-h-none md:w-[380px] md:border"
       aria-label={`${node.title} details`}
     >
       <div className="label flex justify-between text-grey-3">
@@ -309,7 +529,7 @@ function NodePanel({ node, onClose, onOpen, onPick }: { node: AtlasNode; onClose
           {node.code} / {c.label}
         </span>
         <button type="button" onClick={onClose} className="link-quiet text-grey-1 hover:text-paper">
-          Close
+          Back
         </button>
       </div>
       <p className="label mt-6 text-grey-2">
@@ -318,28 +538,27 @@ function NodePanel({ node, onClose, onOpen, onPick }: { node: AtlasNode; onClose
       </p>
       <h2 className="mt-2 text-[28px] leading-[1.05] tracking-tight">{node.title}</h2>
       {node.meta && <p className="label mt-3 text-grey-3">{node.meta}</p>}
+      {node.thumb && (
+        <div className="mt-5">
+          <Thumb src={node.thumb} label={node.code} />
+        </div>
+      )}
       <p className="mt-5 line-clamp-6 text-[14px] leading-relaxed text-grey-1">{node.summary}</p>
-
       <p className="label mt-5 text-grey-3">
         X {fmt(node.position[0])} / Y {fmt(node.position[1])} / Z {fmt(node.position[2])}
       </p>
-
       <div className="mt-6 flex flex-wrap items-center gap-4">
-        <button type="button" onClick={onOpen} className="label border border-paper px-4 py-3 text-paper transition-colors hover:bg-paper hover:text-ink">
-          {ACTION_LABEL[node.kind]}
-        </button>
-        {node.kind === 'code' && node.href && (
-          <Link href={`${node.href}/`} className="label link-quiet text-grey-1 hover:text-paper">
-            Open project
-          </Link>
+        {node.kind !== 'engagement' && node.kind !== 'industry' && (
+          <button type="button" onClick={onOpen} className="label border border-paper px-4 py-3 text-paper transition-colors hover:bg-paper hover:text-ink">
+            {ACTION_LABEL[node.kind]}
+          </button>
         )}
-        {node.kind === 'paper' && node.links?.[0] && (
-          <a href={node.links[0].url} target="_blank" rel="noopener noreferrer" className="label link-quiet text-grey-1 hover:text-paper">
-            IEEE Xplore ↗
+        {node.links?.map((l) => (
+          <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="label link-quiet text-grey-1 hover:text-paper">
+            {l.label.length > 28 ? 'Repository' : l.label} ↗
           </a>
-        )}
+        ))}
       </div>
-
       {related.length > 0 && (
         <div className="mt-8">
           <p className="label mb-2 text-grey-3">Connected / {String(related.length).padStart(2, '0')}</p>
@@ -349,6 +568,7 @@ function NodePanel({ node, onClose, onOpen, onPick }: { node: AtlasNode; onClose
                 <button type="button" onClick={() => onPick(r.id)} className="group flex w-full items-baseline gap-3 py-2.5 text-left">
                   <span className="label w-12 shrink-0 text-grey-3">{r.code}</span>
                   <span className="text-[14px] text-grey-1 group-hover:text-paper">{r.title}</span>
+                  <span className="label ml-auto text-grey-3">{KIND_LABEL[r.kind]}</span>
                 </button>
               </li>
             ))}
@@ -533,14 +753,14 @@ function Reader({ node, onClose, onPick }: { node: AtlasNode; onClose: () => voi
               ))}
             </div>
 
-            {(node.links?.length || (node.kind === 'code' && node.href)) && (
+            {(node.links?.length || (node.kind === 'project' && node.href)) && (
               <div className="mt-12 flex flex-wrap gap-6 border-t rule pt-6">
                 {node.links?.map((l) => (
                   <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="label link-quiet text-paper">
                     {l.label} ↗
                   </a>
                 ))}
-                {node.kind === 'code' && node.href && (
+                {node.kind === 'project' && node.href && (
                   <Link href={`${node.href}/`} className="label link-quiet text-paper">
                     Open project
                   </Link>

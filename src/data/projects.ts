@@ -11,17 +11,20 @@ interface ProjectMeta {
 const meta: Record<string, ProjectMeta> = {
   'financial-modelling': { slug: 'abacus', category: 'Financial modeling', featured: 1 },
   'solar-cost': { slug: 'groundwork', category: 'Investment modeling' },
-  scheduling: { slug: 'critical-path', category: 'Scheduling', featured: 4 },
-  'capital-allocation': { slug: 'watchtower', category: 'Portfolio monitoring', featured: 5 },
-  'rag-engine': { slug: 'needle', category: 'Document intelligence', featured: 2 },
+  scheduling: { slug: 'critical-path', category: 'Scheduling' },
+  'capital-allocation': { slug: 'watchtower', category: 'Portfolio monitoring' },
+  'rag-engine': { slug: 'needle', category: 'Document intelligence', featured: 3 },
   workplan: { slug: 'blueprint', category: 'Planning' },
-  'haus-nous': { slug: 'haus-nous', category: 'Strategy platform', featured: 3 },
+  'haus-nous': { slug: 'haus-nous', category: 'Strategy platform', featured: 7 },
   survey: { slug: 'pulse', category: 'Research automation' },
   'solar-benchmark': { slug: 'yardstick', category: 'Benchmarking' },
   proposal: { slug: 'first-draft', category: 'Document generation' },
-  'parents-health': { slug: 'kavach', category: 'Preventive health', featured: 6 },
-  hitman: { slug: 'hitman', category: 'Sport and prediction' },
+  'parents-health': { slug: 'kavach', category: 'Preventive health', featured: 4 },
+  hitman: { slug: 'hitman', category: 'Sport and prediction', featured: 6 },
   'career-os': { slug: 'career-os', category: 'Careers and simulation' },
+  'bhoomi-setu': { slug: 'bhoomi-setu', category: 'Land records and evidence', featured: 2 },
+  'momentum-os': { slug: 'momentum-os', category: 'Personal productivity', featured: 8 },
+  cartograph: { slug: 'cartograph', category: 'Process transformation', featured: 5 },
 };
 
 export interface Project extends Build {
