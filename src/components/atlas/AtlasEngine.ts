@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { MemoryLayer } from './MemoryLayer';
 import {
   galleryCenter,
+  galleryRows,
   clusters,
   edges,
   nodes,
@@ -624,7 +625,8 @@ export class AtlasEngine {
     this.refreshStates();
     const target = new THREE.Vector3(...c);
     const side = Math.sign(c[2]);
-    this.flyTo(new THREE.Vector3(c[0] - 4, c[1] + 1.5, c[2] - side * 22), target, duration);
+    const back = 22 + Math.max(0, galleryRows(role) - 1) * 9;
+    this.flyTo(new THREE.Vector3(c[0] - 4, c[1] + 1.5, c[2] - side * back), target, duration);
     return true;
   }
 

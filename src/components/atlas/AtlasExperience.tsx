@@ -765,8 +765,12 @@ function Reader({ node, onClose, onPick }: { node: AtlasNode; onClose: () => voi
 
             {node.memory && (
               <figure className="mt-12">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={asset(node.memory.src)} alt={node.memory.caption} className="w-full max-w-3xl border border-paper/15 grayscale" />
+                {node.memory.video ? (
+                  <video src={asset(node.memory.video)} poster={asset(node.memory.src)} className="w-full max-w-3xl border border-paper/15 grayscale" controls autoPlay muted loop playsInline />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={asset(node.memory.src)} alt={node.memory.caption} className="w-full max-w-3xl border border-paper/15 grayscale" />
+                )}
                 <figcaption className="label mt-3 text-grey-3">
                   {node.memory.caption} / {node.memory.year}
                 </figcaption>
