@@ -248,7 +248,7 @@ export default function AtlasExperience() {
 
   return (
     <div className="force-dark fixed inset-0 overflow-hidden bg-ink text-paper">
-      <h1 className="sr-only">Knowledge Atlas</h1>
+      <h1 className="sr-only">Memory Palace</h1>
       <div ref={sceneRef} className="absolute inset-0" />
       <div ref={overlayRef} className="atlas-overlay opacity-0" aria-hidden />
 
@@ -289,7 +289,7 @@ export default function AtlasExperience() {
             </button>
           )}
           <Link href="/#atlas" className="border border-paper/50 px-3 py-2 text-paper transition-colors hover:bg-paper hover:text-ink">
-            Exit Atlas
+            Exit the Palace
           </Link>
         </div>
       </header>
@@ -760,7 +760,7 @@ function IndexPanel({ fallback, onClose, onPick }: { fallback: boolean; onClose?
       <div className="wrap pb-24 pt-24">
         <div className="grid gap-6 lg:grid-cols-12">
           <div className="lg:col-span-3">
-            <p className="label text-grey-2">Atlas / Index</p>
+            <p className="label text-grey-2">Palace / Index</p>
             {onClose && (
               <button type="button" onClick={onClose} className="label link-quiet mt-4 text-paper">
                 Return to the spatial view
@@ -768,7 +768,7 @@ function IndexPanel({ fallback, onClose, onPick }: { fallback: boolean; onClose?
             )}
           </div>
           <div className="lg:col-span-9">
-            <h2 className="headline text-[clamp(40px,6vw,96px)]">Everything in the Atlas</h2>
+            <h2 className="headline text-[clamp(40px,6vw,96px)]">Everything in the Memory Palace</h2>
             {fallback && (
               <p className="mt-4 max-w-lg text-[15px] text-grey-2">
                 The spatial view needs WebGL, which is not available here. Every node is listed below instead.
@@ -829,7 +829,7 @@ function Reader({ node, onClose, onPick }: { node: AtlasNode; onClose: () => voi
           Atlas / {c.label} / {node.code}
         </p>
         <button ref={closeRef} type="button" onClick={onClose} className="label link-quiet text-paper">
-          Back to Atlas
+          Back to the Palace
         </button>
       </div>
       <article className="wrap pb-32 pt-16">

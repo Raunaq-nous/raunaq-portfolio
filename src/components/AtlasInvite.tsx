@@ -32,15 +32,15 @@ export default function AtlasInvite() {
     <section id="atlas" className="wrap pt-40 lg:pt-56" aria-labelledby="atlas-title">
       <div className="grid gap-10 border-t rule pt-10 lg:grid-cols-12">
         <Reveal className="lg:col-span-3">
-          <SectionLabel n="03" calm="Knowledge Atlas" path="atlas" cmd="./enter" />
+          <SectionLabel n="03" calm="Memory Palace" path="atlas" cmd="./enter" />
         </Reveal>
 
         <Reveal className="lg:col-span-5" delay={80}>
           <h2 id="atlas-title" className="headline text-[clamp(44px,6vw,96px)]">
-            The connections behind the work.
+            Moments, left where they happened.
           </h2>
           <p className="mt-6 max-w-md text-[17px] leading-snug text-grey-1">
-            An optional, spatial map of the projects, code, research and visual studies on this site, and how they relate.
+            Walk my career as a street through time. Every role stands where it happened, and its photos lift from 2D into 3D as you arrive.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-6">
             <button
@@ -48,7 +48,7 @@ export default function AtlasInvite() {
               onClick={enter}
               className="label group inline-flex items-center gap-4 border border-paper px-6 py-4 text-paper transition-colors hover:bg-paper hover:text-ink"
             >
-              Enter the Atlas
+              Enter the Memory Palace
               <span className="inline-block h-px w-8 bg-current transition-all duration-500 group-hover:w-12" />
             </button>
             <Link href="/atlas/?view=index" className="label link-quiet text-grey-1 hover:text-paper">

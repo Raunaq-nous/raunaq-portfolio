@@ -9,7 +9,7 @@ import { useMode } from './ModeContext';
 export const navItems = [
   { href: '/#work', calm: 'Work', nerd: 'cd work', match: '/work' },
   { href: '/#experience', calm: 'Experience', nerd: 'cd experience' },
-  { href: '/atlas/', calm: 'Atlas', nerd: 'cd atlas', match: '/atlas' },
+  { href: '/atlas/', calm: 'Palace', nerd: 'cd palace', match: '/atlas' },
   { href: '/#curiosities', calm: 'Curiosities', nerd: 'cd curiosities' },
   { href: '/#about', calm: 'About', nerd: 'cd about' },
   { href: '/#contact', calm: 'Contact', nerd: 'cd contact' },

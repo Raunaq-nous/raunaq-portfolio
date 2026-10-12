@@ -150,7 +150,7 @@ export default function ModelViewer({ node, onClose }: { node: AtlasNode; onClos
           {node.code} / {node.title}
         </p>
         <button type="button" className="label link-quiet text-paper" onClick={onClose}>
-          Return to Atlas
+          Return to the Palace
         </button>
       </div>
       <div ref={mount} className="relative flex-1 cursor-grab active:cursor-grabbing">
