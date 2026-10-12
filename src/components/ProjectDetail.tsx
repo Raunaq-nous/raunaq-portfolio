@@ -57,7 +57,7 @@ export default function ProjectDetail({ slug }: { slug: string }) {
       {/* Header */}
       <header className="wrap pt-28 lg:pt-36">
         <nav className="label flex flex-wrap gap-3 text-grey-3" aria-label="Breadcrumb">
-          <Link href="/#work" className="link-quiet hover:text-paper">
+          <Link href="/#builds" className="link-quiet hover:text-paper">
             Work
           </Link>
           <span aria-hidden>/</span>
@@ -196,7 +196,7 @@ export default function ProjectDetail({ slug }: { slug: string }) {
 
       {/* Footer navigation */}
       <nav className="wrap mt-40 grid gap-10 border-t rule pb-16 pt-10 md:grid-cols-2" aria-label="Project navigation">
-        <Link href="/#work" className="label link-quiet self-start text-grey-1 hover:text-paper">
+        <Link href="/#builds" className="label link-quiet self-start text-grey-1 hover:text-paper">
           Return to work
         </Link>
         <Link href={`/work/${next.slug}/`} className="group md:text-right">

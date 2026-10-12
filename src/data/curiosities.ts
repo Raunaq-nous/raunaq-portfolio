@@ -7,6 +7,14 @@ export interface Curiosity {
   calm: string;
   nerd: string;
   tags: string[];
+  /** One line that holds the idea, lifted from the text below. */
+  thesis: string;
+  /** Builds that came out of it (project slugs). */
+  builds: string[];
+  /** Research thread id this curiosity feeds, if any. */
+  thread?: string;
+  /** Visual motif for the plate. */
+  plate: 'plant' | 'layers' | 'radar' | 'branches' | 'pitch' | 'die';
 }
 
 export const curiosities: Curiosity[] = [
@@ -27,6 +35,10 @@ Current production tools: a financial modeling engine (parallel agent comparison
 
 Each one started as a frustration. None of them started as a product idea.`,
     tags: ['AI', 'agentic', 'RAG', 'python', 'energy', 'infrastructure'],
+    thesis: 'The analytical work is enormous and most of it is still done by hand.',
+    builds: ['abacus', 'needle', 'blueprint', 'digital-twin', 'watchtower'],
+    thread: 'multi-agent-finance',
+    plate: 'plant',
   },
   {
     id: 'ai-strategy-platform',
@@ -45,6 +57,9 @@ Layer 1: natural language console that classifies problem types, suggests framew
 
 It is not a chatbot bolted onto a database. That distinction matters.`,
     tags: ['AI', 'strategy', 'consulting', 'TypeScript', 'NextJS', 'agents'],
+    thesis: 'What does consulting look like when the analytical parts are automated?',
+    builds: ['haus-nous'],
+    plate: 'layers',
   },
   {
     id: 'portfolio-tracker',
@@ -59,6 +74,10 @@ I built a tracker that monitors the whole portfolio continuously. It finds where
 
 LangChain agents evaluate composable trigger conditions ("if project X is >15% over budget AND milestone completion is <60% at midpoint, flag for review"). When reallocation is flagged, an opportunity mapper ranks alternatives by strategic fit, expected return, and execution readiness. Dashboard with traffic-light indicators and weekly digest. Python, LangChain.`,
     tags: ['AI', 'finance', 'portfolio', 'python', 'monitoring'],
+    thesis: 'Nobody has a real-time picture of their entire project portfolio.',
+    builds: ['watchtower'],
+    thread: 'portfolio-intelligence',
+    plate: 'radar',
   },
   {
     id: 'career-os',
@@ -71,6 +90,10 @@ LangChain agents evaluate composable trigger conditions ("if project X is >15% o
 So I am building a career operating system. You tell it the roles and skills you are aiming for, and it drops you into simulated, real world style scenarios where you make decisions, see what happens, and learn from the result. The goal is to compress years of just showing up into a much shorter stretch of actually doing.`,
     nerd: `A simulation engine on top of a personalized skill graph. You define target roles and skills; it decomposes them into competencies, generates scenario-based decision tasks, and runs an iterative feedback loop that scores your choices and adapts the next scenario. Gamified progression, and a digital avatar of your own profile so the path stays personal to you rather than generic.`,
     tags: ['AI', 'simulation', 'careers', 'personalization'],
+    thesis: 'Years measure how long you showed up, not how much you actually worked out.',
+    builds: ['career-os'],
+    thread: 'career-simulation',
+    plate: 'branches',
   },
   {
     id: 'ai-sports',
@@ -81,6 +104,9 @@ So I am building a career operating system. You tell it the roles and skills you
     calm: `I watch a lot of cricket, and I kept thinking the commentary and analysis around it could be so much smarter. So I started building an AI that actually follows what is happening in a game, ball by ball, and can talk about it like someone who knows the sport. Right now it is focused on cricket. Eventually it should work for any sport.`,
     nerd: `Ball-by-ball event modeling feeding two things: a real-time analytics layer and a natural-language commentary generator. Built on a sport-agnostic event schema so the same core extends from cricket to other sports without a rewrite. Prediction sits on top of the same event stream.`,
     tags: ['AI', 'sports', 'cricket', 'commentary', 'analytics'],
+    thesis: 'The commentary and analysis around cricket could be so much smarter.',
+    builds: ['hitman'],
+    plate: 'pitch',
   },
   {
     id: 'hyper-personal-compute',
@@ -95,5 +121,8 @@ The idea I keep coming back to is a digital ecosystem built around one person: p
 
 Open questions: which layer should personalize first, the application, the model, or the silicon; and what it takes for the whole ecosystem to adapt to one person rather than one person adapting to it.`,
     tags: ['compute', 'personalization', 'hardware', 'ecosystems'],
+    thesis: 'Most of what we work with is built for an average person who does not exist.',
+    builds: [],
+    plate: 'die',
   },
 ];

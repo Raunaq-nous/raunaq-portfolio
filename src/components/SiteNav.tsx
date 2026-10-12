@@ -7,7 +7,7 @@ import ModeToggle from './ModeToggle';
 import { useMode } from './ModeContext';
 
 export const navItems = [
-  { href: '/#work', calm: 'Work', nerd: 'cd work', match: '/work' },
+  { href: '/#builds', calm: 'AI builds', nerd: 'cd builds', match: '/work' },
   { href: '/#experience', calm: 'Experience', nerd: 'cd experience' },
   { href: '/atlas/', calm: 'Palace', nerd: 'cd palace', match: '/atlas' },
   { href: '/#curiosities', calm: 'Curiosities', nerd: 'cd curiosities' },
@@ -32,8 +32,8 @@ export default function SiteNav() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-colors duration-500 ${
-        scrolled || open ? 'bg-ink/85 backdrop-blur-md' : 'bg-transparent'
+      className={`force-dark !bg-transparent fixed inset-x-0 top-0 z-50 transition-colors duration-500 ${
+        scrolled || open ? '!bg-ink/85 backdrop-blur-md' : ''
       }`}
     >
       <nav className="wrap flex h-14 items-center justify-between gap-6" aria-label="Primary">
