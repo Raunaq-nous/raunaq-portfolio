@@ -82,4 +82,18 @@ So I am building a career operating system. You tell it the roles and skills you
     nerd: `Ball-by-ball event modeling feeding two things: a real-time analytics layer and a natural-language commentary generator. Built on a sport-agnostic event schema so the same core extends from cricket to other sports without a rewrite. Prediction sits on top of the same event stream.`,
     tags: ['AI', 'sports', 'cricket', 'commentary', 'analytics'],
   },
+  {
+    id: 'hyper-personal-compute',
+    title: 'Hyper-Personalized Compute and Digital Ecosystems',
+    role: 'THINKING ABOUT',
+    year: '2026',
+    status: 'ONGOING',
+    calm: `Most of what we work with is built for an average person who does not exist. The laptop, the apps on it, the chip inside it and the cloud behind it are all sized for everyone, so they fit no one in particular.
+
+The idea I keep coming back to is a digital ecosystem built around one person: products, applications, processors and computing power tailored to the person who is actually doing the work, and to the way they work.`,
+    nerd: `Inverting the default: instead of one general stack per market, a stack per person. Products, applications, processors and compute, each tailored to the individual doing the work.
+
+Open questions: which layer should personalize first, the application, the model, or the silicon; and what it takes for the whole ecosystem to adapt to one person rather than one person adapting to it.`,
+    tags: ['compute', 'personalization', 'hardware', 'ecosystems'],
+  },
 ];

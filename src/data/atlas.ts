@@ -12,6 +12,7 @@ import { projects } from './projects';
 import { papers, researchThreads } from './research';
 import { curiosities } from './curiosities';
 import { portrait, mediaFor, memories, type ImageAsset, type Memory } from './assets';
+import { places } from './geo';
 
 export type ClusterId = 'experience' | 'engagements' | 'builds' | 'industries' | 'research' | 'memories' | 'visual';
 export type NodeKind = 'experience' | 'engagement' | 'project' | 'industry' | 'paper' | 'idea' | 'memory' | 'model' | 'image';
@@ -52,7 +53,17 @@ export interface AtlasNode {
   /** Tower dimensions for experience nodes: [width, height, depth]. */
   size?: Vec3;
   year?: number;
+  /** Project scene in a role's gallery: the details the palace shows beside it. */
+  scene?: SceneInfo;
   position: Vec3;
+}
+
+export interface SceneInfo {
+  /** 1-based project number within the role. */
+  project: number;
+  industry: string;
+  problem?: string;
+  geos: string[];
 }
 
 export interface AtlasEdge {
@@ -205,10 +216,31 @@ industryRoles.forEach((roles, ind) => {
   });
 });
 
-// Memory rooms: each photo is a "moment" reprojected from the spot it was taken. Moments sit in a
-// ring around a hub beside their role, each looking outward, like rooms off a corridor.
+// Memory rooms. Every role gets the same sequence: one scene per key project (its spec sheet,
+// lifted into 3D), then papers, then photos. Each is reprojected from a virtual camera and they
+// sit as a wall of parallel rooms behind the role, every one looking outward, away from the street.
 export const MOMENT_DEPTH = 8; // distance from the virtual camera to the photo plane
-const momentCount = (role: string) => memories.filter((m) => m.role === role).length;
+
+interface SceneDraft extends SceneInfo {
+  role: string;
+  description: string;
+}
+const scenesByRole = new Map<string, SceneDraft[]>();
+timeline.forEach((b) => {
+  const list: SceneDraft[] = (b.keyProjects ?? []).map((k, j) => ({
+    role: b.id,
+    project: j + 1,
+    industry: k.industry,
+    problem: k.problem,
+    geos: k.geos ?? [],
+    description: k.description,
+  }));
+  if (!list.length)
+    list.push({ role: b.id, project: 1, industry: b.industries[0] ?? b.role, problem: b.problemStatements?.[0], geos: [], description: b.description || `${b.role}, ${b.location}.` });
+  scenesByRole.set(b.id, list);
+});
+const sceneCount = (role: string) => scenesByRole.get(role)?.length ?? 0;
+const momentCount = (role: string) => sceneCount(role) + memories.filter((m) => m.role === role).length;
 const COLS = 4;
 const momentHub = (role: string): Vec3 => {
   const t = towerPos.get(role)!;
@@ -216,7 +248,6 @@ const momentHub = (role: string): Vec3 => {
   return [t.x, 3 + (rows - 1) * 6.5, Math.sign(t.z) * (STREET_HALF_WIDTH + 16)];
 };
 const anchors = new Map<string, { origin: Vec3; forward: Vec3 }>();
-// A wall of parallel rooms behind the role, every one looking outward, away from the street.
 function galleryPos(role: string, j: number, id?: string): Vec3 {
   const t = towerPos.get(role)!;
   const side = Math.sign(t.z);
@@ -231,7 +262,46 @@ function galleryPos(role: string, j: number, id?: string): Vec3 {
 }
 export const momentAnchor = (id: string) => anchors.get(id);
 export const galleryCenter = (role: string): Vec3 | null => (momentCount(role) ? momentHub(role) : null);
-export const galleryRows = (role: string) => Math.ceil(momentCount(role) / 4);
+export const galleryRows = (role: string) => Math.ceil(momentCount(role) / COLS);
+
+timeline.forEach((b) => {
+  const { start } = yearsOf(b);
+  const company = b.company.split(',')[0];
+  (scenesByRole.get(b.id) ?? []).forEach((sc, j) => {
+    const num = String(sc.project).padStart(2, '0');
+    const where = sc.geos.map((g) => places[g]?.label).filter(Boolean).join(' / ');
+    const rows: [string, string][] = [
+      ['Role', company],
+      ['Project', `P${num}`],
+      ...(sc.problem ? [['Problem', sc.problem] as [string, string]] : []),
+      ...(where ? [['Geography', where] as [string, string]] : []),
+      ['Period', b.period.replace('–', 'to')],
+    ];
+    drafts.push({
+      id: `scene:${b.id}:${j}`,
+      cluster: 'memories',
+      kind: 'memory',
+      title: sc.industry,
+      summary: sc.description,
+      body: [sc.description],
+      meta: `Project ${num}${sc.problem ? ` / ${sc.problem}` : ''}`,
+      memory: {
+        id: `scene-${b.id}-${j}`,
+        role: b.id,
+        src: '',
+        alt: sc.description,
+        year: start,
+        width: 960,
+        height: 600,
+        sheet: { name: sc.industry, code: `${b.id.slice(0, 3).toUpperCase()}-P${num}`, rows },
+      },
+      scene: { project: sc.project, industry: sc.industry, problem: sc.problem, geos: sc.geos },
+      owner: b.id,
+      year: start,
+      position: galleryPos(b.id, j, `scene:${b.id}:${j}`),
+    });
+  });
+});
 
 
 // Research: papers by the satellite tower, ideas and curiosities near the builds.
@@ -249,7 +319,7 @@ papers.forEach((p, j) => {
     memory: memories.find((m) => m.id === `paper-${p.id}`),
     owner: 'parikshit',
     year: Number(p.year),
-    position: galleryPos('parikshit', j, `paper:${p.id}`),
+    position: galleryPos('parikshit', sceneCount('parikshit') + j, `paper:${p.id}`),
   });
 });
 const ideaDrafts: Draft[] = [
@@ -295,7 +365,7 @@ const memByRole = new Map<string, number>();
 memories
   .filter((m) => !paperMemoryIds.has(m.id) && towerPos.has(m.role))
   .forEach((m) => {
-    const offset = m.role === 'parikshit' ? papers.length : 0;
+    const offset = sceneCount(m.role) + (m.role === 'parikshit' ? papers.length : 0);
     const j = (memByRole.get(m.role) ?? 0) + offset;
     memByRole.set(m.role, (memByRole.get(m.role) ?? 0) + 1);
     drafts.push({

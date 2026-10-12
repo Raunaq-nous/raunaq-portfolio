@@ -7,7 +7,7 @@ export const site = {
   tagline: 'Think. Build. Solve.',
   descriptor: 'Strategy. Finance. AI. Sometimes all three at once.',
   now: 'Solving expensive problems by day, building tools by night.',
-  location: 'Mumbai / Gurgaon',
+  location: 'Mumbai / Gurugram',
   education: 'B.Tech, Mechanical Engineering. Manipal Institute of Technology, 2012 to 2016.',
   links: [
     { label: 'LinkedIn', href: 'https://www.linkedin.com/in/raunaqrakesh/', handle: 'in/raunaqrakesh' },

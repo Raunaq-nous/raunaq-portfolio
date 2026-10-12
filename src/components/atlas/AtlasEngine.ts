@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { MemoryLayer } from './MemoryLayer';
 import { battles } from '@/data/battles';
+import { places, rolePlaces } from '@/data/geo';
 import {
   clusters,
   edges,
@@ -194,6 +195,10 @@ export class AtlasEngine {
   private momentTimers: number[] = [];
   private time = 0;
   private momentLabel!: HTMLDivElement;
+  private momentSvg!: SVGSVGElement;
+  private momentTags: HTMLDivElement[] = [];
+  private momentReadout!: HTMLDivElement;
+  private momentStage = 0;
   private playingMoment: string | null = null;
 
   private assemble = 0;
@@ -274,6 +279,11 @@ export class AtlasEngine {
     this.bboxEl.appendChild(this.bboxLabel);
     this.selTag = this.makeEl('atlas-seltag');
     this.momentLabel = this.makeEl('atlas-momentlabel');
+    this.momentSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.momentSvg.setAttribute('class', 'atlas-momentsvg');
+    this.overlay.appendChild(this.momentSvg);
+    for (let i = 0; i < 6; i++) this.momentTags.push(this.makeEl('atlas-tag'));
+    this.momentReadout = this.makeEl('atlas-readout');
     nodes.forEach((n) => {
       const el = this.makeEl(n.kind === 'experience' ? 'atlas-explabel' : 'atlas-nlabel');
       el.innerHTML =
@@ -624,11 +634,13 @@ export class AtlasEngine {
   /** Plays a role's moments in sequence, like walking through a memory palace. */
   focusMemories(expId: string, _duration = 1500, onDone?: () => void) {
     const role = expId.replace('exp:', '');
-    // Scenes first, then documents and papers.
+    // Same order for every role: project scenes, then photos, then papers.
+    const rank = (n: (typeof nodes)[number]) => (n.scene ? 0 : n.kind === 'paper' ? 2 : 1);
     const ids = nodes
       .filter((n) => n.memory && n.owner === role && this.memoryLayer.has(n.id))
-      .sort((a, b) => (a.kind === 'paper' ? 1 : 0) - (b.kind === 'paper' ? 1 : 0))
+      .sort((a, b) => rank(a) - rank(b))
       .map((n) => n.id);
+    this.memoryLayer.preload(ids);
     if (!ids.length) return false;
     this.activeExp = expId;
     this.selected = expId;
@@ -637,8 +649,12 @@ export class AtlasEngine {
     return true;
   }
 
-  /** Total time one moment takes to play, in ms. */
+  /** Total time one moment takes to play, in ms. Project scenes skip the depth-map stage. */
   static MOMENT_MS = 7200;
+  static SCENE_MS = 4600;
+  static momentMs(id: string) {
+    return nodes.find((n) => n.id === id)?.scene ? AtlasEngine.SCENE_MS : AtlasEngine.MOMENT_MS;
+  }
 
   playMoments(ids: string[], onDone?: () => void) {
     this.stopMoments();
@@ -648,26 +664,33 @@ export class AtlasEngine {
       const v = this.memoryLayer.view(id)!;
       const total = ids.length;
       const at0 = at;
-      const step = (ms: number, fn: () => void) => this.momentTimers.push(window.setTimeout(fn, at0 + ms));
-      step(0, () => {
+      const scene = AtlasEngine.momentMs(id) === AtlasEngine.SCENE_MS;
+      // Project scenes: sheet, lift, orbit. Photos: depth map, photo, lift, orbit.
+      const T = scene ? [0, -1, 700, 1500, 3000] : [0, 1500, 2700, 3700, 5600];
+      const step = (ms: number, fn: () => void) => ms >= 0 && this.momentTimers.push(window.setTimeout(fn, at0 + ms));
+      step(T[0], () => {
         this.playingMoment = id;
         this.memoryLayer.stage(id, 0);
         // Fly to the spot the photo was taken from, looking at it.
         // Tall photos need more distance to fit the frame.
         const back = 4.5 + Math.max(0, v.planeH / v.planeW - 0.62) * 14;
-        this.flyTo(v.origin.clone().addScaledVector(v.forward, -back).addScaledVector(v.up, 0.2), v.centre, reduced ? 0 : 1600);
+        this.flyTo(v.origin.clone().addScaledVector(v.forward, -back).addScaledVector(v.up, 0.2), v.centre, reduced ? 0 : scene ? 1000 : 1600);
+        this.momentStage = 0;
         this.cb.onMoment?.({ id, stage: 0, index, total });
       });
-      step(1500, () => {
+      step(T[1], () => {
         this.memoryLayer.stage(id, 1);
+        this.momentStage = 1;
         this.cb.onMoment?.({ id, stage: 1, index, total });
       });
-      step(2700, () => {
+      step(T[2], () => {
         this.memoryLayer.stage(id, 2);
+        this.momentStage = 2;
         this.cb.onMoment?.({ id, stage: 2, index, total });
       });
-      step(3700, () => {
+      step(T[3], () => {
         this.memoryLayer.stage(id, 3);
+        this.momentStage = 3;
         this.cb.onMoment?.({ id, stage: 3, index, total });
         // Step sideways and back so the depth reveals itself.
         const side = index % 2 ? -1 : 1;
@@ -676,13 +699,14 @@ export class AtlasEngine {
           .addScaledVector(v.forward, -4)
           .addScaledVector(v.right, side * 6.5)
           .addScaledVector(v.up, 2.4);
-        this.flyTo(pos, v.centre.clone().addScaledVector(v.forward, 3), reduced ? 0 : 3000);
+        this.flyTo(pos, v.centre.clone().addScaledVector(v.forward, 3), reduced ? 0 : scene ? 2400 : 3000);
       });
-      step(5600, () => {
+      step(T[4], () => {
         this.memoryLayer.stage(id, 4);
+        this.momentStage = 4;
         this.cb.onMoment?.({ id, stage: 4, index, total });
       });
-      at += Math.round(AtlasEngine.MOMENT_MS * (reduced ? 0.6 : 1));
+      at += Math.round(AtlasEngine.momentMs(id) * (reduced ? 0.6 : 1));
     });
     this.momentTimers.push(
       window.setTimeout(() => {
@@ -711,6 +735,7 @@ export class AtlasEngine {
     if (n?.owner) this.activeExp = `exp:${n.owner}`;
     this.selected = id;
     this.refreshStates();
+    this.memoryLayer.preload([id]);
     this.playMoments([id]);
     return true;
   }
@@ -1002,7 +1027,7 @@ export class AtlasEngine {
       .sort((a, b) => a.pr - b.pr || this.nodeScreen[a.i * 3 + 2] - this.nodeScreen[b.i * 3 + 2]);
     for (const { n, i, pr } of order) {
       const L = this.nodeLabels[i];
-      if (!show || !this.nodeVisible[i] || pr > 3) {
+      if (!show || !this.nodeVisible[i] || pr > 3 || n.id === this.playingMoment) {
         L.el.style.display = 'none';
         continue;
       }
@@ -1045,31 +1070,104 @@ export class AtlasEngine {
       el.style.transform = `translate3d(${Math.round((this.tmp.x * 0.5 + 0.5) * this.width - 14)}px, ${Math.round((-this.tmp.y * 0.5 + 0.5) * this.height + 4)}px, 0)`;
     });
 
-    // Moment label: a role stat pinned to the photo's top-right corner, like a location tag.
-    if (this.playingMoment && show) {
-      const v = this.memoryLayer.view(this.playingMoment);
-      const n = nodes.find((x) => x.id === this.playingMoment);
-      const b = n?.owner ? battles.find((x) => x.id === n.owner) : undefined;
-      if (v && b) {
-        const idx = nodes.filter((x) => x.memory && x.owner === b.id).findIndex((x) => x.id === n!.id);
-        const hl = b.highlights?.length ? b.highlights[idx % b.highlights.length] : undefined;
-        const corner = v.centre.clone().addScaledVector(v.right, v.planeW / 2).addScaledVector(v.up, v.planeH / 2);
-        this.tmp.copy(corner).project(this.camera);
-        if (this.tmp.z < 1) {
-          this.momentLabel.style.display = 'block';
-          this.momentLabel.textContent = `${b.company.split(',')[0]}${hl ? ` / ${hl.value}` : ''}`;
-          const lw = this.momentLabel.offsetWidth;
-          const x = Math.min(this.width - lw - 8, Math.max(8, (this.tmp.x * 0.5 + 0.5) * this.width - lw - 6));
-          const y = Math.max(60, (-this.tmp.y * 0.5 + 0.5) * this.height + 8);
-          this.momentLabel.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
-        } else this.momentLabel.style.display = 'none';
-      }
-    } else this.momentLabel.style.display = 'none';
+    this.drawMomentOverlay(show);
 
     if (this.camReadout) {
       const p = this.camera.position;
       this.camReadout.textContent = `CAM X ${fmt(p.x)} / Y ${fmt(p.y)} / Z ${fmt(p.z)}`;
     }
+  }
+
+  /**
+   * Coordinate overlay for the moment on stage: the project readout pinned to the box's top-left
+   * corner, tagged points with their index in the cloud, and thin leader lines between them.
+   */
+  private drawMomentOverlay(show: boolean) {
+    const hide = () => {
+      this.momentLabel.style.display = 'none';
+      this.momentReadout.style.display = 'none';
+      this.momentTags.forEach((t) => (t.style.display = 'none'));
+      this.momentSvg.innerHTML = '';
+    };
+    const id = this.playingMoment;
+    const n = id ? nodes.find((x) => x.id === id) : undefined;
+    const b = n?.owner ? battles.find((x) => x.id === n.owner) : undefined;
+    const corners = id ? this.memoryLayer.boxOf(id) : null;
+    if (!show || !id || !n || !b || !corners) return hide();
+    const W = this.width;
+    const H = this.height;
+    const scr = (p: THREE.Vector3) => {
+      this.tmp.copy(p).project(this.camera);
+      return { x: (this.tmp.x * 0.5 + 0.5) * W, y: (-this.tmp.y * 0.5 + 0.5) * H, ok: this.tmp.z < 1 };
+    };
+    // Readout sits just above the box's on-screen bounds, at its left edge.
+    const c = corners.map(scr);
+    const front = c.slice(0, 4);
+    if (!front.every((p) => p.ok)) return hide();
+    const vis8 = c.filter((p) => p.ok);
+    const minX = Math.min(...vis8.map((p) => p.x));
+    const maxX = Math.max(...vis8.map((p) => p.x));
+    const minY = Math.min(...vis8.map((p) => p.y));
+    const maxY = Math.max(...vis8.map((p) => p.y));
+    const company = b.company.split(',')[0];
+    const sc = n.scene;
+    const where = sc?.geos.length ? sc.geos.map((g) => places[g]?.label ?? g).join(' / ') : rolePlaces(b.id).map((p) => p.label).join(' / ');
+    const rows: [string, string][] = [
+      ['ROLE', `${company} / ${b.role}`],
+      ['PERIOD', b.period.replace('–', 'to')],
+      sc ? ['PROJECT', `P${String(sc.project).padStart(2, '0')} / ${sc.industry}`] : ['MOMENT', n.title],
+      ['INDUSTRY', sc ? sc.industry : b.industries.join(', ') || '-'],
+      ['PROBLEM', sc?.problem ?? b.problemStatements?.[0] ?? '-'],
+      ['GEO', where || '-'],
+      ['XYZ', `${fmt(n.position[0])} ${fmt(n.position[1])} ${fmt(n.position[2])}`],
+    ];
+    if (this.momentReadout.dataset.key !== id) {
+      this.momentReadout.dataset.key = id;
+      this.momentReadout.innerHTML = rows.map(([k, v]) => `<div><span>${k}</span>${escapeHtml(v)}</div>`).join('');
+    }
+    const rw = this.momentReadout.offsetWidth || 240;
+    const rh = this.momentReadout.offsetHeight || 100;
+    const rx = Math.min(W - rw - 8, Math.max(8, minX));
+    const above = minY - rh - 10;
+    const ry = Math.min(H - rh - 70, above >= 64 ? above : Math.max(64, minY + 10));
+    this.momentReadout.style.display = 'block';
+    this.momentReadout.style.transform = `translate3d(${Math.round(rx)}px, ${Math.round(ry)}px, 0)`;
+
+    const hl = b.highlights?.length ? b.highlights[(sc?.project ?? 1) % b.highlights.length] : undefined;
+    this.momentLabel.style.display = hl ? 'block' : 'none';
+    if (hl) {
+      this.momentLabel.textContent = `${hl.label} / ${hl.value}`;
+      const lw = this.momentLabel.offsetWidth;
+      this.momentLabel.style.transform = `translate3d(${Math.round(Math.min(W - lw - 8, Math.max(8, maxX - lw)))}px, ${Math.round(Math.min(H - 96, maxY + 8))}px, 0)`;
+    }
+
+    // Tags once the cloud has lifted into depth.
+    const tags = this.momentStage >= 3 ? this.memoryLayer.tagsOf(id) : [];
+    const pts = tags.map((t) => ({ ...scr(t.pos), index: t.index }));
+    let svg = '';
+    this.momentTags.forEach((el, i) => {
+      const p = pts[i];
+      if (!p || !p.ok || p.x < 0 || p.x > W || p.y < 0 || p.y > H) {
+        el.style.display = 'none';
+        return;
+      }
+      el.style.display = 'block';
+      el.textContent = String(p.index).padStart(6, '0');
+      el.style.transform = `translate3d(${Math.round(p.x)}px, ${Math.round(p.y)}px, 0)`;
+    });
+    const vis = pts.filter((p) => p.ok);
+    for (let i = 1; i < vis.length; i++) svg += `<line x1="${vis[i - 1].x.toFixed(1)}" y1="${vis[i - 1].y.toFixed(1)}" x2="${vis[i].x.toFixed(1)}" y2="${vis[i].y.toFixed(1)}"/>`;
+    if (vis.length) svg += `<line x1="${(rx + 2).toFixed(1)}" y1="${(ry + rh).toFixed(1)}" x2="${vis[0].x.toFixed(1)}" y2="${vis[0].y.toFixed(1)}"/>`;
+    // Ticks down the box's right edge, like a ruler.
+    const tr = front.reduce((a, p) => (p.x - p.y > a.x - a.y ? p : a));
+    const brc = front.reduce((a, p) => (p.x + p.y > a.x + a.y ? p : a));
+    void minX;
+    for (let k = 0; k <= 8; k++) {
+      const x = tr.x + (brc.x - tr.x) * (k / 8);
+      const y = tr.y + (brc.y - tr.y) * (k / 8);
+      svg += `<line class="tick" x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + (k % 4 ? 4 : 9)).toFixed(1)}" y2="${y.toFixed(1)}"/>`;
+    }
+    this.momentSvg.innerHTML = svg;
   }
 
   dispose() {

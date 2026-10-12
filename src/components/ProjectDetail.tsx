@@ -164,14 +164,17 @@ export default function ProjectDetail({ slug }: { slug: string }) {
           </Section>
         )}
 
-        <Section n={num()} title="Demo and codebase">
-          <div className="grid gap-10 md:grid-cols-2">
-            <VideoMedia slot={media.demo} title={project.name} code={code} index={0} />
-            <CodeGraph slug={slug} />
-          </div>
+        <Section n={num()} title="Stack and architecture">
+          <CodeGraph slug={slug} />
           <p className="mt-6 max-w-xl text-[14px] text-grey-2">
-            Two slots for every tool: a short demo video, and a knowledge graph of the codebase and its tech layers.
+            Every technology in the build, from interface to deployment, and the AI features it runs. Hover a node to trace its links.
           </p>
+        </Section>
+
+        <Section n={num()} title="Demo">
+          <div className="max-w-3xl">
+            <VideoMedia slot={media.demo} title={project.name} code={code} index={0} />
+          </div>
         </Section>
 
         {related.length > 0 && (

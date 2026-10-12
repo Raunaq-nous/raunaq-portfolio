@@ -6,6 +6,7 @@ import GlyphField from './GlyphField';
 import OsWindow from './OsWindow';
 import IndustryArt from '../IndustryArt';
 import ProjectGlobe from './ProjectGlobe';
+import { places, rolePlaces } from '@/data/geo';
 import SectionLabel from '../SectionLabel';
 import { useMode } from '../ModeContext';
 import { battles, education, type Battle } from '@/data/battles';
@@ -98,14 +99,35 @@ function tilesFor(b: Battle, mode: 'calm' | 'nerd'): Tile[] {
       id: `pj-${i}`,
       group: 'Projects',
       title: k.industry,
-      kicker: `P${String(i + 1).padStart(2, '0')}`,
-      preview: <p className="line-clamp-3 text-[12px]">{k.description}</p>,
+      kicker: [`P${String(i + 1).padStart(2, '0')}`, k.problem].filter(Boolean).join(' / '),
+      preview: (
+        <div className="space-y-1.5">
+          <p className="line-clamp-3 text-[12px]">{k.description}</p>
+          {k.geos?.length ? <p className="label text-grey-3">{k.geos.map((g) => places[g]?.label).filter(Boolean).join(' / ')}</p> : null}
+        </div>
+      ),
       body: (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <p className="label text-grey-3">
-            {b.company.split(',')[0]} / project {String(i + 1).padStart(2, '0')} / {k.industry}
+            {b.company.split(',')[0]} / project {String(i + 1).padStart(2, '0')}
           </p>
           <p className="text-[18px] leading-snug text-paper">{k.description}</p>
+          <dl className="grid grid-cols-[7rem_1fr] gap-y-1 border-t border-paper/15 pt-3 font-mono text-[12px]">
+            <dt className="text-grey-3">industry:</dt>
+            <dd>{k.industry}</dd>
+            {k.problem && (
+              <>
+                <dt className="text-grey-3">problem:</dt>
+                <dd>{k.problem}</dd>
+              </>
+            )}
+            {k.geos?.length ? (
+              <>
+                <dt className="text-grey-3">geography:</dt>
+                <dd>{k.geos.map((g) => places[g]?.label).filter(Boolean).join(', ')}</dd>
+              </>
+            ) : null}
+          </dl>
         </div>
       ),
     }),
@@ -330,6 +352,13 @@ function Panel({ b, active, mode, onExpand }: { b: Battle; active: boolean; mode
               <div className="aspect-[16/10]">
                 <ProjectGlobe role={b.id} />
               </div>
+              <ul className="flex flex-wrap gap-x-3 gap-y-1 border-t border-paper/10 px-2.5 py-2">
+                {rolePlaces(b.id).map((pl, i) => (
+                  <li key={pl.label} className="label normal-case tracking-normal text-grey-2">
+                    <span className="text-grey-3">{i === 0 ? 'base' : String(i).padStart(2, '0')}</span> {pl.label}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
           <div className="thin-scroll space-y-6 overflow-y-auto pb-8 pr-1 lg:col-span-8">

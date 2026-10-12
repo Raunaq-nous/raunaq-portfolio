@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { momentAnchor, MOMENT_DEPTH, type AtlasNode } from '@/data/atlas';
 import { asset } from '@/lib/asset';
+import { drawIndustrySheet } from '@/lib/industrySheet';
 
 /*
  * Moments: 2D photos lifted into 3D, left where they happened.
@@ -27,6 +28,7 @@ attribute vec3 aCol;
 attribute float aDepth;
 attribute float aSur;
 attribute float aSeed;
+attribute float aShade;
 uniform vec3 uOrigin;
 uniform float uLift;
 uniform float uPlane;
@@ -41,12 +43,13 @@ uniform float uTime;
 varying vec3 vCol;
 varying float vAlpha;
 
+// Depth ramp in the palace's palette: far is deep navy, the middle a cold blue, near is white.
 vec3 turbo(float x) {
   x = clamp(x, 0.0, 1.0);
-  vec3 c = vec3(0.1357 + x * (4.5974 - x * (42.3277 - x * (130.5887 - x * (150.5666 - x * 58.1375)))),
-                0.0914 + x * (2.1856 + x * (4.8052 - x * (14.0195 - x * (4.2109 + x * 2.7747)))),
-                0.1067 + x * (12.5925 - x * (60.1097 - x * (109.0745 - x * (88.5066 - x * 26.8183)))));
-  return clamp(c, 0.0, 1.0);
+  vec3 far = vec3(0.02, 0.03, 0.09);
+  vec3 mid = vec3(0.16, 0.45, 0.95);
+  vec3 near = vec3(0.95, 0.97, 1.0);
+  return x < 0.5 ? mix(near, mid, x * 2.0) : mix(mid, far, (x - 0.5) * 2.0);
 }
 
 void main() {
@@ -56,17 +59,22 @@ void main() {
   p += (aSeed - 0.5) * 0.04 * lift * vec3(sin(uTime + aSeed * 40.0), cos(uTime * 0.8 + aSeed * 30.0), 0.0);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float dist = max(0.3, -mv.z);
+  // Greyscale with a full tonal range, lit by a soft key light from the upper left (aShade,
+  // baked from the depth normals), fading with distance like haze. Shadows cool, highlights neutral.
   float l = dot(aCol, vec3(0.299, 0.587, 0.114));
-  vec3 grey = vec3(0.55 + l * 0.45);
-  vec3 col = mix(grey, aCol, uColour);
+  float tone = mix(0.06, 0.97, pow(l, 0.9));
+  float lit = tone * mix(1.0, aShade, lift);
+  lit *= mix(1.0, 0.62, (1.0 - aDepth) * lift);
+  vec3 grey = lit * mix(vec3(0.78, 0.86, 1.0), vec3(1.0), smoothstep(0.15, 0.85, lit));
+  vec3 col = mix(grey, aCol * mix(1.0, aShade, lift), uColour * 0.35);
   col = mix(col, turbo(1.0 - aDepth), uDepthView * (1.0 - aSur));
-  // Surround points are the reconstructed room: white, sparse, only once lifted.
-  col = mix(col, vec3(0.86), aSur);
-  float surVis = aSur > 0.5 ? lift * 0.85 : 1.0;
+  // Surround points are the reconstructed room: dim grey dust, sparse, only once lifted.
+  col = mix(col, vec3(0.42 + aSeed * 0.3) * vec3(0.86, 0.9, 1.0), aSur);
+  float surVis = aSur > 0.5 ? lift * 0.7 : 1.0;
   vCol = col;
   vAlpha = uFade * surVis * mix(0.55, 1.0, uActive) * mix(1.0, 0.12, uDim) * clamp(1.6 - dist / 200.0, 0.0, 1.0);
   float world = uSpacing * z;
-  gl_PointSize = clamp(world * uFocal / dist * (aSur > 0.5 ? 0.75 : 1.05), 1.0, 9.0);
+  gl_PointSize = clamp(world * uFocal / dist * (aSur > 0.5 ? 0.8 : 1.35), 1.0, 7.0);
   gl_Position = projectionMatrix * mv;
 }`;
 
@@ -74,9 +82,10 @@ const FRAG = `
 varying vec3 vCol;
 varying float vAlpha;
 void main() {
-  vec2 pc = gl_PointCoord - 0.5;
-  if (max(abs(pc.x), abs(pc.y)) > 0.5) discard;
-  gl_FragColor = vec4(vCol, vAlpha);
+  // Soft round grains rather than hard squares.
+  float d = length(gl_PointCoord - 0.5);
+  if (d > 0.5) discard;
+  gl_FragColor = vec4(vCol, vAlpha * smoothstep(0.5, 0.18, d));
 }`;
 
 const PLANE_VERT = `
@@ -109,7 +118,11 @@ interface Moment {
   plane?: THREE.Mesh;
   planeMat?: THREE.ShaderMaterial;
   frame?: THREE.LineSegments;
+  box?: THREE.LineSegments;
+  /** Points worth tagging on screen: world position and index in the cloud. */
+  tags: { pos: THREE.Vector3; index: number }[];
   ready: boolean;
+  loading: boolean;
   // animated values
   lift: number;
   depthView: number;
@@ -172,12 +185,48 @@ function estimateDepth(lum: Float32Array, w: number, h: number): Float32Array {
   return sm;
 }
 
+const mix01 = (a: number, b: number, t: number) => a + (b - a) * t;
+
+/** Height for a spec sheet: drawn lines and fills stand proud of the paper, softened. */
+function sheetDepth(lum: Float32Array, w: number, h: number): Float32Array {
+  const soft = blur(lum, w, h, 2);
+  const wide = blur(lum, w, h, Math.max(4, Math.round(w / 18)));
+  const out = new Float32Array(lum.length);
+  for (let i = 0; i < lum.length; i++) out[i] = Math.min(1, 0.25 + soft[i] * 0.55 + wide[i] * 0.6);
+  return out;
+}
+
+/**
+ * Soft natural light baked per pixel: normals from the depth gradient, a key light from the upper
+ * left and front, wrap lighting so nothing goes black, and a little cavity darkening in hollows.
+ */
+function shading(depth: Float32Array, w: number, h: number, relief: number): Float32Array {
+  const out = new Float32Array(depth.length);
+  const big = blur(depth, w, h, Math.max(3, Math.round(w / 30)));
+  const k = 9 * relief;
+  const L = [-0.45, 0.55, 0.7];
+  const ln = Math.hypot(L[0], L[1], L[2]);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const dx = depth[y * w + Math.min(w - 1, x + 1)] - depth[y * w + Math.max(0, x - 1)];
+      const dy = depth[Math.max(0, y - 1) * w + x] - depth[Math.min(h - 1, y + 1) * w + x];
+      const nx = -dx * k;
+      const ny = -dy * k;
+      const nl = Math.hypot(nx, ny, 1);
+      const ndl = (nx * L[0] + ny * L[1] + L[2]) / (nl * ln);
+      const wrap = Math.max(0, (ndl + 0.35) / 1.35);
+      const cavity = Math.max(0, big[i] - depth[i]) * 1.6;
+      out[i] = Math.min(1.15, 0.32 + 0.8 * wrap - cavity);
+    }
+  return out;
+}
+
 function turboRGB(x: number): [number, number, number] {
+  // Same ramp as the shader: near white, cold blue middle, navy far. x = 0 is near.
   x = Math.min(1, Math.max(0, x));
-  const r = 0.1357 + x * (4.5974 - x * (42.3277 - x * (130.5887 - x * (150.5666 - x * 58.1375))));
-  const g = 0.0914 + x * (2.1856 + x * (4.8052 - x * (14.0195 - x * (4.2109 + x * 2.7747))));
-  const b = 0.1067 + x * (12.5925 - x * (60.1097 - x * (109.0745 - x * (88.5066 - x * 26.8183))));
-  return [Math.min(1, Math.max(0, r)), Math.min(1, Math.max(0, g)), Math.min(1, Math.max(0, b))];
+  const lerp = (p: number[], q: number[], t: number) => p.map((v, i) => v + (q[i] - v) * t) as [number, number, number];
+  return x < 0.5 ? lerp([0.95, 0.97, 1.0], [0.16, 0.45, 0.95], x * 2) : lerp([0.16, 0.45, 0.95], [0.02, 0.03, 0.09], (x - 0.5) * 2);
 }
 
 export class MemoryLayer {
@@ -205,7 +254,9 @@ export class MemoryLayer {
           centre: origin.clone().add(forward.clone().multiplyScalar(MOMENT_DEPTH)),
           planeW,
           planeH,
+          tags: [],
           ready: false,
+          loading: false,
           lift: 1,
           depthView: 0,
           colour: 0,
@@ -216,8 +267,44 @@ export class MemoryLayer {
           t: { lift: 1, depthView: 0, colour: 0, planeOpacity: 0, planeMix: 1, active: 0, dim: 0 },
         };
         this.items.push(it);
-        this.load(it);
+        // Photos load straight away; project scenes load when their role comes into focus.
+        if (!m.sheet) this.load(it);
       });
+  }
+
+  private queue: Moment[] = [];
+  private pumping = false;
+
+  /**
+   * Queues the given moments to load, in the order given, one at a time so the frame rate holds.
+   * Ids already queued move to the front when asked for again.
+   */
+  preload(ids: Iterable<string>) {
+    const order = [...ids];
+    const want = order.map((id) => this.items.find((x) => x.node.id === id)).filter((it): it is Moment => !!it && !it.ready && !it.loading);
+    this.queue = [...want, ...this.queue.filter((q) => !want.includes(q))];
+    this.pump();
+  }
+
+  private async pump() {
+    if (this.pumping) return;
+    this.pumping = true;
+    while (this.queue.length && !this.disposed) {
+      await this.load(this.queue.shift()!);
+      await new Promise((r) => setTimeout(r, 40));
+    }
+    this.pumping = false;
+  }
+
+  /** Tagged points of a moment, for the coordinate overlay. */
+  tagsOf(id: string) {
+    return this.items.find((x) => x.node.id === id)?.tags ?? [];
+  }
+
+  /** The wireframe box around a moment: its eight corners in world space. */
+  boxOf(id: string) {
+    const it = this.items.find((x) => x.node.id === id);
+    return it?.box ? (it.box.userData.corners as THREE.Vector3[]) : null;
   }
 
   /** Where the camera stands to see the photo exactly, and where it looks. */
@@ -232,10 +319,12 @@ export class MemoryLayer {
   }
 
   private async load(it: Moment) {
+    if (it.ready || it.loading) return;
+    it.loading = true;
     const m = it.node.memory!;
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.src = asset(m.src);
+    img.src = m.sheet ? drawIndustrySheet(m.sheet.name, m.sheet.code, m.sheet.rows, 960, 600) : asset(m.src);
     try {
       await img.decode();
     } catch {
@@ -243,7 +332,7 @@ export class MemoryLayer {
     }
     if (this.disposed) return;
     const aspect = img.naturalWidth / img.naturalHeight;
-    const cols = this.lowPower ? 110 : 200;
+    const cols = m.sheet ? (this.lowPower ? 110 : 220) : this.lowPower ? 140 : 300;
     const rows = Math.max(10, Math.round(cols / aspect));
     const c = document.createElement('canvas');
     c.width = cols;
@@ -253,12 +342,14 @@ export class MemoryLayer {
     const data = ctx.getImageData(0, 0, cols, rows).data;
     const lum = new Float32Array(cols * rows);
     for (let i = 0; i < cols * rows; i++) lum[i] = (0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]) / 255;
-    const depth = estimateDepth(lum, cols, rows);
+    // Spec sheets: the drawing stands proud of its paper, so brightness is height.
+    const depth = m.sheet ? sheetDepth(lum, cols, rows) : estimateDepth(lum, cols, rows);
     // Screens and documents are flat: many near-white or uniform pixels mean shallow relief.
     let bright = 0;
     for (let i = 0; i < lum.length; i++) if (lum[i] > 0.86) bright++;
-    const flat = bright / lum.length > 0.3;
-    const relief = flat ? 0.28 : 1;
+    const flat = !m.sheet && bright / lum.length > 0.3;
+    const relief = m.sheet ? 0.55 : flat ? 0.28 : 1;
+    const shade = shading(depth, cols, rows, relief);
 
     const tanH = Math.tan(FOV_H / 2);
     const tanV = tanH / aspect;
@@ -270,6 +361,7 @@ export class MemoryLayer {
     const depths: number[] = [];
     const sur: number[] = [];
     const seeds: number[] = [];
+    const shades: number[] = [];
     const ray = (u: number, v: number) => {
       // u, v in [0, 1] across the frame (v top-down); rays pass through the photo plane.
       const d = it.forward
@@ -279,19 +371,35 @@ export class MemoryLayer {
       // Normalise so that z is distance along forward: position = origin + d * z.
       return d;
     };
+    // Spec sheets keep the drawing (ink) and only a sparse scatter of the paper behind it, so the
+    // figure reads as a lit object rather than a dark slab. Ink is brightened to read as white.
+    let bg = 0;
+    const pIndex = new Int32Array(cols * rows).fill(-1);
+    if (m.sheet) {
+      const sorted = Array.from(lum).sort((a, b) => a - b);
+      bg = sorted[Math.floor(sorted.length / 2)];
+    }
     for (let y = 0; y < rows; y++)
       for (let x = 0; x < cols; x++) {
         const i = y * cols + x;
+        if (m.sheet) {
+          const ink = Math.abs(lum[i] - bg) > 0.07;
+          if (!ink && Math.random() > 0.16) continue;
+          const v = ink ? Math.min(1, 0.55 + Math.abs(lum[i] - bg) * 1.6) : 0.22;
+          data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = v * 255;
+        }
         const d = ray((x + 0.5) / cols, (y + 0.5) / rows);
+        pIndex[i] = zs.length;
         dirs.push(d.x, d.y, d.z);
         zs.push(far - depth[i] * (far - near));
         cols3.push(data[i * 4] / 255, data[i * 4 + 1] / 255, data[i * 4 + 2] / 255);
         depths.push(depth[i]);
         sur.push(0);
         seeds.push(Math.random());
+        shades.push(shade[i]);
       }
     // Surround: the room beyond the frame. Sample edge pixels outward, sparse, mostly far.
-    const surround = this.lowPower ? 4000 : 12000;
+    const surround = m.sheet ? (this.lowPower ? 1500 : 5000) : this.lowPower ? 5000 : 16000;
     for (let k = 0; k < surround; k++) {
       let u = -0.7 + Math.random() * 2.4;
       let v = -0.6 + Math.random() * 2.2;
@@ -312,6 +420,7 @@ export class MemoryLayer {
       depths.push(ed);
       sur.push(1);
       seeds.push(Math.random());
+      shades.push(0.6 + Math.random() * 0.4);
     }
 
     const geo = new THREE.BufferGeometry();
@@ -323,6 +432,7 @@ export class MemoryLayer {
     geo.setAttribute('aDepth', new THREE.Float32BufferAttribute(depths, 1));
     geo.setAttribute('aSur', new THREE.Float32BufferAttribute(sur, 1));
     geo.setAttribute('aSeed', new THREE.Float32BufferAttribute(seeds, 1));
+    geo.setAttribute('aShade', new THREE.Float32BufferAttribute(shades, 1));
     geo.boundingSphere = new THREE.Sphere(it.centre.clone(), far * 2);
     const mat = new THREE.ShaderMaterial({
       vertexShader: VERT,
@@ -390,7 +500,50 @@ export class MemoryLayer {
     frame.lookAt(it.origin);
     this.scene.add(frame);
 
-    Object.assign(it, { points: pts, mat, plane, planeMat, frame, ready: true });
+    // Wireframe box around the volume, like a scan region: from just in front of the photo plane
+    // to well behind it. The cloud is allowed to spill past it.
+    const bw = it.planeW * 0.62;
+    const bh = it.planeH * 0.62;
+    const z0 = near * 0.94;
+    const z1 = MOMENT_DEPTH * (1 + 0.9 * relief);
+    const corners: THREE.Vector3[] = [];
+    for (const z of [z0, z1])
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]])
+        corners.push(it.origin.clone().addScaledVector(it.forward, z).addScaledVector(it.right, sx * bw * (z / MOMENT_DEPTH)).addScaledVector(it.up, sy * bh * (z / MOMENT_DEPTH)));
+    const E = [0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7];
+    const bgeo = new THREE.BufferGeometry().setFromPoints(E.map((i) => corners[i]));
+    const box = new THREE.LineSegments(bgeo, new THREE.LineBasicMaterial({ color: 0xd9dde6, transparent: true, opacity: 0, depthWrite: false }));
+    box.userData.corners = corners;
+    box.renderOrder = 2;
+    this.scene.add(box);
+
+    // Tags: the most detailed pixel in each cell of a 3 x 2 grid, so they spread over the subject.
+    const tags: Moment['tags'] = [];
+    const edge = new Float32Array(cols * rows);
+    for (let y = 1; y < rows - 1; y++)
+      for (let x = 1; x < cols - 1; x++) {
+        const i = y * cols + x;
+        edge[i] = Math.abs(lum[i + 1] - lum[i - 1]) + Math.abs(lum[i + cols] - lum[i - cols]) + depth[i] * 0.15;
+      }
+    for (let gy = 0; gy < 2; gy++)
+      for (let gx = 0; gx < 3; gx++) {
+        let best = -1;
+        let bv = -1;
+        for (let y = Math.floor(((gy + 0.15) * rows) / 2); y < Math.floor(((gy + 0.85) * rows) / 2); y++)
+          for (let x = Math.floor(((gx + 0.15) * cols) / 3); x < Math.floor(((gx + 0.85) * cols) / 3); x++) {
+            const i = y * cols + x;
+            if (pIndex[i] >= 0 && edge[i] > bv) {
+              bv = edge[i];
+              best = i;
+            }
+          }
+        if (best < 0) continue;
+        const q = pIndex[best];
+        const d = new THREE.Vector3(dirs[q * 3], dirs[q * 3 + 1], dirs[q * 3 + 2]);
+        tags.push({ pos: it.origin.clone().addScaledVector(d, zs[q]), index: q });
+      }
+
+    Object.assign(it, { points: pts, mat, plane, planeMat, frame, box, tags, ready: true });
   }
 
   /** Puts one moment on stage (0..4); every other moment returns to rest. `null` rests them all. */
@@ -414,6 +567,7 @@ export class MemoryLayer {
 
   /** Highlights moments without playing them (role in focus, hover). */
   setLifted(ids: Set<string>) {
+    this.preload(ids);
     this.items.forEach((it) => {
       if (it.t.planeOpacity > 0 || it.t.lift < 1) return;
       it.t.active = ids.has(it.node.id) ? 0.6 : 0;
@@ -444,7 +598,8 @@ export class MemoryLayer {
       u.uTime.value = time;
       it.planeMat!.uniforms.uOpacity.value = fade * it.planeOpacity;
       it.planeMat!.uniforms.uMix.value = it.planeMix;
-      (it.frame!.material as THREE.LineBasicMaterial).opacity = fade * (0.12 + 0.5 * it.active) * (1 - it.lift * 0.6);
+      (it.frame!.material as THREE.LineBasicMaterial).opacity = fade * (0.12 + 0.5 * it.active) * (1 - it.lift * 0.75);
+      (it.box!.material as THREE.LineBasicMaterial).opacity = fade * (0.1 + 0.42 * it.active) * mix01(1, 0.25, it.dim) * (0.35 + 0.65 * it.lift);
     });
   }
 
@@ -459,6 +614,9 @@ export class MemoryLayer {
       it.planeMat?.dispose();
       it.frame?.geometry.dispose();
       (it.frame?.material as THREE.Material | undefined)?.dispose();
+      it.box?.geometry.dispose();
+      (it.box?.material as THREE.Material | undefined)?.dispose();
+      if (it.box) this.scene.remove(it.box);
       if (it.points) this.scene.remove(it.points);
       if (it.plane) this.scene.remove(it.plane);
       if (it.frame) this.scene.remove(it.frame);
