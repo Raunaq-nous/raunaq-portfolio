@@ -132,11 +132,19 @@ export interface Memory {
   height: number;
   /** Optional link out (a paper, an article). */
   url?: string;
+  /** Optional video; `src` is then its still frame. */
+  video?: string;
 }
 
 export const memories: Memory[] = [
   { id: 'paper-tether-deploy', role: 'parikshit', src: '/media/snapshots/paper-tether-deploy.jpg', caption: 'IEEE Aerospace Conference 2015: tether deployment dynamics and control', year: 2015, width: 1400, height: 1018, url: 'https://ieeexplore.ieee.org/document/7119062' },
   { id: 'paper-adcs-core', role: 'parikshit', src: '/media/snapshots/paper-adcs-core.jpg', caption: 'ICACCI 2015: dynamics and control system design of Parikshit', year: 2015, width: 1400, height: 1018, url: 'https://ieeexplore.ieee.org/document/7275676' },
   { id: 'paper-tether-control', role: 'parikshit', src: '/media/snapshots/paper-tether-control.jpg', caption: 'ICACCI 2015: countering the tether ejection', year: 2015, width: 1400, height: 1018, url: 'https://ieeexplore.ieee.org/document/7275680' },
+  { id: 'parikshit-sil-board-1', role: 'parikshit', src: '/media/memories/parikshit/sil-board-part1.jpg', caption: 'Software in the loop, part 1: orbit, sun and magnetic field models feeding the simulated sensors', year: 2015, width: 1280, height: 720, url: 'https://ieeexplore.ieee.org/document/7500603' },
+  { id: 'parikshit-sil-board-2', role: 'parikshit', src: '/media/memories/parikshit/sil-board-part2.jpg', caption: 'Software in the loop, version 1, parts 2 and 3: QUEST attitude estimation, quaternion error and control torque', year: 2015, width: 1280, height: 720, url: 'https://ieeexplore.ieee.org/document/7500603' },
+  { id: 'parikshit-ground-station', role: 'parikshit', src: '/media/memories/parikshit/ground-station.jpg', caption: 'Up on the ground station antenna tower', year: 2015, width: 1200, height: 1600 },
+  { id: 'parikshit-structure', role: 'parikshit', src: '/media/memories/parikshit/structure.jpg', caption: 'The satellite structure, mid-assembly', year: 2015, width: 780, height: 1040 },
+  { id: 'parikshit-test-chamber', role: 'parikshit', src: '/media/memories/parikshit/test-chamber.jpg', caption: 'Hardware on a test chamber plate', year: 2015, width: 1280, height: 720 },
+  { id: 'parikshit-coil-rig', role: 'parikshit', src: '/media/memories/parikshit/coil-rig.jpg', video: '/media/memories/parikshit/coil-rig.mp4', caption: 'Coil test rig in the lab', year: 2015, width: 640, height: 352 },
   { id: 'paper-sil-rig', role: 'parikshit', src: '/media/snapshots/paper-sil-rig.jpg', caption: 'IEEE Aerospace Conference 2016: software in the loop test set-up', year: 2016, width: 1400, height: 1018, url: 'https://ieeexplore.ieee.org/document/7500603' },
 ];

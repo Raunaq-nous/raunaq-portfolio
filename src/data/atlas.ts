@@ -210,17 +210,19 @@ const galleryCount = new Map<string, number>();
 function galleryPos(role: string, j: number): Vec3 {
   const t = towerPos.get(role)!;
   const side = Math.sign(t.z);
-  const col = j % 3;
-  const row = Math.floor(j / 3);
+  const col = j % 4;
+  const row = Math.floor(j / 4);
   galleryCount.set(role, Math.max(galleryCount.get(role) ?? 0, j + 1));
-  return [round(t.x - 8 + col * 8 + (row % 2) * 4), round(t.h + 5 + row * 6.2 + (col % 2) * 1.4), round(side * (STREET_HALF_WIDTH + 12 + (col % 2) * 2.5))];
+  return [round(t.x - 12 + col * 8 + (row % 2) * 4), round(t.h + 5 + row * 6.2 + (col % 2) * 1.4), round(side * (STREET_HALF_WIDTH + 12 + (col % 2) * 2.5))];
 }
 export const galleryCenter = (role: string): Vec3 | null => {
   const n = galleryCount.get(role);
   if (!n) return null;
   const t = towerPos.get(role)!;
-  return [t.x, t.h + 5 + Math.floor((n - 1) / 3) * 3.1, Math.sign(t.z) * (STREET_HALF_WIDTH + 13)];
+  return [t.x, t.h + 5 + Math.floor((n - 1) / 4) * 3.1, Math.sign(t.z) * (STREET_HALF_WIDTH + 13)];
 };
+export const galleryRows = (role: string) => Math.ceil((galleryCount.get(role) ?? 0) / 4);
+
 
 // Research: papers by the satellite tower, ideas and curiosities near the builds.
 papers.forEach((p, j) => {

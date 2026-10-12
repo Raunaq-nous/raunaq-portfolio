@@ -9,7 +9,7 @@ import { useMode } from '../ModeContext';
 import { battles, education, type Battle } from '@/data/battles';
 import { papers } from '@/data/research';
 import { projects, splitSystemLabel } from '@/data/projects';
-import { mediaFor, paperSnapshot } from '@/data/assets';
+import { mediaFor, memories, paperSnapshot } from '@/data/assets';
 import { asset } from '@/lib/asset';
 import { prefersReducedMotion } from '@/lib/motion';
 
@@ -25,7 +25,7 @@ interface Win {
 
 interface Tile {
   id: string;
-  group: 'Highlights' | 'Projects' | 'Industries' | 'Tools built' | 'Papers' | 'Methods' | 'Links';
+  group: 'Highlights' | 'Projects' | 'Photos' | 'Industries' | 'Tools built' | 'Papers' | 'Methods' | 'Links';
   title: string;
   kicker?: string;
   preview?: ReactNode;
@@ -206,6 +206,34 @@ function tilesFor(b: Battle, mode: 'calm' | 'nerd'): Tile[] {
     );
   }
 
+  memories
+    .filter((m) => m.role === b.id && !m.id.startsWith('paper-'))
+    .forEach((m) =>
+      tiles.push({
+        id: `ph-${m.id}`,
+        group: 'Photos',
+        title: m.caption,
+        kicker: String(m.year),
+        image: m.src,
+        body: (
+          <figure className="space-y-3">
+            {m.video ? (
+              <video src={asset(m.video)} poster={asset(m.src)} className="w-full border border-paper/15" controls autoPlay muted loop playsInline />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={asset(m.src)} alt={m.caption} className="w-full border border-paper/15" />
+            )}
+            <figcaption className="text-[15px] text-paper">{m.caption}</figcaption>
+            {m.url && (
+              <a href={m.url} target="_blank" rel="noopener noreferrer" className="label link-quiet inline-block text-paper">
+                Related paper ↗
+              </a>
+            )}
+          </figure>
+        ),
+      }),
+    );
+
   if (b.problemStatements?.length || b.frameworks?.length) {
     tiles.push({
       id: 'methods',
@@ -258,7 +286,7 @@ function tilesFor(b: Battle, mode: 'calm' | 'nerd'): Tile[] {
   return tiles;
 }
 
-const GROUP_ORDER: Tile['group'][] = ['Highlights', 'Projects', 'Tools built', 'Papers', 'Industries', 'Methods', 'Links'];
+const GROUP_ORDER: Tile['group'][] = ['Highlights', 'Projects', 'Tools built', 'Papers', 'Photos', 'Industries', 'Methods', 'Links'];
 
 function Panel({ b, active, mode, onExpand }: { b: Battle; active: boolean; mode: 'calm' | 'nerd'; onExpand: (w: Win) => void }) {
   const role = useMemo(() => roleWindow(b, mode), [b, mode]);
