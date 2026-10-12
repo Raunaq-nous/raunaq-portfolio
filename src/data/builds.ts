@@ -67,7 +67,7 @@ The whole cycle runs in minutes. The same analysis used to take a weekend of man
   {
     id: 'scheduling',
     origin: 'bain',
-    name: 'Critical Path',
+    name: 'Digital Twin in Action',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['React', 'FastAPI', 'D3.js', 'Multi-objective optimization'],

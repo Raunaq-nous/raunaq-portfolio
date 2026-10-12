@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { ImageMedia, VideoMedia } from './MediaSlot';
 import Reveal from './Reveal';
+import CodeGraph from './CodeGraph';
 import PixelImage from './PixelImage';
 import { mediaFor } from '@/data/assets';
 import { getProject, parseProcess, projects, relatedProjects, splitSystemLabel } from '@/data/projects';
@@ -166,7 +167,7 @@ export default function ProjectDetail({ slug }: { slug: string }) {
         <Section n={num()} title="Demo and codebase">
           <div className="grid gap-10 md:grid-cols-2">
             <VideoMedia slot={media.demo} title={project.name} code={code} index={0} />
-            <ImageMedia slot={media.codeGraph} title={project.name} code={code} seed={idx * 10 + 9} annotate="none" />
+            <CodeGraph slug={slug} />
           </div>
           <p className="mt-6 max-w-xl text-[14px] text-grey-2">
             Two slots for every tool: a short demo video, and a knowledge graph of the codebase and its tech layers.

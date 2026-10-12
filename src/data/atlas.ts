@@ -205,23 +205,33 @@ industryRoles.forEach((roles, ind) => {
   });
 });
 
-// Memory galleries: photos float in a staggered wall beside their role, facing the street.
-const galleryCount = new Map<string, number>();
-function galleryPos(role: string, j: number): Vec3 {
+// Memory rooms: each photo is a "moment" reprojected from the spot it was taken. Moments sit in a
+// ring around a hub beside their role, each looking outward, like rooms off a corridor.
+export const MOMENT_DEPTH = 8; // distance from the virtual camera to the photo plane
+const momentCount = (role: string) => memories.filter((m) => m.role === role).length;
+const COLS = 4;
+const momentHub = (role: string): Vec3 => {
+  const t = towerPos.get(role)!;
+  const rows = Math.ceil(momentCount(role) / COLS);
+  return [t.x, 3 + (rows - 1) * 6.5, Math.sign(t.z) * (STREET_HALF_WIDTH + 16)];
+};
+const anchors = new Map<string, { origin: Vec3; forward: Vec3 }>();
+// A wall of parallel rooms behind the role, every one looking outward, away from the street.
+function galleryPos(role: string, j: number, id?: string): Vec3 {
   const t = towerPos.get(role)!;
   const side = Math.sign(t.z);
-  const col = j % 4;
-  const row = Math.floor(j / 4);
-  galleryCount.set(role, Math.max(galleryCount.get(role) ?? 0, j + 1));
-  return [round(t.x - 12 + col * 8 + (row % 2) * 4), round(t.h + 5 + row * 6.2 + (col % 2) * 1.4), round(side * (STREET_HALF_WIDTH + 12 + (col % 2) * 2.5))];
+  const n = Math.max(1, momentCount(role));
+  const cols = Math.min(COLS, n);
+  const col = j % COLS;
+  const row = Math.floor(j / COLS);
+  const origin: Vec3 = [round(t.x + (col - (cols - 1) / 2) * 19), round(3 + row * 13), round(side * (STREET_HALF_WIDTH + 16))];
+  const forward: Vec3 = [0, 0, side];
+  if (id) anchors.set(id, { origin, forward });
+  return [origin[0], origin[1], round(origin[2] + side * MOMENT_DEPTH)];
 }
-export const galleryCenter = (role: string): Vec3 | null => {
-  const n = galleryCount.get(role);
-  if (!n) return null;
-  const t = towerPos.get(role)!;
-  return [t.x, t.h + 5 + Math.floor((n - 1) / 4) * 3.1, Math.sign(t.z) * (STREET_HALF_WIDTH + 13)];
-};
-export const galleryRows = (role: string) => Math.ceil((galleryCount.get(role) ?? 0) / 4);
+export const momentAnchor = (id: string) => anchors.get(id);
+export const galleryCenter = (role: string): Vec3 | null => (momentCount(role) ? momentHub(role) : null);
+export const galleryRows = (role: string) => Math.ceil(momentCount(role) / 4);
 
 
 // Research: papers by the satellite tower, ideas and curiosities near the builds.
@@ -239,7 +249,7 @@ papers.forEach((p, j) => {
     memory: memories.find((m) => m.id === `paper-${p.id}`),
     owner: 'parikshit',
     year: Number(p.year),
-    position: galleryPos('parikshit', j),
+    position: galleryPos('parikshit', j, `paper:${p.id}`),
   });
 });
 const ideaDrafts: Draft[] = [
@@ -292,15 +302,15 @@ memories
       id: `mem:${m.id}`,
       cluster: 'memories',
       kind: 'memory',
-      title: m.caption,
-      summary: m.caption,
+      title: `Moment ${String(j - offset + 1).padStart(2, '0')}`,
+      summary: m.alt,
       meta: `Memory / ${m.year}`,
       memory: m,
       thumb: m.src,
       owner: m.role,
       year: m.year,
       links: m.url ? [{ label: 'Open source', url: m.url }] : undefined,
-      position: galleryPos(m.role, j),
+      position: galleryPos(m.role, j, `mem:${m.id}`),
     });
   });
 
@@ -339,7 +349,7 @@ derived.push(
   { from: 'idea:career-simulation', to: b('career-os'), kind: 'informs' },
   { from: 'curiosity:agentic-ai-industries', to: b('abacus'), kind: 'context' },
   { from: 'curiosity:agentic-ai-industries', to: b('needle'), kind: 'context' },
-  { from: 'curiosity:agentic-ai-industries', to: b('critical-path'), kind: 'context' },
+  { from: 'curiosity:agentic-ai-industries', to: b('digital-twin'), kind: 'context' },
   { from: 'curiosity:ai-strategy-platform', to: b('haus-nous'), kind: 'context' },
   { from: 'curiosity:portfolio-tracker', to: b('watchtower'), kind: 'context' },
   { from: 'curiosity:career-os', to: b('career-os'), kind: 'context' },

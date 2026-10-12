@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import GlyphField from './GlyphField';
 import OsWindow from './OsWindow';
+import IndustryArt from '../IndustryArt';
+import ProjectGlobe from './ProjectGlobe';
 import SectionLabel from '../SectionLabel';
 import { useMode } from '../ModeContext';
 import { battles, education, type Battle } from '@/data/battles';
@@ -30,6 +32,7 @@ interface Tile {
   kicker?: string;
   preview?: ReactNode;
   image?: string;
+  art?: { name: string; code: string; rows: [string, string][] };
   body: ReactNode;
 }
 
@@ -114,13 +117,27 @@ function tilesFor(b: Battle, mode: 'calm' | 'nerd'): Tile[] {
       const n = ind.toLowerCase();
       return a.includes(n) || n.includes(a.split(' ')[0]);
     });
+    const art = {
+      name: ind,
+      code: `${b.id.slice(0, 3).toUpperCase()}-${String(i + 1).padStart(2, '0')}`,
+      rows: [
+        ['Role', b.company.split(',')[0]],
+        ['Period', b.period.replace('–', 'to')],
+        ['Projects', String(linked.length || '-')],
+        ...linked.slice(0, 3).map((k, j): [string, string] => [`Project ${j + 1}`, k.industry]),
+      ] as [string, string][],
+    };
     tiles.push({
       id: `in-${i}`,
       group: 'Industries',
       title: ind,
+      art,
       preview: <p className="label text-grey-3">{linked.length ? `${linked.length} project${linked.length > 1 ? 's' : ''}` : 'Sector'}</p>,
       body: (
         <div className="space-y-3">
+          <div className="aspect-[8/5] overflow-hidden border border-paper/15">
+            <IndustryArt {...art} />
+          </div>
           <p className="label text-grey-3">Industry</p>
           <p className="text-[24px] tracking-tight text-paper">{ind}</p>
           {linked.length > 0 && (
@@ -208,11 +225,11 @@ function tilesFor(b: Battle, mode: 'calm' | 'nerd'): Tile[] {
 
   memories
     .filter((m) => m.role === b.id && !m.id.startsWith('paper-'))
-    .forEach((m) =>
+    .forEach((m, mi) =>
       tiles.push({
         id: `ph-${m.id}`,
         group: 'Photos',
-        title: m.caption,
+        title: `Moment ${String(mi + 1).padStart(2, '0')}`,
         kicker: String(m.year),
         image: m.src,
         body: (
@@ -221,9 +238,9 @@ function tilesFor(b: Battle, mode: 'calm' | 'nerd'): Tile[] {
               <video src={asset(m.video)} poster={asset(m.src)} className="w-full border border-paper/15" controls autoPlay muted loop playsInline />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={asset(m.src)} alt={m.caption} className="w-full border border-paper/15" />
+              <img src={asset(m.src)} alt={m.alt} className="w-full border border-paper/15" />
             )}
-            <figcaption className="text-[15px] text-paper">{m.caption}</figcaption>
+            <figcaption className="sr-only">{m.alt}</figcaption>
             {m.url && (
               <a href={m.url} target="_blank" rel="noopener noreferrer" className="label link-quiet inline-block text-paper">
                 Related paper ↗
@@ -298,10 +315,22 @@ function Panel({ b, active, mode, onExpand }: { b: Battle; active: boolean; mode
     <div className="relative h-full w-full shrink-0 px-[var(--gutter)]" aria-hidden={!active} inert={!active ? true : undefined}>
       {active && (
         <div key={`${b.id}-${mode}`} className="grid h-full gap-5 lg:grid-cols-12">
-          <div className="lg:col-span-4">
+          <div className="thin-scroll overflow-y-auto pb-8 lg:col-span-4">
             <OsWindow title={role.title} meta={role.meta} slot={{ left: 0, top: 0, width: 100 }} index={0} z={10} onFocus={() => undefined} onExpand={() => onExpand(role)} dark static>
               {role.body}
             </OsWindow>
+            <div className="os-tile mt-4 border border-paper/20 bg-ink-2" style={{ animationDelay: '220ms' }}>
+              <div className="flex items-center gap-2 border-b border-paper/10 bg-ink-3 px-2.5 py-1.5">
+                <span className="flex gap-1" aria-hidden>
+                  <span className="h-1.5 w-1.5 border border-paper/40" />
+                  <span className="h-1.5 w-1.5 bg-paper/50" />
+                </span>
+                <span className="label normal-case tracking-normal text-grey-1">{mode === 'nerd' ? 'geo.trace' : 'Where the work went'}</span>
+              </div>
+              <div className="aspect-[16/10]">
+                <ProjectGlobe role={b.id} />
+              </div>
+            </div>
           </div>
           <div className="thin-scroll space-y-6 overflow-y-auto pb-8 pr-1 lg:col-span-8">
             {groups.map(({ g, items }) => (
@@ -311,7 +340,7 @@ function Panel({ b, active, mode, onExpand }: { b: Battle; active: boolean; mode
                   <span className="h-px flex-1 bg-paper/10" />
                   <span>{String(items.length).padStart(2, '0')}</span>
                 </p>
-                <ul className={`grid gap-3 ${g === 'Industries' ? 'grid-cols-2 sm:grid-cols-4' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>
+                <ul className={`grid gap-3 ${g === 'Industries' ? 'grid-cols-2 sm:grid-cols-3' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>
                   {items.map((t) => (
                     <li key={t.id} className="os-tile" style={{ animationDelay: `${160 + k++ * 55}ms` }}>
                       <button
@@ -332,6 +361,11 @@ function Panel({ b, active, mode, onExpand }: { b: Battle; active: boolean; mode
                         {t.image && (
                           <span className="block aspect-[16/9] overflow-hidden border-b border-paper/10">
                             <Shot src={t.image} alt="" />
+                          </span>
+                        )}
+                        {t.art && (
+                          <span className="block aspect-[8/5] overflow-hidden border-b border-paper/10">
+                            <IndustryArt {...t.art} />
                           </span>
                         )}
                         <span className="block space-y-1 p-2.5">

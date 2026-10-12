@@ -4,11 +4,9 @@ import Reveal from './Reveal';
 import SectionLabel from './SectionLabel';
 import { useMode } from './ModeContext';
 import { intro, site } from '@/data/site';
-import { skillGroups, skillSections } from '@/data/skills';
 
 export default function About() {
   const { mode } = useMode();
-  const certs = skillSections.flatMap((s) => s.skills);
   const bio = intro[mode];
 
   return (
@@ -40,68 +38,6 @@ export default function About() {
             ))}
           </Reveal>
           <p className="label mt-8 text-grey-2">Right now: {site.now.charAt(0).toLowerCase() + site.now.slice(1)}</p>
-
-          {mode === 'calm' ? (
-            <Reveal className="mt-16 grid gap-10 border-t rule pt-8 sm:grid-cols-2" delay={160}>
-              <div>
-                <p className="label mb-4 text-grey-3">Skills</p>
-                <dl className="space-y-4 text-[14px]">
-                  {skillGroups.map((g) => (
-                    <div key={g.label}>
-                      <dt className="label text-grey-2">{g.label}</dt>
-                      <dd className="mt-1 leading-relaxed text-grey-1">{g.skills.join(' / ')}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-              <div>
-                <p className="label mb-4 text-grey-3">Certifications</p>
-                <ul className="text-[14px]">
-                  {certs.map((c) => (
-                    <li key={c.title} className="border-b rule py-2">
-                      <span className="text-grey-1">{c.title}</span>
-                      {c.issuer && <span className="label ml-2 text-grey-3">{c.issuer}</span>}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </Reveal>
-          ) : (
-            <Reveal className="mt-16 space-y-8 border-t rule pt-8 text-[13px]" delay={160}>
-              <div>
-                <p className="text-grey-2">
-                  <span className="text-grey-3">raunaq@portfolio:~/about</span> <span className="text-paper">$ skills --all</span>
-                </p>
-                <div className="mt-3 space-y-2">
-                  {skillGroups.map((g) => (
-                    <p key={g.label} className="leading-relaxed text-grey-1">
-                      <span className="text-grey-3"># {g.label.toLowerCase()}</span>
-                      <br />
-                      {g.skills.join('  ')}
-                    </p>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-grey-2">
-                  <span className="text-grey-3">raunaq@portfolio:~/about</span> <span className="text-paper">$ certs</span>
-                </p>
-                <ul className="mt-3 space-y-1 text-grey-1">
-                  {certs.map((c) => (
-                    <li key={c.title}>
-                      <span className="text-grey-3">-</span> {c.title}
-                      {(c.issuer || c.year) && (
-                        <span className="text-grey-3">
-                          {' '}
-                          ({[c.issuer, c.year].filter(Boolean).join(', ')})
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </Reveal>
-          )}
 
         </div>
       </div>

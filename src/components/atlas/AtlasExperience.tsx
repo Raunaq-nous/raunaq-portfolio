@@ -7,6 +7,7 @@ import { clusters, clusterOf, neighbours, nodes, overviewOf, timeline, type Atla
 import { asset } from '@/lib/asset';
 import { hasWebGL, prefersReducedMotion } from '@/lib/motion';
 import ModelViewer from './ModelViewer';
+import IndustryArt from '../IndustryArt';
 import type { AtlasEngine } from './AtlasEngine';
 
 const KIND_LABEL: Record<NodeKind, string> = {
@@ -68,6 +69,7 @@ export default function AtlasExperience() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [reader, setReader] = useState<AtlasNode | null>(null);
   const [viewer, setViewer] = useState<AtlasNode | null>(null);
+  const [moment, setMoment] = useState<{ id: string; stage: number; index: number; total: number } | null>(null);
 
   const selectedNode = byId(selected);
   const activeExp = selectedNode?.kind === 'experience' ? selectedNode.id : selectedNode?.owner ? `exp:${selectedNode.owner}` : null;
@@ -132,29 +134,37 @@ export default function AtlasExperience() {
 
   useEffect(() => {
     if (!touring) return;
-    // Each role is a stop; roles with photos get a second stop at their memory gallery.
-    const stops: { id: string; memories: boolean; role: number }[] = [];
-    expIds.forEach((id, r) => {
-      stops.push({ id, memories: false, role: r });
-      if (nodes.some((n) => n.memory && `exp:${n.owner}` === id)) stops.push({ id, memories: true, role: r });
-    });
+    // Each role is a stop; roles with photos then play their moments before moving on.
     let i = 0;
+    let timer = 0;
+    let cancelled = false;
     const step = () => {
-      if (i >= stops.length) {
+      if (cancelled) return;
+      if (i >= expIds.length) {
         setTouring(false);
         setTourIndex(-1);
         return;
       }
-      const s = stops[i];
-      setTourIndex(s.role);
-      setSelected(s.id);
-      if (s.memories) engineRef.current?.focusMemories(s.id, 1600);
-      else engineRef.current?.focusExperience(s.id, 'street', i === 0 ? 1800 : 1600);
+      const id = expIds[i];
+      const r = i;
       i++;
+      setTourIndex(r);
+      setSelected(id);
+      engineRef.current?.focusExperience(id, 'street', r === 0 ? 1800 : 1600);
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
+        const played = engineRef.current?.focusMemories(id, 0, () => {
+          if (!cancelled) timer = window.setTimeout(step, 600);
+        });
+        if (!played) step();
+      }, 4200);
     };
     step();
-    const t = window.setInterval(step, 4600);
-    return () => window.clearInterval(t);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      engineRef.current?.stopMoments();
+    };
   }, [touring]);
 
   // ------------------------------------------------------------ engine lifecycle
@@ -184,6 +194,7 @@ export default function AtlasExperience() {
             cbRef.current.pickNode(id);
           },
           onPickEmpty: () => undefined,
+          onMoment: (m) => setMoment(m),
         },
         { reduced: prefersReducedMotion(), lowPower, assemble: true },
       );
@@ -353,10 +364,18 @@ export default function AtlasExperience() {
       )}
 
       {/* Selection panels */}
-      {selectedNode && !reader && !viewer && selectedNode.kind === 'experience' && (
-        <ExperiencePanel expId={selectedNode.id} onClose={clearSelection} onPick={(id) => { setTouring(false); pickNode(id); }} onOpen={openNode} />
+      {moment && <MomentHud moment={moment} onStop={() => { setTouring(false); engineRef.current?.stopMoments(); }} />}
+
+      {!moment && selectedNode && !reader && !viewer && selectedNode.kind === 'experience' && (
+        <ExperiencePanel
+          expId={selectedNode.id}
+          onClose={clearSelection}
+          onPick={(id) => { setTouring(false); pickNode(id); }}
+          onOpen={openNode}
+          onPlay={() => { setTouring(false); engineRef.current?.focusMemories(selectedNode.id); }}
+        />
       )}
-      {selectedNode && !reader && !viewer && selectedNode.kind !== 'experience' && (
+      {!moment && selectedNode && !reader && !viewer && selectedNode.kind !== 'experience' && (
         <NodePanel node={selectedNode} onClose={() => (selectedNode.owner ? pickNode(`exp:${selectedNode.owner}`) : clearSelection())} onOpen={() => openNode(selectedNode)} onPick={(id) => pickNode(id)} />
       )}
 
@@ -434,7 +453,49 @@ function HoverCard({ node }: { node: AtlasNode }) {
   );
 }
 
-function ExperiencePanel({ expId, onClose, onPick, onOpen }: { expId: string; onClose: () => void; onPick: (id: string) => void; onOpen: (n: AtlasNode) => void }) {
+function MomentHud({ moment, onStop }: { moment: { id: string; stage: number; index: number; total: number }; onStop: () => void }) {
+  const n = byId(moment.id);
+  const o = n?.owner ? overviewOf(`exp:${n.owner}`) : null;
+  if (!n || !o) return null;
+  const b = o.battle;
+  const stages = ['Arriving', 'Depth', 'Moment', 'Lifting into 3D', 'Left where it happened'];
+  return (
+    <aside className="pointer-events-none absolute bottom-24 left-[var(--gutter)] z-30 w-[min(360px,80vw)] md:bottom-28" aria-live="polite">
+      <div className="pointer-events-auto border border-paper/20 bg-ink/70 p-4 backdrop-blur">
+        <div className="label flex justify-between text-grey-3">
+          <span>
+            Moment {String(moment.index + 1).padStart(2, '0')} / {String(moment.total).padStart(2, '0')}
+          </span>
+          <button type="button" onClick={onStop} className="link-quiet text-grey-1 hover:text-paper">
+            Stop
+          </button>
+        </div>
+        <p className="mt-3 text-[22px] leading-tight tracking-tight">{b.company.split(',')[0]}</p>
+        <p className="label mt-1 text-grey-2">
+          {b.role} / {b.period.replace('–', 'to')}
+        </p>
+        {b.highlights && (
+          <dl className="mt-4 grid grid-cols-[6.5rem_1fr] gap-x-3 gap-y-1.5 text-[12px]">
+            {b.highlights.slice(0, 5).map((h) => (
+              <div key={h.label} className="contents">
+                <dt className="label text-grey-3">{h.label}</dt>
+                <dd className="text-grey-1">{h.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        <div className="mt-4 flex items-center gap-2">
+          {stages.map((st, i) => (
+            <span key={st} className={`h-0.5 flex-1 ${i <= moment.stage ? 'bg-paper' : 'bg-paper/20'}`} title={st} />
+          ))}
+        </div>
+        <p className="label mt-2 text-grey-3">{stages[moment.stage]}</p>
+      </div>
+    </aside>
+  );
+}
+
+function ExperiencePanel({ expId, onClose, onPick, onOpen, onPlay }: { expId: string; onClose: () => void; onPick: (id: string) => void; onOpen: (n: AtlasNode) => void; onPlay: () => void }) {
   const node = byId(expId)!;
   const o = overviewOf(expId);
   const b = o.battle;
@@ -459,6 +520,11 @@ function ExperiencePanel({ expId, onClose, onPick, onOpen }: { expId: string; on
       <p className="label mt-4 text-grey-3">
         X {fmt(node.position[0])} / Y {fmt(node.position[1])} / Z {fmt(node.position[2])}
       </p>
+      {o.memories.length > 0 && (
+        <button type="button" onClick={onPlay} className="label mt-5 border border-paper px-4 py-3 text-paper transition-colors hover:bg-paper hover:text-ink">
+          Play {o.memories.length} moments
+        </button>
+      )}
 
       {o.engagements.length > 0 && (
         <section className="mt-8">
@@ -569,6 +635,18 @@ function NodePanel({ node, onClose, onOpen, onPick }: { node: AtlasNode; onClose
       {node.thumb && (
         <div className="mt-5">
           <Thumb src={node.thumb} label={node.code} />
+        </div>
+      )}
+      {node.kind === 'industry' && (
+        <div className="mt-5 aspect-[8/5] overflow-hidden border border-paper/15">
+          <IndustryArt
+            name={node.title}
+            code={node.code}
+            rows={[
+              ['Roles', String(related.filter((r) => r.kind === 'experience').length)],
+              ...related.filter((r) => r.kind === 'experience').slice(0, 4).map((r): [string, string] => ['Role', r.title]),
+            ]}
+          />
         </div>
       )}
       <p className="mt-5 line-clamp-6 text-[14px] leading-relaxed text-grey-1">{node.summary}</p>
@@ -769,10 +847,10 @@ function Reader({ node, onClose, onPick }: { node: AtlasNode; onClose: () => voi
                   <video src={asset(node.memory.video)} poster={asset(node.memory.src)} className="w-full max-w-3xl border border-paper/15 grayscale" controls autoPlay muted loop playsInline />
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={asset(node.memory.src)} alt={node.memory.caption} className="w-full max-w-3xl border border-paper/15 grayscale" />
+                  <img src={asset(node.memory.src)} alt={node.memory.alt} className="w-full max-w-3xl border border-paper/15 grayscale" />
                 )}
                 <figcaption className="label mt-3 text-grey-3">
-                  {node.memory.caption} / {node.memory.year}
+                  {node.memory.year}
                 </figcaption>
               </figure>
             )}

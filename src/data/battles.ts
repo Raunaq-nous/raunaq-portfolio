@@ -149,7 +149,7 @@ export const battles: Battle[] = [
   },
   {
     id: 'madcue',
-    highlights: [{ label: 'Creators', value: '150+ independent creators' }, { label: 'Audience', value: '70,000 monthly viewers' }, { label: 'Growth', value: 'Audience tripled in 8 months through structured PPC experiments' }, { label: 'Interviews', value: 'Gavin Aung Than, Abhilash Tomy, Tashi Malik' }],
+    highlights: [{ label: 'Launched', value: 'December 2014' }, { label: 'Creators', value: '150+ independent creators' }, { label: 'Audience', value: '70,000 monthly viewers' }, { label: 'Growth', value: 'Audience tripled in 8 months through structured PPC experiments' }, { label: 'Interviews', value: 'Gavin Aung Than, Abhilash Tomy, Tashi Malik' }, { label: 'Facebook', value: '9.1K followers, 508 posts' }, { label: 'Sections', value: 'In & Out, Food for Thought, Fiction, In The House' }, { label: 'Belief', value: 'Stories can change the world' }],
     company: 'Madcue',
     role: 'Co-founder',
     period: 'Jun 2015 – Jan 2018',
@@ -158,7 +158,9 @@ export const battles: Battle[] = [
     section: 'BUILT FROM ZERO',
     tags: ['startup', 'creator', 'content', 'design', 'community', 'media'],
     industries: ['Media', 'Creator Economy'],
-    description: `Built a creator economy and digital media platform before the phrase existed. Defined brand identity, visual design language, and editorial voice from the ground up. 150+ independent creators, 70,000 monthly viewers, audience tripled in 8 months through structured PPC experiments. Exclusive interviews with globally recognized creators: Gavin Aung Than, Abhilash Tomy, Tashi Malik. Ran product, operations, content strategy, creator acquisition, and distribution end-to-end, including the creator GTM and audience monetization model.`,
+    description: `Madcue, launched in December 2014, is a platform for presenting stories to people around the globe: insights from people's daily lives, the culture they live in and the society around them. We tried to understand the thoughts behind an individual and present ideas, as stories, to ponder upon, and to bring forth the stories of outliers who inspire the world and make a difference. We believed that stories can change the world. Everyone has a story to tell.
+
+As co-founder I built it from zero: brand identity, visual design language and editorial voice, plus product, operations, content strategy, creator acquisition, distribution, and the creator GTM and audience monetization model.`,
     links: [
       { label: 'Madcue on Facebook', url: 'https://www.facebook.com/madcue/' },
       { label: 'Madcue on Instagram', url: 'https://www.instagram.com/madcue/' },
