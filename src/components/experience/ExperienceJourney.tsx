@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import GlyphField from './GlyphField';
-import OsWindow, { type Slot } from './OsWindow';
+import OsWindow from './OsWindow';
 import SectionLabel from '../SectionLabel';
 import { useMode } from '../ModeContext';
 import { battles, education, type Battle } from '@/data/battles';
 import { papers } from '@/data/research';
-import { projects } from '@/data/projects';
+import { projects, splitSystemLabel } from '@/data/projects';
 import { mediaFor, paperSnapshot } from '@/data/assets';
 import { asset } from '@/lib/asset';
 import { prefersReducedMotion } from '@/lib/motion';
@@ -23,89 +23,36 @@ interface Win {
   body: ReactNode;
 }
 
+interface Tile {
+  id: string;
+  group: 'Highlights' | 'Projects' | 'Industries' | 'Tools built' | 'Papers' | 'Methods' | 'Links';
+  title: string;
+  kicker?: string;
+  preview?: ReactNode;
+  image?: string;
+  body: ReactNode;
+}
+
 function years(period: string) {
   const ys = (period.match(/\d{4}/g) ?? []).map(Number);
   const end = /present/i.test(period) ? new Date().getFullYear() + 0.8 : ys[1] ?? ys[0];
   return { start: ys[0], end, label: `${ys[0]} / ${/present/i.test(period) ? 'Now' : ys[1] ?? ''}` };
 }
 
-// Window layouts, in percent of the stage. The first slot is always the terminal.
-const SLOTS: Slot[] = [
-  { left: 2, top: 7, width: 37 },
-  { left: 42, top: 3, width: 33 },
-  { left: 63, top: 44, width: 34 },
-  { left: 6, top: 50, width: 31 },
-  { left: 40, top: 54, width: 21 },
-  { left: 78, top: 4, width: 20 },
-  { left: 23, top: 30, width: 22 },
-];
-
-function Tabs({ tabs }: { tabs: { label: string; body: ReactNode }[] }) {
-  const [i, setI] = useState(0);
-  return (
-    <div>
-      <div className="thin-scroll -mx-4 -mt-4 mb-4 flex overflow-x-auto border-b border-paper/15" role="tablist">
-        {tabs.map((t, k) => (
-          <button
-            key={t.label}
-            type="button"
-            role="tab"
-            aria-selected={k === i}
-            onClick={() => setI(k)}
-            className={`label shrink-0 border-r border-paper/10 px-3 py-2 normal-case tracking-normal ${k === i ? 'bg-ink text-paper' : 'text-grey-3 hover:text-paper'}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <div key={i} className="mode-fade">
-        {tabs[i]?.body}
-      </div>
-    </div>
-  );
-}
-
-function PaperSnapshot({ id, title, url, venue, year }: { id: string; title: string; url: string; venue: string; year: string }) {
+function Shot({ src, alt }: { src: string; alt: string }) {
   const [failed, setFailed] = useState(false);
-  const doc = url.split('/').filter(Boolean).pop();
+  if (failed) return null;
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="group block">
-      <div className="relative aspect-[16/10] overflow-hidden border border-paper/15 bg-paper/5">
-        {!failed ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={asset(paperSnapshot(id))}
-            alt={`IEEE Xplore page for ${title}`}
-            className="h-full w-full object-cover object-top grayscale transition-transform duration-700 group-hover:scale-[1.02]"
-            onError={() => setFailed(true)}
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-full flex-col justify-between p-3">
-            <span className="label text-grey-3">IEEE Xplore / doc {doc}</span>
-            <span className="text-[12px] leading-snug text-grey-1">{title}</span>
-            <span className="label text-grey-3">Snapshot pending</span>
-          </div>
-        )}
-      </div>
-      <p className="label mt-2 flex justify-between text-grey-3">
-        <span>
-          {venue} / {year}
-        </span>
-        <span className="group-hover:text-paper">Open ↗</span>
-      </p>
-    </a>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={asset(src)} alt={alt} className="h-full w-full object-cover object-top grayscale" loading="lazy" onError={() => setFailed(true)} />
   );
 }
 
-function windowsFor(b: Battle, mode: 'calm' | 'nerd'): Win[] {
+function roleWindow(b: Battle, mode: 'calm' | 'nerd'): Win {
   const y = years(b.period);
-  const slug = b.id;
-  const wins: Win[] = [];
-
-  wins.push({
+  return {
     id: 'role',
-    title: mode === 'nerd' ? `raunaq@os:~/experience/${slug} $ cat role.md` : `${b.company.split(',')[0]} / role`,
+    title: mode === 'nerd' ? `raunaq@os:~/experience/${b.id} $ cat role.md` : `${b.company.split(',')[0]} / role`,
     meta: y.label,
     dark: true,
     body: (
@@ -122,83 +69,151 @@ function windowsFor(b: Battle, mode: 'calm' | 'nerd'): Win[] {
         {b.description ? <p>{b.description}</p> : <p className="font-mono text-grey-3"># details to be added</p>}
       </div>
     ),
+  };
+}
+
+function tilesFor(b: Battle, mode: 'calm' | 'nerd'): Tile[] {
+  const tiles: Tile[] = [];
+
+  (b.highlights ?? []).forEach((h, i) =>
+    tiles.push({
+      id: `hl-${i}`,
+      group: 'Highlights',
+      title: h.label,
+      preview: <p className="text-[13px] text-paper">{h.value}</p>,
+      body: (
+        <div className="space-y-2">
+          <p className="label text-grey-3">{h.label}</p>
+          <p className="text-[18px] leading-snug text-paper">{h.value}</p>
+        </div>
+      ),
+    }),
+  );
+
+  (b.keyProjects ?? []).forEach((k, i) =>
+    tiles.push({
+      id: `pj-${i}`,
+      group: 'Projects',
+      title: k.industry,
+      kicker: `P${String(i + 1).padStart(2, '0')}`,
+      preview: <p className="line-clamp-3 text-[12px]">{k.description}</p>,
+      body: (
+        <div className="space-y-3">
+          <p className="label text-grey-3">
+            {b.company.split(',')[0]} / project {String(i + 1).padStart(2, '0')} / {k.industry}
+          </p>
+          <p className="text-[18px] leading-snug text-paper">{k.description}</p>
+        </div>
+      ),
+    }),
+  );
+
+  b.industries.forEach((ind, i) => {
+    const linked = (b.keyProjects ?? []).filter((k) => {
+      const a = k.industry.toLowerCase();
+      const n = ind.toLowerCase();
+      return a.includes(n) || n.includes(a.split(' ')[0]);
+    });
+    tiles.push({
+      id: `in-${i}`,
+      group: 'Industries',
+      title: ind,
+      preview: <p className="label text-grey-3">{linked.length ? `${linked.length} project${linked.length > 1 ? 's' : ''}` : 'Sector'}</p>,
+      body: (
+        <div className="space-y-3">
+          <p className="label text-grey-3">Industry</p>
+          <p className="text-[24px] tracking-tight text-paper">{ind}</p>
+          {linked.length > 0 && (
+            <ul className="space-y-2">
+              {linked.map((k) => (
+                <li key={k.description.slice(0, 20)} className="border-t border-paper/15 pt-2 text-[14px]">
+                  {k.description}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ),
+    });
   });
 
-  if (b.keyProjects?.length) {
-    wins.push({
-      id: 'projects',
-      title: mode === 'nerd' ? `projects/ (${b.keyProjects.length})` : `Key projects / ${b.keyProjects.length}`,
-      body: (
-        <Tabs
-          tabs={b.keyProjects.map((k) => ({
-            label: k.industry,
-            body: (
-              <div className="space-y-2">
-                <p className="label text-grey-3">{k.industry}</p>
-                <p className="text-[14px] text-paper">{k.description}</p>
+  projects
+    .filter((p) => ORIGIN[b.id] && p.origin === ORIGIN[b.id])
+    .forEach((p) => {
+      const shot = mediaFor(p.slug, p.name).screenshots[0]?.asset;
+      const sys = splitSystemLabel(p.nerd);
+      tiles.push({
+        id: `tl-${p.slug}`,
+        group: 'Tools built',
+        title: p.name,
+        kicker: p.category,
+        image: shot?.src,
+        preview: shot ? undefined : <p className="font-mono text-[11px] text-grey-2">{sys.label ?? p.category}</p>,
+        body: (
+          <div className="space-y-4">
+            {shot && (
+              <div className="aspect-[16/10] overflow-hidden border border-paper/15">
+                <Shot src={shot.src} alt={shot.alt} />
               </div>
-            ),
-          }))}
-        />
-      ),
+            )}
+            <p className="label text-grey-3">
+              {p.number} / {p.category}
+            </p>
+            <p className="text-[17px] leading-snug text-paper">{mode === 'calm' ? p.calm : sys.text}</p>
+            <p className="label text-grey-3">{p.tags.join(' / ')}</p>
+            <Link href={`/work/${p.slug}/`} className="label link-quiet inline-block text-paper">
+              Open project
+            </Link>
+          </div>
+        ),
+      });
     });
-  }
 
-  const builds = projects.filter((p) => ORIGIN[b.id] && p.origin === ORIGIN[b.id]);
-  if (builds.length || b.tools?.length) {
-    wins.push({
-      id: 'tools',
-      title: mode === 'nerd' ? `tools/ --built-here (${builds.length})` : `Tools built / ${builds.length}`,
-      body: (
-        <ul className="space-y-3">
-          {builds.map((p) => {
-            const shot = mediaFor(p.slug, p.name).screenshots[0]?.asset;
-            return (
-              <li key={p.slug}>
-                <Link href={`/work/${p.slug}/`} className="group grid grid-cols-[4.5rem_1fr] items-center gap-3">
-                  <span className="relative block aspect-[16/10] overflow-hidden border border-paper/15 bg-paper/5">
-                    {shot ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={asset(shot.src)} alt="" className="h-full w-full object-cover object-top grayscale" loading="lazy" />
-                    ) : (
-                      <span className="label absolute inset-0 grid place-items-center text-[8px] text-grey-3">P{p.number}</span>
-                    )}
-                  </span>
-                  <span>
-                    <span className="block text-[14px] text-paper group-hover:underline">{p.name}</span>
-                    <span className="label text-grey-3">{p.category}</span>
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      ),
-    });
-  }
-
-  if (b.industries.length) {
-    wins.push({
-      id: 'industries',
-      title: mode === 'nerd' ? 'industries.json' : 'Industries',
-      body: (
-        <ul className="flex flex-wrap gap-1.5">
-          {b.industries.map((i) => (
-            <li key={i} className="label border border-paper/20 px-2 py-1 text-grey-1">
-              {i}
-            </li>
-          ))}
-        </ul>
-      ),
-    });
+  if (b.id === 'parikshit') {
+    papers.forEach((p, i) =>
+      tiles.push({
+        id: `pp-${p.id}`,
+        group: 'Papers',
+        title: mode === 'nerd' ? p.nerdTitle.split(':')[0].replace(/`/g, '') : p.calmTitle,
+        kicker: `${p.venue} / ${p.year}${p.leadAuthor ? ' / lead author' : ''}`,
+        image: paperSnapshot(p.id),
+        body: (
+          <div className="space-y-4">
+            <a href={p.url} target="_blank" rel="noopener noreferrer" className="block aspect-[1400/1018] overflow-hidden border border-paper/15">
+              <Shot src={paperSnapshot(p.id)} alt={`IEEE Xplore page for ${p.formalTitle}`} />
+            </a>
+            <p className="text-[19px] leading-snug text-paper">{p.formalTitle}</p>
+            <p>{mode === 'calm' ? p.calm : p.nerd}</p>
+            <dl className="grid grid-cols-[7rem_1fr] gap-y-1 font-mono text-[12px]">
+              <dt className="text-grey-3">venue:</dt>
+              <dd>{p.conference}</dd>
+              <dt className="text-grey-3">dates:</dt>
+              <dd>{p.dates}</dd>
+              <dt className="text-grey-3">location:</dt>
+              <dd>{p.location}</dd>
+              <dt className="text-grey-3">authors:</dt>
+              <dd>{p.authors.join(', ')}</dd>
+              <dt className="text-grey-3">doi:</dt>
+              <dd>{p.doi}</dd>
+            </dl>
+            <a href={p.url} target="_blank" rel="noopener noreferrer" className="label link-quiet inline-block text-paper">
+              Read on IEEE Xplore ↗
+            </a>
+            {i === 0 && <span className="sr-only">Lead author</span>}
+          </div>
+        ),
+      }),
+    );
   }
 
   if (b.problemStatements?.length || b.frameworks?.length) {
-    wins.push({
+    tiles.push({
       id: 'methods',
+      group: 'Methods',
       title: mode === 'nerd' ? 'problems.yml' : 'Problems and methods',
+      preview: <p className="line-clamp-2 font-mono text-[11px] text-grey-2">{(b.problemStatements ?? []).join(' / ')}</p>,
       body: (
-        <dl className="space-y-3 font-mono text-[12px]">
+        <dl className="space-y-3 font-mono text-[13px]">
           {b.problemStatements && (
             <div>
               <dt className="text-grey-3">problems:</dt>
@@ -224,82 +239,89 @@ function windowsFor(b: Battle, mode: 'calm' | 'nerd'): Win[] {
     });
   }
 
-  if (b.id === 'parikshit') {
-    papers.forEach((p, i) => {
-      wins.push({
-        id: `paper-${p.id}`,
-        title: mode === 'nerd' ? p.nerdTitle.split(':')[0].replace(/`/g, '') : `Paper ${i + 1}${p.leadAuthor ? ' / lead author' : ''}`,
-        body: (
-          <div className="space-y-3">
-            <PaperSnapshot id={p.id} title={p.formalTitle} url={p.url} venue={p.venue} year={p.year} />
-            <p className="text-[13px] text-paper">{mode === 'calm' ? p.calmTitle : p.formalTitle}</p>
-          </div>
-        ),
-      });
-    });
-  }
-
   if (b.links?.length && b.id !== 'parikshit') {
-    wins.push({
-      id: 'links',
-      title: 'links',
-      body: (
-        <ul className="space-y-2">
-          {b.links.map((l) => (
-            <li key={l.url}>
-              <a href={l.url} target="_blank" rel="noopener noreferrer" className="link-quiet text-paper">
-                {l.label} ↗
-              </a>
-            </li>
-          ))}
-        </ul>
-      ),
-    });
+    b.links.forEach((l, i) =>
+      tiles.push({
+        id: `ln-${i}`,
+        group: 'Links',
+        title: l.label,
+        preview: <p className="label text-grey-3">{l.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}</p>,
+        body: (
+          <a href={l.url} target="_blank" rel="noopener noreferrer" className="link-quiet text-[18px] text-paper">
+            {l.label} ↗
+          </a>
+        ),
+      }),
+    );
   }
 
-  return wins;
+  return tiles;
 }
 
+const GROUP_ORDER: Tile['group'][] = ['Highlights', 'Projects', 'Tools built', 'Papers', 'Industries', 'Methods', 'Links'];
+
 function Panel({ b, active, mode, onExpand }: { b: Battle; active: boolean; mode: 'calm' | 'nerd'; onExpand: (w: Win) => void }) {
-  const wins = useMemo(() => windowsFor(b, mode), [b, mode]);
-  const [order, setOrder] = useState<string[]>(() => wins.map((w) => w.id));
-  const focus = (id: string) => setOrder((o) => [...o.filter((x) => x !== id), id]);
-  const slots = b.id === 'parikshit' ? PAPER_SLOTS : SLOTS;
+  const role = useMemo(() => roleWindow(b, mode), [b, mode]);
+  const tiles = useMemo(() => tilesFor(b, mode), [b, mode]);
+  const groups = GROUP_ORDER.map((g) => ({ g, items: tiles.filter((t) => t.group === g) })).filter((x) => x.items.length);
+  let k = 0;
 
   return (
     <div className="relative h-full w-full shrink-0 px-[var(--gutter)]" aria-hidden={!active} inert={!active ? true : undefined}>
       {active && (
-        <div key={`${b.id}-${mode}`} className="relative flex h-full flex-col gap-4 overflow-y-auto pb-6 pt-4 lg:block lg:overflow-visible lg:p-0">
-          {wins.map((w, i) => (
-            <OsWindow
-              key={w.id}
-              title={w.title}
-              meta={w.meta}
-              slot={slots[i % slots.length]}
-              index={i}
-              z={10 + order.indexOf(w.id)}
-              onFocus={() => focus(w.id)}
-              onExpand={() => onExpand(w)}
-              dark={w.dark}
-            >
-              {w.body}
+        <div key={`${b.id}-${mode}`} className="grid h-full gap-5 lg:grid-cols-12">
+          <div className="lg:col-span-4">
+            <OsWindow title={role.title} meta={role.meta} slot={{ left: 0, top: 0, width: 100 }} index={0} z={10} onFocus={() => undefined} onExpand={() => onExpand(role)} dark static>
+              {role.body}
             </OsWindow>
-          ))}
+          </div>
+          <div className="thin-scroll space-y-6 overflow-y-auto pb-8 pr-1 lg:col-span-8">
+            {groups.map(({ g, items }) => (
+              <section key={g}>
+                <p className="label mb-2 flex items-center gap-3 text-grey-3">
+                  <span>{mode === 'nerd' ? `${g.toLowerCase().replace(' ', '-')}/` : g}</span>
+                  <span className="h-px flex-1 bg-paper/10" />
+                  <span>{String(items.length).padStart(2, '0')}</span>
+                </p>
+                <ul className={`grid gap-3 ${g === 'Industries' ? 'grid-cols-2 sm:grid-cols-4' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>
+                  {items.map((t) => (
+                    <li key={t.id} className="os-tile" style={{ animationDelay: `${160 + k++ * 55}ms` }}>
+                      <button
+                        type="button"
+                        onClick={() => onExpand({ id: t.id, title: `${t.group} / ${t.title}`, body: t.body })}
+                        className="group flex h-full w-full flex-col border border-paper/20 bg-ink-2 text-left transition-colors hover:border-paper/60"
+                      >
+                        <span className="flex items-center gap-2 border-b border-paper/10 bg-ink-3 px-2.5 py-1.5">
+                          <span className="flex gap-1" aria-hidden>
+                            <span className="h-1.5 w-1.5 border border-paper/40" />
+                            <span className="h-1.5 w-1.5 bg-paper/50" />
+                          </span>
+                          <span className="label min-w-0 flex-1 truncate normal-case tracking-normal text-grey-1">{t.title}</span>
+                          <span className="label text-grey-3 group-hover:text-paper" aria-hidden>
+                            ⤢
+                          </span>
+                        </span>
+                        {t.image && (
+                          <span className="block aspect-[16/9] overflow-hidden border-b border-paper/10">
+                            <Shot src={t.image} alt="" />
+                          </span>
+                        )}
+                        <span className="block space-y-1 p-2.5">
+                          {t.kicker && <span className="label block truncate text-grey-3">{t.kicker}</span>}
+                          {t.preview}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
         </div>
       )}
     </div>
   );
 }
-
-const PAPER_SLOTS: Slot[] = [
-  { left: 1, top: 6, width: 33 },
-  { left: 36, top: 3, width: 20 },
-  { left: 58, top: 6, width: 20 },
-  { left: 79, top: 3, width: 20 },
-  { left: 38, top: 47, width: 20 },
-  { left: 60, top: 50, width: 20 },
-  { left: 3, top: 52, width: 30 },
-];
 
 export default function ExperienceJourney() {
   const { mode } = useMode();
@@ -399,7 +421,7 @@ export default function ExperienceJourney() {
             Where I have worked.
           </h2>
           <p className="mt-4 max-w-lg text-[15px] text-grey-2">
-            Travel through the timeline. Drag any window to rearrange it, or pull it out to read in full.
+            Travel through the timeline. Open any box to read it in full.
           </p>
         </div>
       </div>

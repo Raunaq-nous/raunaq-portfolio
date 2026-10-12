@@ -133,3 +133,11 @@ IEEE Xplore page for each paper into `public/media/snapshots/` and commits them.
 
 Atlas nodes are derived from the data files above. Add extra nodes or links through `extraNodes`
 and `extraEdges` in `src/data/atlas.ts`; positions and coordinates are computed automatically.
+
+### Memories (photos in the Atlas)
+
+Photos are listed in `memories` in `src/data/assets.ts`, each tied to a role id from
+`src/data/battles.ts` (e.g. `parikshit`, `madcue`, `aranca`). Put the files in
+`public/media/memories/<role>/`. In the Atlas each photo floats beside its role and lifts from a
+flat photo into a depth map and then a 3D point cloud. Depth is estimated in the browser from the
+image itself, so no extra processing step is needed.

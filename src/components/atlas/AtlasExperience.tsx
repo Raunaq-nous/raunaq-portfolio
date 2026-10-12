@@ -16,6 +16,7 @@ const KIND_LABEL: Record<NodeKind, string> = {
   industry: 'Industry',
   idea: 'Idea',
   paper: 'Paper',
+  memory: 'Memory',
   model: '3D object',
   image: 'Image',
 };
@@ -27,6 +28,7 @@ const ACTION_LABEL: Record<NodeKind, string> = {
   industry: 'Read',
   idea: 'Read',
   paper: 'Read',
+  memory: 'View photo',
   model: 'Inspect object',
   image: 'View image',
 };
@@ -130,16 +132,24 @@ export default function AtlasExperience() {
 
   useEffect(() => {
     if (!touring) return;
+    // Each role is a stop; roles with photos get a second stop at their memory gallery.
+    const stops: { id: string; memories: boolean; role: number }[] = [];
+    expIds.forEach((id, r) => {
+      stops.push({ id, memories: false, role: r });
+      if (nodes.some((n) => n.memory && `exp:${n.owner}` === id)) stops.push({ id, memories: true, role: r });
+    });
     let i = 0;
     const step = () => {
-      if (i >= expIds.length) {
+      if (i >= stops.length) {
         setTouring(false);
         setTourIndex(-1);
         return;
       }
-      setTourIndex(i);
-      setSelected(expIds[i]);
-      engineRef.current?.focusExperience(expIds[i], 'street', i === 0 ? 1800 : 1600);
+      const s = stops[i];
+      setTourIndex(s.role);
+      setSelected(s.id);
+      if (s.memories) engineRef.current?.focusMemories(s.id, 1600);
+      else engineRef.current?.focusExperience(s.id, 'street', i === 0 ? 1800 : 1600);
       i++;
     };
     step();
@@ -279,7 +289,7 @@ export default function AtlasExperience() {
           <p className="label mb-2 text-grey-3 max-md:hidden">Segments</p>
           <ul className="pointer-events-auto flex max-w-full gap-2 overflow-x-auto md:inline-flex md:flex-col md:gap-0">
             {clusters.map((c) => {
-              const count = nodes.filter((n) => n.cluster === c.id).length;
+              const count = nodes.filter((n) => (c.id === 'memories' ? !!n.memory : n.cluster === c.id)).length;
               const on = segs.includes(c.id);
               return (
                 <li key={c.id}>
@@ -478,6 +488,24 @@ function ExperiencePanel({ expId, onClose, onPick, onOpen }: { expId: string; on
                 </button>
               </li>
             ))}
+          </ul>
+        </section>
+      )}
+
+      {o.memories.some((m) => m.kind === 'memory') && (
+        <section className="mt-8">
+          <p className="label mb-2 text-grey-3">Memories / {String(o.memories.filter((m) => m.kind === 'memory').length).padStart(2, '0')}</p>
+          <ul className="grid grid-cols-2 gap-3">
+            {o.memories
+              .filter((m) => m.kind === 'memory')
+              .map((m) => (
+                <li key={m.id}>
+                  <button type="button" onClick={() => onPick(m.id)} className="group block w-full text-left">
+                    <Thumb src={m.thumb} label="Photo" />
+                    <span className="mt-1.5 line-clamp-2 block text-[12px] group-hover:underline">{m.title}</span>
+                  </button>
+                </li>
+              ))}
           </ul>
         </section>
       )}
@@ -734,6 +762,16 @@ function Reader({ node, onClose, onPick }: { node: AtlasNode; onClose: () => voi
           </p>
           <div className="lg:col-span-8">
             <h2 className="headline text-[clamp(36px,5vw,80px)]">{node.title}</h2>
+
+            {node.memory && (
+              <figure className="mt-12">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={asset(node.memory.src)} alt={node.memory.caption} className="w-full max-w-3xl border border-paper/15 grayscale" />
+                <figcaption className="label mt-3 text-grey-3">
+                  {node.memory.caption} / {node.memory.year}
+                </figcaption>
+              </figure>
+            )}
 
             {node.image && (
               <figure className="mt-12">

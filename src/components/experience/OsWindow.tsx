@@ -21,6 +21,7 @@ export default function OsWindow({
   onFocus,
   onExpand,
   dark = false,
+  static: isStatic = false,
   children,
 }: {
   title: string;
@@ -31,6 +32,8 @@ export default function OsWindow({
   onFocus: () => void;
   onExpand: () => void;
   dark?: boolean;
+  /** Static windows sit in normal flow and cannot be dragged. */
+  static?: boolean;
   children: ReactNode;
 }) {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -38,7 +41,7 @@ export default function OsWindow({
 
   const down = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
-    if (window.matchMedia('(max-width: 1023px)').matches) return;
+    if (isStatic || window.matchMedia('(max-width: 1023px)').matches) return;
     onFocus();
     drag.current = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -54,7 +57,7 @@ export default function OsWindow({
 
   return (
     <section
-      className="os-window relative w-full lg:absolute"
+      className={`os-window relative w-full ${isStatic ? "" : "lg:absolute"}`}
       style={
         {
           '--l': `${slot.left}%`,
@@ -88,7 +91,7 @@ export default function OsWindow({
             ⤢
           </button>
         </header>
-        <div className="thin-scroll max-h-[46vh] overflow-y-auto p-4 text-[13px] leading-relaxed text-grey-1 lg:max-h-[28vh]">{children}</div>
+        <div className={`thin-scroll max-h-[46vh] overflow-y-auto p-4 text-[13px] leading-relaxed text-grey-1 ${isStatic ? 'lg:max-h-[62vh]' : 'lg:max-h-[28vh]'}`}>{children}</div>
       </div>
     </section>
   );

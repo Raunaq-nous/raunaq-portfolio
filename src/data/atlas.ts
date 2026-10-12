@@ -11,10 +11,10 @@ import { battles, type Battle } from './battles';
 import { projects } from './projects';
 import { papers, researchThreads } from './research';
 import { curiosities } from './curiosities';
-import { portrait, mediaFor, type ImageAsset } from './assets';
+import { portrait, mediaFor, memories, type ImageAsset, type Memory } from './assets';
 
-export type ClusterId = 'experience' | 'engagements' | 'builds' | 'industries' | 'research' | 'visual';
-export type NodeKind = 'experience' | 'engagement' | 'project' | 'industry' | 'paper' | 'idea' | 'model' | 'image';
+export type ClusterId = 'experience' | 'engagements' | 'builds' | 'industries' | 'research' | 'memories' | 'visual';
+export type NodeKind = 'experience' | 'engagement' | 'project' | 'industry' | 'paper' | 'idea' | 'memory' | 'model' | 'image';
 export type ModelShape = 'icosahedron' | 'torusknot' | 'lattice';
 export type Vec3 = [number, number, number];
 
@@ -43,6 +43,8 @@ export interface AtlasNode {
   model?: ModelShape;
   image?: ImageAsset;
   thumb?: string;
+  /** A photo lifted into 3D at this node's position. */
+  memory?: Memory;
   placeholder?: boolean;
   meta?: string;
   /** Experience this node belongs to, if any (drives the per-role overview). */
@@ -65,7 +67,8 @@ export const clusters: AtlasCluster[] = [
   { id: 'builds', code: 'S03', label: 'Builds', description: 'Tools and platforms, next to the role they came from.' },
   { id: 'industries', code: 'S04', label: 'Industries', description: 'Sectors worked across, floating above the roles that touched them.' },
   { id: 'research', code: 'S05', label: 'Research', description: 'Papers, open research threads and curiosities.' },
-  { id: 'visual', code: 'S06', label: 'Visual archive', description: 'Images and objects. Mostly placeholders for now.' },
+  { id: 'memories', code: 'S06', label: 'Memories', description: 'Photos left where they happened, lifted from 2D into 3D.' },
+  { id: 'visual', code: 'S07', label: 'Visual archive', description: 'Images and objects. Mostly placeholders for now.' },
 ];
 
 // ---------------------------------------------------------------- layout helpers
@@ -202,8 +205,24 @@ industryRoles.forEach((roles, ind) => {
   });
 });
 
+// Memory galleries: photos float in a staggered wall beside their role, facing the street.
+const galleryCount = new Map<string, number>();
+function galleryPos(role: string, j: number): Vec3 {
+  const t = towerPos.get(role)!;
+  const side = Math.sign(t.z);
+  const col = j % 3;
+  const row = Math.floor(j / 3);
+  galleryCount.set(role, Math.max(galleryCount.get(role) ?? 0, j + 1));
+  return [round(t.x - 8 + col * 8 + (row % 2) * 4), round(t.h + 5 + row * 6.2 + (col % 2) * 1.4), round(side * (STREET_HALF_WIDTH + 12 + (col % 2) * 2.5))];
+}
+export const galleryCenter = (role: string): Vec3 | null => {
+  const n = galleryCount.get(role);
+  if (!n) return null;
+  const t = towerPos.get(role)!;
+  return [t.x, t.h + 5 + Math.floor((n - 1) / 3) * 3.1, Math.sign(t.z) * (STREET_HALF_WIDTH + 13)];
+};
+
 // Research: papers by the satellite tower, ideas and curiosities near the builds.
-const sat = towerPos.get('parikshit')!;
 papers.forEach((p, j) => {
   drafts.push({
     id: `paper:${p.id}`,
@@ -215,9 +234,10 @@ papers.forEach((p, j) => {
     meta: `${p.venue} / ${p.year}${p.leadAuthor ? ' / lead author' : ''}`,
     links: [{ label: 'Read the paper on IEEE Xplore', url: p.url }],
     thumb: `/media/snapshots/paper-${p.id}.jpg`,
+    memory: memories.find((m) => m.id === `paper-${p.id}`),
     owner: 'parikshit',
     year: Number(p.year),
-    position: [round(sat.x - 6 + j * 3.6), round(2 + j * 0.6), round(Math.sign(sat.z) * (STREET_HALF_WIDTH + 13))],
+    position: galleryPos('parikshit', j),
   });
 });
 const ideaDrafts: Draft[] = [
@@ -257,6 +277,31 @@ const visualBase: Vec3 = [xForYear(2013) - 10, 6, 0];
   { id: 'visual:object-03', kind: 'model' as const, title: 'Object 03: lattice study', summary: 'Placeholder geometry. Replace with a real model when one is ready.', model: 'lattice' as const, placeholder: true, meta: '3D object / placeholder' },
 ].forEach((v, j) => drafts.push({ ...v, cluster: 'visual', position: [visualBase[0] - (j % 2) * 3.5, visualBase[1] + Math.floor(j / 2) * 3.5, visualBase[2] + ((j % 2) - 0.5) * 4] }));
 
+// Photos that are not papers become memory nodes in their role's gallery.
+const paperMemoryIds = new Set(papers.map((p) => `paper-${p.id}`));
+const memByRole = new Map<string, number>();
+memories
+  .filter((m) => !paperMemoryIds.has(m.id) && towerPos.has(m.role))
+  .forEach((m) => {
+    const offset = m.role === 'parikshit' ? papers.length : 0;
+    const j = (memByRole.get(m.role) ?? 0) + offset;
+    memByRole.set(m.role, (memByRole.get(m.role) ?? 0) + 1);
+    drafts.push({
+      id: `mem:${m.id}`,
+      cluster: 'memories',
+      kind: 'memory',
+      title: m.caption,
+      summary: m.caption,
+      meta: `Memory / ${m.year}`,
+      memory: m,
+      thumb: m.src,
+      owner: m.role,
+      year: m.year,
+      links: m.url ? [{ label: 'Open source', url: m.url }] : undefined,
+      position: galleryPos(m.role, j),
+    });
+  });
+
 const extraNodes: Draft[] = [];
 
 export const nodes: AtlasNode[] = [...drafts, ...extraNodes].map((n, i) => ({ ...n, code: `N-${String(i + 1).padStart(3, '0')}` }));
@@ -269,7 +314,7 @@ const derived: AtlasEdge[] = [];
 nodes.forEach((n) => {
   if (n.kind === 'engagement' && n.owner) derived.push({ from: `exp:${n.owner}`, to: n.id, kind: 'contains' });
   if (n.kind === 'project' && n.owner) derived.push({ from: `exp:${n.owner}`, to: n.id, kind: 'built' });
-  if (n.kind === 'paper' && n.owner) derived.push({ from: `exp:${n.owner}`, to: n.id, kind: 'contains' });
+  if ((n.kind === 'paper' || n.kind === 'memory') && n.owner) derived.push({ from: `exp:${n.owner}`, to: n.id, kind: 'contains' });
 });
 industryRoles.forEach((roles, ind) => roles.forEach((r) => derived.push({ from: `exp:${r}`, to: `ind:${ind}`, kind: 'sector' })));
 
@@ -326,6 +371,7 @@ export function overviewOf(expId: string) {
     builds: rel.filter((n) => n.kind === 'project'),
     industries: rel.filter((n) => n.kind === 'industry'),
     papers: rel.filter((n) => n.kind === 'paper'),
+    memories: rel.filter((n) => n.kind === 'memory' || (n.kind === 'paper' && n.memory)),
   };
 }
 

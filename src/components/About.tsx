@@ -1,11 +1,8 @@
 'use client';
 
-import PixelImage from './PixelImage';
-import LazyMount from './LazyMount';
 import Reveal from './Reveal';
 import SectionLabel from './SectionLabel';
 import { useMode } from './ModeContext';
-import { portrait } from '@/data/assets';
 import { intro, site } from '@/data/site';
 import { skillGroups, skillSections } from '@/data/skills';
 
@@ -17,28 +14,21 @@ export default function About() {
   return (
     <section id="about" className="wrap pt-40 lg:pt-56" aria-labelledby="about-title">
       <div className="grid gap-12 lg:grid-cols-12 lg:gap-6">
-        <Reveal className="lg:col-span-4">
-          <SectionLabel n="05" calm="About" path="about" cmd="cat about.md" className="mb-6" />
-          <div className="relative aspect-[4/5]">
-            <LazyMount>
-              <PixelImage
-                src={portrait.src}
-                alt={portrait.alt}
-                mode="distort"
-                focus={portrait.focus}
-                monochrome={1}
-                annotate="none"
-                naturalSize={[portrait.width, portrait.height]}
-              />
-            </LazyMount>
-          </div>
-          <p className="label mt-3 flex justify-between text-grey-3">
-            <span>Field 02</span>
-            <span>{site.location}</span>
-          </p>
+        <Reveal className="lg:col-span-3">
+          <SectionLabel n="05" calm="About" path="about" cmd="cat about.md" />
+          <dl className="mt-8 space-y-6 text-[14px]">
+            <div>
+              <dt className="label mb-1 text-grey-3">Based</dt>
+              <dd className="text-grey-1">{site.location}</dd>
+            </div>
+            <div>
+              <dt className="label mb-1 text-grey-3">Education</dt>
+              <dd className="text-grey-1">{site.education}</dd>
+            </div>
+          </dl>
         </Reveal>
 
-        <div key={mode} className="mode-fade lg:col-span-7 lg:col-start-6">
+        <div key={mode} className="mode-fade lg:col-span-8 lg:col-start-5">
           <Reveal>
             <h2 id="about-title" className="headline text-[clamp(32px,4vw,64px)]">
               {bio[0]}
@@ -113,16 +103,6 @@ export default function About() {
             </Reveal>
           )}
 
-          <Reveal as="dl" className="mt-16 grid gap-x-6 gap-y-8 border-t rule pt-8 text-[14px] sm:grid-cols-2" delay={200}>
-            <div>
-              <dt className="label mb-2 text-grey-3">Based</dt>
-              <dd className="text-grey-1">{site.location}</dd>
-            </div>
-            <div>
-              <dt className="label mb-2 text-grey-3">Education</dt>
-              <dd className="text-grey-1">{site.education}</dd>
-            </div>
-          </Reveal>
         </div>
       </div>
     </section>
