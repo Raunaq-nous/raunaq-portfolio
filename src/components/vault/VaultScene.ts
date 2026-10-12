@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { VaultBuild } from '@/data/aiBuilds';
+import { videoSlots } from '@/data/assets';
 import { asset } from '@/lib/asset';
 import { drawIndustrySheet } from '@/lib/industrySheet';
 import { estimateDepth, sheetDepth, shading } from '../atlas/MemoryLayer';
@@ -12,7 +13,7 @@ import { estimateDepth, sheetDepth, shading } from '../atlas/MemoryLayer';
  * interface, application, data, AI, delivery.
  */
 
-export type VaultView = 'overview' | 'interface' | 'architecture';
+export type VaultView = 'overview' | 'interface' | 'architecture' | 'media';
 
 export interface StackGraph {
   source: string;
@@ -84,6 +85,8 @@ interface Room {
   graph?: THREE.Group;
   graphNodes: { id: string; label: string; layer: string; pos: THREE.Vector3; code: string; section: number }[];
   graphSections: { label: string; pos: THREE.Vector3; right: THREE.Vector3 }[];
+  media?: THREE.Group;
+  screens: { label: string; status: string; pos: THREE.Vector3; video?: HTMLVideoElement }[];
   lift: number;
   liftT: number;
   active: number;
@@ -176,7 +179,7 @@ export class VaultScene {
     hit.position.copy(centre);
     hit.userData.index = index;
     this.scene.add(hit);
-    this.rooms.push({ build, index, centre, frame, hit, cloudCols: 0, shot: 0, graphNodes: [], graphSections: [], lift: 0, liftT: 0, active: 0, fade: 1, fadeT: 1 });
+    this.rooms.push({ build, index, centre, frame, hit, cloudCols: 0, shot: 0, graphNodes: [], graphSections: [], screens: [], lift: 0, liftT: 0, active: 0, fade: 1, fadeT: 1 });
     const el = document.createElement('div');
     el.className = 'vault-label';
     el.innerHTML = `<b>${build.code}</b><span> ${build.project.name}</span>`;
@@ -472,6 +475,93 @@ export class VaultScene {
     ];
   }
 
+  // ---------------------------------------------------------------- videos on the left wall
+
+  private mediaLabels: HTMLDivElement[] = [];
+
+  /** Three screens on the room's left wall: walkthrough, product launch, demo. */
+  private buildMedia(r: Room) {
+    if (r.media) return;
+    const group = new THREE.Group();
+    const x = r.centre.x - W / 2 + 0.05;
+    const sw = 2.1;
+    const sh = 1.3;
+    const seg: number[] = [];
+    const noise: number[] = [];
+    const seeds: number[] = [];
+    r.screens = [];
+    videoSlots.forEach((slot, k) => {
+      const zc = r.centre.z + 2.5 - k * 2.5;
+      const yc = r.centre.y + 0.15;
+      const c = [
+        [zc - sw / 2, yc - sh / 2],
+        [zc + sw / 2, yc - sh / 2],
+        [zc + sw / 2, yc + sh / 2],
+        [zc - sw / 2, yc + sh / 2],
+      ];
+      for (let e = 0; e < 4; e++) seg.push(x, c[e][1], c[e][0], x, c[(e + 1) % 4][1], c[(e + 1) % 4][0]);
+      // Corner ticks, like a viewfinder.
+      c.forEach(([z, y], e) => {
+        const dz = e === 0 || e === 3 ? 0.18 : -0.18;
+        const dy = e < 2 ? 0.18 : -0.18;
+        seg.push(x + 0.02, y + dy * 0.2, z + dz * 0.2, x + 0.02, y + dy * 1.2, z + dz * 0.2);
+      });
+      const src = r.build.videos[slot.id];
+      let video: HTMLVideoElement | undefined;
+      if (src) {
+        video = document.createElement('video');
+        video.src = asset(src);
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.crossOrigin = 'anonymous';
+        video.play().catch(() => undefined);
+        const tex = new THREE.VideoTexture(video);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(sw - 0.08, sh - 0.08), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.92 }));
+        plane.position.set(x + 0.01, yc, zc);
+        plane.rotation.y = Math.PI / 2;
+        group.add(plane);
+      } else {
+        // Placeholder: static on the screen, waiting for a file.
+        for (let i = 0; i < 1400; i++) {
+          noise.push(x + 0.01, yc + (Math.random() - 0.5) * (sh - 0.1), zc + (Math.random() - 0.5) * (sw - 0.1));
+          seeds.push(Math.random());
+        }
+      }
+      r.screens.push({ label: `V${k + 1} / ${slot.label.toUpperCase()}`, status: src ? 'PLAYING / MUTED' : 'AWAITING FILE', pos: new THREE.Vector3(x, yc + sh / 2 + 0.12, zc + sw / 2), video });
+    });
+    const lg = new THREE.BufferGeometry();
+    lg.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
+    const lineMat = new THREE.LineBasicMaterial({ color: 0xe8eaf0, transparent: true, opacity: 0, depthWrite: false });
+    group.add(new THREE.LineSegments(lg, lineMat));
+    const ng = new THREE.BufferGeometry();
+    ng.setAttribute('position', new THREE.Float32BufferAttribute(noise.length ? noise : [0, 0, 0], 3));
+    ng.setAttribute('aSeed', new THREE.Float32BufferAttribute(seeds.length ? seeds : [0], 1));
+    const nm = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      uniforms: { uTime: { value: 0 }, uFade: { value: 0 }, uPx: { value: this.renderer.getPixelRatio() } },
+      vertexShader: `attribute float aSeed; uniform float uTime; uniform float uFade; uniform float uPx; varying float vA;
+        void main(){ float f = fract(sin(aSeed * 91.7 + floor(uTime * 14.0) * 12.9) * 4375.5); vA = uFade * f * 0.7;
+        vec4 mv = modelViewMatrix * vec4(position,1.0); gl_PointSize = clamp(14.0 * uPx / -mv.z, 1.0, 3.0); gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `varying float vA; void main(){ gl_FragColor = vec4(vec3(0.9), vA); }`,
+    });
+    group.add(new THREE.Points(ng, nm));
+    group.userData.noise = nm;
+    group.userData.line = lineMat;
+    this.scene.add(group);
+    r.media = group;
+    this.mediaLabels.forEach((el) => el.remove());
+    this.mediaLabels = r.screens.map((sc) => {
+      const el = document.createElement('div');
+      el.className = 'vault-gsec';
+      el.innerHTML = `${sc.label}<br><span style="opacity:.55">${sc.status}</span>`;
+      this.overlay.appendChild(el);
+      return el;
+    });
+  }
+
   // ---------------------------------------------------------------- navigation
 
   private flyTo(pos: THREE.Vector3, target: THREE.Vector3, dur = 1400) {
@@ -500,6 +590,7 @@ export class VaultScene {
     });
     if (r.cloudCols < 200) this.loadCloud(r, r.shot, this.lowPower ? 150 : 240);
     this.loadGraph(r);
+    this.buildMedia(r);
     this.setView('interface');
     this.autoArch = this.reduced ? 0 : performance.now() + 4200;
     this.cb.onEnter(index);
@@ -516,6 +607,11 @@ export class VaultScene {
       // Offset left so the room clears the panel on the left of the frame.
       const o = this.width > 900 ? -1.6 : 0;
       this.flyTo(new THREE.Vector3(c.x + o + 0.4, c.y + 0.35, c.z + D / 2 + 5.4), new THREE.Vector3(c.x + o, c.y, c.z + D / 2 - 1.4));
+    } else if (v === 'media') {
+      r.fadeT = 0.06;
+      // Turn to face the left wall from the right side of the room.
+      const o = this.width > 900 ? 1.3 : 0;
+      this.flyTo(new THREE.Vector3(c.x + W / 2 + 2.4, c.y + 0.25, c.z - 0.2), new THREE.Vector3(c.x - W / 2, c.y + 0.1, c.z + o), 1700);
     } else {
       r.fadeT = 0.06;
       const o = this.width > 900 ? -1.5 : 0;
@@ -544,7 +640,21 @@ export class VaultScene {
     });
     this.graphLabels.forEach((el) => el.remove());
     this.graphLabels = [];
+    this.mediaLabels.forEach((el) => el.remove());
+    this.mediaLabels = [];
     this.rooms.forEach((o) => {
+      if (o.media) {
+        o.screens.forEach((sc) => sc.video?.pause());
+        this.scene.remove(o.media);
+        o.media.traverse((x) => {
+          const m = x as THREE.Mesh;
+          m.geometry?.dispose();
+          const mat = m.material as THREE.MeshBasicMaterial | undefined;
+          mat?.map?.dispose();
+          mat?.dispose?.();
+        });
+        o.media = undefined;
+      }
       if (o.graph) {
         this.scene.remove(o.graph);
         o.graph.traverse((x) => {
@@ -656,6 +766,13 @@ export class VaultScene {
         u.uTime.value = this.time;
       }
       (r.frame.material as THREE.LineBasicMaterial).opacity = (0.22 + 0.5 * r.active) * (this.entered !== null && r.index !== this.entered ? 0.35 : 1);
+      if (r.media) {
+        const nm = r.media.userData.noise as THREE.ShaderMaterial;
+        const target = this.view === 'media' ? 1 : this.view === 'overview' ? 0 : 0.25;
+        nm.uniforms.uFade.value += (target - nm.uniforms.uFade.value) * k;
+        nm.uniforms.uTime.value = this.time;
+        (r.media.userData.line as THREE.LineBasicMaterial).opacity = 0.55 * nm.uniforms.uFade.value;
+      }
       if (r.graph) {
         const m = r.graph.userData.mat as THREE.ShaderMaterial;
         const target = this.view === 'architecture' ? 1 : 0.18;
@@ -697,6 +814,14 @@ export class VaultScene {
         el.style.display = showGraph && s.ok ? 'block' : 'none';
         if (showGraph) el.style.transform = `translate3d(${Math.round(s.x)}px, ${Math.round(s.y)}px, 0)`;
       });
+      const showMedia = this.view === 'media' && (!this.tween || this.tween.t > 0.75);
+      r.screens.forEach((sc, i) => {
+        const el = this.mediaLabels[i];
+        if (!el) return;
+        const s = this.toScreen(sc.pos);
+        el.style.display = showMedia && s.ok ? 'block' : 'none';
+        if (showMedia) el.style.transform = `translate3d(${Math.round(s.x)}px, ${Math.round(s.y - 22)}px, 0)`;
+      });
       r.graphNodes.forEach((n) => {
         const el = this.graphLabels[gi++];
         if (!el) return;
@@ -729,6 +854,8 @@ export class VaultScene {
     this.renderer.dispose();
     this.labels.forEach((el) => el.remove());
     this.graphLabels.forEach((el) => el.remove());
+    this.mediaLabels.forEach((el) => el.remove());
+    this.rooms.forEach((r) => r.screens.forEach((sc) => sc.video?.pause()));
     dom.remove();
   }
 }

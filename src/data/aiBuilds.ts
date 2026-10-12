@@ -2,7 +2,7 @@
 // into two wings. Work builds came out of consulting problems or professional ones; fun builds
 // are the ones made for the joy of it.
 import { projects, type Project } from './projects';
-import { mediaFor } from './assets';
+import { buildVideos, mediaFor, type BuildVideoKind } from './assets';
 
 export type Wing = 'work' | 'fun';
 
@@ -12,6 +12,8 @@ export interface VaultBuild {
   code: string;
   /** Interface captures, when there are any. */
   shots: { src: string; alt: string; width: number; height: number }[];
+  /** Video files by slot; missing slots are placeholders. */
+  videos: Partial<Record<BuildVideoKind, string>>;
 }
 
 const FUN = new Set(['hitman', 'momentum-os', 'maate']);
@@ -25,7 +27,7 @@ export const vaultBuilds: VaultBuild[] = ORDER.map((slug) => projects.find((p) =
       .screenshots.map((s) => s.asset)
       .filter((a): a is NonNullable<typeof a> => !!a)
       .map((a) => ({ src: a.src, alt: a.alt, width: a.width, height: a.height }));
-    return { project: p, wing, code: `${wing === 'fun' ? 'F' : 'B'}${String(i + 1).padStart(2, '0')}`, shots };
+    return { project: p, wing, code: `${wing === 'fun' ? 'F' : 'B'}${String(i + 1).padStart(2, '0')}`, shots, videos: buildVideos[p.slug] ?? {} };
   });
 
 export const wings: { id: Wing; label: string; blurb: string }[] = [

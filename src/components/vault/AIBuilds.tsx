@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import SectionLabel from '../SectionLabel';
 import { useMode } from '../ModeContext';
 import { vaultBuilds, wings, type Wing } from '@/data/aiBuilds';
+import { videoSlots } from '@/data/assets';
 import { projects, splitSystemLabel } from '@/data/projects';
 import { asset } from '@/lib/asset';
 import { hasWebGL, useReducedMotion } from '@/lib/motion';
@@ -88,7 +89,7 @@ export default function AIBuilds() {
             AI builds
           </h2>
           <p className="mt-5 max-w-xl text-[16px] leading-snug text-grey-1">
-            {vaultBuilds.length} rooms. Each one holds a build: its interface as a point cloud, and its architecture by layer, from interface to delivery, with the AI features it runs. Pick a room to walk in.
+            {vaultBuilds.length} rooms. Each one holds a build: its interface as a point cloud, its codebase by layer from interface to delivery with the AI features it runs, and a wall of videos: walkthrough, product launch, demo. Pick a room to walk in.
           </p>
         </div>
       </div>
@@ -160,14 +161,14 @@ export default function AIBuilds() {
                 </div>
 
                 <div className="flex gap-1.5">
-                  {(['interface', 'architecture'] as const).map((v) => (
+                  {(['interface', 'architecture', 'media'] as const).map((v) => (
                     <button
                       key={v}
                       type="button"
                       onClick={() => engineRef.current?.setView(v)}
                       className={`flex-1 border px-2 py-1.5 tracking-[0.08em] transition-colors ${view === v ? 'border-paper bg-paper text-ink' : 'border-paper/35 text-paper/80 hover:border-paper'}`}
                     >
-                      {v === 'interface' ? 'INTERFACE' : 'ARCHITECTURE'}
+                      {v === 'interface' ? 'INTERFACE' : v === 'architecture' ? 'CODEBASE' : 'VIDEOS'}
                     </button>
                   ))}
                 </div>
@@ -195,6 +196,25 @@ export default function AIBuilds() {
                   </div>
                 )}
                 {!b.shots.length && <p className="border-t border-paper/15 pt-3 text-paper/45">NO INTERFACE CAPTURE YET / SHOWING THE SPEC SHEET</p>}
+
+                <div className="border-t border-paper/15 pt-3">
+                  <p className="text-paper/50">VIDEOS / {videoSlots.filter((v) => b.videos[v.id]).length} OF {videoSlots.length}</p>
+                  <ul className="mt-2 space-y-2">
+                    {videoSlots.map((v, k) => {
+                      const src = b.videos[v.id];
+                      return (
+                        <li key={v.id}>
+                          <button type="button" onClick={() => engineRef.current?.setView('media')} className="grid w-full grid-cols-[28px_1fr_auto] items-baseline gap-2 text-left hover:text-paper">
+                            <span className="text-paper/45">V{k + 1}</span>
+                            <span className="text-paper/85">{v.label}</span>
+                            <span className={src ? 'text-paper' : 'text-paper/40'}>{src ? 'READY' : 'AWAITING FILE'}</span>
+                          </button>
+                          {src && view === 'media' && <video src={asset(src)} controls playsInline className="mt-2 w-full border border-paper/25" />}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
 
                 {g && (
                   <div className="border-t border-paper/15 pt-3">

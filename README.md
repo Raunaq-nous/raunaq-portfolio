@@ -161,4 +161,5 @@ Add a model to a family there and it appears in the brain with a code and links.
 
 `src/data/aiBuilds.ts` decides which builds get a room and which wing (AI builds or fun builds).
 Each room shows the build's interface captures as a point cloud (or its spec sheet when there is
-no capture) and its `stack.json` architecture graph by layer.
+no capture), its `stack.json` codebase graph by layer, and three video screens (walkthrough, product
+launch, demo). Add videos to `buildVideos` in `src/data/assets.ts`; empty screens show static.

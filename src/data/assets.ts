@@ -155,3 +155,18 @@ export const memories: Memory[] = [
   { id: 'madcue-archive', role: 'madcue', src: '/media/memories/madcue/archive.jpg', alt: 'Web archive captures of madcue by year, 2014 to 2020', year: 2018, width: 1223, height: 1014 },
   { id: 'paper-sil-rig', role: 'parikshit', src: '/media/snapshots/paper-sil-rig.jpg', alt: 'IEEE Aerospace Conference 2016: software in the loop test set-up', year: 2016, width: 1400, height: 1018, url: 'https://ieeexplore.ieee.org/document/7500603' },
 ];
+
+// ---------------------------------------------------------------- build videos
+// Three video screens hang on the left wall of every room in the AI builds vault. Add a file under
+// public/media/projects/<slug>/ and list it here; empty slots show as placeholders.
+export type BuildVideoKind = 'walkthrough' | 'launch' | 'demo';
+
+export const videoSlots: { id: BuildVideoKind; label: string; hint: string }[] = [
+  { id: 'walkthrough', label: 'Walkthrough', hint: 'Me, walking through the build' },
+  { id: 'launch', label: 'Product launch', hint: 'The launch film' },
+  { id: 'demo', label: 'Demo', hint: 'The product, end to end' },
+];
+
+export const buildVideos: Record<string, Partial<Record<BuildVideoKind, string>>> = {
+  // 'cartograph': { demo: '/media/projects/cartograph/demo.mp4' },
+};
