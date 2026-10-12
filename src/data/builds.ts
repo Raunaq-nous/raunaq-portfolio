@@ -244,7 +244,7 @@ Compresses what used to be a 3-4 week survey cycle into hours.`,
   {
     id: 'parents-health',
     origin: 'independent',
-    name: 'Kavach',
+    name: 'Maate',
     status: 'LIVE',
     type: 'TOOL',
     tags: ['Next.js', 'NestJS', 'OCR', 'AI summaries', 'Preventive care'],

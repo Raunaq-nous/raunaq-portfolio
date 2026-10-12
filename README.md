@@ -149,3 +149,16 @@ then papers. Scenes come from `keyProjects` in `src/data/battles.ts`: each proje
 `problem` and `geos` are drawn as a spec sheet, lifted into a point cloud, and shown in the
 readout beside it. `geos` are keys into `places` in `src/data/geo.ts`, which also drive the
 experience globes. A role with no key projects gets a single scene from its own description.
+
+### Hero knowledge map
+
+The hero brain is built in `src/data/brain.ts` from the site's own data (roles, industries,
+methods, stack, builds, curiosities, research threads) plus the mental models in
+`src/data/mentalModels.ts`. Left hemisphere: logic and work. Right hemisphere: curiosity and craft.
+Add a model to a family there and it appears in the brain with a code and links.
+
+### AI builds vault
+
+`src/data/aiBuilds.ts` decides which builds get a room and which wing (AI builds or fun builds).
+Each room shows the build's interface captures as a point cloud (or its spec sheet when there is
+no capture) and its `stack.json` architecture graph by layer.

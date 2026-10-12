@@ -19,7 +19,7 @@ const meta: Record<string, ProjectMeta> = {
   survey: { slug: 'pulse', category: 'Research automation', featured: 3 },
   'solar-benchmark': { slug: 'yardstick', category: 'Benchmarking' },
   proposal: { slug: 'first-draft', category: 'Document generation' },
-  'parents-health': { slug: 'kavach', category: 'Preventive health' },
+  'parents-health': { slug: 'maate', category: 'Preventive health' },
   hitman: { slug: 'hitman', category: 'Sport and prediction' },
   'career-os': { slug: 'career-os', category: 'Careers and simulation' },
   'bhoomi-setu': { slug: 'bhoomi-setu', category: 'Land records and evidence' },

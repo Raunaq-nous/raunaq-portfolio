@@ -59,7 +59,7 @@ const SHOT_H = 1000;
 
 const captures: Record<string, string[]> = {
   'bhoomi-setu': ['01-home', '02-case', '03-verification', '04-documents', '05-survey-record', '06-next-action'],
-  kavach: ['01-dashboard', '02-family', '03-extraction-review', '04-upload', '05-permissions', '06-reminders'],
+  maate: ['01-dashboard', '02-family', '03-extraction-review', '04-upload', '05-permissions', '06-reminders'],
   hitman: ['01-home', '02-schedule', '03-standings', '04-squads', '05-leagues'],
   'momentum-os': ['01-home-base', '02-dashboard', '03-analytics', '04-focus', '05-systems', '06-achievements'],
   cartograph: ['01-portfolio', '02-process', '03-provenance'],

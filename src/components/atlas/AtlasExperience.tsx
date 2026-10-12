@@ -356,7 +356,7 @@ export default function AtlasExperience() {
           <div className="label pointer-events-auto flex flex-col items-end gap-2 text-right">
             <span ref={camRef} className="text-grey-3 max-md:hidden" aria-hidden />
             <span className="flex gap-4 text-grey-2">
-              <Link href="/#work" className="link-quiet hover:text-paper">Work</Link>
+              <Link href="/#builds" className="link-quiet hover:text-paper">AI builds</Link>
               <Link href="/#experience" className="link-quiet hover:text-paper">Experience</Link>
               <Link href="/#contact" className="link-quiet hover:text-paper">Contact</Link>
             </span>

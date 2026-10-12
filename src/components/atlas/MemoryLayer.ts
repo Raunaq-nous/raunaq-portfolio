@@ -158,7 +158,7 @@ function blur(src: Float32Array, w: number, h: number, r: number) {
 }
 
 /** 0..1 nearness (1 = near) estimated from the image itself. Heuristic, not a learned model. */
-function estimateDepth(lum: Float32Array, w: number, h: number): Float32Array {
+export function estimateDepth(lum: Float32Array, w: number, h: number): Float32Array {
   const coarse = blur(lum, w, h, Math.max(3, Math.round(w / 28)));
   const fine = blur(lum, w, h, 1);
   const detail = new Float32Array(lum.length);
@@ -188,7 +188,7 @@ function estimateDepth(lum: Float32Array, w: number, h: number): Float32Array {
 const mix01 = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /** Height for a spec sheet: drawn lines and fills stand proud of the paper, softened. */
-function sheetDepth(lum: Float32Array, w: number, h: number): Float32Array {
+export function sheetDepth(lum: Float32Array, w: number, h: number): Float32Array {
   const soft = blur(lum, w, h, 2);
   const wide = blur(lum, w, h, Math.max(4, Math.round(w / 18)));
   const out = new Float32Array(lum.length);
@@ -200,7 +200,7 @@ function sheetDepth(lum: Float32Array, w: number, h: number): Float32Array {
  * Soft natural light baked per pixel: normals from the depth gradient, a key light from the upper
  * left and front, wrap lighting so nothing goes black, and a little cavity darkening in hollows.
  */
-function shading(depth: Float32Array, w: number, h: number, relief: number): Float32Array {
+export function shading(depth: Float32Array, w: number, h: number, relief: number): Float32Array {
   const out = new Float32Array(depth.length);
   const big = blur(depth, w, h, Math.max(3, Math.round(w / 30)));
   const k = 9 * relief;
