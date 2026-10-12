@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { MemoryLayer } from './MemoryLayer';
+import { battles } from '@/data/battles';
 import {
-  galleryCenter,
-  galleryRows,
   clusters,
   edges,
   nodes,
@@ -25,6 +24,8 @@ export interface EngineCallbacks {
   onHover: (h: { node: string | null; x: number; y: number }) => void;
   onPickNode: (id: string) => void;
   onPickEmpty: () => void;
+  /** A moment started or finished playing. */
+  onMoment?: (m: { id: string; stage: number; index: number; total: number } | null) => void;
 }
 
 export interface EngineOptions {
@@ -190,6 +191,10 @@ export class AtlasEngine {
   private towerBoxes = new Map<string, { mesh: THREE.LineSegments; box: THREE.Box3 }>();
   private dropLine!: THREE.Line;
   private memoryLayer!: MemoryLayer;
+  private momentTimers: number[] = [];
+  private time = 0;
+  private momentLabel!: HTMLDivElement;
+  private playingMoment: string | null = null;
 
   private assemble = 0;
   private segLevels = new Float32Array(7).fill(1);
@@ -268,6 +273,7 @@ export class AtlasEngine {
     this.bboxLabel.className = 'atlas-bbox-label';
     this.bboxEl.appendChild(this.bboxLabel);
     this.selTag = this.makeEl('atlas-seltag');
+    this.momentLabel = this.makeEl('atlas-momentlabel');
     nodes.forEach((n) => {
       const el = this.makeEl(n.kind === 'experience' ? 'atlas-explabel' : 'atlas-nlabel');
       el.innerHTML =
@@ -615,18 +621,97 @@ export class AtlasEngine {
     this.memoryLayer?.setLifted(lifted);
   }
 
-  /** Frame the photo gallery of a role. Returns false when the role has no memories. */
-  focusMemories(expId: string, duration = 1500) {
+  /** Plays a role's moments in sequence, like walking through a memory palace. */
+  focusMemories(expId: string, _duration = 1500, onDone?: () => void) {
     const role = expId.replace('exp:', '');
-    const c = galleryCenter(role);
-    if (!c) return false;
+    // Scenes first, then documents and papers.
+    const ids = nodes
+      .filter((n) => n.memory && n.owner === role && this.memoryLayer.has(n.id))
+      .sort((a, b) => (a.kind === 'paper' ? 1 : 0) - (b.kind === 'paper' ? 1 : 0))
+      .map((n) => n.id);
+    if (!ids.length) return false;
     this.activeExp = expId;
     this.selected = expId;
     this.refreshStates();
-    const target = new THREE.Vector3(...c);
-    const side = Math.sign(c[2]);
-    const back = 22 + Math.max(0, galleryRows(role) - 1) * 9;
-    this.flyTo(new THREE.Vector3(c[0] - 4, c[1] + 1.5, c[2] - side * back), target, duration);
+    this.playMoments(ids, onDone);
+    return true;
+  }
+
+  /** Total time one moment takes to play, in ms. */
+  static MOMENT_MS = 7200;
+
+  playMoments(ids: string[], onDone?: () => void) {
+    this.stopMoments();
+    const reduced = this.opts.reduced;
+    let at = 0;
+    ids.forEach((id, index) => {
+      const v = this.memoryLayer.view(id)!;
+      const total = ids.length;
+      const at0 = at;
+      const step = (ms: number, fn: () => void) => this.momentTimers.push(window.setTimeout(fn, at0 + ms));
+      step(0, () => {
+        this.playingMoment = id;
+        this.memoryLayer.stage(id, 0);
+        // Fly to the spot the photo was taken from, looking at it.
+        // Tall photos need more distance to fit the frame.
+        const back = 4.5 + Math.max(0, v.planeH / v.planeW - 0.62) * 14;
+        this.flyTo(v.origin.clone().addScaledVector(v.forward, -back).addScaledVector(v.up, 0.2), v.centre, reduced ? 0 : 1600);
+        this.cb.onMoment?.({ id, stage: 0, index, total });
+      });
+      step(1500, () => {
+        this.memoryLayer.stage(id, 1);
+        this.cb.onMoment?.({ id, stage: 1, index, total });
+      });
+      step(2700, () => {
+        this.memoryLayer.stage(id, 2);
+        this.cb.onMoment?.({ id, stage: 2, index, total });
+      });
+      step(3700, () => {
+        this.memoryLayer.stage(id, 3);
+        this.cb.onMoment?.({ id, stage: 3, index, total });
+        // Step sideways and back so the depth reveals itself.
+        const side = index % 2 ? -1 : 1;
+        const pos = v.origin
+          .clone()
+          .addScaledVector(v.forward, -4)
+          .addScaledVector(v.right, side * 6.5)
+          .addScaledVector(v.up, 2.4);
+        this.flyTo(pos, v.centre.clone().addScaledVector(v.forward, 3), reduced ? 0 : 3000);
+      });
+      step(5600, () => {
+        this.memoryLayer.stage(id, 4);
+        this.cb.onMoment?.({ id, stage: 4, index, total });
+      });
+      at += Math.round(AtlasEngine.MOMENT_MS * (reduced ? 0.6 : 1));
+    });
+    this.momentTimers.push(
+      window.setTimeout(() => {
+        this.playingMoment = null;
+        this.memoryLayer.stage(null, 0);
+        this.cb.onMoment?.(null);
+        onDone?.();
+      }, at),
+    );
+  }
+
+  stopMoments() {
+    this.momentTimers.forEach((t) => window.clearTimeout(t));
+    this.momentTimers = [];
+    if (this.playingMoment) {
+      this.playingMoment = null;
+      this.memoryLayer.stage(null, 0);
+      this.cb.onMoment?.(null);
+    }
+  }
+
+  /** Plays a single moment. */
+  playMoment(id: string) {
+    if (!this.memoryLayer.has(id)) return false;
+    const n = nodes.find((x) => x.id === id);
+    if (n?.owner) this.activeExp = `exp:${n.owner}`;
+    this.selected = id;
+    this.refreshStates();
+    this.playMoments([id]);
     return true;
   }
 
@@ -642,6 +727,7 @@ export class AtlasEngine {
 
   /** Focus a role. `view` 'overview' frames the tower; 'street' stands in the street before it. */
   focusExperience(expId: string | null, view: 'overview' | 'street' = 'overview', duration = 1300) {
+    this.stopMoments();
     this.activeExp = expId;
     this.selected = expId;
     this.refreshStates();
@@ -664,6 +750,7 @@ export class AtlasEngine {
   selectNode(id: string | null, fly = true) {
     const n = id ? nodes.find((x) => x.id === id) : null;
     if (n?.kind === 'experience') return this.focusExperience(n.id, 'overview');
+    if (n && n.memory && fly && this.playMoment(n.id)) return;
     this.selected = id;
     if (n && n.owner) this.activeExp = `exp:${n.owner}`;
     else if (n) this.activeExp = null;
@@ -677,6 +764,7 @@ export class AtlasEngine {
   }
 
   resetView() {
+    this.stopMoments();
     this.activeExp = null;
     this.selected = null;
     this.refreshStates();
@@ -710,6 +798,7 @@ export class AtlasEngine {
 
   private cancelTween = () => {
     this.tween = null;
+    this.stopMoments();
   };
 
   // --------------------------------------------------------------- pointer
@@ -812,7 +901,8 @@ export class AtlasEngine {
     const k = Math.min(1, dt * 5);
     for (let i = 0; i < 7; i++) this.segLevels[i] += (this.segTarget[i] - this.segLevels[i]) * k;
     const focal = (this.height * this.renderer.getPixelRatio()) / 2 / Math.tan((this.camera.fov * Math.PI) / 360);
-    this.memoryLayer.update(dt, this.assemble, this.opts.reduced, focal);
+    this.time += dt;
+    this.memoryLayer.update(dt, this.assemble, this.opts.reduced, focal, this.time);
     const u = this.particleMat.uniforms;
     u.uOwner.value = this.ownerActive;
     u.uHoverOwner.value = this.ownerHover;
@@ -955,6 +1045,27 @@ export class AtlasEngine {
       el.style.transform = `translate3d(${Math.round((this.tmp.x * 0.5 + 0.5) * this.width - 14)}px, ${Math.round((-this.tmp.y * 0.5 + 0.5) * this.height + 4)}px, 0)`;
     });
 
+    // Moment label: a role stat pinned to the photo's top-right corner, like a location tag.
+    if (this.playingMoment && show) {
+      const v = this.memoryLayer.view(this.playingMoment);
+      const n = nodes.find((x) => x.id === this.playingMoment);
+      const b = n?.owner ? battles.find((x) => x.id === n.owner) : undefined;
+      if (v && b) {
+        const idx = nodes.filter((x) => x.memory && x.owner === b.id).findIndex((x) => x.id === n!.id);
+        const hl = b.highlights?.length ? b.highlights[idx % b.highlights.length] : undefined;
+        const corner = v.centre.clone().addScaledVector(v.right, v.planeW / 2).addScaledVector(v.up, v.planeH / 2);
+        this.tmp.copy(corner).project(this.camera);
+        if (this.tmp.z < 1) {
+          this.momentLabel.style.display = 'block';
+          this.momentLabel.textContent = `${b.company.split(',')[0]}${hl ? ` / ${hl.value}` : ''}`;
+          const lw = this.momentLabel.offsetWidth;
+          const x = Math.min(this.width - lw - 8, Math.max(8, (this.tmp.x * 0.5 + 0.5) * this.width - lw - 6));
+          const y = Math.max(60, (-this.tmp.y * 0.5 + 0.5) * this.height + 8);
+          this.momentLabel.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
+        } else this.momentLabel.style.display = 'none';
+      }
+    } else this.momentLabel.style.display = 'none';
+
     if (this.camReadout) {
       const p = this.camera.position;
       this.camReadout.textContent = `CAM X ${fmt(p.x)} / Y ${fmt(p.y)} / Z ${fmt(p.z)}`;
@@ -973,6 +1084,7 @@ export class AtlasEngine {
     window.removeEventListener('resize', this.resize);
     document.removeEventListener('visibilitychange', this.onVisibility);
     this.controls.dispose();
+    this.stopMoments();
     this.memoryLayer.dispose();
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
