@@ -115,3 +115,28 @@ export function mediaFor(slug: string, name = slug): ProjectMedia {
 export function paperSnapshot(id: string): string {
   return `/media/snapshots/paper-${id}.jpg`;
 }
+
+// ---------------------------------------------------------------- memories
+// Photos "left exactly where they happened": each one floats beside its role in the Atlas and
+// lifts from a flat photo into a depth map and then a point cloud. Add photos here (files in
+// public/media/memories/<role>/), keyed to the role id from src/data/battles.ts.
+
+export interface Memory {
+  id: string;
+  /** Role id from battles.ts. */
+  role: string;
+  src: string;
+  caption: string;
+  year: number;
+  width: number;
+  height: number;
+  /** Optional link out (a paper, an article). */
+  url?: string;
+}
+
+export const memories: Memory[] = [
+  { id: 'paper-tether-deploy', role: 'parikshit', src: '/media/snapshots/paper-tether-deploy.jpg', caption: 'IEEE Aerospace Conference 2015: tether deployment dynamics and control', year: 2015, width: 1400, height: 1018, url: 'https://ieeexplore.ieee.org/document/7119062' },
+  { id: 'paper-adcs-core', role: 'parikshit', src: '/media/snapshots/paper-adcs-core.jpg', caption: 'ICACCI 2015: dynamics and control system design of Parikshit', year: 2015, width: 1400, height: 1018, url: 'https://ieeexplore.ieee.org/document/7275676' },
+  { id: 'paper-tether-control', role: 'parikshit', src: '/media/snapshots/paper-tether-control.jpg', caption: 'ICACCI 2015: countering the tether ejection', year: 2015, width: 1400, height: 1018, url: 'https://ieeexplore.ieee.org/document/7275680' },
+  { id: 'paper-sil-rig', role: 'parikshit', src: '/media/snapshots/paper-sil-rig.jpg', caption: 'IEEE Aerospace Conference 2016: software in the loop test set-up', year: 2016, width: 1400, height: 1018, url: 'https://ieeexplore.ieee.org/document/7500603' },
+];

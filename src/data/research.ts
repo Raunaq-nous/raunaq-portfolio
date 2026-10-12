@@ -9,6 +9,11 @@ export interface Paper {
   year: string;
   url: string;
   leadAuthor: boolean;
+  doi: string;
+  conference: string;
+  dates: string;
+  location: string;
+  authors: string[];
 }
 
 export interface ResearchThread {
@@ -53,6 +58,11 @@ export const researchThreads: ResearchThread[] = [
 export const papers: Paper[] = [
   {
     id: 'tether-deploy',
+    doi: '10.1109/AERO.2015.7119062',
+    conference: '2015 IEEE Aerospace Conference',
+    dates: '07 to 14 March 2015',
+    location: 'Big Sky, MT, USA',
+    authors: ['Raunaq Rakesh', 'Siddharth Mayya', 'Carina Pereira', 'Naman Saxena', 'Faraz Haider', 'Smit Kamal'],
     formalTitle: 'Mechanism, ensuing dynamics and control of a polar low-earth orbit tethered nano-satellite',
     calmTitle: 'What happens to a satellite when you unspool a tether, and how to keep it steady.',
     nerdTitle: '`tether-deploy/`: deployment mechanism, induced dynamics, and counter-control on a polar LEO nanosat.',
@@ -65,6 +75,11 @@ export const papers: Paper[] = [
   },
   {
     id: 'adcs-core',
+    doi: '10.1109/ICACCI.2015.7275676',
+    conference: '2015 International Conference on Advances in Computing, Communications and Informatics (ICACCI)',
+    dates: '10 to 13 August 2015',
+    location: 'Kochi, India',
+    authors: ['Raunaq Rakesh', 'Smit Kamal', 'Carina Pereira', 'Naman Saxena', 'Revathi Ravula', 'Faraz Haider'],
     formalTitle: "Dynamics and control system design of a polar low-earth orbit nano-satellite 'Parikshit'",
     calmTitle: "Holding a satellite's spin under one degree per second.",
     nerdTitle: '`adcs-core/`: quaternion-based attitude dynamics and control bounding angular rate at 1 deg/s.',
@@ -77,6 +92,11 @@ export const papers: Paper[] = [
   },
   {
     id: 'tether-control',
+    doi: '10.1109/ICACCI.2015.7275680',
+    conference: '2015 International Conference on Advances in Computing, Communications and Informatics (ICACCI)',
+    dates: '10 to 13 August 2015',
+    location: 'Kochi, India',
+    authors: ['Raunaq Rakesh', 'Smit Kamal', 'Carina Pereira', 'Naman Saxena', 'Revathi Ravula', 'Faraz Haider'],
     formalTitle: 'Control system design to counter the effect of tether ejection system on a nano-satellite',
     calmTitle: 'Designing the controller that fights back when the tether fires.',
     nerdTitle: '`tether-control/`: nominal controller countering electrodynamic-tether ejection.',
@@ -89,6 +109,11 @@ export const papers: Paper[] = [
   },
   {
     id: 'sil-rig',
+    doi: '10.1109/AERO.2016.7500603',
+    conference: '2016 IEEE Aerospace Conference',
+    dates: '05 to 12 March 2016',
+    location: 'Big Sky, MT, USA',
+    authors: ['Carina Pereira', 'Varun Kashyap', 'Naman Saxena', 'Smit Kamal', 'Revathi Ravula', 'Raunaq Rakesh'],
     formalTitle: 'Software in the loop test set-up of a tethered nano-satellite',
     calmTitle: "Testing the satellite's brain on the ground, before it ever flew.",
     nerdTitle: '`sil-rig/`: software-in-the-loop test bed for a tethered nanosat ADCS under de-orbit.',

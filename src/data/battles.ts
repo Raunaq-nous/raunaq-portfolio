@@ -24,6 +24,8 @@ export interface Battle {
   tools?: BattleLink[];
   problemStatements?: string[];
   frameworks?: string[];
+  /** Short facts shown as their own boxes. Drawn from the CV and existing copy only. */
+  highlights?: { label: string; value: string }[];
 }
 
 export interface Education {
@@ -37,6 +39,7 @@ export interface Education {
 export const battles: Battle[] = [
   {
     id: 'bain',
+    highlights: [{ label: 'Sectors', value: 'Oil & gas, solar, nuclear, mining and infrastructure' }, { label: 'Stakeholders', value: 'C-suite and board-level decisions' }, { label: 'Built alongside', value: 'An AI toolkit for the analytical work: financial modeling, scheduling, document intelligence, portfolio monitoring, benchmarking' }],
     company: 'Bain & Company',
     role: 'Project Leader',
     period: 'Jun 2025 – Present',
@@ -58,6 +61,7 @@ export const battles: Battle[] = [
   },
   {
     id: 'aranca',
+    highlights: [{ label: 'Mandates', value: '12+ for Fortune 500 and PE-backed clients' }, { label: 'Regions', value: 'EMEA, North America and APAC' }, { label: 'Published', value: 'AI and green manufacturing (Economic Times), digital governance (Dataquest)' }],
     company: 'Aranca',
     role: 'Engagement Lead, Growth Advisory',
     period: 'Mar 2022 – Jun 2025',
@@ -89,6 +93,7 @@ export const battles: Battle[] = [
   },
   {
     id: 'evalueserve',
+    highlights: [{ label: 'Clients', value: 'Fortune 1000 technology firms' }, { label: 'Scope', value: 'Competitive intelligence, GTM strategy, market entry' }, { label: 'Partners assessed', value: '10+ system integrators for a hyperscale cloud provider entering India' }],
     company: 'Evalueserve',
     role: 'Business Analyst, Insights & Intelligence',
     period: 'Oct 2020 – Nov 2021',
@@ -110,6 +115,7 @@ export const battles: Battle[] = [
   },
   {
     id: 'tecnova',
+    highlights: [{ label: 'Largest mandate', value: 'India entry for a $10B French conglomerate across three sectors at once' }, { label: 'Scope', value: 'Market entry, partner identification, turnaround, business plans' }],
     company: 'Tecnova India',
     role: 'Strategy Analyst',
     period: 'Jul 2019 – Oct 2020',
@@ -143,6 +149,7 @@ export const battles: Battle[] = [
   },
   {
     id: 'madcue',
+    highlights: [{ label: 'Creators', value: '150+ independent creators' }, { label: 'Audience', value: '70,000 monthly viewers' }, { label: 'Growth', value: 'Audience tripled in 8 months through structured PPC experiments' }, { label: 'Interviews', value: 'Gavin Aung Than, Abhilash Tomy, Tashi Malik' }],
     company: 'Madcue',
     role: 'Co-founder',
     period: 'Jun 2015 – Jan 2018',
@@ -161,6 +168,7 @@ export const battles: Battle[] = [
   },
   {
     id: 'parikshit',
+    highlights: [{ label: 'Orbital speed', value: '28,800 km/hr' }, { label: 'Control spec', value: 'Angular velocity held within 1 deg/s for the payload' }, { label: 'Presented', value: 'IEEE Aerospace Conference, Big Sky, Montana' }, { label: 'Papers', value: '4 IEEE papers, 3 as lead author' }],
     company: 'Manipal Institute of Technology, Parikshit Student Satellite Team',
     role: 'ADCS Subsystem Head',
     period: 'Jul 2013 – Jul 2016',

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { MemoryLayer } from './MemoryLayer';
 import {
+  galleryCenter,
   clusters,
   edges,
   nodes,
@@ -186,6 +188,7 @@ export class AtlasEngine {
   private edgeAlphaAttr!: THREE.BufferAttribute;
   private towerBoxes = new Map<string, { mesh: THREE.LineSegments; box: THREE.Box3 }>();
   private dropLine!: THREE.Line;
+  private memoryLayer!: MemoryLayer;
 
   private assemble = 0;
   private segLevels = new Float32Array(7).fill(1);
@@ -257,6 +260,7 @@ export class AtlasEngine {
     this.buildEdges();
     this.buildTowerBoxes();
     this.buildDropLine();
+    this.memoryLayer = new MemoryLayer(this.scene, nodes, this.renderer.getPixelRatio(), opts.lowPower);
 
     this.bboxEl = this.makeEl('atlas-bbox');
     this.bboxLabel = document.createElement('span');
@@ -422,7 +426,9 @@ export class AtlasEngine {
       .forEach((nd) => {
         const [x, y, z] = nd.position;
         const ow = nd.owner ? OWNER_INDEX[nd.owner] : -1;
-        if (nd.kind === 'paper') {
+        if (nd.kind === 'paper' && nd.memory) {
+          // The photo itself represents this paper.
+        } else if (nd.kind === 'paper') {
           for (let i = 0; i < Math.round(360 * k); i++) {
             const a = r() * Math.PI * 2;
             const rr = 1.5 + gauss(r) * 0.05;
@@ -573,7 +579,7 @@ export class AtlasEngine {
       if (n.id === this.selected || n.id === this.hoverNode) s = 2;
       else if (rel.has(n.id)) s = 1;
       else if (owner && n.owner === owner) s = 1;
-      else if (this.focusSegs.size && !this.focusSegs.has(n.cluster)) s = -1;
+      else if (this.focusSegs.size && !this.inSeg(n)) s = -1;
       else if (owner && n.kind !== 'experience') s = -1;
       this.nodeStates[i] = s;
     });
@@ -584,7 +590,7 @@ export class AtlasEngine {
       const a = byId.get(e.from)!;
       const b = byId.get(e.to)!;
       let v = e.kind === 'sector' ? 0.035 : e.kind === 'illustrative' ? 0.04 : 0.07;
-      if (this.focusSegs.size && (this.focusSegs.has(a.cluster) || this.focusSegs.has(b.cluster))) v = 0.22;
+      if (this.focusSegs.size && (this.inSeg(a) || this.inSeg(b))) v = 0.22;
       if (owner && (a.owner === owner || b.owner === owner || e.from === `exp:${owner}`)) v = 0.4;
       if (pivot && (e.from === pivot || e.to === pivot)) v = 0.9;
       this.edgeAlpha[i * 2] = v;
@@ -597,6 +603,33 @@ export class AtlasEngine {
     });
     this.segTarget[STREET_SEG] = this.focusSegs.size ? 0.6 : 1;
     this.ownerActive = owner ? OWNER_INDEX[owner] : -1;
+
+    const lifted = new Set<string>();
+    nodes.forEach((n) => {
+      if (!n.memory) return;
+      if (n.id === this.selected || n.id === this.hoverNode) lifted.add(n.id);
+      else if (owner && n.owner === owner) lifted.add(n.id);
+      else if (this.focusSegs.has('memories')) lifted.add(n.id);
+    });
+    this.memoryLayer?.setLifted(lifted);
+  }
+
+  /** Frame the photo gallery of a role. Returns false when the role has no memories. */
+  focusMemories(expId: string, duration = 1500) {
+    const role = expId.replace('exp:', '');
+    const c = galleryCenter(role);
+    if (!c) return false;
+    this.activeExp = expId;
+    this.selected = expId;
+    this.refreshStates();
+    const target = new THREE.Vector3(...c);
+    const side = Math.sign(c[2]);
+    this.flyTo(new THREE.Vector3(c[0] - 4, c[1] + 1.5, c[2] - side * 22), target, duration);
+    return true;
+  }
+
+  private inSeg(n: { cluster: ClusterId; memory?: unknown }) {
+    return this.focusSegs.has(n.cluster) || (!!n.memory && this.focusSegs.has('memories'));
   }
 
   /** Highlight one or more segments; an empty set shows everything. */
@@ -776,6 +809,8 @@ export class AtlasEngine {
 
     const k = Math.min(1, dt * 5);
     for (let i = 0; i < 7; i++) this.segLevels[i] += (this.segTarget[i] - this.segLevels[i]) * k;
+    const focal = (this.height * this.renderer.getPixelRatio()) / 2 / Math.tan((this.camera.fov * Math.PI) / 360);
+    this.memoryLayer.update(dt, this.assemble, this.opts.reduced, focal);
     const u = this.particleMat.uniforms;
     u.uOwner.value = this.ownerActive;
     u.uHoverOwner.value = this.ownerHover;
@@ -869,7 +904,7 @@ export class AtlasEngine {
         else if (n.kind === 'experience') pr = 1;
         else if (rel.has(n.id)) pr = 2;
         else if (owner && n.owner === owner) pr = 3;
-        else if (this.focusSegs.has(n.cluster)) pr = 3;
+        else if (this.inSeg(n)) pr = 3;
         return { n, i, pr };
       })
       .sort((a, b) => a.pr - b.pr || this.nodeScreen[a.i * 3 + 2] - this.nodeScreen[b.i * 3 + 2]);
@@ -936,6 +971,7 @@ export class AtlasEngine {
     window.removeEventListener('resize', this.resize);
     document.removeEventListener('visibilitychange', this.onVisibility);
     this.controls.dispose();
+    this.memoryLayer.dispose();
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose?.();

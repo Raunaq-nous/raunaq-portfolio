@@ -35,23 +35,18 @@ function SlicedLine({ text }: { text: string }) {
 
 export default function Contact() {
   return (
-    <section id="contact" className="wrap pb-10 pt-40 lg:pt-64" aria-labelledby="contact-title">
+    <section id="contact" className="wrap pb-10 pt-32 lg:pt-48" aria-labelledby="contact-title">
       <Reveal>
         <SectionLabel n="06" calm="Contact" path="contact" cmd="ping raunaq" />
-        <h2 id="contact-title" className="display mt-10 text-[clamp(52px,11vw,200px)]" aria-label="Think. Build. Solve.">
-          <span className="block">
-            <SlicedLine text="Think." />
-          </span>
-          <span className="block lg:pl-[10vw]">
-            <SlicedLine text="Build." />
-          </span>
-          <span className="block text-grey-2 lg:pl-[20vw]">
-            <SlicedLine text="Solve." />
+        <h2 id="contact-title" className="headline mt-10 max-w-4xl text-[clamp(36px,5vw,80px)]">
+          <SlicedLine text="Strategy. Finance. AI." />
+          <span className="block text-grey-2">
+            <SlicedLine text="Sometimes all three at once." />
           </span>
         </h2>
       </Reveal>
 
-      <Reveal className="mt-24 grid gap-6 border-t rule pt-8 lg:mt-40 lg:grid-cols-12" delay={120}>
+      <Reveal className="mt-16 grid gap-6 border-t rule pt-8 lg:mt-24 lg:grid-cols-12" delay={120}>
         <p className="label text-grey-3 lg:col-span-3">Elsewhere</p>
         <ul className="lg:col-span-6">
           {site.links.map((l) => (
@@ -67,11 +62,11 @@ export default function Contact() {
         </ul>
       </Reveal>
 
-      <footer className="label mt-40 flex flex-wrap items-end justify-between gap-4 text-grey-3">
+      <footer className="label mt-24 flex flex-wrap items-end justify-between gap-4 text-grey-3">
         <span>
           {site.name} / {new Date().getFullYear()}
         </span>
-        <span>{site.descriptor}</span>
+        <span>{site.tagline}</span>
         <a href="#top" className="link-quiet hover:text-paper">
           Back to top
         </a>
