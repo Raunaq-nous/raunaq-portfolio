@@ -135,6 +135,8 @@ export interface Memory {
   url?: string;
   /** Optional video; `src` is then its still frame. */
   video?: string;
+  /** Drawn at runtime instead of loading `src`: a project spec sheet (see src/lib/industrySheet.ts). */
+  sheet?: { name: string; code: string; rows: [string, string][] };
 }
 
 export const memories: Memory[] = [

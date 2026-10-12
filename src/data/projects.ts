@@ -11,20 +11,20 @@ interface ProjectMeta {
 const meta: Record<string, ProjectMeta> = {
   'financial-modelling': { slug: 'abacus', category: 'Financial modeling' },
   'solar-cost': { slug: 'groundwork', category: 'Investment modeling' },
-  scheduling: { slug: 'digital-twin', category: 'Capital project digital twin', featured: 3 },
+  scheduling: { slug: 'digital-twin', category: 'Capital project digital twin', featured: 1 },
   'capital-allocation': { slug: 'watchtower', category: 'Portfolio monitoring' },
   'rag-engine': { slug: 'needle', category: 'Document intelligence' },
   workplan: { slug: 'blueprint', category: 'Planning' },
-  'haus-nous': { slug: 'haus-nous', category: 'Strategy platform' },
-  survey: { slug: 'pulse', category: 'Research automation' },
+  'haus-nous': { slug: 'haus-nous', category: 'Strategy platform', featured: 4 },
+  survey: { slug: 'pulse', category: 'Research automation', featured: 3 },
   'solar-benchmark': { slug: 'yardstick', category: 'Benchmarking' },
   proposal: { slug: 'first-draft', category: 'Document generation' },
   'parents-health': { slug: 'kavach', category: 'Preventive health' },
   hitman: { slug: 'hitman', category: 'Sport and prediction' },
   'career-os': { slug: 'career-os', category: 'Careers and simulation' },
-  'bhoomi-setu': { slug: 'bhoomi-setu', category: 'Land records and evidence', featured: 2 },
+  'bhoomi-setu': { slug: 'bhoomi-setu', category: 'Land records and evidence' },
   'momentum-os': { slug: 'momentum-os', category: 'Personal productivity' },
-  cartograph: { slug: 'cartograph', category: 'Process transformation', featured: 1 },
+  cartograph: { slug: 'cartograph', category: 'Process transformation', featured: 2 },
 };
 
 export interface Project extends Build {

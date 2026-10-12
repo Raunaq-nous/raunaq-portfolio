@@ -11,6 +11,7 @@ import { researchThreads } from '@/data/research';
 // Each curiosity gets a sheet whose visual motif comes from its subject.
 const motif = (c: Curiosity) => {
   const t = c.tags.join(' ').toLowerCase();
+  if (/compute|hardware/.test(t)) return 'Compute';
   if (/sport|cricket/.test(t)) return 'Media';
   if (/career|simulation/.test(t)) return 'Aerospace';
   if (/portfolio|monitoring/.test(t)) return 'Financial Services';
@@ -18,7 +19,7 @@ const motif = (c: Curiosity) => {
   return 'Cloud';
 };
 
-const SPANS = ['lg:col-span-7', 'lg:col-span-5 lg:mt-24', 'lg:col-span-5', 'lg:col-span-7', 'lg:col-span-6 lg:col-start-4'];
+const SPANS = ['lg:col-span-7', 'lg:col-span-5 lg:mt-24', 'lg:col-span-5', 'lg:col-span-7', 'lg:col-span-6', 'lg:col-span-6 lg:mt-24'];
 
 export default function Curiosities() {
   const { mode } = useMode();

@@ -40,7 +40,7 @@ function Showcase({ p, i }: { p: Project; i: number }) {
                 <span className="label text-grey-3">S{String(k + 1).padStart(2, '0')}</span>
                 <span>
                   <span className="text-paper">{s.label.replace(/^\d+\.\s*/, '').toLowerCase().replace(/^./, (c) => c.toUpperCase())}</span>
-                  <span className="text-grey-2"> / {s.text.split(/(?<=\.)\s/)[0]}</span>
+                  <span className="text-grey-2"> / {s.text.replace(/^\d+\.\s*/, '').split(/(?<=\.)\s/)[0]}</span>
                 </span>
               </li>
             ))}
@@ -65,19 +65,15 @@ function Showcase({ p, i }: { p: Project; i: number }) {
       </div>
 
       <div className={`grid gap-6 lg:col-span-7 ${flip ? 'lg:order-1' : ''}`}>
-        <figure>
-          <div className="relative aspect-[16/10] overflow-hidden border rule bg-ink-3">
-            {shot ? (
-              // eslint-disable-next-line @next/next/no-img-element
+        {shot && (
+          <figure>
+            <div className="relative aspect-[16/10] overflow-hidden border rule bg-ink-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={asset(shot.src)} alt={shot.alt} className="h-full w-full object-cover object-top" loading="lazy" />
-            ) : (
-              <div className="dot-grid absolute inset-0 grid place-items-center">
-                <span className="label text-grey-3">Interface capture / coming soon</span>
-              </div>
-            )}
-            <span className="label absolute left-3 top-3 bg-ink/70 px-1.5 py-0.5 text-grey-1">Interface</span>
-          </div>
-        </figure>
+              <span className="label absolute left-3 top-3 bg-ink/70 px-1.5 py-0.5 text-grey-1">Interface</span>
+            </div>
+          </figure>
+        )}
         <CodeGraph slug={p.slug} />
       </div>
     </article>
@@ -94,7 +90,7 @@ export default function SelectedWork() {
             Selected work
           </h2>
           <p className="mt-5 max-w-xl text-[16px] leading-snug text-grey-1">
-            {featuredProjects.length} tools in depth: what they do, the interface, and a graph of their real codebase. The rest of the {projects.length} builds live in the archive.
+            {featuredProjects.length} tools in depth: what they do, how they work, and an architecture graph of the stack behind each one. The rest of the {projects.length} builds live in the archive.
           </p>
         </div>
       </Reveal>

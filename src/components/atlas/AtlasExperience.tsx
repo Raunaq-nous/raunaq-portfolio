@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clusters, clusterOf, neighbours, nodes, overviewOf, timeline, type AtlasNode, type ClusterId, type NodeKind } from '@/data/atlas';
 import { asset } from '@/lib/asset';
 import { hasWebGL, prefersReducedMotion } from '@/lib/motion';
+import { places, rolePlaces } from '@/data/geo';
 import ModelViewer from './ModelViewer';
 import IndustryArt from '../IndustryArt';
 import type { AtlasEngine } from './AtlasEngine';
@@ -458,7 +459,8 @@ function MomentHud({ moment, onStop }: { moment: { id: string; stage: number; in
   const o = n?.owner ? overviewOf(`exp:${n.owner}`) : null;
   if (!n || !o) return null;
   const b = o.battle;
-  const stages = ['Arriving', 'Depth', 'Moment', 'Lifting into 3D', 'Left where it happened'];
+  const sc = n.scene;
+  const stages = sc ? ['Arriving', '', 'Project sheet', 'Lifting into 3D', 'Left where it happened'] : ['Arriving', 'Depth', 'Moment', 'Lifting into 3D', 'Left where it happened'];
   return (
     <aside className="pointer-events-none absolute bottom-24 left-[var(--gutter)] z-30 w-[min(360px,80vw)] md:bottom-28" aria-live="polite">
       <div className="pointer-events-auto border border-paper/20 bg-ink/70 p-4 backdrop-blur">
@@ -474,7 +476,29 @@ function MomentHud({ moment, onStop }: { moment: { id: string; stage: number; in
         <p className="label mt-1 text-grey-2">
           {b.role} / {b.period.replace('–', 'to')}
         </p>
-        {b.highlights && (
+        {sc && (
+          <>
+            <p className="label mt-4 text-paper">
+              Project {String(sc.project).padStart(2, '0')} / {sc.industry}
+            </p>
+            <p className="mt-2 line-clamp-4 text-[13px] leading-snug text-grey-1">{n.summary}</p>
+            <dl className="mt-3 grid grid-cols-[6.5rem_1fr] gap-x-3 gap-y-1.5 text-[12px]">
+              {sc.problem && (
+                <div className="contents">
+                  <dt className="label text-grey-3">Problem</dt>
+                  <dd className="text-grey-1">{sc.problem}</dd>
+                </div>
+              )}
+              {sc.geos.length > 0 && (
+                <div className="contents">
+                  <dt className="label text-grey-3">Geography</dt>
+                  <dd className="text-grey-1">{sc.geos.map((g) => places[g]?.label).filter(Boolean).join(', ')}</dd>
+                </div>
+              )}
+            </dl>
+          </>
+        )}
+        {!sc && b.highlights && (
           <dl className="mt-4 grid grid-cols-[6.5rem_1fr] gap-x-3 gap-y-1.5 text-[12px]">
             {b.highlights.slice(0, 5).map((h) => (
               <div key={h.label} className="contents">
@@ -486,7 +510,7 @@ function MomentHud({ moment, onStop }: { moment: { id: string; stage: number; in
         )}
         <div className="mt-4 flex items-center gap-2">
           {stages.map((st, i) => (
-            <span key={st} className={`h-0.5 flex-1 ${i <= moment.stage ? 'bg-paper' : 'bg-paper/20'}`} title={st} />
+            <span key={i} className={`h-0.5 flex-1 ${i <= moment.stage ? 'bg-paper' : 'bg-paper/20'}`} title={st} />
           ))}
         </div>
         <p className="label mt-2 text-grey-3">{stages[moment.stage]}</p>
@@ -526,86 +550,128 @@ function ExperiencePanel({ expId, onClose, onPick, onOpen, onPlay }: { expId: st
         </button>
       )}
 
-      {o.engagements.length > 0 && (
-        <section className="mt-8">
-          <p className="label mb-2 text-grey-3">Engagements / {String(o.engagements.length).padStart(2, '0')}</p>
-          <ul className="space-y-2">
-            {o.engagements.map((e) => (
-              <li key={e.id}>
-                <button type="button" onClick={() => onPick(e.id)} className="group block w-full border border-paper/15 p-3 text-left hover:border-paper/50">
-                  <span className="label text-grey-2">{e.title}</span>
-                  <span className="mt-1 line-clamp-2 block text-[13px] text-grey-1 group-hover:text-paper">{e.summary}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {(() => {
+        const scenes = o.memories.filter((m) => m.scene);
+        const photos = o.memories.filter((m) => m.kind === 'memory' && !m.scene);
+        const where = rolePlaces(b.id);
+        const Head = ({ n, t, c }: { n: number; t: string; c: number }) => (
+          <p className="label mb-2 flex justify-between text-grey-3">
+            <span>
+              {String(n).padStart(2, '0')} / {t}
+            </span>
+            <span>{String(c).padStart(2, '0')}</span>
+          </p>
+        );
+        const None = () => <p className="label text-grey-3">None recorded</p>;
+        return (
+          <>
+            <section className="mt-8">
+              <Head n={1} t="Projects" c={scenes.length} />
+              <ul className="space-y-2">
+                {scenes.map((m) => (
+                  <li key={m.id}>
+                    <button type="button" onClick={() => onPick(m.id)} className="group block w-full border border-paper/15 p-3 text-left hover:border-paper/50">
+                      <span className="label flex justify-between gap-3 text-grey-2">
+                        <span>
+                          P{String(m.scene!.project).padStart(2, '0')} / {m.scene!.industry}
+                        </span>
+                        {m.scene!.problem && <span className="truncate text-grey-3">{m.scene!.problem}</span>}
+                      </span>
+                      <span className="mt-1 line-clamp-2 block text-[13px] text-grey-1 group-hover:text-paper">{m.summary}</span>
+                      {m.scene!.geos.length > 0 && <span className="label mt-1.5 block text-grey-3">{m.scene!.geos.map((g) => places[g]?.label).filter(Boolean).join(' / ')}</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
 
-      {o.builds.length > 0 && (
-        <section className="mt-8">
-          <p className="label mb-2 text-grey-3">Builds / {String(o.builds.length).padStart(2, '0')}</p>
-          <ul className="grid grid-cols-2 gap-3">
-            {o.builds.map((p) => (
-              <li key={p.id}>
-                <button type="button" onClick={() => onPick(p.id)} className="group block w-full text-left">
-                  <Thumb src={p.thumb} label={p.code} />
-                  <span className="mt-1.5 block text-[13px] group-hover:underline">{p.title}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+            <section className="mt-8">
+              <Head n={2} t="Industries" c={o.industries.length} />
+              {o.industries.length ? (
+                <ul className="flex flex-wrap gap-1.5">
+                  {o.industries.map((i) => (
+                    <li key={i.id}>
+                      <button type="button" onClick={() => onPick(i.id)} className="label border border-paper/20 px-2 py-1 text-grey-1 hover:border-paper hover:text-paper">
+                        {i.title}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <None />
+              )}
+            </section>
 
-      {o.memories.some((m) => m.kind === 'memory') && (
-        <section className="mt-8">
-          <p className="label mb-2 text-grey-3">Memories / {String(o.memories.filter((m) => m.kind === 'memory').length).padStart(2, '0')}</p>
-          <ul className="grid grid-cols-2 gap-3">
-            {o.memories
-              .filter((m) => m.kind === 'memory')
-              .map((m) => (
-                <li key={m.id}>
-                  <button type="button" onClick={() => onPick(m.id)} className="group block w-full text-left">
-                    <Thumb src={m.thumb} label="Photo" />
-                    <span className="mt-1.5 line-clamp-2 block text-[12px] group-hover:underline">{m.title}</span>
-                  </button>
-                </li>
-              ))}
-          </ul>
-        </section>
-      )}
+            <section className="mt-8">
+              <Head n={3} t="Geographies" c={where.length} />
+              <ul className="flex flex-wrap gap-x-3 gap-y-1">
+                {where.map((pl, i) => (
+                  <li key={pl.label} className="label normal-case tracking-normal text-grey-1">
+                    <span className="text-grey-3">{i === 0 ? 'base' : String(i).padStart(2, '0')}</span> {pl.label}
+                  </li>
+                ))}
+              </ul>
+            </section>
 
-      {o.papers.length > 0 && (
-        <section className="mt-8">
-          <p className="label mb-2 text-grey-3">Papers / {String(o.papers.length).padStart(2, '0')}</p>
-          <ul className="grid grid-cols-2 gap-3">
-            {o.papers.map((p) => (
-              <li key={p.id}>
-                <button type="button" onClick={() => onOpen(p)} className="group block w-full text-left">
-                  <Thumb src={p.thumb} label="IEEE" />
-                  <span className="mt-1.5 line-clamp-2 block text-[12px] group-hover:underline">{p.title}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+            <section className="mt-8">
+              <Head n={4} t="Problems" c={b.problemStatements?.length ?? 0} />
+              {b.problemStatements?.length ? (
+                <ul className="space-y-1 font-mono text-[12px] text-grey-1">
+                  {b.problemStatements.map((t) => (
+                    <li key={t}>- {t}</li>
+                  ))}
+                </ul>
+              ) : (
+                <None />
+              )}
+            </section>
 
-      {o.industries.length > 0 && (
-        <section className="mt-8">
-          <p className="label mb-2 text-grey-3">Industries / {String(o.industries.length).padStart(2, '0')}</p>
-          <ul className="flex flex-wrap gap-1.5">
-            {o.industries.map((i) => (
-              <li key={i.id}>
-                <button type="button" onClick={() => onPick(i.id)} className="label border border-paper/20 px-2 py-1 text-grey-1 hover:border-paper hover:text-paper">
-                  {i.title}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+            <section className="mt-8">
+              <Head n={5} t="Builds" c={o.builds.length} />
+              {o.builds.length ? (
+                <ul className="grid grid-cols-2 gap-3">
+                  {o.builds.map((p) => (
+                    <li key={p.id}>
+                      <button type="button" onClick={() => onPick(p.id)} className="group block w-full text-left">
+                        <Thumb src={p.thumb} label={p.code} />
+                        <span className="mt-1.5 block text-[13px] group-hover:underline">{p.title}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <None />
+              )}
+            </section>
+
+            <section className="mt-8">
+              <Head n={6} t="Moments" c={photos.length + o.papers.length} />
+              {photos.length + o.papers.length ? (
+                <ul className="grid grid-cols-2 gap-3">
+                  {photos.map((m) => (
+                    <li key={m.id}>
+                      <button type="button" onClick={() => onPick(m.id)} className="group block w-full text-left">
+                        <Thumb src={m.thumb} label="Photo" />
+                        <span className="mt-1.5 line-clamp-2 block text-[12px] group-hover:underline">{m.title}</span>
+                      </button>
+                    </li>
+                  ))}
+                  {o.papers.map((p) => (
+                    <li key={p.id}>
+                      <button type="button" onClick={() => onOpen(p)} className="group block w-full text-left">
+                        <Thumb src={p.thumb} label="IEEE" />
+                        <span className="mt-1.5 line-clamp-2 block text-[12px] group-hover:underline">{p.title}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <None />
+              )}
+            </section>
+          </>
+        );
+      })()}
     </aside>
   );
 }
@@ -841,7 +907,13 @@ function Reader({ node, onClose, onPick }: { node: AtlasNode; onClose: () => voi
           <div className="lg:col-span-8">
             <h2 className="headline text-[clamp(36px,5vw,80px)]">{node.title}</h2>
 
-            {node.memory && (
+            {node.memory?.sheet && (
+              <figure className="mt-12 aspect-[8/5] w-full max-w-3xl overflow-hidden border border-paper/15">
+                <IndustryArt {...node.memory.sheet} />
+              </figure>
+            )}
+
+            {node.memory && !node.memory.sheet && (
               <figure className="mt-12">
                 {node.memory.video ? (
                   <video src={asset(node.memory.video)} poster={asset(node.memory.src)} className="w-full max-w-3xl border border-paper/15 grayscale" controls autoPlay muted loop playsInline />

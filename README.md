@@ -110,7 +110,7 @@ nerd copy; the toggle in the navigation switches between them (calm is light, ne
 | Build slug, category, featured order | `src/data/projects.ts` |
 | Experience timeline (roles, engagements, industries) | `src/data/battles.ts` |
 | Papers, research threads, curiosities | `src/data/research.ts`, `src/data/curiosities.ts` |
-| Portrait, interface captures, demo videos, codebase graphs | `src/data/assets.ts` (files in `public/media/`) |
+| Portrait, interface captures, demo videos, architecture graphs | `src/data/assets.ts` (files in `public/media/`) |
 | Knowledge Atlas segments, nodes and relationships | `src/data/atlas.ts` |
 
 ### Media per build
@@ -119,7 +119,7 @@ Each build has three kinds of media, all registered in `src/data/assets.ts`:
 
 - **Interface captures**: real screens of the tool, listed in `captures` (files in `public/media/projects/<slug>/`).
 - **Demo video**: add `demo: { asset: { src: '/media/projects/<slug>/demo.mp4' } }` to `projectMediaOverrides`.
-- **Codebase graph**: add `codeGraph: { asset: { src, alt, width, height } }` to `projectMediaOverrides`.
+- **Architecture graph**: run `node scripts/stack-graph.mjs <slug> <repo-dir>` to scan a checkout's manifests (package.json, pyproject, requirements, Docker, Vercel, workflows, model IDs in source) into `public/media/projects/<slug>/stack.json`. AI features and extra nodes live in `scripts/stack-specs.mjs`; for a repo you can't scan, write its stack there and run with `--spec`.
 
 Slots without an asset render a labelled placeholder.
 
@@ -141,3 +141,11 @@ Photos are listed in `memories` in `src/data/assets.ts`, each tied to a role id 
 `public/media/memories/<role>/`. In the Atlas each photo floats beside its role and lifts from a
 flat photo into a depth map and then a 3D point cloud. Depth is estimated in the browser from the
 image itself, so no extra processing step is needed.
+
+### Project scenes and geographies
+
+Every role in the Memory Palace plays the same sequence: one scene per key project, then photos,
+then papers. Scenes come from `keyProjects` in `src/data/battles.ts`: each project's `industry`,
+`problem` and `geos` are drawn as a spec sheet, lifted into a point cloud, and shown in the
+readout beside it. `geos` are keys into `places` in `src/data/geo.ts`, which also drive the
+experience globes. A role with no key projects gets a single scene from its own description.
