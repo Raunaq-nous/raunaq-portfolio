@@ -25,6 +25,7 @@ export default function AIBuilds() {
   const [view, setView] = useState<VaultView>('overview');
   const [graphs, setGraphs] = useState<Record<number, StackGraph | null>>({});
   const [shot, setShot] = useState(0);
+  const [stage, setStage] = useState(0);
 
   useEffect(() => {
     if (!hasWebGL()) {
@@ -48,6 +49,7 @@ export default function AIBuilds() {
           },
           onView: setView,
           onGraph: (i, g) => setGraphs((cur) => ({ ...cur, [i]: g })),
+          onStage: setStage,
         },
         reduced,
         lowPower,
@@ -89,13 +91,13 @@ export default function AIBuilds() {
             AI builds
           </h2>
           <p className="mt-5 max-w-xl text-[16px] leading-snug text-grey-1">
-            {vaultBuilds.length} rooms. Each one holds a build: its interface as a point cloud, its codebase by layer from interface to delivery with the AI features it runs, and a wall of videos: walkthrough, product launch, demo. Pick a room to walk in.
+            {vaultBuilds.length} rooms, one per build. Walk in and the interface on the back wall lifts from 2D into 3D. The codebase runs along the left wall, layer by layer with the AI features, and the videos hang on the right: walkthrough, product launch, demo.
           </p>
         </div>
       </div>
 
       <div className="wrap mt-10">
-        <div className="relative h-[62svh] min-h-[440px] border border-paper/15 bg-ink md:h-[78svh] md:min-h-[520px]">
+        <div className="vault-frame relative h-[78svh] min-h-[520px] border border-[#f2c98a]/20 md:h-[80svh] md:min-h-[540px]">
           <div ref={canvasRef} className="absolute inset-0" />
           <div ref={overlayRef} className="pointer-events-none absolute inset-0 overflow-hidden font-mono" aria-hidden />
           <span className="hud-corner left-0 top-0" />
@@ -166,12 +168,23 @@ export default function AIBuilds() {
                       key={v}
                       type="button"
                       onClick={() => engineRef.current?.setView(v)}
-                      className={`flex-1 border px-2 py-1.5 tracking-[0.08em] transition-colors ${view === v ? 'border-paper bg-paper text-ink' : 'border-paper/35 text-paper/80 hover:border-paper'}`}
+                      className={`flex-1 border px-1 py-1.5 text-[10px] tracking-[0.04em] transition-colors ${view === v ? 'border-paper bg-paper text-ink' : 'border-paper/35 text-paper/80 hover:border-paper'}`}
                     >
-                      {v === 'interface' ? 'INTERFACE' : v === 'architecture' ? 'CODEBASE' : 'VIDEOS'}
+                      {v === 'interface' ? 'BACK / INTERFACE' : v === 'architecture' ? 'LEFT / CODEBASE' : 'RIGHT / VIDEOS'}
                     </button>
                   ))}
                 </div>
+
+                {view === 'interface' && (
+                  <div>
+                    <div className="flex gap-1.5">
+                      {['ARRIVE', 'DEPTH', b.shots.length ? 'PHOTO' : 'SHEET', 'LIFT', 'IN 3D'].map((st, i) => (
+                        <span key={st} className={`h-0.5 flex-1 ${i <= stage ? 'bg-[#f2c98a]' : 'bg-paper/20'}`} />
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-paper/50">{['ARRIVING', 'DEPTH MAP', b.shots.length ? 'THE CAPTURE' : 'THE SPEC SHEET', 'LIFTING INTO 3D', 'LEFT WHERE IT WAS BUILT'][stage]}</p>
+                  </div>
+                )}
 
                 {b.shots.length > 1 && (
                   <div className="flex items-center justify-between border-t border-paper/15 pt-3">
