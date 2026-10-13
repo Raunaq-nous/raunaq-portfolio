@@ -163,3 +163,18 @@ Add a model to a family there and it appears in the brain with a code and links.
 Each room shows the build's interface captures as a point cloud (or its spec sheet when there is
 no capture), its `stack.json` codebase graph by layer, and three video screens (walkthrough, product
 launch, demo). Add videos to `buildVideos` in `src/data/assets.ts`; empty screens show static.
+
+## Home page (static design)
+
+The home page is a hand-built static page, `home/index.html`. `npm run build` runs `next build`
+and then `scripts/home.mjs`, which copies it over `out/index.html`. Everything else (work pages,
+the 3D atlas at `/atlas/`) still comes from Next.
+
+- **Content** lives in the `DATA` object at the top of the page script.
+- **Live data** comes from `/home-data.json`, generated at build time by
+  `src/app/home-data.json/route.ts` from `src/data/`: the brain map behind each knowledge row,
+  the memory photos for the palace chambers and the experience boxes, and the details and
+  captures behind each AI build room. Add a memory in `src/data/assets.ts` and it appears in both.
+- **Hero portrait**: `public/media/portrait/hero-particles.jpg`, traced by `HERO_MASK` in the page.
+- **Libraries** are vendored in `public/vendor/` (three.js r147 and its examples, topojson,
+  world-atlas land data), so nothing loads from a CDN except Google Fonts.
