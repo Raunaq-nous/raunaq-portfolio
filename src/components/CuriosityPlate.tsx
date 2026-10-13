@@ -176,61 +176,78 @@ export default function CuriosityPlate({ motif, code, title, className = '' }: {
         canvas.height = Math.round(H * dpr);
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const css = getComputedStyle(canvas);
-      const paper = css.getPropertyValue('--paper').trim() || '241 240 236';
-      const ink = css.getPropertyValue('--ink').trim() || '9 9 9';
-      ctx.fillStyle = `rgb(${ink})`;
+      // The AI builds palette: warm black, light blue points, gold highlights.
+      const blue = '158 199 235';
+      const gold = '242 201 138';
+      ctx.fillStyle = '#0b0806';
       ctx.fillRect(0, 0, W, H);
+      const band = 40; // reserved header band: nothing is drawn under the title
       const ca = Math.cos(t);
       const sa = Math.sin(t);
       const tilt = 0.42;
       const ct = Math.cos(tilt);
       const st = Math.sin(tilt);
-      const S = Math.min(W, H) * 0.62;
+      const S = Math.min(W, H - band) * 0.46;
+      const cy = band + (H - band) * 0.55;
       const proj = (x: number, y: number, z: number) => {
         const rx = x * ca + z * sa;
         const rz = -x * sa + z * ca;
         const ry = y * ct - rz * st;
         const rzz = y * st + rz * ct;
         const f = 2.6 / (2.6 + rzz);
-        return { x: W / 2 + rx * S * f, y: H * 0.54 - ry * S * f, d: rzz };
+        return { x: W / 2 + rx * S * f, y: cy - ry * S * f, d: rzz };
       };
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, band, W, H - band - 16);
+      ctx.clip();
       for (const [x, y, z, b] of pts) {
         const p = proj(x, y, z);
         const fog = Math.max(0.2, Math.min(1, 0.75 - p.d * 0.45));
-        ctx.fillStyle = `rgb(${paper} / ${(b * fog * 0.85).toFixed(3)})`;
-        const s = b > 0.9 ? 1.6 : 1.1;
-        ctx.fillRect(p.x, p.y, s, s);
+        ctx.fillStyle = `rgb(${b > 0.8 ? gold : blue} / ${(Math.max(0.25, b) * fog * 0.9).toFixed(3)})`;
+        const sz = b > 0.9 ? 1.7 : 1.2;
+        ctx.fillRect(p.x, p.y, sz, sz);
       }
-      // Annotations: blue-free, black and white: a dot, a leader, a code.
-      ctx.font = '9.5px "JetBrains Mono", ui-monospace, monospace';
-      marks.forEach((m, i) => {
+      ctx.restore();
+      // Labels on solid boxes, kept inside the drawing area.
+      ctx.font = '10px "JetBrains Mono", ui-monospace, monospace';
+      marks.slice(0, 3).forEach((m, i) => {
         const p = proj(...m.at);
-        const lx = p.x + (i % 2 ? -1 : 1) * 34;
-        const ly = p.y - 18 - (i % 3) * 6;
-        ctx.strokeStyle = `rgb(${paper} / 0.55)`;
+        const tw = ctx.measureText(m.label).width + 10;
+        const lx = Math.max(8, Math.min(W - tw - 8, p.x + (i % 2 ? -tw - 26 : 26)));
+        const ly = Math.max(band + 6, Math.min(H - 40, p.y - 22 - i * 4));
+        ctx.strokeStyle = `rgb(${gold} / 0.7)`;
         ctx.lineWidth = 0.75;
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
-        ctx.lineTo(lx, ly);
+        ctx.lineTo(i % 2 ? lx + tw : lx, ly + 8);
         ctx.stroke();
-        ctx.fillStyle = `rgb(${paper})`;
+        ctx.fillStyle = `rgb(${gold})`;
         ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
-        ctx.fillStyle = `rgb(${paper} / 0.85)`;
-        ctx.textAlign = i % 2 ? 'right' : 'left';
-        ctx.fillText(m.label, lx + (i % 2 ? -4 : 4), ly + 3);
+        ctx.fillStyle = 'rgba(11,8,6,0.92)';
+        ctx.fillRect(lx, ly, tw, 16);
+        ctx.strokeStyle = `rgb(${gold} / 0.5)`;
+        ctx.strokeRect(lx + 0.5, ly + 0.5, tw - 1, 15);
+        ctx.fillStyle = `rgb(${gold})`;
+        ctx.fillText(m.label, lx + 5, ly + 11.5);
       });
-      ctx.textAlign = 'left';
-      ctx.fillStyle = `rgb(${paper} / 0.75)`;
-      ctx.fillText(`${code} / ${title.toUpperCase().slice(0, 42)}`, 12, 18);
-      ctx.fillStyle = `rgb(${paper} / 0.45)`;
-      ctx.fillText(`PTS ${pts.length} / ROT ${(((t * 180) / Math.PI) % 360).toFixed(1)}°`, 12, 31);
+      // Header band.
+      ctx.fillStyle = 'rgba(11,8,6,1)';
+      ctx.fillRect(0, 0, W, band);
+      ctx.fillStyle = `rgb(${blue} / 0.25)`;
+      ctx.fillRect(0, band - 1, W, 1);
+      ctx.fillStyle = `rgb(${gold})`;
+      ctx.fillText(code, 12, 24);
+      ctx.fillStyle = `rgb(${blue} / 0.7)`;
       ctx.textAlign = 'right';
-      ctx.fillText('PLATE / POINT CLOUD', W - 12, 18);
+      ctx.fillText(`${pts.length} PTS`, W - 12, 24);
       ctx.textAlign = 'left';
       // Ticks along the bottom edge.
-      ctx.fillStyle = `rgb(${paper} / 0.35)`;
-      for (let x = 12; x < W - 12; x += 8) ctx.fillRect(x, H - 10 - (Math.round((x - 12) / 8) % 5 === 0 ? 5 : 2), 1, Math.round((x - 12) / 8) % 5 === 0 ? 5 : 2);
+      ctx.fillStyle = `rgb(${blue} / 0.35)`;
+      for (let x = 12; x < W - 12; x += 8) {
+        const major = Math.round((x - 12) / 8) % 5 === 0;
+        ctx.fillRect(x, H - 8 - (major ? 5 : 2), 1, major ? 5 : 2);
+      }
       if (reduced) cancelAnimationFrame(raf);
     };
     raf = requestAnimationFrame(draw);

@@ -65,7 +65,8 @@ export default function ProjectGlobe({ role, className = '' }: { role: string; c
 
       const frame = (now: number) => {
         if (!alive) return;
-        const rgb = getComputedStyle(canvas).getPropertyValue('--paper').trim() || '241 240 236';
+        const rgb = '158 199 235'; // light blue: land and rim
+        const gold = '242 201 138'; // gold: travel and places
         if (flat.length && now - legStart > LEG) {
           leg = (leg + 1) % flat.length;
           legStart = now;
@@ -90,7 +91,7 @@ export default function ProjectGlobe({ role, className = '' }: { role: string; c
         // Past trips
         const from = leg <= 0 ? base : flat[leg - 1];
         const draw = (a: { lat: number; lon: number }, b: { lat: number; lon: number }, upto: number, alpha: number) => {
-          ctx.strokeStyle = `rgb(${rgb} / ${alpha})`;
+          ctx.strokeStyle = `rgb(${gold} / ${alpha})`;
           ctx.beginPath();
           let started = false;
           for (let k = 0; k <= 40 * upto; k++) {
@@ -115,11 +116,11 @@ export default function ProjectGlobe({ role, className = '' }: { role: string; c
         const mark = (p: { lat: number; lon: number }, strong: boolean, sq = false) => {
           const q = project(p.lat, p.lon);
           if (q.z < 0) return;
-          ctx.fillStyle = `rgb(${rgb} / ${strong ? 1 : 0.5})`;
+          ctx.fillStyle = `rgb(${gold} / ${strong ? 1 : 0.5})`;
           const s = strong ? 5 : 3;
           ctx.fillRect(q.x - s / 2, q.y - s / 2, s, s);
           if (strong || sq) {
-            ctx.strokeStyle = `rgb(${rgb} / 0.8)`;
+            ctx.strokeStyle = `rgb(${gold} / 0.8)`;
             const b = 7 + (strong ? Math.sin(now / 200) * 2 : 0);
             ctx.strokeRect(q.x - b, q.y - b, b * 2, b * 2);
           }

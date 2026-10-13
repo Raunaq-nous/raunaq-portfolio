@@ -32,9 +32,7 @@ export default function SiteNav() {
 
   return (
     <header
-      className={`force-dark !bg-transparent fixed inset-x-0 top-0 z-50 transition-colors duration-500 ${
-        scrolled || open ? '!bg-ink/85 backdrop-blur-md' : ''
-      }`}
+      className={`fixed inset-x-0 top-0 z-50 transition-colors duration-500 ${scrolled || open ? 'bg-ink/90 backdrop-blur-md' : 'bg-transparent'}`}
     >
       <nav className="wrap flex h-14 items-center justify-between gap-6" aria-label="Primary">
         <Link href="/" className="label text-paper">
