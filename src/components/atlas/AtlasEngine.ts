@@ -35,7 +35,7 @@ export interface EngineOptions {
   assemble: boolean;
 }
 
-const PAPER = new THREE.Color('#F1F0EC');
+const PAPER = new THREE.Color('#CFE0F0');
 const SEGMENTS: ClusterId[] = ['experience', 'engagements', 'builds', 'industries', 'research', 'visual'];
 const SEG_INDEX = Object.fromEntries(SEGMENTS.map((s, i) => [s, i])) as Record<ClusterId, number>;
 const STREET_SEG = 6;
@@ -64,7 +64,9 @@ uniform float uOwner;
 uniform float uHoverOwner;
 varying float vAlpha;
 varying float vRatio;
+varying float vSeg;
 void main() {
+  vSeg = aSeg;
   float t = clamp(uAssemble * 1.7 - aDelay, 0.0, 1.0);
   t = t * t * (3.0 - 2.0 * t);
   vec3 p = mix(aStart, position, t);
@@ -88,10 +90,15 @@ const PARTICLE_FRAG = `
 uniform vec3 uColor;
 varying float vAlpha;
 varying float vRatio;
+varying float vSeg;
 void main() {
   vec2 pc = gl_PointCoord - 0.5;
   if (abs(pc.y) > 0.5 * vRatio) discard;
-  gl_FragColor = vec4(uColor, vAlpha);
+  // The vault palette: light blue structure, gold for lit windows and builds.
+  vec3 blue = vec3(0.62, 0.78, 0.92);
+  vec3 gold = vec3(0.95, 0.79, 0.54);
+  vec3 c = (vRatio < 0.99 || abs(vSeg - 2.0) < 0.5) ? gold : blue;
+  gl_FragColor = vec4(c, vAlpha);
 }`;
 
 const NODE_VERT = `
@@ -413,47 +420,61 @@ export class AtlasEngine {
         }
       });
 
-    // Builds: small blocks on pedestals.
+    // A point-cloud building: walls with a window grid, crisp corner edges and a roof.
+    const building = (cx: number, cz: number, w: number, d: number, h: number, sg: number, ow: number, density = 9) => {
+      const n = Math.round((w * h + d * h) * density * k);
+      for (let i = 0; i < n; i++) {
+        const y = r() * h;
+        let x: number;
+        let z: number;
+        if (r() < w / (w + d)) {
+          x = cx + (r() - 0.5) * w;
+          z = cz + (r() < 0.5 ? -1 : 1) * (d / 2);
+        } else {
+          x = cx + (r() < 0.5 ? -1 : 1) * (w / 2);
+          z = cz + (r() - 0.5) * d;
+        }
+        const along = Math.abs(x - cx) > Math.abs(z - cz) * (w / d) ? z - cz : x - cx;
+        const gx = Math.abs((along / 0.7) % 1);
+        const gy = Math.abs((y / 0.9) % 1);
+        const win = gx < 0.5 && gy > 0.3 && gy < 0.72 && y > 0.4;
+        push(x, y, z, sg, ow, win ? 1.4 : 0.9, win ? 0.45 + r() * 0.35 : 0.14 + r() * 0.12, win && r() < 0.5 ? 0.45 : 1);
+      }
+      for (let i = 0; i < Math.round(h * 26 * k); i++) push(cx + (r() < 0.5 ? -1 : 1) * (w / 2), r() * h, cz + (r() < 0.5 ? -1 : 1) * (d / 2), sg, ow, 1.2, 0.55);
+      for (let i = 0; i < Math.round(w * d * 12 * k); i++) push(cx + (r() - 0.5) * w, h, cz + (r() - 0.5) * d, sg, ow, 1.0, 0.3);
+      for (let i = 0; i < Math.round((w + d) * 30 * k); i++) {
+        const t = r();
+        const e = Math.floor(r() * 4);
+        const ex = e < 2 ? cx + (t - 0.5) * w : cx + (e === 2 ? -1 : 1) * (w / 2);
+        const ez = e < 2 ? cz + (e === 0 ? -1 : 1) * (d / 2) : cz + (t - 0.5) * d;
+        push(ex, h, ez, sg, ow, 1.2, 0.6);
+      }
+    };
+
+    // Builds: small buildings with lit windows near the role they came from.
     nodes
       .filter((nd) => nd.kind === 'project')
       .forEach((nd, j) => {
         const [x, , z] = nd.position;
-        const h = 1.6 + (j % 3) * 0.9;
         const ow = nd.owner ? OWNER_INDEX[nd.owner] : -1;
-        for (let i = 0; i < Math.round(700 * k); i++) {
-          const f = r();
-          const px = x + (f < 0.5 ? (r() - 0.5) * 2 : (r() < 0.5 ? -1 : 1));
-          const pz = z + (f < 0.5 ? (r() < 0.5 ? -1 : 1) : (r() - 0.5) * 2);
-          push(px, r() * h, pz, 2, ow, 1.1, 0.2 + r() * 0.3);
-        }
-        for (let i = 0; i < Math.round(220 * k); i++) push(x + (r() - 0.5) * 3, 0.03, z + (r() - 0.5) * 3, 2, ow, 0.9, 0.18);
+        building(x, z, 2, 2, 1.6 + (j % 3) * 0.9, 2, ow, 12);
       });
 
-    // Industries: haze above the street.
+    // Industries: low blocks between the towers and the galleries, taller with more roles.
     nodes
       .filter((nd) => nd.kind === 'industry')
       .forEach((nd) => {
-        const [x, y, z] = nd.position;
-        for (let i = 0; i < Math.round(480 * k); i++) push(x + gauss(r) * 1.8, y + gauss(r) * 0.9, z + gauss(r) * 1.8, 3, -1, 1.1 + r(), 0.12 + r() * 0.25);
+        const [x, , z] = nd.position;
+        const [w, h, d] = nd.size ?? [2.4, 3, 2.2];
+        building(x, z, w, d, h, 3, -1, 8);
       });
 
-    // Research: papers orbit like small satellites, ideas as puffs.
+    // Research: papers are their photos; ideas are small pavilions past the end of the street.
     nodes
-      .filter((nd) => nd.cluster === 'research')
+      .filter((nd) => nd.cluster === 'research' && !(nd.kind === 'paper' && nd.memory))
       .forEach((nd) => {
-        const [x, y, z] = nd.position;
-        const ow = nd.owner ? OWNER_INDEX[nd.owner] : -1;
-        if (nd.kind === 'paper' && nd.memory) {
-          // The photo itself represents this paper.
-        } else if (nd.kind === 'paper') {
-          for (let i = 0; i < Math.round(360 * k); i++) {
-            const a = r() * Math.PI * 2;
-            const rr = 1.5 + gauss(r) * 0.05;
-            push(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.35, z + Math.sin(a) * rr, 4, ow, 1.1, 0.35);
-          }
-        } else {
-          for (let i = 0; i < Math.round(260 * k); i++) push(x + gauss(r) * 0.9, y + gauss(r) * 0.9, z + gauss(r) * 0.9, 4, -1, 1.1, 0.18 + r() * 0.3);
-        }
+        const [x, , z] = nd.position;
+        building(x, z, 1.6, 1.6, 1.8, 4, nd.owner ? OWNER_INDEX[nd.owner] : -1, 10);
       });
 
     // Visual archive: a small lattice.

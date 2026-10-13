@@ -493,15 +493,16 @@ export default function ExperienceJourney() {
     <section
       id="experience"
       ref={sectionRef}
-      className="force-dark relative mt-40 overflow-hidden py-16 lg:mt-56"
+      className="force-dark relative mt-40 overflow-hidden bg-[#0b0806] py-16 lg:mt-56"
       aria-labelledby="experience-title"
       onKeyDown={(e) => {
         if (e.key === 'ArrowRight') go(index + 1);
         if (e.key === 'ArrowLeft') go(index - 1);
       }}
     >
-      <GlyphField velocity={velocity} className="opacity-70" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgb(9_9_9/0.85)_100%)]" aria-hidden />
+      <GlyphField velocity={velocity} className="opacity-20" />
+      {/* A solid overlay so nothing in the field reads through the text above it. */}
+      <div className="pointer-events-none absolute inset-0 bg-[#0b0806]/90" aria-hidden />
 
       <div className="wrap relative z-10 grid gap-6 lg:grid-cols-12">
         <div className="lg:col-span-3">

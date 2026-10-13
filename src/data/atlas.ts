@@ -212,7 +212,9 @@ industryRoles.forEach((roles, ind) => {
     title: ind,
     summary: `Worked across ${roles.length} role${roles.length > 1 ? 's' : ''}: ${roles.map((id) => battles.find((b) => b.id === id)!.company.split(',')[0]).join(', ')}.`,
     meta: `Industry / ${roles.length} role${roles.length > 1 ? 's' : ''}`,
-    position: [round(mx + (r() - 0.5) * 9), round(19 + r() * 8 + roles.length * 1.5), round((r() - 0.5) * 22)],
+    // A low building between the towers and the galleries; taller when more roles worked in it.
+    size: [2.4, round(2.2 + roles.length * 1.3), 2.2],
+    position: [round(mx + (r() - 0.5) * 9), round(2.2 + roles.length * 1.3 + 0.6), round((r() < 0.5 ? -1 : 1) * (STREET_HALF_WIDTH + 8.6 + r() * 1.4))],
   });
 });
 
@@ -346,7 +348,8 @@ const ideaDrafts: Draft[] = [
 ];
 ideaDrafts.forEach((d, j) => {
   const a = (j / ideaDrafts.length) * Math.PI * 2;
-  d.position = [round(xForYear(2027.2) + 5 + Math.cos(a) * 6), round(12 + Math.sin(a * 2) * 2.5), round(Math.sin(a) * 9)];
+  // Pavilions on the ground past the end of the street, where the timeline runs out.
+  d.position = [round(xForYear(2027.2) + 5 + Math.cos(a) * 7), 2.4, round(Math.sin(a) * 9)];
   drafts.push(d);
 });
 

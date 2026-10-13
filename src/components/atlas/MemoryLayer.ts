@@ -367,7 +367,8 @@ export class MemoryLayer {
     let bright = 0;
     for (let i = 0; i < lum.length; i++) if (lum[i] > 0.86) bright++;
     const flat = !m.sheet && bright / lum.length > 0.3;
-    const relief = m.sheet ? 0.55 : flat ? 0.28 : 1;
+    // Spec sheets stay nearly flat, like boards on a wall, so they never ripple from the side.
+    const relief = m.sheet ? 0.08 : flat ? 0.28 : 1;
     const shade = shading(depth, cols, rows, relief);
 
     const tanH = Math.tan(FOV_H / 2);

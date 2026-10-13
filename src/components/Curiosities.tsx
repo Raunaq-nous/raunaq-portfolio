@@ -53,10 +53,10 @@ export default function Curiosities() {
           return (
             <Reveal key={c.id}>
               <article className="grid gap-8 border-t rule py-12 lg:grid-cols-12 lg:gap-10 lg:py-16">
-                <button type="button" onClick={() => setOpen(c)} className={`group relative block aspect-[16/10] w-full overflow-hidden border rule lg:col-span-7 ${flip ? 'lg:order-2' : ''}`} aria-label={`Read ${c.title}`}>
+                <button type="button" onClick={() => setOpen(c)} className={`group relative block aspect-[4/3] w-full self-start overflow-hidden border border-[#f2c98a]/25 lg:col-span-5 ${flip ? 'lg:order-2' : ''}`} aria-label={`Read ${c.title}`}>
                   <CuriosityPlate motif={c.plate} code={code} title={c.title} className="transition-transform duration-700 group-hover:scale-[1.015]" />
                 </button>
-                <div className={`lg:col-span-5 ${flip ? 'lg:order-1' : ''}`}>
+                <div className={`lg:col-span-7 ${flip ? 'lg:order-1' : ''}`}>
                   <p className="label flex flex-wrap gap-x-4 gap-y-1 text-grey-3">
                     <span className="text-grey-1">{code}</span>
                     <span className="flex items-center gap-1.5">
@@ -90,12 +90,10 @@ export default function Curiosities() {
                           const shot = mediaFor(p.slug, p.name).screenshots[0]?.asset;
                           return (
                             <li key={slug}>
-                              <Link href={`/work/${slug}/`} className="group/b flex items-center gap-2 border border-paper/25 py-1 pl-1 pr-2.5 text-[13px] transition-colors hover:border-paper">
-                                {shot ? (
+                              <Link href={`/work/${slug}/`} className="group/b flex items-center gap-2 border border-paper/25 px-2.5 py-1.5 text-[13px] transition-colors hover:border-paper">
+                                {shot && (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img src={asset(shot.src)} alt="" className="h-7 w-10 object-cover object-top grayscale" />
-                                ) : (
-                                  <span className="dot-grid h-7 w-10 border border-paper/15" />
                                 )}
                                 {p.name}
                               </Link>

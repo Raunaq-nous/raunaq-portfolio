@@ -298,8 +298,8 @@ export default function AtlasExperience() {
       {/* Segments */}
       {webgl && (
         <nav className="wrap pointer-events-none absolute inset-x-0 bottom-28 z-20 md:bottom-auto md:top-1/2 md:w-auto md:-translate-y-1/2" aria-label="Atlas segments">
-          <p className="label mb-2 text-grey-3 max-md:hidden">Segments</p>
-          <ul className="pointer-events-auto flex max-w-full gap-2 overflow-x-auto md:inline-flex md:flex-col md:gap-0">
+          <p className="label mb-2 inline-block bg-[#0b0806]/90 px-1 text-grey-2 max-md:hidden">Segments</p>
+          <ul className="pointer-events-auto flex max-w-full gap-2 overflow-x-auto md:inline-flex md:flex-col md:gap-0 md:border md:border-[#f2c98a]/25 md:bg-[#0b0806]/90 md:py-1">
             {clusters.map((c) => {
               const count = nodes.filter((n) => (c.id === 'memories' ? !!n.memory : n.cluster === c.id)).length;
               const on = segs.includes(c.id);
@@ -310,7 +310,7 @@ export default function AtlasExperience() {
                     onClick={() => toggleSeg(c.id)}
                     aria-pressed={on}
                     title={c.description}
-                    className={`label flex w-max items-baseline gap-3 border px-3 py-2 transition-colors md:border-0 md:border-l md:py-2.5 ${
+                    className={`label flex w-max items-baseline gap-3 border bg-[#0b0806]/90 px-3 py-2 transition-colors md:border-0 md:border-l md:bg-transparent md:py-2.5 ${
                       on ? 'border-paper text-paper' : 'border-paper/15 text-grey-2 hover:text-paper'
                     }`}
                   >
