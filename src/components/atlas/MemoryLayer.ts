@@ -34,6 +34,7 @@ uniform float uLift;
 uniform float uPlane;
 uniform float uDepthView;
 uniform float uColour;
+uniform float uColourMax;
 uniform float uFade;
 uniform float uSpacing;
 uniform float uFocal;
@@ -66,7 +67,7 @@ void main() {
   float lit = tone * mix(1.0, aShade, lift);
   lit *= mix(1.0, 0.62, (1.0 - aDepth) * lift);
   vec3 grey = lit * mix(vec3(0.78, 0.86, 1.0), vec3(1.0), smoothstep(0.15, 0.85, lit));
-  vec3 col = mix(grey, aCol * mix(1.0, aShade, lift), uColour * 0.35);
+  vec3 col = mix(grey, aCol * mix(1.0, aShade, lift), uColour * uColourMax);
   col = mix(col, turbo(1.0 - aDepth), uDepthView * (1.0 - aSur));
   // Surround points are the reconstructed room: dim grey dust, sparse, only once lifted.
   col = mix(col, vec3(0.42 + aSeed * 0.3) * vec3(0.86, 0.9, 1.0), aSur);
@@ -121,6 +122,7 @@ interface Moment {
   box?: THREE.LineSegments;
   /** Points worth tagging on screen: world position and index in the cloud. */
   tags: { pos: THREE.Vector3; index: number }[];
+  hidden?: boolean;
   ready: boolean;
   loading: boolean;
   // animated values
@@ -233,11 +235,19 @@ export class MemoryLayer {
   private items: Moment[] = [];
   private disposed = false;
 
-  constructor(private scene: THREE.Scene, nodes: AtlasNode[], private pixel: number, private lowPower: boolean) {
+  constructor(
+    private scene: THREE.Scene,
+    nodes: AtlasNode[],
+    private pixel: number,
+    private lowPower: boolean,
+    /** Optional: where moments stand (default: the atlas gallery), colour strength, lazy photos, density. */
+    private opts: { anchorOf?: (id: string) => { origin: [number, number, number]; forward: [number, number, number] } | undefined; colour?: number; lazy?: boolean; cols?: number } = {},
+  ) {
+    const anchorOf = opts.anchorOf ?? momentAnchor;
     nodes
-      .filter((n) => n.memory && momentAnchor(n.id))
+      .filter((n) => n.memory && anchorOf(n.id))
       .forEach((n) => {
-        const a = momentAnchor(n.id)!;
+        const a = anchorOf(n.id)!;
         const origin = new THREE.Vector3(...a.origin);
         const forward = new THREE.Vector3(...a.forward).normalize();
         const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
@@ -268,7 +278,7 @@ export class MemoryLayer {
         };
         this.items.push(it);
         // Photos load straight away; project scenes load when their role comes into focus.
-        if (!m.sheet) this.load(it);
+        if (!m.sheet && !opts.lazy) this.load(it);
       });
   }
 
@@ -294,6 +304,15 @@ export class MemoryLayer {
       await new Promise((r) => setTimeout(r, 40));
     }
     this.pumping = false;
+  }
+
+  /** Shows only the given moments; the rest are hidden entirely. `null` shows all. */
+  setVisible(ids: Set<string> | null) {
+    this.items.forEach((it) => {
+      const on = !ids || ids.has(it.node.id);
+      [it.points, it.plane, it.frame, it.box].forEach((o) => o && (o.visible = on));
+      it.hidden = !on;
+    });
   }
 
   /** Tagged points of a moment, for the coordinate overlay. */
@@ -332,7 +351,7 @@ export class MemoryLayer {
     }
     if (this.disposed) return;
     const aspect = img.naturalWidth / img.naturalHeight;
-    const cols = m.sheet ? (this.lowPower ? 110 : 220) : this.lowPower ? 140 : 300;
+    const cols = this.opts.cols ? (m.sheet ? Math.round(this.opts.cols * 0.75) : this.opts.cols) : m.sheet ? (this.lowPower ? 110 : 220) : this.lowPower ? 140 : 300;
     const rows = Math.max(10, Math.round(cols / aspect));
     const c = document.createElement('canvas');
     c.width = cols;
@@ -445,6 +464,7 @@ export class MemoryLayer {
         uPlane: { value: MOMENT_DEPTH },
         uDepthView: { value: 0 },
         uColour: { value: 0 },
+        uColourMax: { value: this.opts.colour ?? 0.35 },
         uFade: { value: 0 },
         uSpacing: { value: (2 * tanH) / cols },
         uFocal: { value: 900 },
@@ -544,6 +564,7 @@ export class MemoryLayer {
       }
 
     Object.assign(it, { points: pts, mat, plane, planeMat, frame, box, tags, ready: true });
+    if (it.hidden) [pts, plane, frame, box].forEach((o) => (o.visible = false));
   }
 
   /** Puts one moment on stage (0..4); every other moment returns to rest. `null` rests them all. */
