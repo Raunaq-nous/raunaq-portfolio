@@ -6,8 +6,20 @@ import { battles } from '@/data/battles';
 import { buildVideos, mediaFor, memories } from '@/data/assets';
 import { projects } from '@/data/projects';
 import { places } from '@/data/geo';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export const dynamic = 'force-static';
+
+// The walkthrough for a build, written when its real screens were captured (see the capture brief).
+function readTour(slug: string) {
+  const f = path.join(process.cwd(), 'public/media/projects', slug, 'tour.json');
+  try {
+    return JSON.parse(fs.readFileSync(f, 'utf8'));
+  } catch {
+    return null;
+  }
+}
 
 export function GET() {
   const strip = (s: string) => s.replace(/^\//, '');
@@ -38,6 +50,7 @@ export function GET() {
       .filter(Boolean)
       .map((a) => ({ src: strip(a!.src), alt: a!.alt })),
     videos: buildVideos[p.slug] ?? {},
+    tour: readTour(p.slug),
   }));
   const brain = {
     regions: brainRegions,

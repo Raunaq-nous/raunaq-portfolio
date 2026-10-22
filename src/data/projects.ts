@@ -24,6 +24,7 @@ const meta: Record<string, ProjectMeta> = {
   'career-os': { slug: 'career-os', category: 'Careers and simulation' },
   'bhoomi-setu': { slug: 'bhoomi-setu', category: 'Land records and evidence' },
   'momentum-os': { slug: 'momentum-os', category: 'Personal productivity' },
+  pit: { slug: 'pit', category: 'Capital projects research' },
   cartograph: { slug: 'cartograph', category: 'Process transformation', featured: 2 },
 };
 
