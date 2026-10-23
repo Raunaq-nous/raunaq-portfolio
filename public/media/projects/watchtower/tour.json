@@ -1,0 +1,49 @@
+{
+  "slug": "watchtower",
+  "name": "Capital Projects Watcher",
+  "repo": "Raunaq-nous/capital-projects-watcher",
+  "tagline": "ETL pipeline that turns construction and infrastructure news into scored capital project events, with a filterable dashboard.",
+  "problem": "News about large capital projects (tenders, awards, final investment decisions, groundbreakings, delays) is scattered across dozens of trade outlets in many languages. Analysts tracking capex across energy, transport, industrial, digital, social, mining and water sectors have to read and deduplicate it by hand. The watcher pulls those feeds, normalises each story into a structured project event, maps stakeholders and scores how confirmed and material it is.",
+  "how": [
+    "Fetch recent items from about 60 configured RSS feeds such as Construction Dive, ENR and Global Construction Review, and store them as raw news.",
+    "Preprocess each item: detect language, translate to English, extract entities and geocode places with Nominatim.",
+    "Stage A: an LLM filters out commentary, clusters near-duplicates in a 7 to 14 day window and normalises each event with sector, stage milestone, capex in USD, capacity and location.",
+    "Stage B: an LLM maps stakeholders such as owner, EPC, OEM, financier and regulator, with public tickers where evident.",
+    "Stage C: an LLM scores stage confidence and materiality, and impact is computed as 0.6 times confidence plus 0.4 times materiality.",
+    "Entity resolution links events to projects and drops duplicates, and the Streamlit dashboard shows metrics, a map and event cards with filters."
+  ],
+  "features": [
+    "CLI with init, etl (one-off or continuous every N hours) and ui commands.",
+    "Dashboard metrics for total events, total capex, average impact and project count.",
+    "Pydeck map of event locations.",
+    "Sidebar filters for days back, sector, subsector, country, stage, capex range in USD millions and minimum impact score.",
+    "Event cards with project, summary, impact score, stage confidence, capex, stakeholders and source links.",
+    "Fuzzy title matching (threshold 0.85) and 30 km geo proximity for deduplication.",
+    "SQLite by default, PostgreSQL optional; custom sources via a YAML template."
+  ],
+  "ai": [
+    "Eventization prompt turns multilingual news into distinct project events with strict JSON fields covering 13 stage milestones from RFP to cancellation.",
+    "Stakeholder prompt assigns roles and tickers with a rationale and a high, med or low confidence label.",
+    "Scoring prompt rates stage confidence from rumor (0.0) to confirmed (1.0) and materiality by capex bucket with strategic boosts.",
+    "Runs on OpenAI GPT-4 Turbo by default, with Anthropic Claude 3 Sonnet as an alternative provider, at temperature 0.1 with JSON validation and retries."
+  ],
+  "stack": {
+    "frontend": "Streamlit, Pydeck, Plotly",
+    "backend": "Python ETL pipeline, SQLAlchemy, feedparser, BeautifulSoup",
+    "data": "SQLite or PostgreSQL",
+    "ai": "OpenAI or Anthropic LLMs, langdetect, deep-translator, geopy",
+    "deploy": "Local scripts (setup and run for Windows, macOS and Linux)"
+  },
+  "screens": [
+    {"src": "media/projects/watchtower/s01-dashboard.jpg", "title": "Dashboard", "caption": "The main view shows headline metrics, a geographic distribution map and recent events, with all filters in the sidebar. It is empty here because no events were processed."},
+    {"src": "media/projects/watchtower/s02-time-window.jpg", "title": "Time window", "caption": "The days back slider widens the window from the default 30 days up to 90."},
+    {"src": "media/projects/watchtower/s03-capex-impact-filters.jpg", "title": "Capex and impact filters", "caption": "Narrow events to a capex range in USD millions and a minimum impact score."},
+    {"src": "media/projects/watchtower/s04-sector-filter.jpg", "title": "Sector filter", "caption": "Sector, subsector, country and stage options are read from the database, so they fill in as projects are saved."},
+    {"src": "media/projects/watchtower/s05-full-width.jpg", "title": "Full-width view", "caption": "With the sidebar collapsed the metrics, map and event list use the full page."}
+  ],
+  "demo": "media/projects/watchtower/demo.mp4",
+  "poster": "media/projects/watchtower/demo.jpg",
+  "live": null,
+  "run": "./setup.sh  # creates venv and installs requirements.txt\n# add OPENAI_API_KEY to .env\npython main.py init && python main.py etl --days 7 && python main.py ui",
+  "notes": "Ran locally with SQLite: python main.py init, then the Streamlit dashboard (src/ui/app.py). One boot fix: pinned pyarrow below 17 because the latest pyarrow needs NumPy 2 and the repo pins NumPy 1.26.2. A real ETL run (main.py etl --days 7) completed but fetched 0 items from the feeds through this environment's network, and the three LLM stages need an OpenAI or Anthropic key, which was not available. The repo has no sample data or mock mode, so the database holds no events and every screen shows the dashboard's empty state; the map, event cards and stakeholder lists are not shown. Only 5 screens were captured because the app is a single dashboard page and further views would need real event data."
+}
