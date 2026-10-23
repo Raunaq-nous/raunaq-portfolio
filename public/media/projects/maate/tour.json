@@ -1,0 +1,58 @@
+{
+  "slug": "maate",
+  "name": "Maate",
+  "repo": "Raunaq-nous/Maate",
+  "tagline": "A personal health record app for patients and families that stores reports, tracks medications and reminders, and shares records with doctors through expiring links.",
+  "problem": "Medical reports, prescriptions and reminders for a household are usually scattered across paper, chat threads and different clinics, and sharing them with a new doctor is slow. Maate gives patients and caregivers one place to keep clinical records for themselves and their dependants, with consent controls and time-limited doctor access.",
+  "how": [
+    "A user registers with explicit, separate consents for data processing, AI summarisation and AI chat, then signs in to a Next.js web app backed by a NestJS API.",
+    "Medication, meal and water reminders are stored per user and shown as a daily schedule with adherence tracking.",
+    "Uploaded reports go to S3-compatible storage and a BullMQ job sends them to an OCR service (Tesseract) and an AI service that extracts medicines and writes a clinical summary.",
+    "The user reviews extracted medications before they are added to the reminder schedule.",
+    "Family profiles let one account manage parents, children and other dependants, and caregivers can be invited with access permissions.",
+    "A doctor share creates a signed, expiring link to a read-only clinician portal showing the patient's medications, reports and vitals."
+  ],
+  "features": [
+    "Email and password registration with DPDP and HIPAA style consent toggles, OTP verification and refresh token rotation",
+    "Health dashboard with medications due today, hydration, AI insights and quick actions",
+    "Daily schedule of medicine, meal and water reminders with adherence for the day",
+    "Family Health Vault to add and manage dependant profiles",
+    "Doctor share links with chosen access duration, view counts and revocation",
+    "Read-only clinician portal opened from the share link",
+    "Report upload with OCR and an extraction review step with per-medicine confidence",
+    "AI chat assistant over the user's records using retrieval over pgvector embeddings",
+    "Health timeline and records views with filters, plus data export and account erasure"
+  ],
+  "ai": [
+    "The AI service summarises OCR text from a report into a clinical summary and a plain-language summary using a Groq-hosted model (openai/gpt-oss-120b by default) or OpenAI.",
+    "Extracted medications carry confidence scores and low-confidence items are flagged for the user to verify before scheduling.",
+    "Document chunks are embedded with a bge-small sentence-transformer into pgvector, and the chat assistant retrieves relevant chunks to answer questions about the user's records.",
+    "When no LLM key is configured, the AI service returns summaries explicitly flagged as mock, and the database records that flag."
+  ],
+  "stack": {
+    "frontend": "Next.js 15 App Router, React 19, Tailwind CSS, TanStack Query, Zustand; Expo React Native mobile app",
+    "backend": "NestJS 10 REST API with Prisma, BullMQ and Redis; Python FastAPI AI and OCR services",
+    "data": "PostgreSQL with pgvector, Redis, S3-compatible object storage",
+    "ai": "Groq or OpenAI LLMs, sentence-transformers (bge-small) embeddings, Tesseract OCR",
+    "deploy": "Vercel for the web app, Docker Compose with Caddy for the staging stack"
+  },
+  "screens": [
+    {"src": "media/projects/maate/s01-login.jpg", "title": "Sign in", "caption": "The login screen with email and password plus Google and Apple buttons."},
+    {"src": "media/projects/maate/s02-register.jpg", "title": "Create account", "caption": "Registration with live password rules and separate consent checkboxes for core data processing, AI document summarisation and the AI chat assistant."},
+    {"src": "media/projects/maate/s03-dashboard.jpg", "title": "Health dashboard", "caption": "The home screen after login: quick actions, health score, sleep, hydration, weekly adherence, daily medications and AI insights."},
+    {"src": "media/projects/maate/s04-reminders.jpg", "title": "Your schedule", "caption": "Medicine, water and meal reminders loaded from the API, with today's adherence and notification settings."},
+    {"src": "media/projects/maate/s05-add-family-member.jpg", "title": "Add family member", "caption": "The drawer for adding a dependant profile with name, relationship, gender and date of birth."},
+    {"src": "media/projects/maate/s06-family-vault.jpg", "title": "Family Health Vault", "caption": "Profiles the user manages for parents and children, each with a link to its caregivers."},
+    {"src": "media/projects/maate/s07-doctor-share.jpg", "title": "Doctor share", "caption": "Generate a consultation link for a named doctor and choose how long access lasts, from 24 hours to 30 days."},
+    {"src": "media/projects/maate/s08-permissions.jpg", "title": "Caregiver and doctor permissions", "caption": "Active doctor links with expiry, view count and a revoke button, plus caregiver invitations."},
+    {"src": "media/projects/maate/s09-doctor-portal.jpg", "title": "Clinician portal", "caption": "What the doctor sees from the share link: a read-only view of the patient's active medications, shared reports and vitals, with the access expiry shown."},
+    {"src": "media/projects/maate/s10-upload.jpg", "title": "Add medical record", "caption": "Drag and drop PDFs or photos of lab reports for OCR and extraction, with privacy notes and filing tips."},
+    {"src": "media/projects/maate/s11-review-extraction.jpg", "title": "Review extraction", "caption": "Medicines detected in a report with dosage, timing and confidence, where the user corrects or removes items before approving them into the schedule."},
+    {"src": "media/projects/maate/s12-ai-chat.jpg", "title": "AI medical assistant", "caption": "The chat assistant with suggested questions about reports, trends and medications, and past conversations on the left."}
+  ],
+  "demo": "media/projects/maate/demo.mp4",
+  "poster": "media/projects/maate/demo.jpg",
+  "live": "https://maate-web.vercel.app",
+  "run": "pnpm install && docker compose up -d && pnpm --filter @maate/database db:migrate && pnpm --filter @maate/database db:seed && pnpm --filter @maate/api dev && pnpm --filter @maate/web dev",
+  "notes": "Ran the NestJS API and the Next.js web app locally against a local PostgreSQL 16 with pgvector and a local Redis, with all Prisma migrations applied. The account Priya Sharma was registered through the real sign-up form and signed in through the real login form (no faked cookie this time), and the repo's seed script added her medicine, meal and water reminders. The three family profiles and the doctor share link were created through the UI, and the clinician portal shows the real API response for that link. Some dashboard widgets (health score, sleep, hydration, AI insights, the daily medications card) are static content in the dashboard components rather than API data. The Review Extraction screen and the report detail page render sample data built into the web app when no real document is loaded. The OCR and AI services, S3 storage and the Expo mobile app were not run: no LLM key, no S3 endpoint and no Tesseract were available, so no report was processed and the chat assistant was captured before sending a message. The OTP verification page is not reachable before login because the web middleware does not list it as public, so registration redirects straight to login. Dev-only overlays (TanStack Query devtools, Next.js dev indicator) were hidden with CSS in the browser. Older screenshots 01 to 06 are kept."
+}
