@@ -12,13 +12,14 @@
     "CapEx (parametric fit, variance waterfall, levers) and schedule (CPM, Monte Carlo, RCPSP) endpoints are defined as the modeling layer."
   ],
   "features": [
-    "Dashboard with project counts, database status and API health indicator",
-    "Create, list and soft-delete projects",
+    "Dashboard with project counts, database type read from the API and an API health indicator",
+    "Create, list and soft-delete projects, with creation dates shown in the list",
     "Research query planner generating search queries and target domains per project",
     "Credibility scoring and conflict detection services",
     "Time, currency and location normalization service",
     "Interactive Swagger and ReDoc API documentation",
-    "Database schema covering sources, extracts, comparators, CapEx models, schedules, Monte Carlo runs, exports and audit logs"
+    "Database schema covering sources, extracts, comparators, CapEx models, schedules, Monte Carlo runs, exports and audit logs",
+    "API base URL configurable with a ?api= query parameter on the page"
   ],
   "ai": [
     "No LLM is used. Research planning, credibility scoring and normalization are rule-based Python services.",
@@ -27,22 +28,55 @@
   "stack": {
     "frontend": "Single-file Vue 3 page with Tailwind CSS",
     "backend": "Python, FastAPI, SQLAlchemy, Pydantic, structlog",
-    "data": "PostgreSQL (UUID/JSONB models); SQLite intended as default",
+    "data": "SQLite by default (portable UUID type); PostgreSQL via DATABASE_URL, with db/schema.sql for Postgres",
     "ai": "None (rule-based research planning and scoring)",
     "deploy": "Local uvicorn server; frontend opened as a static file"
   },
   "screens": [
-    {"src": "media/projects/yardstick/s01-dashboard.jpg", "title": "Dashboard", "caption": "The home screen with total and active project counts, a live API connection badge and quick actions."},
-    {"src": "media/projects/yardstick/s02-create-project.jpg", "title": "Create project", "caption": "The new project form: name, asset type (solar PV, wind or storage), location and capacity in MW."},
-    {"src": "media/projects/yardstick/s03-projects-list.jpg", "title": "Projects", "caption": "Projects saved through the API, with asset type, location, status and view or delete actions."},
-    {"src": "media/projects/yardstick/s04-dashboard-with-projects.jpg", "title": "Dashboard with projects", "caption": "The dashboard after three projects were added, with counts read from the API."},
-    {"src": "media/projects/yardstick/s05-api-docs-tab.jpg", "title": "API Docs tab", "caption": "Links to Swagger and ReDoc and a list of the main endpoints for projects, research planning and normalization."},
-    {"src": "media/projects/yardstick/s06-swagger.jpg", "title": "Swagger API", "caption": "The FastAPI interactive docs listing the system, projects, research, normalization, CapEx, schedule and export endpoints."},
-    {"src": "media/projects/yardstick/s07-research-plan.jpg", "title": "Research plan", "caption": "A live call to the research planner for a 690 MW Nevada project, returning the generated search queries."}
+    {
+      "src": "media/projects/yardstick/s01-dashboard.jpg",
+      "title": "Dashboard",
+      "caption": "The home screen with total and active project counts, a live API connection badge, the database type reported by the API and quick actions."
+    },
+    {
+      "src": "media/projects/yardstick/s02-create-project.jpg",
+      "title": "Create project",
+      "caption": "The new project form: name, asset type (solar PV, wind or storage), location and capacity in MW."
+    },
+    {
+      "src": "media/projects/yardstick/s03-projects-list.jpg",
+      "title": "Projects",
+      "caption": "Projects saved through the API in the default SQLite database, with asset type, location, status, creation date and view or delete actions."
+    },
+    {
+      "src": "media/projects/yardstick/s04-dashboard-with-projects.jpg",
+      "title": "Dashboard with projects",
+      "caption": "The dashboard after three projects were added, with counts read from the API."
+    },
+    {
+      "src": "media/projects/yardstick/s05-api-docs-tab.jpg",
+      "title": "API Docs tab",
+      "caption": "Links to Swagger and ReDoc and a list of the main endpoints for projects, research planning and normalization."
+    },
+    {
+      "src": "media/projects/yardstick/s06-swagger.jpg",
+      "title": "Swagger API",
+      "caption": "The FastAPI interactive docs listing the system, projects, research, normalization, CapEx, schedule and export endpoints."
+    },
+    {
+      "src": "media/projects/yardstick/s07-research-plan.jpg",
+      "title": "Research plan",
+      "caption": "A live call to the research planner for a 690 MW Nevada project, returning the generated search queries."
+    },
+    {
+      "src": "media/projects/yardstick/s08-list-projects.jpg",
+      "title": "Project list response",
+      "caption": "A live GET on the projects endpoint in Swagger returning the three stored projects with their created_at timestamps."
+    }
   ],
   "demo": "media/projects/yardstick/demo.mp4",
   "poster": "media/projects/yardstick/demo.jpg",
   "live": null,
-  "run": "python -m venv venv && source venv/bin/activate\npip install -r api/requirements.txt\ncd api && uvicorn main:app --reload --port 8000\n# then open frontend/index.html in a browser",
-  "notes": "Backend and frontend ran locally. The default SQLite mode fails at startup because the models use PostgreSQL UUID columns, and db/schema.sql no longer matches the models, so the API ran against a local PostgreSQL 16 with tables created by the app's own init code (DATABASE_URL env var). The frontend loads Vue and Tailwind from CDNs that are blocked in this environment and hardcodes the API on port 8000; during capture the browser was served the same Vue 3 build from npm, a Tailwind v3 build compiled from index.html, and Swagger UI assets from npm, and the port was redirected, with no change to the repo. The three projects were typed into the real form as example inputs. The dashboard's Database card always says SQLite and the Created column shows Invalid Date; both are as the app renders them. CapEx and schedule endpoints return placeholder values, so they are not shown as results. No LLM is involved."
+  "run": "python -m venv venv && source venv/bin/activate\npip install -r api/requirements.txt\ncd api && uvicorn main:app --reload --port 8000\n# then open frontend/index.html in a browser (add ?api=http://127.0.0.1:PORT to use another API port)",
+  "notes": "The app now runs from the repo with its default SQLite database and no local PostgreSQL. Fixes committed in the local repo (not pushed): the models use SQLAlchemy's portable Uuid type instead of the PostgreSQL-only UUID, so tables are created on SQLite; the project list response now includes created_at and updated_at, so the Created column shows real dates instead of Invalid Date; /health reports the database type and the dashboard Database card shows it instead of a hardcoded SQLite label; the frontend API base URL can be set with ?api= instead of being fixed to port 8000; db/schema.sql was synced to the models (project_metadata column, JSONB lists instead of arrays, VARCHAR ip_address, NOT NULL foreign keys) and was loaded successfully into PostgreSQL 16 as a check; pytest was pinned to 7.4.4 because the requirements file could not resolve. Caveats: the frontend still loads Vue and Tailwind from CDNs, which are blocked in the capture environment, so during capture the browser was served the same Vue 3 build and a compiled Tailwind v3 stylesheet from npm (and Swagger UI assets from npm) with no change to the repo. The CapEx (parametric fit, variance, levers), schedule (CPM, Monte Carlo, RCPSP) and export endpoints are stubs that return fixed placeholder values; they were left as is and are not shown as results. The research planner is a real rule-based service; crawling was not run because it needs outbound web access. The three projects were typed into the real form as example inputs. No LLM is involved."
 }
