@@ -351,7 +351,7 @@ def cmd_next(args) -> int:
         print(f"{args.repo} is not checked out. Run `prepare {args.repo}` first.")
         return 1
     packet = checkout / clarity.WORK_DIR / "packet.json"
-    code, out = run_clarity(checkout, "next", "--max-tokens", "60000", "--out", str(packet))
+    code, out = run_clarity(checkout, "next", "--max-tokens", str(cfg["budget"].get("packet_tokens", 60000)), "--out", str(packet))
     print(out.strip())
     if "Nothing left to explain" in out:
         return EXIT_NOTHING
