@@ -1,0 +1,435 @@
+{
+  "schema_version": 1,
+  "path": "src/components/vault/VaultScene.ts",
+  "language": "TypeScript",
+  "lines": 886,
+  "hash": "sha256:7bb86bc6216e6efc1203071e5dd56dd5bf65c88308fa07c9c549dce186b9eb62",
+  "area": "src-components",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only two of the 21 sections were reviewed.",
+      "Error handling and tests cannot be judged from this part."
+    ]
+  },
+  "terms": [
+    {
+      "term": "3D scene",
+      "meaning": "a set of 3D objects, lights and a camera that the browser draws."
+    },
+    {
+      "term": "depth map",
+      "meaning": "a picture where each point records how far away it is, used to lift a flat image into 3D."
+    },
+    {
+      "term": "view",
+      "meaning": "one of the four modes the room can show, such as the interface or the videos."
+    }
+  ],
+  "depends_on": [
+    "three",
+    "@/data/aiBuilds",
+    "@/data/atlas",
+    "@/data/assets",
+    "@/lib/asset",
+    "../atlas/MemoryLayer"
+  ],
+  "used_by": [
+    "src/components/vault/AIBuilds.tsx"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup, VaultView",
+      "id": "s1",
+      "hash": "c0cbe294681ef271",
+      "title": "Design notes and view names",
+      "what": "Explains the vault design in a header comment and defines the four views: overview, interface, architecture and media.",
+      "why": "Records the intent: each build is a room with three walls of content.",
+      "watch_out": "The view names are also used by the page, so renaming one needs changes in both files."
+    },
+    {
+      "start": 20,
+      "end": 27,
+      "kind": "type",
+      "name": "StackGraph",
+      "id": "s2",
+      "hash": "71ab37d246c84282",
+      "title": "Codebase graph shape",
+      "what": "Describes the data for the codebase wall: a source label, layers, technology nodes, the links between them, and the AI features.",
+      "why": "Gives the left wall one fixed shape to draw from, so every build's stack is drawn the same way.",
+      "watch_out": "Missing fields in the data will break the drawing, so check the data against this shape."
+    },
+    {
+      "start": 28,
+      "end": 41,
+      "kind": "type",
+      "name": "VaultCallbacks",
+      "id": "s3",
+      "hash": "870edeb961ce4b3d",
+      "title": "Messages the scene sends out",
+      "what": "Lists the signals the 3D vault sends to the page around it: hovering over a room, entering a room, changing view, loading a codebase diagram, and moving between captures. It also holds the size constants for rooms, such as width, height, depth and spacing.",
+      "why": "Lets the page update its text and controls without the 3D code needing to know about them.",
+      "watch_out": "The room size constants drive every room, the camera framing and the background lattice together, so one change reshapes the whole scene."
+    },
+    {
+      "start": 42,
+      "end": 50,
+      "kind": "value",
+      "name": "WARM",
+      "id": "s4",
+      "hash": "69f371282155b79a",
+      "title": "Warm colour palette",
+      "what": "Six fixed colours, ranging from amber and brown to cream and steel blue, used for the vault's lines, light beams, dust and diagrams.",
+      "why": "Gives the vault one consistent warm look. Reason not stated in the code.",
+      "watch_out": "Other code refers to these colours by position (0, 2 and 4), so reordering the list changes the colours of graphs and shelves."
+    },
+    {
+      "start": 51,
+      "end": 55,
+      "kind": "function",
+      "name": "rng",
+      "id": "s5",
+      "hash": "0cab19dcfd91d3f2",
+      "title": "Repeatable random number maker",
+      "what": "Creates a pseudo-random sequence from a starting number, so the same starting number always gives the same pattern.",
+      "why": "Likely reason: keeps the shelf and light layout identical on every visit.",
+      "watch_out": "The numbers depend on the order they are drawn, so reordering the calls changes the layout."
+    },
+    {
+      "start": 56,
+      "end": 70,
+      "kind": "type",
+      "name": "Room",
+      "id": "s6",
+      "hash": "1d79a331102d05e4",
+      "title": "Shape of one room record",
+      "what": "Describes everything kept for one room: its build, position, click target, moment ids, codebase and media parts once loaded, screens, and a glow value.",
+      "why": "Keeps each room's state in one place so parts can be added and removed as a visitor moves around.",
+      "watch_out": "Codebase and media groups exist only while a room is entered, so check they are present before using them."
+    },
+    {
+      "start": 71,
+      "end": 119,
+      "kind": "class",
+      "name": "VaultScene (part 1)",
+      "id": "s7",
+      "hash": "a9f08f2c9ea9d7b9",
+      "title": "Scene setup and state fields",
+      "what": "Declares the vault's parts and state, including the renderer, camera, rooms, pointer tracking, current view, timers and label lists. The constructor creates the drawing surface, caps the pixel density at 2 (or 1.5 on low-power devices), and adds an overlay for lines.",
+      "why": "Keeps everything the scene needs to draw and respond to input in one class.",
+      "watch_out": "The pixel density cap is what keeps very sharp screens from slowing down, so raising it costs speed."
+    },
+    {
+      "start": 120,
+      "end": 164,
+      "kind": "method",
+      "name": "VaultScene: for",
+      "id": "s8",
+      "hash": "ce69d5669e902544",
+      "title": "Building the vault and starting the loop",
+      "what": "Finishes setup: creates six tag markers, lays out the rooms, builds the background lattice, moments and light, sizes the view, and starts the animation loop. Work rooms sit in a four-column grid, and fun rooms sit to the right on wide screens or below on phones.",
+      "why": "Builds everything once so the scene is ready as soon as it appears.",
+      "watch_out": "The phone or wide layout is chosen once when the scene starts, so resizing the window later does not rearrange the rooms."
+    },
+    {
+      "start": 165,
+      "end": 224,
+      "kind": "method",
+      "name": "VaultScene: addRoom",
+      "id": "s9",
+      "hash": "21dc4bb9a3dddd52",
+      "title": "Creating one room",
+      "what": "Adds a single room: an invisible clickable box for picking, anchor points where its captures attach, and a floating name label. It also starts drawing the warm lines on the room's walls.",
+      "why": "Each room needs something to click, a place for its captures, and a label.",
+      "watch_out": "Click boxes, labels and room records are matched by index number, so the index must stay consistent with the room list."
+    },
+    {
+      "start": 225,
+      "end": 284,
+      "kind": "class",
+      "name": "VaultScene (part 4)",
+      "id": "s10",
+      "hash": "cb98daef6e66146f",
+      "title": "Room frames, light beams and dust",
+      "what": "Draws the outline of each room's opening and back wall, the shared wall-line drawing, and the light beams that fall through each room. It also sets up the floating dust.",
+      "why": "Gives the rooms depth and atmosphere. Partly explained by the comments in the code.",
+      "watch_out": "Low-power mode uses fewer beams and dust particles, so the scene looks denser on some devices than others."
+    },
+    {
+      "start": 285,
+      "end": 339,
+      "kind": "class",
+      "name": "VaultScene (part 5)",
+      "id": "s11",
+      "hash": "c336ab612b002771",
+      "title": "Dust and one moment per capture",
+      "what": "Finishes the floating dust, then creates one palace moment for each capture. A capture is the screenshot shown in a room, or a generated spec sheet when the build has no screenshot.",
+      "why": "Each capture has to exist as a 3D item that the memory layer can show.",
+      "watch_out": "The spec sheet reads category, type and tags from project data, so missing values there will leave blank rows or fail."
+    },
+    {
+      "start": 340,
+      "end": 399,
+      "kind": "method",
+      "name": "VaultScene: loadGraph",
+      "id": "s12",
+      "hash": "05448bd7fca2b8a4",
+      "title": "Fetching a codebase diagram",
+      "what": "When a room is entered, downloads that project's stack file and prepares its diagram, reporting the result to the page. The result is dropped if the visitor has already left that room.",
+      "why": "Loads each diagram only when its room is viewed, which keeps the page light.",
+      "watch_out": "If the stack file is missing or fails to load, the diagram quietly does not appear and no error is shown."
+    },
+    {
+      "start": 400,
+      "end": 458,
+      "kind": "class",
+      "name": "VaultScene (part 7)",
+      "id": "s13",
+      "hash": "0aad0a2ce47214f0",
+      "title": "Drawing the diagram lines and labels",
+      "what": "Draws the diagram on the left wall: framed sections, a cloud of points for each node, curved lines between linked nodes, and on-screen labels for sections and nodes.",
+      "why": "Turns a project's structure into a visible map inside its room.",
+      "watch_out": "Node clouds are drawn with random numbers, so their exact shape changes on each visit, and links to unknown nodes are skipped without a message."
+    },
+    {
+      "start": 459,
+      "end": 518,
+      "kind": "class",
+      "name": "VaultScene (part 8)",
+      "id": "s14",
+      "hash": "b5611efedce331a7",
+      "title": "Building video screens on the right wall",
+      "what": "Builds a frame for each video slot on the right wall. A slot with a video plays it muted and looping; an empty slot shows a flickering static texture with an awaiting file status.",
+      "why": "Gives every project a place for its videos and a visible placeholder when a file is missing.",
+      "watch_out": "Video playback failures are ignored, so a blocked video shows nothing and gives no error."
+    },
+    {
+      "start": 519,
+      "end": 571,
+      "kind": "class",
+      "name": "VaultScene (part 9)",
+      "id": "s15",
+      "hash": "59a5581f084f2c71",
+      "title": "Screen labels and clearing a room",
+      "what": "Finishes the screen labels, then clears a room by removing its diagram and video parts, pausing its videos, and freeing their graphics memory. It also contains two small helpers: one starts a smooth camera glide, and one cancels pending timed steps.",
+      "why": "Leaving a room must free memory and stop video so the page stays fast.",
+      "watch_out": "Clearing is the only place those parts are released, so any new part added to a room must also be released here."
+    },
+    {
+      "start": 572,
+      "end": 631,
+      "kind": "method",
+      "name": "VaultScene: showWing",
+      "id": "s16",
+      "hash": "91ea047cbb3b3c27",
+      "title": "Showing a wing and entering a room",
+      "what": "Frames the camera on the work wing, the fun wing, or all rooms. Entering a room first closes any other open room, then loads its diagram and screens and starts its capture walk-through.",
+      "why": "This is how a visitor moves between the overview and a single room.",
+      "watch_out": "The camera distance is calculated from the screen's shape, so the framing differs on tall and wide screens."
+    },
+    {
+      "start": 632,
+      "end": 687,
+      "kind": "class",
+      "name": "VaultScene (part 11)",
+      "id": "s17",
+      "hash": "5cd64f50015b1e12",
+      "title": "Stepping through a capture",
+      "what": "Finishes the timed steps of a capture's walk-through, then switches between views such as architecture and media, moves to another capture, and returns to the overview when a room is left.",
+      "why": "Lets visitors explore a room at their own pace, from several angles.",
+      "watch_out": "Timed steps are queued with timers, and switching views cancels them, so a walk-through can stop partway."
+    },
+    {
+      "start": 688,
+      "end": 741,
+      "kind": "method",
+      "name": "VaultScene: current",
+      "id": "s18",
+      "hash": "10a9ad2f249210ba",
+      "title": "Mouse input and picking rooms",
+      "what": "Tracks the pointer and which room it is over. A click picks the room under the pointer and enters it, unless a room is already open. It also keeps the scene sized to the window and recalculates the overview camera distance on resize.",
+      "why": "Lets visitors hover and click rooms in 3D by converting mouse position into a 3D target.",
+      "watch_out": "Clicks are ignored while a room is open, so the way out of a room must be handled elsewhere."
+    },
+    {
+      "start": 742,
+      "end": 797,
+      "kind": "class",
+      "name": "VaultScene (part 13)",
+      "id": "s19",
+      "hash": "5738d79c5ad4697b",
+      "title": "The animation loop",
+      "what": "Runs on every frame: moves the camera along any glide, adds a small drift that follows the pointer, updates the glow of lines, dust and screens, draws the scene, and places labels. It also includes a helper that converts a 3D point into screen coordinates, and it pauses when the vault is scrolled out of view.",
+      "why": "This is the heartbeat that keeps the scene moving and responding to input.",
+      "watch_out": "Everything here runs on every frame, so any new per-frame work adds cost to the whole scene."
+    },
+    {
+      "start": 798,
+      "end": 857,
+      "kind": "method",
+      "name": "VaultScene: drawLabels",
+      "id": "s20",
+      "hash": "056f94a905aacaa0",
+      "title": "Placing labels over the scene",
+      "what": "Positions the room name labels on screen and shows them only when no room is open. Inside a room, it shows the diagram labels or screen labels for the current view, plus the tag numbers on the lifted capture.",
+      "why": "Keeps readable text attached to the 3D objects it describes.",
+      "watch_out": "Labels appear only after the camera glide is mostly finished, so a stalled glide can keep them hidden."
+    },
+    {
+      "start": 858,
+      "end": 886,
+      "kind": "class",
+      "name": "VaultScene (part 15)",
+      "id": "s21",
+      "hash": "141bba4f480fd5ee",
+      "title": "Connecting tags and cleaning up",
+      "what": "Draws the lines joining the visible capture tags. The cleanup routine stops the loop and frees videos, graphics memory, labels and event listeners when the vault is removed.",
+      "why": "Prevents leftover memory use and stray events after visitors leave the page.",
+      "watch_out": "Anything added to the scene later must also be removed in this cleanup, or it will leak memory."
+    }
+  ],
+  "explained_at": "2026-11-10T20:56:00+00:00",
+  "explained_by": "haiku",
+  "summary": "The 3D engine for the AI builds vault. Only its header and data shapes were reviewed, so most of its behaviour is unclear from this part.",
+  "purpose": "Draws each build as a room with an interface capture, a codebase wall and video screens.",
+  "why": "The header comment says the design is a memory-palace style room, lit like the tesseract in the film Interstellar.",
+  "how": "Reviewed part only: it defines four views (overview, interface, architecture and media) and the shape of the codebase graph. The rest of the steps are unclear from this part.",
+  "inputs": "The build list, video slot list, asset paths, and a memory-layer helper from another folder. Other inputs are unclear from this part.",
+  "outputs": "Unclear from the reviewed part.",
+  "risks": "Heavy 3D work, so an error here can blank the whole section. Other risks are unclear from this part.",
+  "debug": "Start with the browser console. Then check that the interface capture, the graph data and the video files exist.",
+  "summary_hash": "sha256:7bb86bc6216e6efc1203071e5dd56dd5bf65c88308fa07c9c549dce186b9eb62",
+  "note_archive": {
+    "c0cbe294681ef271": {
+      "title": "Design notes and view names",
+      "what": "Explains the vault design in a header comment and defines the four views: overview, interface, architecture and media.",
+      "why": "Records the intent: each build is a room with three walls of content.",
+      "watch_out": "The view names are also used by the page, so renaming one needs changes in both files."
+    },
+    "71ab37d246c84282": {
+      "title": "Codebase graph shape",
+      "what": "Describes the data for the codebase wall: a source label, layers, technology nodes, the links between them, and the AI features.",
+      "why": "Gives the left wall one fixed shape to draw from, so every build's stack is drawn the same way.",
+      "watch_out": "Missing fields in the data will break the drawing, so check the data against this shape."
+    },
+    "870edeb961ce4b3d": {
+      "title": "Messages the scene sends out",
+      "what": "Lists the signals the 3D vault sends to the page around it: hovering over a room, entering a room, changing view, loading a codebase diagram, and moving between captures. It also holds the size constants for rooms, such as width, height, depth and spacing.",
+      "why": "Lets the page update its text and controls without the 3D code needing to know about them.",
+      "watch_out": "The room size constants drive every room, the camera framing and the background lattice together, so one change reshapes the whole scene."
+    },
+    "69f371282155b79a": {
+      "title": "Warm colour palette",
+      "what": "Six fixed colours, ranging from amber and brown to cream and steel blue, used for the vault's lines, light beams, dust and diagrams.",
+      "why": "Gives the vault one consistent warm look. Reason not stated in the code.",
+      "watch_out": "Other code refers to these colours by position (0, 2 and 4), so reordering the list changes the colours of graphs and shelves."
+    },
+    "0cab19dcfd91d3f2": {
+      "title": "Repeatable random number maker",
+      "what": "Creates a pseudo-random sequence from a starting number, so the same starting number always gives the same pattern.",
+      "why": "Likely reason: keeps the shelf and light layout identical on every visit.",
+      "watch_out": "The numbers depend on the order they are drawn, so reordering the calls changes the layout."
+    },
+    "1d79a331102d05e4": {
+      "title": "Shape of one room record",
+      "what": "Describes everything kept for one room: its build, position, click target, moment ids, codebase and media parts once loaded, screens, and a glow value.",
+      "why": "Keeps each room's state in one place so parts can be added and removed as a visitor moves around.",
+      "watch_out": "Codebase and media groups exist only while a room is entered, so check they are present before using them."
+    },
+    "a9f08f2c9ea9d7b9": {
+      "title": "Scene setup and state fields",
+      "what": "Declares the vault's parts and state, including the renderer, camera, rooms, pointer tracking, current view, timers and label lists. The constructor creates the drawing surface, caps the pixel density at 2 (or 1.5 on low-power devices), and adds an overlay for lines.",
+      "why": "Keeps everything the scene needs to draw and respond to input in one class.",
+      "watch_out": "The pixel density cap is what keeps very sharp screens from slowing down, so raising it costs speed."
+    },
+    "ce69d5669e902544": {
+      "title": "Building the vault and starting the loop",
+      "what": "Finishes setup: creates six tag markers, lays out the rooms, builds the background lattice, moments and light, sizes the view, and starts the animation loop. Work rooms sit in a four-column grid, and fun rooms sit to the right on wide screens or below on phones.",
+      "why": "Builds everything once so the scene is ready as soon as it appears.",
+      "watch_out": "The phone or wide layout is chosen once when the scene starts, so resizing the window later does not rearrange the rooms."
+    },
+    "21dc4bb9a3dddd52": {
+      "title": "Creating one room",
+      "what": "Adds a single room: an invisible clickable box for picking, anchor points where its captures attach, and a floating name label. It also starts drawing the warm lines on the room's walls.",
+      "why": "Each room needs something to click, a place for its captures, and a label.",
+      "watch_out": "Click boxes, labels and room records are matched by index number, so the index must stay consistent with the room list."
+    },
+    "cb98daef6e66146f": {
+      "title": "Room frames, light beams and dust",
+      "what": "Draws the outline of each room's opening and back wall, the shared wall-line drawing, and the light beams that fall through each room. It also sets up the floating dust.",
+      "why": "Gives the rooms depth and atmosphere. Partly explained by the comments in the code.",
+      "watch_out": "Low-power mode uses fewer beams and dust particles, so the scene looks denser on some devices than others."
+    },
+    "c336ab612b002771": {
+      "title": "Dust and one moment per capture",
+      "what": "Finishes the floating dust, then creates one palace moment for each capture. A capture is the screenshot shown in a room, or a generated spec sheet when the build has no screenshot.",
+      "why": "Each capture has to exist as a 3D item that the memory layer can show.",
+      "watch_out": "The spec sheet reads category, type and tags from project data, so missing values there will leave blank rows or fail."
+    },
+    "05448bd7fca2b8a4": {
+      "title": "Fetching a codebase diagram",
+      "what": "When a room is entered, downloads that project's stack file and prepares its diagram, reporting the result to the page. The result is dropped if the visitor has already left that room.",
+      "why": "Loads each diagram only when its room is viewed, which keeps the page light.",
+      "watch_out": "If the stack file is missing or fails to load, the diagram quietly does not appear and no error is shown."
+    },
+    "0aad0a2ce47214f0": {
+      "title": "Drawing the diagram lines and labels",
+      "what": "Draws the diagram on the left wall: framed sections, a cloud of points for each node, curved lines between linked nodes, and on-screen labels for sections and nodes.",
+      "why": "Turns a project's structure into a visible map inside its room.",
+      "watch_out": "Node clouds are drawn with random numbers, so their exact shape changes on each visit, and links to unknown nodes are skipped without a message."
+    },
+    "b5611efedce331a7": {
+      "title": "Building video screens on the right wall",
+      "what": "Builds a frame for each video slot on the right wall. A slot with a video plays it muted and looping; an empty slot shows a flickering static texture with an awaiting file status.",
+      "why": "Gives every project a place for its videos and a visible placeholder when a file is missing.",
+      "watch_out": "Video playback failures are ignored, so a blocked video shows nothing and gives no error."
+    },
+    "59a5581f084f2c71": {
+      "title": "Screen labels and clearing a room",
+      "what": "Finishes the screen labels, then clears a room by removing its diagram and video parts, pausing its videos, and freeing their graphics memory. It also contains two small helpers: one starts a smooth camera glide, and one cancels pending timed steps.",
+      "why": "Leaving a room must free memory and stop video so the page stays fast.",
+      "watch_out": "Clearing is the only place those parts are released, so any new part added to a room must also be released here."
+    },
+    "91ea047cbb3b3c27": {
+      "title": "Showing a wing and entering a room",
+      "what": "Frames the camera on the work wing, the fun wing, or all rooms. Entering a room first closes any other open room, then loads its diagram and screens and starts its capture walk-through.",
+      "why": "This is how a visitor moves between the overview and a single room.",
+      "watch_out": "The camera distance is calculated from the screen's shape, so the framing differs on tall and wide screens."
+    },
+    "5cd64f50015b1e12": {
+      "title": "Stepping through a capture",
+      "what": "Finishes the timed steps of a capture's walk-through, then switches between views such as architecture and media, moves to another capture, and returns to the overview when a room is left.",
+      "why": "Lets visitors explore a room at their own pace, from several angles.",
+      "watch_out": "Timed steps are queued with timers, and switching views cancels them, so a walk-through can stop partway."
+    },
+    "10a9ad2f249210ba": {
+      "title": "Mouse input and picking rooms",
+      "what": "Tracks the pointer and which room it is over. A click picks the room under the pointer and enters it, unless a room is already open. It also keeps the scene sized to the window and recalculates the overview camera distance on resize.",
+      "why": "Lets visitors hover and click rooms in 3D by converting mouse position into a 3D target.",
+      "watch_out": "Clicks are ignored while a room is open, so the way out of a room must be handled elsewhere."
+    },
+    "5738d79c5ad4697b": {
+      "title": "The animation loop",
+      "what": "Runs on every frame: moves the camera along any glide, adds a small drift that follows the pointer, updates the glow of lines, dust and screens, draws the scene, and places labels. It also includes a helper that converts a 3D point into screen coordinates, and it pauses when the vault is scrolled out of view.",
+      "why": "This is the heartbeat that keeps the scene moving and responding to input.",
+      "watch_out": "Everything here runs on every frame, so any new per-frame work adds cost to the whole scene."
+    },
+    "056f94a905aacaa0": {
+      "title": "Placing labels over the scene",
+      "what": "Positions the room name labels on screen and shows them only when no room is open. Inside a room, it shows the diagram labels or screen labels for the current view, plus the tag numbers on the lifted capture.",
+      "why": "Keeps readable text attached to the 3D objects it describes.",
+      "watch_out": "Labels appear only after the camera glide is mostly finished, so a stalled glide can keep them hidden."
+    },
+    "141bba4f480fd5ee": {
+      "title": "Connecting tags and cleaning up",
+      "what": "Draws the lines joining the visible capture tags. The cleanup routine stops the loop and frees videos, graphics memory, labels and event listeners when the vault is removed.",
+      "why": "Prevents leftover memory use and stray events after visitors leave the page.",
+      "watch_out": "Anything added to the scene later must also be removed in this cleanup, or it will leak memory."
+    }
+  }
+}

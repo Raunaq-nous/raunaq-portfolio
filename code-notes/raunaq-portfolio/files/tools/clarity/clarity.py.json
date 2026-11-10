@@ -1,0 +1,1133 @@
+{
+  "schema_version": 1,
+  "path": "tools/clarity/clarity.py",
+  "language": "Python",
+  "lines": 1450,
+  "hash": "sha256:4f0ff94fa41a637ffea1d827a160f7c3ad70a3fe59422637ce0394b60b429b88",
+  "area": "tools",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Read and parse errors are handled and reported.",
+      "No test or other evidence of correct behaviour is visible in the code provided.",
+      "Cards missing a path field are skipped silently.",
+      "Duplicate paths overwrite each other without any warning."
+    ]
+  },
+  "terms": [
+    {
+      "term": "card",
+      "meaning": "a saved note about one source file, stored as a JSON file"
+    },
+    {
+      "term": "JSON",
+      "meaning": "a plain text format for storing structured data as named fields"
+    },
+    {
+      "term": "Path",
+      "meaning": "a way of writing a file or folder location that works across operating systems"
+    }
+  ],
+  "depends_on": [
+    "Python standard library: json, sys and pathlib (Path)",
+    "Helper functions in this same file: load_json, card_path and read_source"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 52,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "5e86d418a419a6d6",
+      "title": "Module description and command list",
+      "what": "The documentation at the top of the file. It explains what the tool is for, lists its commands, and says where notes are stored. It does not change how the tool behaves. The import at the end turns on newer type-hint handling so the file runs on older Python versions.",
+      "why": "Reads as the owner's guide to the tool. Reason for the type-hint import is likely compatibility with older Python versions.",
+      "watch_out": "The command list is written by hand, so it must be updated when commands are added or renamed."
+    },
+    {
+      "start": 53,
+      "end": 104,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "a1c432e93ee36284",
+      "title": "Imports, version and size limits",
+      "what": "Loads the standard Python modules the script uses, sets the version number, names the folders for notes and packets, lists the languages it recognises, and sets limits such as the largest file it reads and the longest line it keeps.",
+      "why": "Keeps the tuned numbers in one place. A comment says the token ratio came from a pilot.",
+      "watch_out": "Changing the file size limit or the characters-per-token ratio changes which files are included and how large packets get."
+    },
+    {
+      "start": 105,
+      "end": 161,
+      "kind": "setup",
+      "name": "File setup (part 3)",
+      "id": "s3",
+      "hash": "48d3313239a542a8",
+      "title": "Excluded folders and writing rules",
+      "what": "Lists configuration files that get explained, folders and file patterns that are left out, the twelve readiness checks, the field names for notes, and the writing rules sent to the model.",
+      "why": "Reason for the twelve checks is not stated in the code. The writing rules keep notes plain and consistent.",
+      "watch_out": "The writing rules are the instructions sent to the model. Changing them changes every future note."
+    },
+    {
+      "start": 162,
+      "end": 200,
+      "kind": "setup",
+      "name": "File setup (part 4)",
+      "id": "s4",
+      "hash": "326ebef7514e2b6c",
+      "title": "Answer format template",
+      "what": "Holds the template for the answer the model must return: a list of files, each with file-level fields and a list of section notes.",
+      "why": "Gives the model an exact shape to follow so the apply command can read the answer.",
+      "watch_out": "Field names here must match what the apply command reads, or notes will not be saved."
+    },
+    {
+      "start": 201,
+      "end": 259,
+      "kind": "setup",
+      "name": "File setup (part 5)",
+      "id": "s5",
+      "hash": "85f20a5782982b12",
+      "title": "Patterns that find section starts",
+      "what": "Holds the patterns that spot where a function, class, type, value, route or test starts in each language, and patterns for where a method starts inside a long section.",
+      "why": "Likely reason: splits code into pieces a reader can follow without a full language parser.",
+      "watch_out": "Matching is approximate. A missed start only makes one section larger, which is allowed."
+    },
+    {
+      "start": 260,
+      "end": 271,
+      "kind": "setup",
+      "name": "File setup (part 6)",
+      "id": "s6",
+      "hash": "bc0aee58f73e399e",
+      "title": "Comment markers attached to sections",
+      "what": "For each language family, lists the line starts that count as comments or annotations belonging to the section below them.",
+      "why": "Keeps a comment above a function together with that function's note.",
+      "watch_out": "A new language needs its comment markers listed here, or its comments stay with the previous section."
+    },
+    {
+      "start": 272,
+      "end": 278,
+      "kind": "function",
+      "name": "now_iso",
+      "id": "s7",
+      "hash": "de3039a7c9d7c45b",
+      "title": "Current time as text",
+      "what": "Returns the current UTC time as text without fractions of a second. Used to stamp when notes were made or synced.",
+      "why": "Gives consistent timestamps in the note files.",
+      "watch_out": "Times are in UTC, not local time."
+    },
+    {
+      "start": 279,
+      "end": 282,
+      "kind": "function",
+      "name": "sha256_text",
+      "id": "s8",
+      "hash": "54b444b8ebeeaa4e",
+      "title": "Fingerprint of a text",
+      "what": "Produces a SHA-256 fingerprint of a piece of text. The tool uses it to tell whether a file has changed since its notes were written.",
+      "why": "Detects change without storing full copies of the code.",
+      "watch_out": "Any change, even a space, produces a new fingerprint and marks the notes out of date."
+    },
+    {
+      "start": 283,
+      "end": 286,
+      "kind": "function",
+      "name": "short_hash",
+      "id": "s9",
+      "hash": "957694b1ba880430",
+      "title": "Short fingerprint for a section",
+      "what": "Creates a shorter fingerprint of a section's text, used to match existing notes to unchanged code even after the code has moved.",
+      "why": "Likely reason: the shorter form keeps the note files small. The matching purpose is shown in refresh_card.",
+      "watch_out": "The short form is for matching only and is not meant for security."
+    },
+    {
+      "start": 287,
+      "end": 294,
+      "kind": "function",
+      "name": "run_git",
+      "id": "s10",
+      "hash": "39439e3acaaa12df",
+      "title": "Run a git command",
+      "what": "Runs a git command in a folder and returns its text output, or nothing if git is missing or the command fails.",
+      "why": "Lets the tool use git when it is available without crashing when it is not.",
+      "watch_out": "Failure returns nothing instead of an error, so callers must check for nothing before using the result."
+    },
+    {
+      "start": 295,
+      "end": 299,
+      "kind": "function",
+      "name": "repo_root",
+      "id": "s11",
+      "hash": "bf575f6c108f2721",
+      "title": "Find the repository root",
+      "what": "Asks git for the top folder of the repository, or uses the current folder if git cannot answer.",
+      "why": "Lets commands work from any subfolder of the repo.",
+      "watch_out": "Without git, the current folder is used, which may not be the repo root if the tool runs from a subfolder."
+    },
+    {
+      "start": 300,
+      "end": 306,
+      "kind": "function",
+      "name": "load_json",
+      "id": "s12",
+      "hash": "00484920302c45b2",
+      "title": "Read a JSON file",
+      "what": "Opens a JSON file and returns its contents, or a default value if the file does not exist.",
+      "why": "Lets the tool start cleanly when nothing has been saved yet.",
+      "watch_out": "A damaged JSON file raises an error here, so the caller must handle it."
+    },
+    {
+      "start": 307,
+      "end": 315,
+      "kind": "function",
+      "name": "save_json",
+      "id": "s13",
+      "hash": "21ee7704afce9c8a",
+      "title": "Save a JSON file safely",
+      "what": "Writes a JSON file by first writing a temporary copy and then renaming it, creating the folder if needed.",
+      "why": "The code comment says the rename prevents a half-written note card after a crash.",
+      "watch_out": "A temporary file can be left behind if the program stops at the wrong moment. It is harmless."
+    },
+    {
+      "start": 316,
+      "end": 329,
+      "kind": "function",
+      "name": "read_source",
+      "id": "s14",
+      "hash": "09b40e5a2a5e3fed",
+      "title": "Read a source file as text",
+      "what": "Reads a file and returns its text, or nothing if the file is binary, unreadable or not UTF-8.",
+      "why": "Stops the tool from trying to explain images or compiled files.",
+      "watch_out": "Files in other text encodings are skipped and will get no notes."
+    },
+    {
+      "start": 330,
+      "end": 334,
+      "kind": "function",
+      "name": "slug",
+      "id": "s15",
+      "hash": "3a6126ee16e90a72",
+      "title": "Make a plain identifier",
+      "what": "Turns a name into lowercase letters and dashes, falling back to a generic word if nothing is left. Used to create area identifiers.",
+      "why": "Likely reason: identifiers that are safe in web addresses and file names.",
+      "watch_out": "Two different names can produce the same identifier."
+    },
+    {
+      "start": 335,
+      "end": 338,
+      "kind": "function",
+      "name": "estimate_tokens",
+      "id": "s16",
+      "hash": "921d7423a7e76e92",
+      "title": "Estimate token count",
+      "what": "Gives a rough count of how many AI tokens a piece of text will use, based on its length and an assumed characters-per-token ratio.",
+      "why": "Lets the tool keep each packet under a size budget.",
+      "watch_out": "This is only an estimate. A real model may count differently."
+    },
+    {
+      "start": 339,
+      "end": 345,
+      "kind": "function",
+      "name": "display_path",
+      "id": "s17",
+      "hash": "19843742c671f47b",
+      "title": "Show a path relative to the repo",
+      "what": "Turns a file path into a shorter path relative to the repository root, for use in messages.",
+      "why": "Makes messages easier for the owner to read.",
+      "watch_out": "If the path is outside the repo, the full path is shown instead."
+    },
+    {
+      "start": 346,
+      "end": 349,
+      "kind": "function",
+      "name": "card_path",
+      "id": "s18",
+      "hash": "1372c4c0e7e88ee9",
+      "title": "Location of a note card",
+      "what": "Builds the location of the note card file for a source file, mirroring the source file's folder structure inside docs/clarity/files.",
+      "why": "Gives each file one predictable place for its notes.",
+      "watch_out": "Changing this location leaves every existing note card orphaned."
+    },
+    {
+      "start": 350,
+      "end": 360,
+      "kind": "function",
+      "name": "classify",
+      "id": "s19",
+      "hash": "e12ea84bcf2e42eb",
+      "title": "Decide which files to explain",
+      "what": "Decides whether a file is worth explaining and gives its language label. Configuration files and GitHub workflow files count. Unknown extensions do not.",
+      "why": "Keeps the work to code and configuration.",
+      "watch_out": "Files with an extension missing from the language list are ignored, so a new language must be added there."
+    },
+    {
+      "start": 361,
+      "end": 371,
+      "kind": "function",
+      "name": "load_ignore_patterns",
+      "id": "s20",
+      "hash": "7b062a11bea5d0e1",
+      "title": "Build the list of ignore patterns",
+      "what": "Starts with the built-in exclusion patterns and adds any lines from the optional .clarityignore file. A trailing slash in that file means a whole folder.",
+      "why": "Lets the owner leave out extra files without editing the tool.",
+      "watch_out": "A broad pattern in the ignore file applies across the repo and can hide more than intended."
+    },
+    {
+      "start": 372,
+      "end": 379,
+      "kind": "function",
+      "name": "is_excluded",
+      "id": "s21",
+      "hash": "3f44dd3594c006d6",
+      "title": "Check whether a file is left out",
+      "what": "Returns true if a file sits in an excluded folder, or if its path or name matches an ignore pattern.",
+      "why": "Applies the exclusion rules before any file is read.",
+      "watch_out": "Name matches apply anywhere in the tree, so a pattern for a lock file hides every copy of it."
+    },
+    {
+      "start": 380,
+      "end": 388,
+      "kind": "function",
+      "name": "list_repo_files",
+      "id": "s22",
+      "hash": "d7092033c90513c1",
+      "title": "List repository files",
+      "what": "Asks git for every tracked file and every new file that git does not ignore. If git is unavailable, it walks the whole folder instead.",
+      "why": "Using git means files that git ignores are not explained.",
+      "watch_out": "The fallback walk does not use git's ignore rules, so it depends on the built-in folder exclusions."
+    },
+    {
+      "start": 389,
+      "end": 415,
+      "kind": "function",
+      "name": "scan_sources",
+      "id": "s23",
+      "hash": "91e4f4235761d840",
+      "title": "Find and read every source file",
+      "what": "Collects every source file worth explaining, reads its text, and returns the files along with a list of skipped ones and reasons, such as binary files or very large files.",
+      "why": "Creates the input for the sync command in one place.",
+      "watch_out": "Files over 6000 lines are skipped as probably generated, so a large hand-written file gets no notes."
+    },
+    {
+      "start": 416,
+      "end": 427,
+      "kind": "function",
+      "name": "_boundary_name",
+      "id": "s24",
+      "hash": "df0f26873300fb9c",
+      "title": "Name a section from its opening line",
+      "what": "Picks a readable name for a section from what the boundary pattern matched. Event handlers get a combined name, and a default export is labelled as such.",
+      "why": "Lets sections show names a reader can recognise instead of raw code.",
+      "watch_out": "Unusual code can produce an empty name, which falls back to the section kind."
+    },
+    {
+      "start": 428,
+      "end": 432,
+      "kind": "function",
+      "name": "_is_attachable",
+      "id": "s25",
+      "hash": "c66bf2fbbaae9206",
+      "title": "Check for a comment or annotation line",
+      "what": "Says whether a line is a comment or annotation for its language, which decides whether it belongs to the section below.",
+      "why": "Keeps comments with the code they describe.",
+      "watch_out": "Only the listed comment markers count. An unlisted comment style is not attached."
+    },
+    {
+      "start": 433,
+      "end": 476,
+      "kind": "function",
+      "name": "_split_long",
+      "id": "s26",
+      "hash": "e91dff49fd2ba2e3",
+      "title": "Cut a long section into parts",
+      "what": "Splits any section longer than 60 lines into parts, preferring a cut just before a method or at a blank line. Parts are named after the method they start with, or numbered.",
+      "why": "Keeps each part small enough to explain in one model call.",
+      "watch_out": "If no method or blank line is near, a cut can land inside a function. The parts still cover every line."
+    },
+    {
+      "start": 477,
+      "end": 536,
+      "kind": "function",
+      "name": "split_sections",
+      "id": "s27",
+      "hash": "f8e7eb8a6d759e0f",
+      "title": "Split a whole file into sections",
+      "what": "Divides a file into consecutive sections that together cover every line. It finds boundaries, attaches comments, merges very small pieces into neighbours, cuts long ones, and gives each section an identifier and fingerprint.",
+      "why": "Notes attach to sections, so the file must be split into pieces that stand on their own.",
+      "watch_out": "Section identifiers are numbered in order, so adding code above a section changes later identifiers. Packets and answers must come from the same version of the file."
+    },
+    {
+      "start": 537,
+      "end": 564,
+      "kind": "function",
+      "name": "derive_areas",
+      "id": "s28",
+      "hash": "e80953f611f836d4",
+      "title": "Create default areas",
+      "what": "Builds the starting list of plain-English areas from top-level folders. Keeps the eleven largest and groups the rest as Everything else. Root files get their own area.",
+      "why": "The owner thinks in parts of the app, so folders make a first guess. Reason for eleven is not stated in the code.",
+      "watch_out": "These are only defaults. They are created only when no areas exist yet, so later syncs keep any renamed areas."
+    },
+    {
+      "start": 565,
+      "end": 582,
+      "kind": "function",
+      "name": "assign_area",
+      "id": "s29",
+      "hash": "496c4fb5c4ccfa69",
+      "title": "Assign a file to an area",
+      "what": "Places a file in the first area whose folder pattern matches it. Falls back to the root-files area or Everything else.",
+      "why": "Every file needs one area so the explorer can group it.",
+      "watch_out": "Order matters, because the first match wins. A broad pattern listed early can take files meant for a later area."
+    },
+    {
+      "start": 583,
+      "end": 607,
+      "kind": "function",
+      "name": "default_repo",
+      "id": "s30",
+      "hash": "12cf198895d3bda1",
+      "title": "Create empty repo notes",
+      "what": "Builds the blank repository-level notes, including twelve readiness checks marked unknown, empty summary fields and an empty skipped list.",
+      "why": "Gives the first sync a starting structure to fill in.",
+      "watch_out": "Adding a field here does not update an existing repo.json, which keeps its old shape."
+    },
+    {
+      "start": 608,
+      "end": 620,
+      "kind": "function",
+      "name": "card_status",
+      "id": "s31",
+      "hash": "6977432c83e37456",
+      "title": "Work out a card's status",
+      "what": "Labels a note card explained when it has a current summary and a note for every section. Labels it partial when some notes exist, and new otherwise.",
+      "why": "Lets sync, next and the explorer show how far each file has got.",
+      "watch_out": "A file with a stale summary cannot count as explained, even if every section has a note."
+    },
+    {
+      "start": 621,
+      "end": 636,
+      "kind": "function",
+      "name": "load_cards",
+      "id": "s32",
+      "hash": "a0416e91a750024e",
+      "title": "Loading saved notes for each file",
+      "what": "Reads every saved note card from the notes folder and returns them as one lookup table keyed by source file path. If the folder does not exist, it returns an empty table. Broken or unreadable card files are skipped, and a warning is printed.",
+      "why": "Likely reason: lets other commands look up a file's note by its path, and stops one bad card from halting the whole run.",
+      "watch_out": "A card without a path field is ignored silently, and if two cards share a path, the one read last replaces the other."
+    },
+    {
+      "start": 637,
+      "end": 662,
+      "kind": "function",
+      "name": "new_card",
+      "id": "s33",
+      "hash": "a0adb21b5af20625",
+      "title": "Create a blank note card",
+      "what": "Makes a new card for a source file with empty summary fields, unknown readiness, empty lists, and the file's sections, language, line count and fingerprint.",
+      "why": "Each file needs a card before it can receive notes.",
+      "watch_out": "A blank card counts as new until notes are applied."
+    },
+    {
+      "start": 663,
+      "end": 702,
+      "kind": "function",
+      "name": "refresh_card",
+      "id": "s34",
+      "hash": "dbeeb1565bd2f8db",
+      "title": "Update a card for changed code",
+      "what": "When code changes, keeps notes for sections whose text is unchanged. Saves the old notes of changed sections in an archive keyed by fingerprint. Marks the file summary stale if it depended on the old code.",
+      "why": "A small edit does not wipe every note, and undoing a change brings the old note back.",
+      "watch_out": "The archive keeps only the latest 60 entries, so an old note for a long-ago change may be gone."
+    },
+    {
+      "start": 703,
+      "end": 753,
+      "kind": "function",
+      "name": "cmd_sync",
+      "id": "s35",
+      "hash": "78ca44294073ce46",
+      "title": "Run the sync command",
+      "what": "Scans the repo, creates cards for new files, refreshes cards for changed files, removes cards for deleted or excluded files, saves the repo notes, and prints what is still to explain.",
+      "why": "Run this after any code change so the notes match the code.",
+      "watch_out": "Any file no longer in the scan loses its note card, so a moved or newly excluded file loses its notes."
+    },
+    {
+      "start": 754,
+      "end": 759,
+      "kind": "function",
+      "name": "_pending_summary",
+      "id": "s36",
+      "hash": "e7d626cc1c159f01",
+      "title": "Count what is still pending",
+      "what": "Counts files that are not fully explained and sections that have no note.",
+      "why": "Used by the sync and next summaries to show progress.",
+      "watch_out": ""
+    },
+    {
+      "start": 760,
+      "end": 769,
+      "kind": "function",
+      "name": "_numbered",
+      "id": "s37",
+      "hash": "f53290f61f5d2bc5",
+      "title": "Format code with line numbers",
+      "what": "Prints a range of source lines with numbers. Any line longer than 400 characters is cut and marked as cut.",
+      "why": "Line numbers let the model point to exact places. The cut keeps very long lines from using up the packet budget.",
+      "watch_out": "A cut line means the model sees only part of it, so its note may miss the rest."
+    },
+    {
+      "start": 770,
+      "end": 782,
+      "kind": "function",
+      "name": "_changed_paths",
+      "id": "s38",
+      "hash": "e013774218de872e",
+      "title": "List files changed in git",
+      "what": "Asks git which files are modified, added or untracked, and returns their paths. For renames, it takes the new name.",
+      "why": "Lets the next command and the commit hook focus on files changed in this session.",
+      "watch_out": "If git fails, this returns an empty set, and callers see no changes."
+    },
+    {
+      "start": 783,
+      "end": 842,
+      "kind": "function",
+      "name": "cmd_next (part 1)",
+      "id": "s39",
+      "hash": "b7a1bce1f5ad7347",
+      "title": "Choose files for the next packet",
+      "what": "Starts the next command. Loads the repo notes and cards, optionally limits the work to chosen or changed files, orders the queue so stale and partial files come first, and works out the token budget.",
+      "why": "The most out-of-date and most important files are explained first.",
+      "watch_out": "If the repo notes file is missing, the command stops and asks for a sync first."
+    },
+    {
+      "start": 843,
+      "end": 881,
+      "kind": "function",
+      "name": "cmd_next (part 2)",
+      "id": "s40",
+      "hash": "fecb0625f54ef23f",
+      "title": "Finish and save the next packet",
+      "what": "Adds an outline to each file, a note when a file is only partly shown, and a sample of the top of a file when no section fits. Saves the packet and prints a summary.",
+      "why": "The model needs the outline to understand a file it sees only in part.",
+      "watch_out": "The token figure is an estimate. The packet is saved in the git-ignored work folder, so it is not committed by default."
+    },
+    {
+      "start": 882,
+      "end": 890,
+      "kind": "function",
+      "name": "_clean_text",
+      "id": "s41",
+      "hash": "49766d75fd982b2e",
+      "title": "Tidy a note from the model",
+      "what": "Cleans model text by trimming spaces, replacing em dashes with commas, and shortening anything over 1500 characters at a word boundary.",
+      "why": "Keeps notes consistent with the plain-writing rules even when the model slips.",
+      "watch_out": "The dash replacement changes the model's text silently."
+    },
+    {
+      "start": 891,
+      "end": 903,
+      "kind": "function",
+      "name": "_parse_answer",
+      "id": "s42",
+      "hash": "f0dc3f2e1c0edd79",
+      "title": "Read the answer file",
+      "what": "Reads the model's answer, removes a code fence if one is present, accepts a bare list or a full object, and checks that a list of files exists.",
+      "why": "Accepts small formatting differences from the model while rejecting a wrong shape.",
+      "watch_out": "Anything that is not valid JSON or lacks a files list stops the apply step with an error."
+    },
+    {
+      "start": 904,
+      "end": 963,
+      "kind": "function",
+      "name": "cmd_apply (part 1)",
+      "id": "s43",
+      "hash": "30f331308ace2954",
+      "title": "Apply notes to cards (first part)",
+      "what": "The start of the apply command. For each file it checks the card exists and the source has not changed since the packet was made. Then it saves the file-level notes, readiness, terms and links, and saves section notes matched by identifier, rejecting unknown identifiers. The rest of this command was not in this packet.",
+      "why": "Saves only notes that match the current code, which keeps the notes true to the code.",
+      "watch_out": "A file that changed since its packet is rejected whole, so its notes must be made again from a new packet."
+    },
+    {
+      "start": 964,
+      "end": 983,
+      "kind": "function",
+      "name": "cmd_apply (part 2)",
+      "id": "s44",
+      "hash": "859507eea12b101c",
+      "title": "Saving notes and reporting rejected ones",
+      "what": "Ends the apply step: saves each file's notes, prints how many files and sections were updated, lists up to 50 rejected notes, and reports how much work is still unexplained. The same block also defines the patterns and file-extension list used to spot names quoted in backticks in the notes.",
+      "why": "Likely reason: the name-checking patterns are shared by the later checks, so they are defined next to the step that reports results. The reason for the exact extension list is not stated in the code.",
+      "watch_out": "The exit code is 2 when any note is rejected unless --allow-problems is given, so one bad note can stop an automated step."
+    },
+    {
+      "start": 984,
+      "end": 991,
+      "kind": "function",
+      "name": "_looks_like_path",
+      "id": "s45",
+      "hash": "066b09f8fc6e8f70",
+      "title": "Telling file names from other quoted text",
+      "what": "Decides whether a backticked word in a note looks like a file path. Anything containing a slash counts as a path, and a dotted word counts as a path only if its ending is a known file type such as py, js or md.",
+      "why": "Reason not stated in the code beyond its use by the name check that follows it.",
+      "watch_out": "Any word with a slash is treated as a path, even a web address or a setting, so it may be checked against the file list and flagged."
+    },
+    {
+      "start": 992,
+      "end": 1032,
+      "kind": "function",
+      "name": "_reference_problems",
+      "id": "s46",
+      "hash": "b6b439456a9d6375",
+      "title": "Finding names in notes that the code lacks",
+      "what": "Checks every name quoted in backticks in the plain-English notes against the source code and the file list, and returns the names it cannot find. This is how a note that mentions a function or file that does not exist gets caught.",
+      "why": "The docstring says it is built to keep false alarms rare, because notes may quote web addresses, settings or files created at run time.",
+      "watch_out": "It is a text search, not a real code parser, so a name found only in a comment counts as found and a clean result does not prove the note is right."
+    },
+    {
+      "start": 1033,
+      "end": 1046,
+      "kind": "function",
+      "name": "_stale_changed_files",
+      "id": "s47",
+      "hash": "4224c21376eeb19e",
+      "title": "Listing changed files with missing or old notes",
+      "what": "Finds source files changed in the working tree whose note card is missing, whose stored fingerprint no longer matches the code, or whose status is not fully explained. It returns them in sorted order so the owner or Claude knows what to re-explain.",
+      "why": "Used by the commit guard and the check command, so both answer the same question the same way.",
+      "watch_out": "It depends on the list of changed files from `_changed_paths`, so if that list is wrong, this list is wrong too."
+    },
+    {
+      "start": 1047,
+      "end": 1075,
+      "kind": "function",
+      "name": "cmd_guard_commit",
+      "id": "s48",
+      "hash": "6e426374639aea10",
+      "title": "Blocking commits while notes are stale",
+      "what": "Runs as a Claude Code hook before a command. If the command is a git commit, the repository has a clarity layer, and some changed files have stale notes, it prints the list to the error output and returns 2 so the commit is blocked and Claude is told to refresh the notes first.",
+      "why": "The docstring describes it as a guard so that code is not committed with explanations that no longer match it.",
+      "watch_out": "Anyone can bypass it by putting the literal tag [skip-clarity] in the command, and the tag leaves no other record."
+    },
+    {
+      "start": 1076,
+      "end": 1123,
+      "kind": "function",
+      "name": "cmd_check (part 1)",
+      "id": "s49",
+      "hash": "e11321b1960cd0b0",
+      "title": "Coverage and staleness check, first part",
+      "what": "Runs the health check. In the quick mode used by hooks, it reports only the changed files and blocks with exit code 2 if asked. In the full mode, it counts files, sections, readiness results, changed files, new files and cards for deleted files.",
+      "why": "Reason not stated in the code beyond the help text, which describes it as reporting coverage, staleness and unresolved names.",
+      "watch_out": "A file whose stored fingerprint is missing counts as changed, so a damaged note file can make many files look out of date."
+    },
+    {
+      "start": 1124,
+      "end": 1164,
+      "kind": "method",
+      "name": "cmd_check: pct",
+      "id": "s50",
+      "hash": "a3d09633875f8d81",
+      "title": "Printing the check report",
+      "what": "Prints the health report as readable text, showing percentages of files and sections explained, changed and unsynced files, leftover cards, readiness counts and optional name problems. It also decides whether the repository counts as healthy, and with strict mode it returns exit code 1 when it does not.",
+      "why": "Likely reason: the strict setting lets automated checks fail when coverage is incomplete.",
+      "watch_out": "Name problems are only counted when the refs option is used, so a clean report without that option does not check any names."
+    },
+    {
+      "start": 1165,
+      "end": 1182,
+      "kind": "function",
+      "name": "scan_for_secrets",
+      "id": "s51",
+      "hash": "78fa5bd61592485c",
+      "title": "Scanning code for likely passwords and keys",
+      "what": "Goes through every line of every source file and matches it against known secret formats, such as private keys, cloud and AI access tokens, and password or key assignments. It returns each match with its file, line and kind, with only the first four characters shown.",
+      "why": "Exists so that secrets are not published on the public site, and the publish step calls it before any full code is shown.",
+      "watch_out": "The placeholder filter skips any password value containing words such as test or sample, so a real secret with those words would be missed and a clean scan is not proof of safety."
+    },
+    {
+      "start": 1183,
+      "end": 1211,
+      "kind": "function",
+      "name": "cmd_spotcheck",
+      "id": "s52",
+      "hash": "3ec561fe68c86c9a",
+      "title": "Sampling notes for a second review",
+      "what": "Picks a random, repeatable sample of explained sections, at least a minimum number, and writes a JSON file that pairs each note with its numbered code. A stronger model can then check whether each note matches its code.",
+      "why": "Likely reason: it gives a way to measure note accuracy without reviewing every section by hand. The stated purpose in the code is verification by a stronger model.",
+      "watch_out": "Sections whose line range runs past the end of the current file are skipped without any message, so the sample can be smaller than requested."
+    },
+    {
+      "start": 1212,
+      "end": 1228,
+      "kind": "function",
+      "name": "_site_context",
+      "id": "s53",
+      "hash": "deb9c2f6ebbc3e69",
+      "title": "Collecting site settings for the page",
+      "what": "Gathers the options that control how the explorer page links back to the portfolio, such as the site address, owner name, project slug, repository link and privacy flag, into one group. The page builder reads that group to decide its breadcrumbs and links.",
+      "why": "Reason not stated in the code. The grouping keeps many options in one place so the builder receives them together.",
+      "watch_out": "Empty values are dropped and the site address is stored under the key url rather than site_url, so anything reading the page data must use the new key."
+    },
+    {
+      "start": 1229,
+      "end": 1273,
+      "kind": "function",
+      "name": "cmd_build",
+      "id": "s54",
+      "hash": "102661e43bbe02c9",
+      "title": "Building the single-page explorer",
+      "what": "Creates the explorer HTML file. It collects every file's notes and status, optionally its code, and the site settings, converts them to JSON, makes that JSON safe inside a web page, puts it into the template and writes the result, then reports the file size.",
+      "why": "Reason not stated in the code. The explorer is written as one file so it can be opened offline or published as a page.",
+      "watch_out": "The output embeds the full code of every file unless no-code is used, so it can get large, and the build stops if the template lacks its data placeholder."
+    },
+    {
+      "start": 1274,
+      "end": 1333,
+      "kind": "function",
+      "name": "cmd_publish (part 1)",
+      "id": "s55",
+      "hash": "d58ffaf9358f6402",
+      "title": "Publishing into the portfolio checkout",
+      "what": "Prepares a project's explorer for the portfolio website. It checks the portfolio folder and the page name, runs the secret scan in full mode and stops if it finds possible secrets, copies the technical map when given, and builds the explorer page into the portfolio's public folder.",
+      "why": "The docstring describes the notes mode as keeping code out of public pages, while full mode is for public repositories.",
+      "watch_out": "Full mode publishes source code, so the secret scan is the last check before code goes public, and it only matches patterns."
+    },
+    {
+      "start": 1334,
+      "end": 1361,
+      "kind": "function",
+      "name": "cmd_publish (part 2)",
+      "id": "s56",
+      "hash": "2e4cdba6578a7dca",
+      "title": "Recording the project in the portfolio index",
+      "what": "Creates a summary entry for the project, including its name, visibility, readiness, counts and first summary sentence, and adds it to the portfolio's public code manifest. The portfolio reads that manifest to link each project page to its explorer.",
+      "why": "The docstring says the portfolio reads this manifest to link project pages to explorers.",
+      "watch_out": "Entries are matched by slug, so publishing under a different slug creates a second entry and leaves the old one in the manifest."
+    },
+    {
+      "start": 1362,
+      "end": 1416,
+      "kind": "function",
+      "name": "build_parser (part 1)",
+      "id": "s57",
+      "hash": "f07ad0cb75cb206a",
+      "title": "Defining the commands and their options",
+      "what": "Sets up the command-line interface: the name, the version flag, and the options for each command such as sync, next, apply, check, guard-commit, spotcheck and build. Each option gives the owner a way to limit scope, choose a file, or change a size.",
+      "why": "Likely reason: the tool is run by typing commands, so each option is described in the help text for anyone using it.",
+      "watch_out": "Defaults such as the 60000 token limit for a work packet and the 5 percent sample fraction control how much code each step handles, so changing them changes cost and coverage."
+    },
+    {
+      "start": 1417,
+      "end": 1437,
+      "kind": "function",
+      "name": "build_parser (part 2)",
+      "id": "s58",
+      "hash": "e7ea5699054ccda0",
+      "title": "Options for the publish command",
+      "what": "Defines the options for the publish command: portfolio path, page slug, mode, project name, owner, map file, template, project link, repository link, privacy flag and the override for secret findings.",
+      "why": "Reason not stated in the code beyond the help text for each option.",
+      "watch_out": "The default mode is notes, which keeps code out of the public page, and only full mode can publish source code, so the mode choice matters most here."
+    },
+    {
+      "start": 1438,
+      "end": 1445,
+      "kind": "function",
+      "name": "main",
+      "id": "s59",
+      "hash": "71501b1beff17a85",
+      "title": "Sending each command to its handler",
+      "what": "Reads the command the user typed, looks up the matching function from a table, runs it and returns its exit code. Each typed command ends up in exactly one function.",
+      "why": "Likely reason: a lookup table keeps the command list in one place, so the entry point stays short.",
+      "watch_out": "A new command needs both a parser entry and a row in this table, or it will be rejected or fail when used."
+    },
+    {
+      "start": 1446,
+      "end": 1450,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s60",
+      "hash": "06a209dc07394e97",
+      "title": "Starting the program from the command line",
+      "what": "When the file is run directly, runs the main function and exits with its result. If the output is cut short by a command such as head, it exits quietly with success instead of showing an error.",
+      "why": "Lets the file be run as a program, and handles output that is piped into a command that stops reading early.",
+      "watch_out": "The code only runs when the file is executed directly, so importing it from another file runs none of the commands."
+    }
+  ],
+  "explained_at": "2026-11-10T21:18:16+00:00",
+  "explained_by": "haiku",
+  "summary": "Provides the shared helper functions that the rest of the clarity tool uses, including a function that loads every saved note card into one lookup table keyed by file path.",
+  "purpose": "Holds the building blocks for the clarity tool: reading and writing saved notes (cards), finding source files, hashing text, and running the main commands. Only the loading step (load_cards) was provided for this review, so the other parts are not described here.",
+  "why": "Likely reason: other commands need to find a note by its file path quickly, so all notes are read once into a lookup table. Reason for the rest of the file not stated in the code provided.",
+  "how": "1. Find the folder that holds card files inside the repository. 2. Look through every JSON file in that folder and its sub folders. 3. Read each file, skipping any that cannot be read or parsed and printing a warning. 4. Keep only cards that have a path field. 5. Return the table of cards keyed by path.",
+  "inputs": "A repository root folder (as a Path). Card files stored under the folder named by FILES_DIR inside that root.",
+  "outputs": "A dictionary that maps each card's path text to the card's contents. An empty dictionary if the folder does not exist or has no usable cards.",
+  "risks": "Reads every card file on each call, so large repositories may be slow. Cards without a path field are dropped without any warning. If two cards share a path, whichever is read last replaces the other, and the read order is not guaranteed.",
+  "debug": "If a note seems missing, check that its JSON file sits under the card folder, that the JSON is valid, and that it has a non-empty path field. Look at the warning lines printed to the error output for files that could not be read.",
+  "summary_hash": "sha256:4f0ff94fa41a637ffea1d827a160f7c3ad70a3fe59422637ce0394b60b429b88",
+  "note_archive": {
+    "5e86d418a419a6d6": {
+      "title": "Module description and command list",
+      "what": "The documentation at the top of the file. It explains what the tool is for, lists its commands, and says where notes are stored. It does not change how the tool behaves. The import at the end turns on newer type-hint handling so the file runs on older Python versions.",
+      "why": "Reads as the owner's guide to the tool. Reason for the type-hint import is likely compatibility with older Python versions.",
+      "watch_out": "The command list is written by hand, so it must be updated when commands are added or renamed."
+    },
+    "a1c432e93ee36284": {
+      "title": "Imports, version and size limits",
+      "what": "Loads the standard Python modules the script uses, sets the version number, names the folders for notes and packets, lists the languages it recognises, and sets limits such as the largest file it reads and the longest line it keeps.",
+      "why": "Keeps the tuned numbers in one place. A comment says the token ratio came from a pilot.",
+      "watch_out": "Changing the file size limit or the characters-per-token ratio changes which files are included and how large packets get."
+    },
+    "48d3313239a542a8": {
+      "title": "Excluded folders and writing rules",
+      "what": "Lists configuration files that get explained, folders and file patterns that are left out, the twelve readiness checks, the field names for notes, and the writing rules sent to the model.",
+      "why": "Reason for the twelve checks is not stated in the code. The writing rules keep notes plain and consistent.",
+      "watch_out": "The writing rules are the instructions sent to the model. Changing them changes every future note."
+    },
+    "326ebef7514e2b6c": {
+      "title": "Answer format template",
+      "what": "Holds the template for the answer the model must return: a list of files, each with file-level fields and a list of section notes.",
+      "why": "Gives the model an exact shape to follow so the apply command can read the answer.",
+      "watch_out": "Field names here must match what the apply command reads, or notes will not be saved."
+    },
+    "85f20a5782982b12": {
+      "title": "Patterns that find section starts",
+      "what": "Holds the patterns that spot where a function, class, type, value, route or test starts in each language, and patterns for where a method starts inside a long section.",
+      "why": "Likely reason: splits code into pieces a reader can follow without a full language parser.",
+      "watch_out": "Matching is approximate. A missed start only makes one section larger, which is allowed."
+    },
+    "bc0aee58f73e399e": {
+      "title": "Comment markers attached to sections",
+      "what": "For each language family, lists the line starts that count as comments or annotations belonging to the section below them.",
+      "why": "Keeps a comment above a function together with that function's note.",
+      "watch_out": "A new language needs its comment markers listed here, or its comments stay with the previous section."
+    },
+    "de3039a7c9d7c45b": {
+      "title": "Current time as text",
+      "what": "Returns the current UTC time as text without fractions of a second. Used to stamp when notes were made or synced.",
+      "why": "Gives consistent timestamps in the note files.",
+      "watch_out": "Times are in UTC, not local time."
+    },
+    "54b444b8ebeeaa4e": {
+      "title": "Fingerprint of a text",
+      "what": "Produces a SHA-256 fingerprint of a piece of text. The tool uses it to tell whether a file has changed since its notes were written.",
+      "why": "Detects change without storing full copies of the code.",
+      "watch_out": "Any change, even a space, produces a new fingerprint and marks the notes out of date."
+    },
+    "957694b1ba880430": {
+      "title": "Short fingerprint for a section",
+      "what": "Creates a shorter fingerprint of a section's text, used to match existing notes to unchanged code even after the code has moved.",
+      "why": "Likely reason: the shorter form keeps the note files small. The matching purpose is shown in refresh_card.",
+      "watch_out": "The short form is for matching only and is not meant for security."
+    },
+    "39439e3acaaa12df": {
+      "title": "Run a git command",
+      "what": "Runs a git command in a folder and returns its text output, or nothing if git is missing or the command fails.",
+      "why": "Lets the tool use git when it is available without crashing when it is not.",
+      "watch_out": "Failure returns nothing instead of an error, so callers must check for nothing before using the result."
+    },
+    "bf575f6c108f2721": {
+      "title": "Find the repository root",
+      "what": "Asks git for the top folder of the repository, or uses the current folder if git cannot answer.",
+      "why": "Lets commands work from any subfolder of the repo.",
+      "watch_out": "Without git, the current folder is used, which may not be the repo root if the tool runs from a subfolder."
+    },
+    "00484920302c45b2": {
+      "title": "Read a JSON file",
+      "what": "Opens a JSON file and returns its contents, or a default value if the file does not exist.",
+      "why": "Lets the tool start cleanly when nothing has been saved yet.",
+      "watch_out": "A damaged JSON file raises an error here, so the caller must handle it."
+    },
+    "21ee7704afce9c8a": {
+      "title": "Save a JSON file safely",
+      "what": "Writes a JSON file by first writing a temporary copy and then renaming it, creating the folder if needed.",
+      "why": "The code comment says the rename prevents a half-written note card after a crash.",
+      "watch_out": "A temporary file can be left behind if the program stops at the wrong moment. It is harmless."
+    },
+    "09b40e5a2a5e3fed": {
+      "title": "Read a source file as text",
+      "what": "Reads a file and returns its text, or nothing if the file is binary, unreadable or not UTF-8.",
+      "why": "Stops the tool from trying to explain images or compiled files.",
+      "watch_out": "Files in other text encodings are skipped and will get no notes."
+    },
+    "3a6126ee16e90a72": {
+      "title": "Make a plain identifier",
+      "what": "Turns a name into lowercase letters and dashes, falling back to a generic word if nothing is left. Used to create area identifiers.",
+      "why": "Likely reason: identifiers that are safe in web addresses and file names.",
+      "watch_out": "Two different names can produce the same identifier."
+    },
+    "921d7423a7e76e92": {
+      "title": "Estimate token count",
+      "what": "Gives a rough count of how many AI tokens a piece of text will use, based on its length and an assumed characters-per-token ratio.",
+      "why": "Lets the tool keep each packet under a size budget.",
+      "watch_out": "This is only an estimate. A real model may count differently."
+    },
+    "19843742c671f47b": {
+      "title": "Show a path relative to the repo",
+      "what": "Turns a file path into a shorter path relative to the repository root, for use in messages.",
+      "why": "Makes messages easier for the owner to read.",
+      "watch_out": "If the path is outside the repo, the full path is shown instead."
+    },
+    "1372c4c0e7e88ee9": {
+      "title": "Location of a note card",
+      "what": "Builds the location of the note card file for a source file, mirroring the source file's folder structure inside docs/clarity/files.",
+      "why": "Gives each file one predictable place for its notes.",
+      "watch_out": "Changing this location leaves every existing note card orphaned."
+    },
+    "e12ea84bcf2e42eb": {
+      "title": "Decide which files to explain",
+      "what": "Decides whether a file is worth explaining and gives its language label. Configuration files and GitHub workflow files count. Unknown extensions do not.",
+      "why": "Keeps the work to code and configuration.",
+      "watch_out": "Files with an extension missing from the language list are ignored, so a new language must be added there."
+    },
+    "7b062a11bea5d0e1": {
+      "title": "Build the list of ignore patterns",
+      "what": "Starts with the built-in exclusion patterns and adds any lines from the optional .clarityignore file. A trailing slash in that file means a whole folder.",
+      "why": "Lets the owner leave out extra files without editing the tool.",
+      "watch_out": "A broad pattern in the ignore file applies across the repo and can hide more than intended."
+    },
+    "3f44dd3594c006d6": {
+      "title": "Check whether a file is left out",
+      "what": "Returns true if a file sits in an excluded folder, or if its path or name matches an ignore pattern.",
+      "why": "Applies the exclusion rules before any file is read.",
+      "watch_out": "Name matches apply anywhere in the tree, so a pattern for a lock file hides every copy of it."
+    },
+    "d7092033c90513c1": {
+      "title": "List repository files",
+      "what": "Asks git for every tracked file and every new file that git does not ignore. If git is unavailable, it walks the whole folder instead.",
+      "why": "Using git means files that git ignores are not explained.",
+      "watch_out": "The fallback walk does not use git's ignore rules, so it depends on the built-in folder exclusions."
+    },
+    "91e4f4235761d840": {
+      "title": "Find and read every source file",
+      "what": "Collects every source file worth explaining, reads its text, and returns the files along with a list of skipped ones and reasons, such as binary files or very large files.",
+      "why": "Creates the input for the sync command in one place.",
+      "watch_out": "Files over 6000 lines are skipped as probably generated, so a large hand-written file gets no notes."
+    },
+    "df0f26873300fb9c": {
+      "title": "Name a section from its opening line",
+      "what": "Picks a readable name for a section from what the boundary pattern matched. Event handlers get a combined name, and a default export is labelled as such.",
+      "why": "Lets sections show names a reader can recognise instead of raw code.",
+      "watch_out": "Unusual code can produce an empty name, which falls back to the section kind."
+    },
+    "c66bf2fbbaae9206": {
+      "title": "Check for a comment or annotation line",
+      "what": "Says whether a line is a comment or annotation for its language, which decides whether it belongs to the section below.",
+      "why": "Keeps comments with the code they describe.",
+      "watch_out": "Only the listed comment markers count. An unlisted comment style is not attached."
+    },
+    "e91dff49fd2ba2e3": {
+      "title": "Cut a long section into parts",
+      "what": "Splits any section longer than 60 lines into parts, preferring a cut just before a method or at a blank line. Parts are named after the method they start with, or numbered.",
+      "why": "Keeps each part small enough to explain in one model call.",
+      "watch_out": "If no method or blank line is near, a cut can land inside a function. The parts still cover every line."
+    },
+    "f8e7eb8a6d759e0f": {
+      "title": "Split a whole file into sections",
+      "what": "Divides a file into consecutive sections that together cover every line. It finds boundaries, attaches comments, merges very small pieces into neighbours, cuts long ones, and gives each section an identifier and fingerprint.",
+      "why": "Notes attach to sections, so the file must be split into pieces that stand on their own.",
+      "watch_out": "Section identifiers are numbered in order, so adding code above a section changes later identifiers. Packets and answers must come from the same version of the file."
+    },
+    "e80953f611f836d4": {
+      "title": "Create default areas",
+      "what": "Builds the starting list of plain-English areas from top-level folders. Keeps the eleven largest and groups the rest as Everything else. Root files get their own area.",
+      "why": "The owner thinks in parts of the app, so folders make a first guess. Reason for eleven is not stated in the code.",
+      "watch_out": "These are only defaults. They are created only when no areas exist yet, so later syncs keep any renamed areas."
+    },
+    "496c4fb5c4ccfa69": {
+      "title": "Assign a file to an area",
+      "what": "Places a file in the first area whose folder pattern matches it. Falls back to the root-files area or Everything else.",
+      "why": "Every file needs one area so the explorer can group it.",
+      "watch_out": "Order matters, because the first match wins. A broad pattern listed early can take files meant for a later area."
+    },
+    "12cf198895d3bda1": {
+      "title": "Create empty repo notes",
+      "what": "Builds the blank repository-level notes, including twelve readiness checks marked unknown, empty summary fields and an empty skipped list.",
+      "why": "Gives the first sync a starting structure to fill in.",
+      "watch_out": "Adding a field here does not update an existing repo.json, which keeps its old shape."
+    },
+    "6977432c83e37456": {
+      "title": "Work out a card's status",
+      "what": "Labels a note card explained when it has a current summary and a note for every section. Labels it partial when some notes exist, and new otherwise.",
+      "why": "Lets sync, next and the explorer show how far each file has got.",
+      "watch_out": "A file with a stale summary cannot count as explained, even if every section has a note."
+    },
+    "9256e60e961d5bd7": {
+      "title": "Load all note cards",
+      "what": "Reads every note card from the files folder and skips any unreadable one, printing a warning.",
+      "why": "Gives the other commands one view of all notes.",
+      "watch_out": "A damaged card is skipped with only a warning line, so it can drop out of counts without anyone noticing."
+    },
+    "a0adb21b5af20625": {
+      "title": "Create a blank note card",
+      "what": "Makes a new card for a source file with empty summary fields, unknown readiness, empty lists, and the file's sections, language, line count and fingerprint.",
+      "why": "Each file needs a card before it can receive notes.",
+      "watch_out": "A blank card counts as new until notes are applied."
+    },
+    "dbeeb1565bd2f8db": {
+      "title": "Update a card for changed code",
+      "what": "When code changes, keeps notes for sections whose text is unchanged. Saves the old notes of changed sections in an archive keyed by fingerprint. Marks the file summary stale if it depended on the old code.",
+      "why": "A small edit does not wipe every note, and undoing a change brings the old note back.",
+      "watch_out": "The archive keeps only the latest 60 entries, so an old note for a long-ago change may be gone."
+    },
+    "78ca44294073ce46": {
+      "title": "Run the sync command",
+      "what": "Scans the repo, creates cards for new files, refreshes cards for changed files, removes cards for deleted or excluded files, saves the repo notes, and prints what is still to explain.",
+      "why": "Run this after any code change so the notes match the code.",
+      "watch_out": "Any file no longer in the scan loses its note card, so a moved or newly excluded file loses its notes."
+    },
+    "e7d626cc1c159f01": {
+      "title": "Count what is still pending",
+      "what": "Counts files that are not fully explained and sections that have no note.",
+      "why": "Used by the sync and next summaries to show progress.",
+      "watch_out": ""
+    },
+    "f53290f61f5d2bc5": {
+      "title": "Format code with line numbers",
+      "what": "Prints a range of source lines with numbers. Any line longer than 400 characters is cut and marked as cut.",
+      "why": "Line numbers let the model point to exact places. The cut keeps very long lines from using up the packet budget.",
+      "watch_out": "A cut line means the model sees only part of it, so its note may miss the rest."
+    },
+    "e013774218de872e": {
+      "title": "List files changed in git",
+      "what": "Asks git which files are modified, added or untracked, and returns their paths. For renames, it takes the new name.",
+      "why": "Lets the next command and the commit hook focus on files changed in this session.",
+      "watch_out": "If git fails, this returns an empty set, and callers see no changes."
+    },
+    "b7a1bce1f5ad7347": {
+      "title": "Choose files for the next packet",
+      "what": "Starts the next command. Loads the repo notes and cards, optionally limits the work to chosen or changed files, orders the queue so stale and partial files come first, and works out the token budget.",
+      "why": "The most out-of-date and most important files are explained first.",
+      "watch_out": "If the repo notes file is missing, the command stops and asks for a sync first."
+    },
+    "fecb0625f54ef23f": {
+      "title": "Finish and save the next packet",
+      "what": "Adds an outline to each file, a note when a file is only partly shown, and a sample of the top of a file when no section fits. Saves the packet and prints a summary.",
+      "why": "The model needs the outline to understand a file it sees only in part.",
+      "watch_out": "The token figure is an estimate. The packet is saved in the git-ignored work folder, so it is not committed by default."
+    },
+    "49766d75fd982b2e": {
+      "title": "Tidy a note from the model",
+      "what": "Cleans model text by trimming spaces, replacing em dashes with commas, and shortening anything over 1500 characters at a word boundary.",
+      "why": "Keeps notes consistent with the plain-writing rules even when the model slips.",
+      "watch_out": "The dash replacement changes the model's text silently."
+    },
+    "f0dc3f2e1c0edd79": {
+      "title": "Read the answer file",
+      "what": "Reads the model's answer, removes a code fence if one is present, accepts a bare list or a full object, and checks that a list of files exists.",
+      "why": "Accepts small formatting differences from the model while rejecting a wrong shape.",
+      "watch_out": "Anything that is not valid JSON or lacks a files list stops the apply step with an error."
+    },
+    "30f331308ace2954": {
+      "title": "Apply notes to cards (first part)",
+      "what": "The start of the apply command. For each file it checks the card exists and the source has not changed since the packet was made. Then it saves the file-level notes, readiness, terms and links, and saves section notes matched by identifier, rejecting unknown identifiers. The rest of this command was not in this packet.",
+      "why": "Saves only notes that match the current code, which keeps the notes true to the code.",
+      "watch_out": "A file that changed since its packet is rejected whole, so its notes must be made again from a new packet."
+    },
+    "859507eea12b101c": {
+      "title": "Saving notes and reporting rejected ones",
+      "what": "Ends the apply step: saves each file's notes, prints how many files and sections were updated, lists up to 50 rejected notes, and reports how much work is still unexplained. The same block also defines the patterns and file-extension list used to spot names quoted in backticks in the notes.",
+      "why": "Likely reason: the name-checking patterns are shared by the later checks, so they are defined next to the step that reports results. The reason for the exact extension list is not stated in the code.",
+      "watch_out": "The exit code is 2 when any note is rejected unless --allow-problems is given, so one bad note can stop an automated step."
+    },
+    "066b09f8fc6e8f70": {
+      "title": "Telling file names from other quoted text",
+      "what": "Decides whether a backticked word in a note looks like a file path. Anything containing a slash counts as a path, and a dotted word counts as a path only if its ending is a known file type such as py, js or md.",
+      "why": "Reason not stated in the code beyond its use by the name check that follows it.",
+      "watch_out": "Any word with a slash is treated as a path, even a web address or a setting, so it may be checked against the file list and flagged."
+    },
+    "b6b439456a9d6375": {
+      "title": "Finding names in notes that the code lacks",
+      "what": "Checks every name quoted in backticks in the plain-English notes against the source code and the file list, and returns the names it cannot find. This is how a note that mentions a function or file that does not exist gets caught.",
+      "why": "The docstring says it is built to keep false alarms rare, because notes may quote web addresses, settings or files created at run time.",
+      "watch_out": "It is a text search, not a real code parser, so a name found only in a comment counts as found and a clean result does not prove the note is right."
+    },
+    "4224c21376eeb19e": {
+      "title": "Listing changed files with missing or old notes",
+      "what": "Finds source files changed in the working tree whose note card is missing, whose stored fingerprint no longer matches the code, or whose status is not fully explained. It returns them in sorted order so the owner or Claude knows what to re-explain.",
+      "why": "Used by the commit guard and the check command, so both answer the same question the same way.",
+      "watch_out": "It depends on the list of changed files from `_changed_paths`, so if that list is wrong, this list is wrong too."
+    },
+    "6e426374639aea10": {
+      "title": "Blocking commits while notes are stale",
+      "what": "Runs as a Claude Code hook before a command. If the command is a git commit, the repository has a clarity layer, and some changed files have stale notes, it prints the list to the error output and returns 2 so the commit is blocked and Claude is told to refresh the notes first.",
+      "why": "The docstring describes it as a guard so that code is not committed with explanations that no longer match it.",
+      "watch_out": "Anyone can bypass it by putting the literal tag [skip-clarity] in the command, and the tag leaves no other record."
+    },
+    "e11321b1960cd0b0": {
+      "title": "Coverage and staleness check, first part",
+      "what": "Runs the health check. In the quick mode used by hooks, it reports only the changed files and blocks with exit code 2 if asked. In the full mode, it counts files, sections, readiness results, changed files, new files and cards for deleted files.",
+      "why": "Reason not stated in the code beyond the help text, which describes it as reporting coverage, staleness and unresolved names.",
+      "watch_out": "A file whose stored fingerprint is missing counts as changed, so a damaged note file can make many files look out of date."
+    },
+    "a3d09633875f8d81": {
+      "title": "Printing the check report",
+      "what": "Prints the health report as readable text, showing percentages of files and sections explained, changed and unsynced files, leftover cards, readiness counts and optional name problems. It also decides whether the repository counts as healthy, and with strict mode it returns exit code 1 when it does not.",
+      "why": "Likely reason: the strict setting lets automated checks fail when coverage is incomplete.",
+      "watch_out": "Name problems are only counted when the refs option is used, so a clean report without that option does not check any names."
+    },
+    "78fa5bd61592485c": {
+      "title": "Scanning code for likely passwords and keys",
+      "what": "Goes through every line of every source file and matches it against known secret formats, such as private keys, cloud and AI access tokens, and password or key assignments. It returns each match with its file, line and kind, with only the first four characters shown.",
+      "why": "Exists so that secrets are not published on the public site, and the publish step calls it before any full code is shown.",
+      "watch_out": "The placeholder filter skips any password value containing words such as test or sample, so a real secret with those words would be missed and a clean scan is not proof of safety."
+    },
+    "3ec561fe68c86c9a": {
+      "title": "Sampling notes for a second review",
+      "what": "Picks a random, repeatable sample of explained sections, at least a minimum number, and writes a JSON file that pairs each note with its numbered code. A stronger model can then check whether each note matches its code.",
+      "why": "Likely reason: it gives a way to measure note accuracy without reviewing every section by hand. The stated purpose in the code is verification by a stronger model.",
+      "watch_out": "Sections whose line range runs past the end of the current file are skipped without any message, so the sample can be smaller than requested."
+    },
+    "deb9c2f6ebbc3e69": {
+      "title": "Collecting site settings for the page",
+      "what": "Gathers the options that control how the explorer page links back to the portfolio, such as the site address, owner name, project slug, repository link and privacy flag, into one group. The page builder reads that group to decide its breadcrumbs and links.",
+      "why": "Reason not stated in the code. The grouping keeps many options in one place so the builder receives them together.",
+      "watch_out": "Empty values are dropped and the site address is stored under the key url rather than site_url, so anything reading the page data must use the new key."
+    },
+    "102661e43bbe02c9": {
+      "title": "Building the single-page explorer",
+      "what": "Creates the explorer HTML file. It collects every file's notes and status, optionally its code, and the site settings, converts them to JSON, makes that JSON safe inside a web page, puts it into the template and writes the result, then reports the file size.",
+      "why": "Reason not stated in the code. The explorer is written as one file so it can be opened offline or published as a page.",
+      "watch_out": "The output embeds the full code of every file unless no-code is used, so it can get large, and the build stops if the template lacks its data placeholder."
+    },
+    "d58ffaf9358f6402": {
+      "title": "Publishing into the portfolio checkout",
+      "what": "Prepares a project's explorer for the portfolio website. It checks the portfolio folder and the page name, runs the secret scan in full mode and stops if it finds possible secrets, copies the technical map when given, and builds the explorer page into the portfolio's public folder.",
+      "why": "The docstring describes the notes mode as keeping code out of public pages, while full mode is for public repositories.",
+      "watch_out": "Full mode publishes source code, so the secret scan is the last check before code goes public, and it only matches patterns."
+    },
+    "2e4cdba6578a7dca": {
+      "title": "Recording the project in the portfolio index",
+      "what": "Creates a summary entry for the project, including its name, visibility, readiness, counts and first summary sentence, and adds it to the portfolio's public code manifest. The portfolio reads that manifest to link each project page to its explorer.",
+      "why": "The docstring says the portfolio reads this manifest to link project pages to explorers.",
+      "watch_out": "Entries are matched by slug, so publishing under a different slug creates a second entry and leaves the old one in the manifest."
+    },
+    "f07ad0cb75cb206a": {
+      "title": "Defining the commands and their options",
+      "what": "Sets up the command-line interface: the name, the version flag, and the options for each command such as sync, next, apply, check, guard-commit, spotcheck and build. Each option gives the owner a way to limit scope, choose a file, or change a size.",
+      "why": "Likely reason: the tool is run by typing commands, so each option is described in the help text for anyone using it.",
+      "watch_out": "Defaults such as the 60000 token limit for a work packet and the 5 percent sample fraction control how much code each step handles, so changing them changes cost and coverage."
+    },
+    "e7ea5699054ccda0": {
+      "title": "Options for the publish command",
+      "what": "Defines the options for the publish command: portfolio path, page slug, mode, project name, owner, map file, template, project link, repository link, privacy flag and the override for secret findings.",
+      "why": "Reason not stated in the code beyond the help text for each option.",
+      "watch_out": "The default mode is notes, which keeps code out of the public page, and only full mode can publish source code, so the mode choice matters most here."
+    },
+    "71501b1beff17a85": {
+      "title": "Sending each command to its handler",
+      "what": "Reads the command the user typed, looks up the matching function from a table, runs it and returns its exit code. Each typed command ends up in exactly one function.",
+      "why": "Likely reason: a lookup table keeps the command list in one place, so the entry point stays short.",
+      "watch_out": "A new command needs both a parser entry and a row in this table, or it will be rejected or fail when used."
+    },
+    "06a209dc07394e97": {
+      "title": "Starting the program from the command line",
+      "what": "When the file is run directly, runs the main function and exits with its result. If the output is cut short by a command such as head, it exits quietly with success instead of showing an error.",
+      "why": "Lets the file be run as a program, and handles output that is piped into a command that stops reading early.",
+      "watch_out": "The code only runs when the file is executed directly, so importing it from another file runs none of the commands."
+    }
+  }
+}

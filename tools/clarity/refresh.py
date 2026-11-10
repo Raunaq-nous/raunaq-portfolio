@@ -227,7 +227,7 @@ def bring_notes_in(root: Path, checkout: Path, slug: str) -> int:
     if repo_json:
         clarity.save_json(local_dir / "repo.json", repo_json)
     merged = 0
-    for path in (central / "files").rglob("*.json"):
+    for path in (p for p in (central / "files").rglob("*.json") if p.is_file()):
         card = clarity.load_json(path, None)
         if not card or not card.get("path"):
             continue
@@ -246,14 +246,14 @@ def take_notes_out(root: Path, checkout: Path, slug: str) -> None:
     if repo_json:
         clarity.save_json(central / "repo.json", repo_json)
     keep = set()
-    for path in (local_dir / "files").rglob("*.json") if (local_dir / "files").exists() else []:
+    for path in (p for p in (local_dir / "files").rglob("*.json") if p.is_file()) if (local_dir / "files").exists() else []:
         card = clarity.load_json(path, None)
         if not card or not card.get("path"):
             continue
         target = central / "files" / (card["path"] + ".json")
         clarity.save_json(target, card)
         keep.add(target.resolve())
-    for path in (central / "files").rglob("*.json") if (central / "files").exists() else []:
+    for path in (p for p in (central / "files").rglob("*.json") if p.is_file()) if (central / "files").exists() else []:
         if path.resolve() not in keep:
             path.unlink()
 

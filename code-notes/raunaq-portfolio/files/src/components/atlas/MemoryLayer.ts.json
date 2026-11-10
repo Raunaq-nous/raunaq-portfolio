@@ -1,0 +1,363 @@
+{
+  "schema_version": 1,
+  "path": "src/components/atlas/MemoryLayer.ts",
+  "language": "TypeScript",
+  "lines": 647,
+  "hash": "sha256:0af289cdfe2b1d532793d5317d9012ef489ee0302e4516a45cbe56cfa71d93fd",
+  "area": "src-components",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or example checks are visible in the code.",
+      "A failed image load is swallowed silently, so a broken moment gives no warning.",
+      "Depth is estimated with a heuristic, so the result depends on the photo.",
+      "Random sampling means the output differs between loads."
+    ]
+  },
+  "terms": [
+    {
+      "term": "WebGL",
+      "meaning": "a browser feature that lets web pages draw 3D graphics using the computer's graphics chip"
+    },
+    {
+      "term": "Three.js",
+      "meaning": "a code library that makes building 3D scenes in the browser easier"
+    },
+    {
+      "term": "point cloud",
+      "meaning": "a 3D image made of many small dots, each with a position and a colour"
+    },
+    {
+      "term": "shader",
+      "meaning": "a small program that runs on the graphics chip to decide where and how each dot or pixel is drawn"
+    },
+    {
+      "term": "depth map",
+      "meaning": "a picture where brightness or colour stands for how far each point is from the viewer"
+    },
+    {
+      "term": "anchor",
+      "meaning": "the stored position and direction that says where a moment stands in the scene and which way it faces"
+    },
+    {
+      "term": "dispose",
+      "meaning": "the act of releasing graphics memory once an object is no longer needed"
+    },
+    {
+      "term": "typed array",
+      "meaning": "a list of plain numbers stored in a compact form, used for fast image work"
+    }
+  ],
+  "depends_on": [
+    "three",
+    "@/data/atlas",
+    "@/lib/asset",
+    "@/lib/industrySheet"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 55,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "eef6416472188bd7",
+      "title": "Imports, stage notes and point shader start",
+      "what": "Brings in the 3D library and helper code, and sets out in comments the five stages a moment goes through. It also starts the point shader, which decides where each dot sits in 3D and what colour it has.",
+      "why": "The header comment acts as the design notes for the whole file. The shader text is kept here because the graphics chip needs it as text when the moment is created.",
+      "watch_out": "The attribute and uniform names in the shader must match the names used in the JavaScript. A mismatch fails without an obvious error message."
+    },
+    {
+      "start": 56,
+      "end": 107,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "7908ca0c0e52af6d",
+      "title": "Point and plane shader details",
+      "what": "Finishes the point shader with lighting, distance haze and dot size. It also defines a fragment shader that draws soft round dots, and a plane shader that blends the depth map with the photo.",
+      "why": "The comments say shadows are cool, highlights are neutral and dots are soft. This suggests the look was chosen on purpose, though the reasons are not written out.",
+      "watch_out": "Shader text is not checked by the JavaScript compiler, so a mistake shows up only when the page runs."
+    },
+    {
+      "start": 108,
+      "end": 139,
+      "kind": "type",
+      "name": "Moment",
+      "id": "s3",
+      "hash": "0a1e5430850b8c34",
+      "title": "Stored data for one moment",
+      "what": "Describes everything kept for one moment: its node, camera position and direction, plane size, the Three.js objects once built, tag points, and the current and target values for each animated property.",
+      "why": "Keeps each moment's state together, so the per-frame update can ease every value in one place.",
+      "watch_out": "Several objects are optional because they only exist after loading. Code that uses them must check they exist first."
+    },
+    {
+      "start": 140,
+      "end": 161,
+      "kind": "function",
+      "name": "blur",
+      "id": "s4",
+      "hash": "1a27272eee08b419",
+      "title": "Blur helper for images",
+      "what": "Softens a grid of brightness values by averaging each value with its neighbours, first across rows and then down columns. This is used to separate broad light areas from fine detail.",
+      "why": "Likely reason: the depth and lighting estimates need smooth values rather than sharp pixel noise. The code does not state this directly.",
+      "watch_out": "The blur radius is measured in pixels, so the same number has a different effect on images of different sizes."
+    },
+    {
+      "start": 162,
+      "end": 191,
+      "kind": "function",
+      "name": "estimateDepth, mix01",
+      "id": "s5",
+      "hash": "7eddf805ad8e3351",
+      "title": "Guessing depth from a photo",
+      "what": "Gives each pixel a value from zero to one, where higher means nearer. The guess uses how low the pixel sits in the frame, how close it is to the centre, how much detail is around it, and how bright it is. A small helper also blends two numbers.",
+      "why": "The comment says this is a heuristic and not a learned model, so it is an informed guess. No real depth data is available.",
+      "watch_out": "The assumption that lower parts of a photo are nearer does not hold for many photos, so the 3D effect can look wrong."
+    },
+    {
+      "start": 192,
+      "end": 200,
+      "kind": "function",
+      "name": "sheetDepth",
+      "id": "s6",
+      "hash": "dd219a9bde55365e",
+      "title": "Height for spec sheets",
+      "what": "Gives drawn lines and filled areas on a spec sheet extra height so they stand above the paper, with the edges softened.",
+      "why": "The comment says drawn lines should stand proud of the paper, so the sheet reads as a board on a wall.",
+      "watch_out": "The height is capped at one, so very dark ink areas do not gain any extra height beyond that."
+    },
+    {
+      "start": 201,
+      "end": 226,
+      "kind": "function",
+      "name": "shading",
+      "id": "s7",
+      "hash": "195b01fc572ddc7e",
+      "title": "Baked lighting for each pixel",
+      "what": "Works out a light value for each pixel from the slope of the depth. The light comes from the upper left and front, with soft wrap-around light so nothing turns fully black and slight darkening in hollows.",
+      "why": "The comment explains that this bakes soft natural light into the points, so the 3D look does not depend on a live light in the scene.",
+      "watch_out": "Changing the light direction here changes the look of every moment at once."
+    },
+    {
+      "start": 227,
+      "end": 233,
+      "kind": "function",
+      "name": "turboRGB",
+      "id": "s8",
+      "hash": "f42cf4cf847b4b2c",
+      "title": "Depth colour ramp on the CPU",
+      "what": "Turns a depth value into a colour using the same ramp as the shader: near is white, the middle is a cold blue, and far is deep navy. It is used to paint the depth-map picture.",
+      "why": "The comment says it matches the shader, so the depth-map plane and the point cloud look the same.",
+      "watch_out": "If the ramp is changed in the shader, this function must be changed to match, or the two views will not agree."
+    },
+    {
+      "start": 234,
+      "end": 287,
+      "kind": "class",
+      "name": "MemoryLayer (part 1)",
+      "id": "s9",
+      "hash": "65044eed4f90a699",
+      "title": "Creating one moment per photo",
+      "what": "The constructor makes a moment entry for every node that has memory data and an anchor. Moments that are not lazy-loaded start loading straight away.",
+      "why": "The lazy option exists so that project scenes only load when their role is in focus. Beyond that, the reason for the other settings is not stated.",
+      "watch_out": "If the anchor function returns nothing for a node, that node is skipped without any message."
+    },
+    {
+      "start": 288,
+      "end": 339,
+      "kind": "method",
+      "name": "MemoryLayer: preload",
+      "id": "s10",
+      "hash": "e736171cdb5a31f8",
+      "title": "Queue for loading moments",
+      "what": "Puts requested moments in a line and loads them one at a time, with a short pause between each. Asking for a moment that is already queued moves it to the front.",
+      "why": "The comment says loading one at a time helps the frame rate stay steady.",
+      "watch_out": "The queue is shared, so a request for many moments can delay the one the visitor is waiting for."
+    },
+    {
+      "start": 340,
+      "end": 397,
+      "kind": "method",
+      "name": "MemoryLayer: load",
+      "id": "s11",
+      "hash": "1a57fb30875e5839",
+      "title": "Turning a photo into points",
+      "what": "Loads the photo or the drawn spec sheet, shrinks it to a small grid, reads the brightness of each cell, then estimates depth and lighting. It then prepares the position data for each point.",
+      "why": "The comments explain that spec sheets treat brightness as height, and that screens and documents are kept flat so they do not ripple. The reason for the flat rule is likely to avoid a rippling look, but this is not stated.",
+      "watch_out": "Random values are used, so each load can look slightly different. If the image cannot be decoded, the function returns early and the moment stays not ready."
+    },
+    {
+      "start": 398,
+      "end": 445,
+      "kind": "method",
+      "name": "MemoryLayer: if",
+      "id": "s12",
+      "hash": "42bad351e88ffd06",
+      "title": "Building points and the room around the photo",
+      "what": "For spec sheets, keeps the drawn lines and a sparse scatter of the paper behind them. For each kept pixel it adds one point at its estimated depth. It also adds a sparse set of points beyond the frame edges to suggest the surrounding room.",
+      "why": "The comment says keeping the ink and only a few paper points makes the figure read as a lit object rather than a dark slab.",
+      "watch_out": "The number of points grows with image size and the low-power setting. The room points are random, so they differ on each load."
+    },
+    {
+      "start": 446,
+      "end": 487,
+      "kind": "class",
+      "name": "MemoryLayer (part 5)",
+      "id": "s13",
+      "hash": "d04788912a1efbc6",
+      "title": "Creating the point cloud object",
+      "what": "Packs the point data into a form the graphics chip can read, and creates the point material with its starting settings. The point cloud is then added to the scene.",
+      "why": "Reason not stated in the code, but this is the normal way Three.js draws many points quickly.",
+      "watch_out": "The attribute names used here must match the names declared in the shader at the top of the file."
+    },
+    {
+      "start": 488,
+      "end": 540,
+      "kind": "method",
+      "name": "MemoryLayer: for",
+      "id": "s14",
+      "hash": "65f7317707537411",
+      "title": "Depth-map plane, photo plane, frame and box",
+      "what": "Creates a depth-map picture and a photo plane that face the camera. It also adds a thin frame around the photo and a wireframe box that marks the volume the points may occupy.",
+      "why": "The comment describes the box as a scan region. It marks where the cloud is expected to be, though the cloud is allowed to spill past it.",
+      "watch_out": "The plane and frame are oriented from the stored camera direction, so bad anchor data puts them at the wrong angle."
+    },
+    {
+      "start": 541,
+      "end": 598,
+      "kind": "class",
+      "name": "MemoryLayer (part 7)",
+      "id": "s15",
+      "hash": "d3f67e20bace2583",
+      "title": "Tag points and stage changes",
+      "what": "Picks up to six tag points, one from each cell of a three by two grid, at the most detailed pixel in that cell. The stage method then decides which moment is shown and how far through its stages it is. The setLifted method highlights moments without playing them.",
+      "why": "The comment says the tags are spread out so they fall across the subject. The reason for choosing the most detailed pixel is that it tends to land on edges and features.",
+      "watch_out": "A cell with no usable point produces no tag, so fewer than six tags can appear for some photos."
+    },
+    {
+      "start": 599,
+      "end": 647,
+      "kind": "method",
+      "name": "MemoryLayer: update",
+      "id": "s16",
+      "hash": "e0c4c08b80568fc0",
+      "title": "Per-frame animation step",
+      "what": "On every frame, eases each ready moment's animated values toward their targets and sends them to the shaders and materials. The fade-in starts once assembly progress passes 0.6. When reduced motion is on, values jump straight to their targets.",
+      "why": "Easing makes the changes between stages look smooth. The reduced-motion check respects visitors who have asked for less animation.",
+      "watch_out": "This runs for every moment on every frame, so adding more moments increases the work. Moments that are not ready are skipped."
+    }
+  ],
+  "explained_at": "2026-11-10T20:50:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns each moment's photo into a three-dimensional cloud of coloured points and flat planes, then animates the cloud through staged reveals inside the Atlas scene.",
+  "purpose": "Builds, loads, shows, animates and removes the photo moments that float in the 3D Atlas. Each moment can appear as a depth map, a flat photo, or a lifted 3D point cloud.",
+  "why": "Likely reason: a flat photo placed in 3D space feels like a memory you stand inside, rather than a picture on a wall. The header comment describes the idea of a camera standing at the origin. The exact numbers used for depth, lighting and sampling are not explained in the code.",
+  "how": "1. The constructor reads each node that has memory data and a position anchor, then builds the camera direction and plane size for it. 2. A moment loads its photo, or draws a spec sheet onto a small hidden canvas. 3. The load step estimates a depth value for each pixel, calculates lighting, and creates one point per pixel plus a sparse ring of points beyond the frame edges. 4. It then creates the point cloud, a depth-map plane, a photo plane, a thin frame and a wireframe box, and picks six tag points. 5. The stage method decides which moment is active and where each animated value should go. 6. The update method runs every frame, easing each value toward its target and pushing it into the shaders. 7. The dispose method frees graphics memory and removes the objects from the scene.",
+  "inputs": "A list of nodes that carry memory data, a function that gives each node its position and direction, a low-power flag, optional settings for colour strength, lazy loading and point density, and the photo files themselves. Each frame also receives the time step, assembly progress, reduced-motion preference, focal length and elapsed time.",
+  "outputs": "Three.js objects added to the scene, plus query methods that return tag points, box corners, and the camera view for a given moment. It also changes the appearance of every moment on each frame.",
+  "risks": "Loading and point generation are heavy for large images, so a slow device may stutter. Random values are used for surround points and sampling, so the look changes on each load. A photo that fails to decode is skipped quietly and never becomes ready. The depth estimate is a rough heuristic, not real depth, so some photos will look wrong. If dispose is never called, graphics memory builds up.",
+  "debug": "If a moment is blank, first check that its node has memory data and that the anchor function returns a position for it. Then check the browser console for image loading problems. If a frame rate drops, try the low-power option or lazy loading. If the 3D look is wrong on one photo, the depth estimate is the likely cause. If the page leaks memory, confirm that dispose runs when the scene closes.",
+  "summary_hash": "sha256:0af289cdfe2b1d532793d5317d9012ef489ee0302e4516a45cbe56cfa71d93fd",
+  "note_archive": {
+    "eef6416472188bd7": {
+      "title": "Imports, stage notes and point shader start",
+      "what": "Brings in the 3D library and helper code, and sets out in comments the five stages a moment goes through. It also starts the point shader, which decides where each dot sits in 3D and what colour it has.",
+      "why": "The header comment acts as the design notes for the whole file. The shader text is kept here because the graphics chip needs it as text when the moment is created.",
+      "watch_out": "The attribute and uniform names in the shader must match the names used in the JavaScript. A mismatch fails without an obvious error message."
+    },
+    "7908ca0c0e52af6d": {
+      "title": "Point and plane shader details",
+      "what": "Finishes the point shader with lighting, distance haze and dot size. It also defines a fragment shader that draws soft round dots, and a plane shader that blends the depth map with the photo.",
+      "why": "The comments say shadows are cool, highlights are neutral and dots are soft. This suggests the look was chosen on purpose, though the reasons are not written out.",
+      "watch_out": "Shader text is not checked by the JavaScript compiler, so a mistake shows up only when the page runs."
+    },
+    "0a1e5430850b8c34": {
+      "title": "Stored data for one moment",
+      "what": "Describes everything kept for one moment: its node, camera position and direction, plane size, the Three.js objects once built, tag points, and the current and target values for each animated property.",
+      "why": "Keeps each moment's state together, so the per-frame update can ease every value in one place.",
+      "watch_out": "Several objects are optional because they only exist after loading. Code that uses them must check they exist first."
+    },
+    "1a27272eee08b419": {
+      "title": "Blur helper for images",
+      "what": "Softens a grid of brightness values by averaging each value with its neighbours, first across rows and then down columns. This is used to separate broad light areas from fine detail.",
+      "why": "Likely reason: the depth and lighting estimates need smooth values rather than sharp pixel noise. The code does not state this directly.",
+      "watch_out": "The blur radius is measured in pixels, so the same number has a different effect on images of different sizes."
+    },
+    "7eddf805ad8e3351": {
+      "title": "Guessing depth from a photo",
+      "what": "Gives each pixel a value from zero to one, where higher means nearer. The guess uses how low the pixel sits in the frame, how close it is to the centre, how much detail is around it, and how bright it is. A small helper also blends two numbers.",
+      "why": "The comment says this is a heuristic and not a learned model, so it is an informed guess. No real depth data is available.",
+      "watch_out": "The assumption that lower parts of a photo are nearer does not hold for many photos, so the 3D effect can look wrong."
+    },
+    "dd219a9bde55365e": {
+      "title": "Height for spec sheets",
+      "what": "Gives drawn lines and filled areas on a spec sheet extra height so they stand above the paper, with the edges softened.",
+      "why": "The comment says drawn lines should stand proud of the paper, so the sheet reads as a board on a wall.",
+      "watch_out": "The height is capped at one, so very dark ink areas do not gain any extra height beyond that."
+    },
+    "195b01fc572ddc7e": {
+      "title": "Baked lighting for each pixel",
+      "what": "Works out a light value for each pixel from the slope of the depth. The light comes from the upper left and front, with soft wrap-around light so nothing turns fully black and slight darkening in hollows.",
+      "why": "The comment explains that this bakes soft natural light into the points, so the 3D look does not depend on a live light in the scene.",
+      "watch_out": "Changing the light direction here changes the look of every moment at once."
+    },
+    "f42cf4cf847b4b2c": {
+      "title": "Depth colour ramp on the CPU",
+      "what": "Turns a depth value into a colour using the same ramp as the shader: near is white, the middle is a cold blue, and far is deep navy. It is used to paint the depth-map picture.",
+      "why": "The comment says it matches the shader, so the depth-map plane and the point cloud look the same.",
+      "watch_out": "If the ramp is changed in the shader, this function must be changed to match, or the two views will not agree."
+    },
+    "65044eed4f90a699": {
+      "title": "Creating one moment per photo",
+      "what": "The constructor makes a moment entry for every node that has memory data and an anchor. Moments that are not lazy-loaded start loading straight away.",
+      "why": "The lazy option exists so that project scenes only load when their role is in focus. Beyond that, the reason for the other settings is not stated.",
+      "watch_out": "If the anchor function returns nothing for a node, that node is skipped without any message."
+    },
+    "e736171cdb5a31f8": {
+      "title": "Queue for loading moments",
+      "what": "Puts requested moments in a line and loads them one at a time, with a short pause between each. Asking for a moment that is already queued moves it to the front.",
+      "why": "The comment says loading one at a time helps the frame rate stay steady.",
+      "watch_out": "The queue is shared, so a request for many moments can delay the one the visitor is waiting for."
+    },
+    "1a57fb30875e5839": {
+      "title": "Turning a photo into points",
+      "what": "Loads the photo or the drawn spec sheet, shrinks it to a small grid, reads the brightness of each cell, then estimates depth and lighting. It then prepares the position data for each point.",
+      "why": "The comments explain that spec sheets treat brightness as height, and that screens and documents are kept flat so they do not ripple. The reason for the flat rule is likely to avoid a rippling look, but this is not stated.",
+      "watch_out": "Random values are used, so each load can look slightly different. If the image cannot be decoded, the function returns early and the moment stays not ready."
+    },
+    "42bad351e88ffd06": {
+      "title": "Building points and the room around the photo",
+      "what": "For spec sheets, keeps the drawn lines and a sparse scatter of the paper behind them. For each kept pixel it adds one point at its estimated depth. It also adds a sparse set of points beyond the frame edges to suggest the surrounding room.",
+      "why": "The comment says keeping the ink and only a few paper points makes the figure read as a lit object rather than a dark slab.",
+      "watch_out": "The number of points grows with image size and the low-power setting. The room points are random, so they differ on each load."
+    },
+    "d04788912a1efbc6": {
+      "title": "Creating the point cloud object",
+      "what": "Packs the point data into a form the graphics chip can read, and creates the point material with its starting settings. The point cloud is then added to the scene.",
+      "why": "Reason not stated in the code, but this is the normal way Three.js draws many points quickly.",
+      "watch_out": "The attribute names used here must match the names declared in the shader at the top of the file."
+    },
+    "65f7317707537411": {
+      "title": "Depth-map plane, photo plane, frame and box",
+      "what": "Creates a depth-map picture and a photo plane that face the camera. It also adds a thin frame around the photo and a wireframe box that marks the volume the points may occupy.",
+      "why": "The comment describes the box as a scan region. It marks where the cloud is expected to be, though the cloud is allowed to spill past it.",
+      "watch_out": "The plane and frame are oriented from the stored camera direction, so bad anchor data puts them at the wrong angle."
+    },
+    "d3f67e20bace2583": {
+      "title": "Tag points and stage changes",
+      "what": "Picks up to six tag points, one from each cell of a three by two grid, at the most detailed pixel in that cell. The stage method then decides which moment is shown and how far through its stages it is. The setLifted method highlights moments without playing them.",
+      "why": "The comment says the tags are spread out so they fall across the subject. The reason for choosing the most detailed pixel is that it tends to land on edges and features.",
+      "watch_out": "A cell with no usable point produces no tag, so fewer than six tags can appear for some photos."
+    },
+    "e0c4c08b80568fc0": {
+      "title": "Per-frame animation step",
+      "what": "On every frame, eases each ready moment's animated values toward their targets and sends them to the shaders and materials. The fade-in starts once assembly progress passes 0.6. When reduced motion is on, values jump straight to their targets.",
+      "why": "Easing makes the changes between stages look smooth. The reduced-motion check respects visitors who have asked for less animation.",
+      "watch_out": "This runs for every moment on every frame, so adding more moments increases the work. Moments that are not ready are skipped."
+    }
+  }
+}

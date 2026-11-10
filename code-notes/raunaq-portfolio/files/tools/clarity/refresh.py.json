@@ -1,0 +1,599 @@
+{
+  "schema_version": 1,
+  "path": "tools/clarity/refresh.py",
+  "language": "Python",
+  "lines": 504,
+  "hash": "sha256:c5b8cfd36eb7b7a201d80971d0932a5f90fdd0d1288712c577ae758feb2d00d5",
+  "area": "tools",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Deletion in take_notes_out runs without a confirmation or backup step.",
+      "If a stored file is not valid JSON or is not a dictionary, the code may fail without a clear message.",
+      "No test or other evidence of correct behaviour is visible in the code provided."
+    ]
+  },
+  "terms": [
+    {
+      "term": "central store",
+      "meaning": "the shared folder where notes for all repositories are kept"
+    },
+    {
+      "term": "checkout",
+      "meaning": "a local working copy of a repository on this machine"
+    },
+    {
+      "term": "slug",
+      "meaning": "a short name derived from a repository, used as its folder name in the central store"
+    },
+    {
+      "term": "card",
+      "meaning": "a saved note about one source file, stored as a JSON file"
+    },
+    {
+      "term": "hash",
+      "meaning": "a fingerprint of a file's text, used to tell whether the file has changed"
+    }
+  ],
+  "depends_on": [
+    "tools/clarity/clarity.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 55,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "39a1cd1354321679",
+      "title": "Setup, settings and file locations",
+      "what": "Sets up the imports, the locations of the notes, state and run files, the shared helper and the config file. The header explains the whole workflow in plain English and lists the commands.",
+      "why": "Likely reason: keeps every file location in one place so all other functions use the same names.",
+      "watch_out": "The shared helper is loaded by changing the import path, so moving clarity.py away from this folder breaks the script at start."
+    },
+    {
+      "start": 56,
+      "end": 59,
+      "kind": "function",
+      "name": "now_iso",
+      "id": "s2",
+      "hash": "d0a471542cea50a7",
+      "title": "Current time stamp",
+      "what": "Returns the current UTC time as text, which is written into state and run records so the reports show when things happened.",
+      "why": "Likely reason: one fixed text format keeps the records easy to sort and compare.",
+      "watch_out": "The summary compares these timestamps as text, which only works while the format stays the same."
+    },
+    {
+      "start": 60,
+      "end": 63,
+      "kind": "function",
+      "name": "slug_for",
+      "id": "s3",
+      "hash": "f3952e1fe3e2f051",
+      "title": "Turn a repo name into a folder name",
+      "what": "Converts a repository name into a lowercase, dash-separated name used as its folder under the notes and published code folders.",
+      "why": "Likely reason: folder names used on the website must be safe and predictable.",
+      "watch_out": "Two repository names that differ only in capitals or punctuation would map to the same folder."
+    },
+    {
+      "start": 64,
+      "end": 70,
+      "kind": "function",
+      "name": "site_root",
+      "id": "s4",
+      "hash": "d197d46cbcf8f0f2",
+      "title": "Check you are in the portfolio folder",
+      "what": "Stops the script with a message unless the current folder contains a public folder. Returns that folder as the portfolio root.",
+      "why": "Likely reason: every path in the script is relative to the portfolio, so running from elsewhere would write files in the wrong place.",
+      "watch_out": "The check only looks for a public folder, so any project with one passes it."
+    },
+    {
+      "start": 71,
+      "end": 85,
+      "kind": "function",
+      "name": "load_config",
+      "id": "s5",
+      "hash": "0460c871215c1cba",
+      "title": "Load settings and fill in defaults",
+      "what": "Reads publish.config.json and fills in missing values for the owner, owner name, site address, private repository mode and budget. Lowercases the repository names used as keys and turns the exclude list into a set.",
+      "why": "Likely reason: lets the config file stay short while the script still works.",
+      "watch_out": "The defaults for owner, owner name and site address are written into the code, so a new owner must set them in the config or the old values are used without any message."
+    },
+    {
+      "start": 86,
+      "end": 91,
+      "kind": "function",
+      "name": "load_state",
+      "id": "s6",
+      "hash": "94ed206331c22881",
+      "title": "Read the refresh record",
+      "what": "Reads code-notes/state.json, or starts an empty record if the file is missing, and makes sure it has a repositories section.",
+      "why": "Likely reason: lets the very first run work when no state file exists yet.",
+      "watch_out": "How a damaged file is handled depends on clarity.load_json, which is not shown here, so this is unclear."
+    },
+    {
+      "start": 92,
+      "end": 95,
+      "kind": "function",
+      "name": "save_state",
+      "id": "s7",
+      "hash": "a042d4d7cee0d113",
+      "title": "Save the refresh record",
+      "what": "Writes the refresh record back to code-notes/state.json.",
+      "why": "Likely reason: keeps the record between runs so the next plan knows what was refreshed.",
+      "watch_out": "The whole file is rewritten each time, so two refreshes running at the same moment could overwrite each other's changes."
+    },
+    {
+      "start": 96,
+      "end": 103,
+      "kind": "function",
+      "name": "run_cmd",
+      "id": "s8",
+      "hash": "98d8eac2095391e5",
+      "title": "Run an outside program and collect its output",
+      "what": "Runs another program in a given folder, waits up to a time limit (15 minutes by default), and returns its exit code and printed text. If the program cannot start or runs out of time, it returns code 99 and the error message instead of stopping.",
+      "why": "Likely reason: lets failures in git, gh or graphify be reported without crashing the whole run.",
+      "watch_out": "Code 99 looks like an ordinary exit code, so a caller must read the message to know what went wrong."
+    },
+    {
+      "start": 104,
+      "end": 107,
+      "kind": "function",
+      "name": "run_clarity",
+      "id": "s9",
+      "hash": "fa66ce108886f5ca",
+      "title": "Run the shared helper",
+      "what": "Runs the shared clarity.py helper with the given arguments from inside a repository checkout.",
+      "why": "Likely reason: reuses the helper's sync, next, apply and publish steps rather than copying them here.",
+      "watch_out": "The helper is started with the same Python program that runs this script, so both share the same environment."
+    },
+    {
+      "start": 108,
+      "end": 117,
+      "kind": "function",
+      "name": "remote_name",
+      "id": "s10",
+      "hash": "8b1e749d37758248",
+      "title": "Find a repo's GitHub name",
+      "what": "Reads the saved web address of a local folder and returns the repository name only when its owner matches the configured owner. Otherwise it returns nothing.",
+      "why": "Likely reason: stops a repository from another owner, or a fork, being treated as one of yours.",
+      "watch_out": "Only the standard github.com address form is recognised, so unusual remote addresses are ignored without any message."
+    },
+    {
+      "start": 118,
+      "end": 121,
+      "kind": "function",
+      "name": "repos_root",
+      "id": "s11",
+      "hash": "3a9db87f69781ce4",
+      "title": "Where the checkouts are kept",
+      "what": "Returns the folder that holds repository checkouts: either the folder given on the command line or the folder next to the portfolio.",
+      "why": "Likely reason: checkouts are usually kept beside the portfolio folder.",
+      "watch_out": "If the portfolio is somewhere unexpected, the script looks in the wrong place unless the repos root option is given."
+    },
+    {
+      "start": 122,
+      "end": 135,
+      "kind": "function",
+      "name": "find_checkout",
+      "id": "s12",
+      "hash": "650284ec16d5e788",
+      "title": "Find or download a repo folder",
+      "what": "Looks for a local copy of a named repository in the portfolio folder and the checkouts folder. If cloning is allowed and no copy is found, downloads it from GitHub with the latest 200 commits of history. Returns the folder, or nothing if not found.",
+      "why": "Likely reason: checks local copies first to avoid unnecessary downloads, and only the prepare step is allowed to download.",
+      "watch_out": "The download keeps only 200 commits of history. A failed download may leave a partly filled folder that later steps could mistake for a checkout."
+    },
+    {
+      "start": 136,
+      "end": 140,
+      "kind": "function",
+      "name": "head_commit",
+      "id": "s13",
+      "hash": "98c93e5c4e322af3",
+      "title": "Read the current commit ID",
+      "what": "Returns the short ID of the latest commit in a checkout, or nothing if git fails.",
+      "why": "Likely reason: the plan compares this ID with the one saved last time to decide whether the code changed.",
+      "watch_out": "A failed read returns nothing, which the plan treats as a change, so a git problem shows up as a changed repository."
+    },
+    {
+      "start": 141,
+      "end": 167,
+      "kind": "function",
+      "name": "discover",
+      "id": "s14",
+      "hash": "1427f26a9f7c5836",
+      "title": "Build the list of repositories",
+      "what": "Builds the list of repositories to keep fresh from GitHub (if gh works), local checkouts and past runs. Skips archived repositories, forks and anything on the exclude list. Visibility comes from the config first, then from what was found. Returns the list sorted by name.",
+      "why": "Likely reason: a repository is not missed just because one of the three sources is unavailable.",
+      "watch_out": "The GitHub list asks for at most 400 repositories, so an owner with more could have some left out. If gh fails, the failure is silent."
+    },
+    {
+      "start": 168,
+      "end": 178,
+      "kind": "function",
+      "name": "_notes_by_hash",
+      "id": "s15",
+      "hash": "3e03d14c8894eb20",
+      "title": "Index notes by their code fingerprint",
+      "what": "Collects every explanation stored in a file's card, plus the archive of older notes, and keys each one by the fingerprint of the code section it describes.",
+      "why": "Likely reason: notes stay attached to the code by its content, so unchanged code keeps its notes even when its position in the file moves.",
+      "watch_out": "Any edit to a section's code, even a small one, creates a new fingerprint, so the old note is set aside in the archive until a new one is written."
+    },
+    {
+      "start": 179,
+      "end": 200,
+      "kind": "function",
+      "name": "merge_cards",
+      "id": "s16",
+      "hash": "1dbb260e6fda0ba6",
+      "title": "Combine two copies of a file's notes",
+      "what": "When a file's card exists both in the repository and in the central copy, chooses the copy that matches today's code as the base, keeps every note from both copies, fills empty sections from the saved notes, and recalculates the card's status.",
+      "why": "Likely reason: prevents notes from being lost when one copy is older than the other.",
+      "watch_out": "When both copies match today's code or neither does, the repository's local copy is the base, so its wording wins."
+    },
+    {
+      "start": 201,
+      "end": 220,
+      "kind": "function",
+      "name": "merge_repo_notes",
+      "id": "s17",
+      "hash": "6a58b615b4b34b8a",
+      "title": "Combine repo-level notes",
+      "what": "Merges the overall repository notes from the central copy and the repository's own copy. The central copy is the main one. The local copy fills empty fields, replaces the readiness check if it is newer, and adds decisions, debug entries and glossary terms that the central copy lacks.",
+      "why": "Likely reason: the central copy is the main record, and the repository copy may hold findings written since then.",
+      "watch_out": "Items are compared by their title, symptom or term ignoring capitals, so a slightly reworded duplicate is kept as a separate item."
+    },
+    {
+      "start": 221,
+      "end": 241,
+      "kind": "function",
+      "name": "bring_notes_in",
+      "id": "s18",
+      "hash": "241591521799381a",
+      "title": "Copying shared notes into a local checkout",
+      "what": "Takes the notes stored for one repository in the central store and merges them into the local copy of that repository. It merges the repository-level info file first, then each file card, using the current fingerprint of each source file. It returns how many cards were merged, or zero if the central store has no notes for that repository.",
+      "why": "Likely reason: lets notes travel from the central store into a working copy so that a fresh checkout starts with existing notes.",
+      "watch_out": "This writes into the local checkout, and the outcome of each merge depends on merge_cards, which is not shown here."
+    },
+    {
+      "start": 242,
+      "end": 260,
+      "kind": "function",
+      "name": "take_notes_out",
+      "id": "s19",
+      "hash": "3a68fa03ec404dd1",
+      "title": "Copying local notes back to central store",
+      "what": "Copies the repository-level info file and every local file card into the central store. Then it deletes any card in the central store that has no matching local card, so the central store ends up matching the local work.",
+      "why": "Likely reason: keeps the central store in line with the local notes, so cards removed locally are also removed centrally.",
+      "watch_out": "If the local card folder is missing or empty, every central card is deleted with no warning, so check that folder exists before running this."
+    },
+    {
+      "start": 261,
+      "end": 302,
+      "kind": "function",
+      "name": "cmd_plan",
+      "id": "s20",
+      "hash": "399735f87d0c1f89",
+      "title": "Plan a refresh run",
+      "what": "Starts a new run with a budget (8 explainer packets by default) and checks every repository against the saved state. Labels each as new, changed, notes pending, not checked out or unchanged. Prints the table, flags repositories whose overall notes may be out of date, and lists the order in which to refresh the ones that need work.",
+      "why": "Likely reason: shows what work is needed before any budget is spent.",
+      "watch_out": "Every plan call replaces the existing run record, so running plan again resets the packets used to zero and sets a new budget."
+    },
+    {
+      "start": 303,
+      "end": 316,
+      "kind": "function",
+      "name": "_repo_args",
+      "id": "s21",
+      "hash": "4ac05afe31915d89",
+      "title": "Decide how much of a repo to publish",
+      "what": "Decides whether a repository is published as full code or as notes only. A setting in the config wins. Public repositories are published in full. Private ones follow the private setting, and anything with unknown visibility is published as notes only.",
+      "why": "Likely reason: the code comment says unknown visibility must never risk publishing code.",
+      "watch_out": "A repository marked public, in the config or by GitHub, has its code published in full, so check visibility before changing a repository's settings."
+    },
+    {
+      "start": 317,
+      "end": 338,
+      "kind": "function",
+      "name": "cmd_prepare",
+      "id": "s22",
+      "hash": "f38cc1e25ad3055c",
+      "title": "Prepare a repo for explaining",
+      "what": "Makes sure a repository is checked out, downloading it if needed. Carries the saved notes into it, runs the helper's sync step, and rebuilds the code map if graphify is installed. Reports how many note files were carried over.",
+      "why": "Likely reason: must run before next and finish so that the notes and the code match.",
+      "watch_out": "If graphify is missing, the code map is not rebuilt and only a message says so, so the Code explorer may keep an old map."
+    },
+    {
+      "start": 339,
+      "end": 368,
+      "kind": "function",
+      "name": "cmd_next",
+      "id": "s23",
+      "hash": "b9fddf7c82845bf8",
+      "title": "Get the next packet to explain",
+      "what": "Checks that the run's budget is not used up and that the repository is checked out. Asks the helper for the next batch of unexplained sections as a packet file, and counts one packet as used. Returns code 5 when nothing is left and code 4 when the budget is spent.",
+      "why": "Likely reason: enforces the fixed budget so that costs stay bounded.",
+      "watch_out": "The packet counts toward the budget as soon as it is written, even if its answer is never applied. The nothing-left check reads the helper's printed text, so a change in that wording would be treated as a failure."
+    },
+    {
+      "start": 369,
+      "end": 386,
+      "kind": "function",
+      "name": "cmd_apply",
+      "id": "s24",
+      "hash": "e600ceea2a1ca721",
+      "title": "Save the explainer's answer",
+      "what": "Passes the answer file to the helper, which saves the notes using the Haiku model. Adds the number of sections explained to the run record.",
+      "why": "Likely reason: separates writing a packet from saving its answer, so the explainer's work happens in between.",
+      "watch_out": "The number of sections is read from the helper's printed text with a pattern. If that wording changes, the count stays at zero without any error."
+    },
+    {
+      "start": 387,
+      "end": 439,
+      "kind": "function",
+      "name": "cmd_finish",
+      "id": "s25",
+      "hash": "32fb6a60263dccbb",
+      "title": "Publish a repo's explorer and record it",
+      "what": "Moves the notes into the central copy, decides visibility and mode, and publishes the explorer. The code map is included only for public repositories in full mode. If the secret scan finds possible secrets, the explorer is republished as notes only and the reason is recorded. Finally saves the commit, time and counts of sections still without notes to the state file.",
+      "why": "Likely reason: the secret scan is a safety stop so that passwords or keys in code are not published.",
+      "watch_out": "The notes-only fallback happens only when a full publish reports the scan result as code 3. Any other failure stops the publish. The held back reason counts findings by matching patterns in the printed output."
+    },
+    {
+      "start": 440,
+      "end": 450,
+      "kind": "function",
+      "name": "cmd_mark_repo_notes",
+      "id": "s26",
+      "hash": "ab2241ac55fe5ae7",
+      "title": "Reset the repo summary counter",
+      "what": "Records that a repository's overall notes were refreshed, by setting its count of sections explained since then back to zero and saving the time.",
+      "why": "Likely reason: the overall notes are flagged for refresh after many sections change, and this clears that flag.",
+      "watch_out": "It records that the notes were refreshed without checking that they were actually rewritten."
+    },
+    {
+      "start": 451,
+      "end": 477,
+      "kind": "function",
+      "name": "cmd_summary",
+      "id": "s27",
+      "hash": "483a2d5b2b4bbf15",
+      "title": "Write the plain English run report",
+      "what": "Writes code-notes/LAST_REFRESH.md with a table of repositories touched in this run. Each row shows the commit, sections explained, sections still pending, publish mode and any held back note, followed by a list of repositories still waiting. Prints the same report, then deletes the run record.",
+      "why": "Likely reason: leaves a readable report for the owner and clears the run so that the next plan starts fresh.",
+      "watch_out": "Deleting the run record means a later summary call starts from an empty run, so the report for the earlier run is lost unless it was saved."
+    },
+    {
+      "start": 478,
+      "end": 492,
+      "kind": "function",
+      "name": "build_parser",
+      "id": "s28",
+      "hash": "3155f11d6bfba75b",
+      "title": "Define the command options",
+      "what": "Sets up the command line with its seven commands, the names each one needs, and the optional repos root and plan budget options.",
+      "why": "Likely reason: generates usage errors and help text automatically from these definitions.",
+      "watch_out": "A new command needs both an entry here and a handler in main, or it will not run."
+    },
+    {
+      "start": 493,
+      "end": 499,
+      "kind": "function",
+      "name": "main",
+      "id": "s29",
+      "hash": "a423422fc4675143",
+      "title": "Route a command to its handler",
+      "what": "Reads the command given, finds its handler function, runs it and returns the exit code.",
+      "why": "Likely reason: keeps the link between command names and their functions in one place.",
+      "watch_out": "The handler list in main must match the commands in the parser, or the command will fail."
+    },
+    {
+      "start": 500,
+      "end": 504,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s30",
+      "hash": "530cd9f9ef7e28f6",
+      "title": "Start the script when run directly",
+      "what": "When the file is run from the command line, runs main and exits with its code. If the output pipe is closed early, such as when piped into head, it exits quietly.",
+      "why": "Likely reason: the pipe handling avoids an error message when the output is cut short by another tool.",
+      "watch_out": "Importing the file runs nothing, which is what lets other scripts reuse its functions."
+    }
+  ],
+  "explained_at": "2026-11-10T21:18:16+00:00",
+  "explained_by": "haiku",
+  "summary": "Moves notes between a central notes store and a local copy of a repository, merging them in one direction and copying them back in the other.",
+  "purpose": "Keeps notes for one repository in step between a shared central folder and the working copy (checkout) on the user's machine. Only two functions were provided for this review, bring_notes_in and take_notes_out. The other commands in this file are not described here.",
+  "why": "Likely reason: notes live in a central store so they survive a fresh checkout, and this file moves them to and from the working copy. Reason not stated in the code for the exact merge rules, which are in merge_cards.",
+  "how": "For bring_notes_in: 1. Find the central folder for this repository. 2. Merge the repository-level info file into the local one and save it. 3. For each central card, find its matching local card, merge the two using the current hash of the source file, and save the result. 4. Return how many cards were merged. For take_notes_out: 1. Copy the repository-level info file to the central folder. 2. Copy every local card to the central folder and remember which ones were copied. 3. Delete every central card that was not copied.",
+  "inputs": "A central notes root folder, the local checkout folder of the repository, and a short repository name (slug) used as the folder name in the central store.",
+  "outputs": "bring_notes_in returns a count of merged cards, or zero if no central notes exist. take_notes_out returns nothing; its effect is the files it writes and deletes.",
+  "risks": "take_notes_out permanently deletes central cards that have no local match. If the local card folder is missing, every central card is deleted. bring_notes_in writes into the local checkout and does not ask first.",
+  "debug": "If notes disappear after running the take-out step, check whether the local card folder existed and contained the expected files at that time. If merged notes look wrong, read merge_cards and merge_repo_notes, which are not included in what was provided.",
+  "note_archive": {
+    "39a1cd1354321679": {
+      "title": "Setup, settings and file locations",
+      "what": "Sets up the imports, the locations of the notes, state and run files, the shared helper and the config file. The header explains the whole workflow in plain English and lists the commands.",
+      "why": "Likely reason: keeps every file location in one place so all other functions use the same names.",
+      "watch_out": "The shared helper is loaded by changing the import path, so moving clarity.py away from this folder breaks the script at start."
+    },
+    "d0a471542cea50a7": {
+      "title": "Current time stamp",
+      "what": "Returns the current UTC time as text, which is written into state and run records so the reports show when things happened.",
+      "why": "Likely reason: one fixed text format keeps the records easy to sort and compare.",
+      "watch_out": "The summary compares these timestamps as text, which only works while the format stays the same."
+    },
+    "f3952e1fe3e2f051": {
+      "title": "Turn a repo name into a folder name",
+      "what": "Converts a repository name into a lowercase, dash-separated name used as its folder under the notes and published code folders.",
+      "why": "Likely reason: folder names used on the website must be safe and predictable.",
+      "watch_out": "Two repository names that differ only in capitals or punctuation would map to the same folder."
+    },
+    "d197d46cbcf8f0f2": {
+      "title": "Check you are in the portfolio folder",
+      "what": "Stops the script with a message unless the current folder contains a public folder. Returns that folder as the portfolio root.",
+      "why": "Likely reason: every path in the script is relative to the portfolio, so running from elsewhere would write files in the wrong place.",
+      "watch_out": "The check only looks for a public folder, so any project with one passes it."
+    },
+    "0460c871215c1cba": {
+      "title": "Load settings and fill in defaults",
+      "what": "Reads publish.config.json and fills in missing values for the owner, owner name, site address, private repository mode and budget. Lowercases the repository names used as keys and turns the exclude list into a set.",
+      "why": "Likely reason: lets the config file stay short while the script still works.",
+      "watch_out": "The defaults for owner, owner name and site address are written into the code, so a new owner must set them in the config or the old values are used without any message."
+    },
+    "94ed206331c22881": {
+      "title": "Read the refresh record",
+      "what": "Reads code-notes/state.json, or starts an empty record if the file is missing, and makes sure it has a repositories section.",
+      "why": "Likely reason: lets the very first run work when no state file exists yet.",
+      "watch_out": "How a damaged file is handled depends on clarity.load_json, which is not shown here, so this is unclear."
+    },
+    "a042d4d7cee0d113": {
+      "title": "Save the refresh record",
+      "what": "Writes the refresh record back to code-notes/state.json.",
+      "why": "Likely reason: keeps the record between runs so the next plan knows what was refreshed.",
+      "watch_out": "The whole file is rewritten each time, so two refreshes running at the same moment could overwrite each other's changes."
+    },
+    "98d8eac2095391e5": {
+      "title": "Run an outside program and collect its output",
+      "what": "Runs another program in a given folder, waits up to a time limit (15 minutes by default), and returns its exit code and printed text. If the program cannot start or runs out of time, it returns code 99 and the error message instead of stopping.",
+      "why": "Likely reason: lets failures in git, gh or graphify be reported without crashing the whole run.",
+      "watch_out": "Code 99 looks like an ordinary exit code, so a caller must read the message to know what went wrong."
+    },
+    "fa66ce108886f5ca": {
+      "title": "Run the shared helper",
+      "what": "Runs the shared clarity.py helper with the given arguments from inside a repository checkout.",
+      "why": "Likely reason: reuses the helper's sync, next, apply and publish steps rather than copying them here.",
+      "watch_out": "The helper is started with the same Python program that runs this script, so both share the same environment."
+    },
+    "8b1e749d37758248": {
+      "title": "Find a repo's GitHub name",
+      "what": "Reads the saved web address of a local folder and returns the repository name only when its owner matches the configured owner. Otherwise it returns nothing.",
+      "why": "Likely reason: stops a repository from another owner, or a fork, being treated as one of yours.",
+      "watch_out": "Only the standard github.com address form is recognised, so unusual remote addresses are ignored without any message."
+    },
+    "3a9db87f69781ce4": {
+      "title": "Where the checkouts are kept",
+      "what": "Returns the folder that holds repository checkouts: either the folder given on the command line or the folder next to the portfolio.",
+      "why": "Likely reason: checkouts are usually kept beside the portfolio folder.",
+      "watch_out": "If the portfolio is somewhere unexpected, the script looks in the wrong place unless the repos root option is given."
+    },
+    "650284ec16d5e788": {
+      "title": "Find or download a repo folder",
+      "what": "Looks for a local copy of a named repository in the portfolio folder and the checkouts folder. If cloning is allowed and no copy is found, downloads it from GitHub with the latest 200 commits of history. Returns the folder, or nothing if not found.",
+      "why": "Likely reason: checks local copies first to avoid unnecessary downloads, and only the prepare step is allowed to download.",
+      "watch_out": "The download keeps only 200 commits of history. A failed download may leave a partly filled folder that later steps could mistake for a checkout."
+    },
+    "98c93e5c4e322af3": {
+      "title": "Read the current commit ID",
+      "what": "Returns the short ID of the latest commit in a checkout, or nothing if git fails.",
+      "why": "Likely reason: the plan compares this ID with the one saved last time to decide whether the code changed.",
+      "watch_out": "A failed read returns nothing, which the plan treats as a change, so a git problem shows up as a changed repository."
+    },
+    "1427f26a9f7c5836": {
+      "title": "Build the list of repositories",
+      "what": "Builds the list of repositories to keep fresh from GitHub (if gh works), local checkouts and past runs. Skips archived repositories, forks and anything on the exclude list. Visibility comes from the config first, then from what was found. Returns the list sorted by name.",
+      "why": "Likely reason: a repository is not missed just because one of the three sources is unavailable.",
+      "watch_out": "The GitHub list asks for at most 400 repositories, so an owner with more could have some left out. If gh fails, the failure is silent."
+    },
+    "3e03d14c8894eb20": {
+      "title": "Index notes by their code fingerprint",
+      "what": "Collects every explanation stored in a file's card, plus the archive of older notes, and keys each one by the fingerprint of the code section it describes.",
+      "why": "Likely reason: notes stay attached to the code by its content, so unchanged code keeps its notes even when its position in the file moves.",
+      "watch_out": "Any edit to a section's code, even a small one, creates a new fingerprint, so the old note is set aside in the archive until a new one is written."
+    },
+    "1dbb260e6fda0ba6": {
+      "title": "Combine two copies of a file's notes",
+      "what": "When a file's card exists both in the repository and in the central copy, chooses the copy that matches today's code as the base, keeps every note from both copies, fills empty sections from the saved notes, and recalculates the card's status.",
+      "why": "Likely reason: prevents notes from being lost when one copy is older than the other.",
+      "watch_out": "When both copies match today's code or neither does, the repository's local copy is the base, so its wording wins."
+    },
+    "6a58b615b4b34b8a": {
+      "title": "Combine repo-level notes",
+      "what": "Merges the overall repository notes from the central copy and the repository's own copy. The central copy is the main one. The local copy fills empty fields, replaces the readiness check if it is newer, and adds decisions, debug entries and glossary terms that the central copy lacks.",
+      "why": "Likely reason: the central copy is the main record, and the repository copy may hold findings written since then.",
+      "watch_out": "Items are compared by their title, symptom or term ignoring capitals, so a slightly reworded duplicate is kept as a separate item."
+    },
+    "fe0be26d7b30d816": {
+      "title": "Load saved notes into a checkout",
+      "what": "Copies the saved overall notes and every file's notes from the central copy into the checkout's notes folder, merging with what is already there. Returns how many file cards were merged. Does nothing if no central copy exists.",
+      "why": "Likely reason: lets saved notes survive a fresh download or a moved checkout.",
+      "watch_out": "The checkout's notes folder becomes the working copy for the rest of the run, so changes made there are what finish later saves."
+    },
+    "0833500c030781fe": {
+      "title": "Save a checkout's notes to the central copy",
+      "what": "Copies the overall notes and every file card from a checkout into the central notes folder. Then deletes any central file note whose file is no longer in the checkout.",
+      "why": "Likely reason: removes notes for deleted files so the central copy matches the code.",
+      "watch_out": "Deletion relies only on the checkout's cards. If the checkout has no notes folder, for example because prepare never ran, every central file note for that repository is deleted."
+    },
+    "399735f87d0c1f89": {
+      "title": "Plan a refresh run",
+      "what": "Starts a new run with a budget (8 explainer packets by default) and checks every repository against the saved state. Labels each as new, changed, notes pending, not checked out or unchanged. Prints the table, flags repositories whose overall notes may be out of date, and lists the order in which to refresh the ones that need work.",
+      "why": "Likely reason: shows what work is needed before any budget is spent.",
+      "watch_out": "Every plan call replaces the existing run record, so running plan again resets the packets used to zero and sets a new budget."
+    },
+    "4ac05afe31915d89": {
+      "title": "Decide how much of a repo to publish",
+      "what": "Decides whether a repository is published as full code or as notes only. A setting in the config wins. Public repositories are published in full. Private ones follow the private setting, and anything with unknown visibility is published as notes only.",
+      "why": "Likely reason: the code comment says unknown visibility must never risk publishing code.",
+      "watch_out": "A repository marked public, in the config or by GitHub, has its code published in full, so check visibility before changing a repository's settings."
+    },
+    "f38cc1e25ad3055c": {
+      "title": "Prepare a repo for explaining",
+      "what": "Makes sure a repository is checked out, downloading it if needed. Carries the saved notes into it, runs the helper's sync step, and rebuilds the code map if graphify is installed. Reports how many note files were carried over.",
+      "why": "Likely reason: must run before next and finish so that the notes and the code match.",
+      "watch_out": "If graphify is missing, the code map is not rebuilt and only a message says so, so the Code explorer may keep an old map."
+    },
+    "b9fddf7c82845bf8": {
+      "title": "Get the next packet to explain",
+      "what": "Checks that the run's budget is not used up and that the repository is checked out. Asks the helper for the next batch of unexplained sections as a packet file, and counts one packet as used. Returns code 5 when nothing is left and code 4 when the budget is spent.",
+      "why": "Likely reason: enforces the fixed budget so that costs stay bounded.",
+      "watch_out": "The packet counts toward the budget as soon as it is written, even if its answer is never applied. The nothing-left check reads the helper's printed text, so a change in that wording would be treated as a failure."
+    },
+    "e600ceea2a1ca721": {
+      "title": "Save the explainer's answer",
+      "what": "Passes the answer file to the helper, which saves the notes using the Haiku model. Adds the number of sections explained to the run record.",
+      "why": "Likely reason: separates writing a packet from saving its answer, so the explainer's work happens in between.",
+      "watch_out": "The number of sections is read from the helper's printed text with a pattern. If that wording changes, the count stays at zero without any error."
+    },
+    "32fb6a60263dccbb": {
+      "title": "Publish a repo's explorer and record it",
+      "what": "Moves the notes into the central copy, decides visibility and mode, and publishes the explorer. The code map is included only for public repositories in full mode. If the secret scan finds possible secrets, the explorer is republished as notes only and the reason is recorded. Finally saves the commit, time and counts of sections still without notes to the state file.",
+      "why": "Likely reason: the secret scan is a safety stop so that passwords or keys in code are not published.",
+      "watch_out": "The notes-only fallback happens only when a full publish reports the scan result as code 3. Any other failure stops the publish. The held back reason counts findings by matching patterns in the printed output."
+    },
+    "ab2241ac55fe5ae7": {
+      "title": "Reset the repo summary counter",
+      "what": "Records that a repository's overall notes were refreshed, by setting its count of sections explained since then back to zero and saving the time.",
+      "why": "Likely reason: the overall notes are flagged for refresh after many sections change, and this clears that flag.",
+      "watch_out": "It records that the notes were refreshed without checking that they were actually rewritten."
+    },
+    "483a2d5b2b4bbf15": {
+      "title": "Write the plain English run report",
+      "what": "Writes code-notes/LAST_REFRESH.md with a table of repositories touched in this run. Each row shows the commit, sections explained, sections still pending, publish mode and any held back note, followed by a list of repositories still waiting. Prints the same report, then deletes the run record.",
+      "why": "Likely reason: leaves a readable report for the owner and clears the run so that the next plan starts fresh.",
+      "watch_out": "Deleting the run record means a later summary call starts from an empty run, so the report for the earlier run is lost unless it was saved."
+    },
+    "3155f11d6bfba75b": {
+      "title": "Define the command options",
+      "what": "Sets up the command line with its seven commands, the names each one needs, and the optional repos root and plan budget options.",
+      "why": "Likely reason: generates usage errors and help text automatically from these definitions.",
+      "watch_out": "A new command needs both an entry here and a handler in main, or it will not run."
+    },
+    "a423422fc4675143": {
+      "title": "Route a command to its handler",
+      "what": "Reads the command given, finds its handler function, runs it and returns the exit code.",
+      "why": "Likely reason: keeps the link between command names and their functions in one place.",
+      "watch_out": "The handler list in main must match the commands in the parser, or the command will fail."
+    },
+    "530cd9f9ef7e28f6": {
+      "title": "Start the script when run directly",
+      "what": "When the file is run from the command line, runs main and exits with its code. If the output pipe is closed early, such as when piped into head, it exits quietly.",
+      "why": "Likely reason: the pipe handling avoids an error message when the output is cut short by another tool.",
+      "watch_out": "Importing the file runs nothing, which is what lets other scripts reuse its functions."
+    }
+  },
+  "summary_hash": "sha256:c5b8cfd36eb7b7a201d80971d0932a5f90fdd0d1288712c577ae758feb2d00d5"
+}

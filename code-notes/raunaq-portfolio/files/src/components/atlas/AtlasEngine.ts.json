@@ -1,0 +1,681 @@
+{
+  "schema_version": 1,
+  "path": "src/components/atlas/AtlasEngine.ts",
+  "language": "TypeScript",
+  "lines": 1225,
+  "hash": "sha256:a833559ed0074729081ff7a4c3cbeb7ef3d052e695884008e94e920dad7eeefb",
+  "area": "src-components",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only 13 of 34 sections were available, so the rest of the file is not reviewed.",
+      "No tests or other evidence of checking were visible in the visible sections."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Three.js",
+      "meaning": "a library that makes 3D scenes in the browser"
+    },
+    {
+      "term": "Orbit controls",
+      "meaning": "mouse or touch controls that let the viewer rotate and zoom around a point"
+    },
+    {
+      "term": "Fog",
+      "meaning": "a fade that makes distant objects dimmer"
+    },
+    {
+      "term": "Point cloud",
+      "meaning": "a picture made of many small dots in 3D space"
+    },
+    {
+      "term": "Shader",
+      "meaning": "a small program that runs on the graphics card to set how points or lines look"
+    },
+    {
+      "term": "Dispose",
+      "meaning": "releasing GPU memory and listeners when the scene is no longer needed"
+    }
+  ],
+  "depends_on": [
+    "three",
+    "three/examples/jsm/controls/OrbitControls.js",
+    "./MemoryLayer",
+    "@/data/battles",
+    "@/data/geo",
+    "@/data/atlas"
+  ],
+  "used_by": [
+    "src/components/atlas/AtlasExperience.tsx"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1bdc659d5abb34f7",
+      "title": "Imports",
+      "what": "Loads the 3D library, the orbit controls, the memory layer, and the atlas and geography data.",
+      "why": "The engine needs the library and the content it draws.",
+      "watch_out": "A renamed export in the data files will break this file."
+    },
+    {
+      "start": 24,
+      "end": 31,
+      "kind": "type",
+      "name": "EngineCallbacks",
+      "id": "s2",
+      "hash": "1f1247d47e920f74",
+      "title": "Events sent to React",
+      "what": "Lists the events the engine sends back: hover, picking a node or empty space, and moment progress.",
+      "why": "Keeps the interface state in React while the engine handles drawing.",
+      "watch_out": ""
+    },
+    {
+      "start": 32,
+      "end": 38,
+      "kind": "type",
+      "name": "EngineOptions, PAPER",
+      "id": "s3",
+      "hash": "31972996a33f0e44",
+      "title": "Options and paper colour",
+      "what": "Holds three switches (reduced motion, low power, assemble) and the light blue colour used for paper.",
+      "why": "Reduced motion and low power trade visual detail for speed.",
+      "watch_out": "Low power caps the pixel ratio at 1.5."
+    },
+    {
+      "start": 39,
+      "end": 45,
+      "kind": "value",
+      "name": "SEGMENTS, OVERVIEW_TARGET, OVERVIEW_POS",
+      "id": "s4",
+      "hash": "7cf07e530b79fca2",
+      "title": "Segments and overview positions",
+      "what": "Defines the six cluster segments and their order, the street segment, and fixed overview camera targets.",
+      "why": "Shared tables keep the shader and camera in the same order.",
+      "watch_out": "The segment order must match the array size used in the shader."
+    },
+    {
+      "start": 46,
+      "end": 77,
+      "kind": "value",
+      "name": "OVERVIEW_POS_PORTRAIT (part 1)",
+      "id": "s5",
+      "hash": "40b3b33e4e15e9e3",
+      "title": "Portrait overview and particle shader",
+      "what": "Sets a second overview camera position for tall screens, then the particle shader that moves points and sets their colour and size.",
+      "why": "Portrait screens need the street to recede vertically.",
+      "watch_out": "The shader has seven segment slots, which must stay in step with the segment list."
+    },
+    {
+      "start": 78,
+      "end": 134,
+      "kind": "method",
+      "name": "OVERVIEW_POS_PORTRAIT: if",
+      "id": "s6",
+      "hash": "96f8611d7f41a21e",
+      "title": "Owner brightness and distance rules",
+      "what": "Shader rules that brighten the points of the active owner, dim others, and set point size by distance.",
+      "why": "Highlights one owner at a time while keeping the rest visible.",
+      "watch_out": ""
+    },
+    {
+      "start": 135,
+      "end": 148,
+      "kind": "value",
+      "name": "OVERVIEW_POS_PORTRAIT (part 3)",
+      "id": "s7",
+      "hash": "529a9233d4dea320",
+      "title": "Node and edge shaders",
+      "what": "Shader code for drawing nodes and edges, with brightness set by each node's state.",
+      "why": "Nodes and edges need their own looks.",
+      "watch_out": ""
+    },
+    {
+      "start": 149,
+      "end": 156,
+      "kind": "function",
+      "name": "rng",
+      "id": "s8",
+      "hash": "27c33963c4e60167",
+      "title": "Repeatable random generator",
+      "what": "Creates a random number source from a seed.",
+      "why": "The scene looks the same on every load.",
+      "watch_out": ""
+    },
+    {
+      "start": 157,
+      "end": 160,
+      "kind": "function",
+      "name": "gauss",
+      "id": "s9",
+      "hash": "3ebb8bf29234c514",
+      "title": "Bell-curve random values",
+      "what": "Produces random values with a bell-curve spread.",
+      "why": "Gives natural-looking clustering.",
+      "watch_out": ""
+    },
+    {
+      "start": 161,
+      "end": 169,
+      "kind": "type",
+      "name": "Tween",
+      "id": "s10",
+      "hash": "f74efe7dd76cf3a6",
+      "title": "Camera move description",
+      "what": "Describes a camera move from one position and target to another over a set duration.",
+      "why": "Lets the camera glide between views.",
+      "watch_out": ""
+    },
+    {
+      "start": 170,
+      "end": 177,
+      "kind": "type",
+      "name": "LabelEl, fmt",
+      "id": "s11",
+      "hash": "3d687c919bf2c403",
+      "title": "Label type and number format",
+      "what": "Stores a screen label with its size, and formats signed numbers for the coordinate readouts.",
+      "why": "Keeps readouts a fixed width.",
+      "watch_out": ""
+    },
+    {
+      "start": 178,
+      "end": 231,
+      "kind": "class",
+      "name": "AtlasEngine (part 1)",
+      "id": "s12",
+      "hash": "732fe5f86b677448",
+      "title": "Engine state",
+      "what": "Declares the engine class and its state: renderer, camera, controls, materials, selection, pointer, and moment timers.",
+      "why": "Keeps all changing values in one place.",
+      "watch_out": "Anything created here must be released in dispose."
+    },
+    {
+      "start": 232,
+      "end": 282,
+      "kind": "class",
+      "name": "AtlasEngine (part 2)",
+      "id": "s13",
+      "hash": "3ff911d51d6b65ee",
+      "title": "Constructor: renderer, camera, and scene parts",
+      "what": "Sets up the renderer, fog, camera, and orbit controls with distance and angle limits, builds the scene parts, and creates the memory layer.",
+      "why": "Builds everything once so each frame only updates values.",
+      "watch_out": "The renderer is added to the container, so cleanup must remove it."
+    },
+    {
+      "start": 283,
+      "end": 331,
+      "kind": "class",
+      "name": "AtlasEngine (part 3)",
+      "id": "s14",
+      "hash": "fa0fb723f467e75f",
+      "title": "Labels, overlay parts and event hookups",
+      "what": "Finishes startup by creating the floating text labels for each node and each year, plus the hidden overlay pieces for the hover box, the selected-point tag and the moment readout. It then connects mouse, touch, window resize and tab-visibility events, and starts the animation loop. The visitor sees the labels and reacts to pointer input.",
+      "why": "Likely reason: these pieces must exist before the first frame is drawn, and the listeners must be attached once when the engine starts. The reduced-motion setting decides whether the assembly animation starts at zero or is skipped.",
+      "watch_out": "The listeners added here must be removed in dispose, or they keep running after the view is closed."
+    },
+    {
+      "start": 332,
+      "end": 375,
+      "kind": "method",
+      "name": "AtlasEngine: buildParticles",
+      "id": "s15",
+      "hash": "f97ff7940ade1f7e",
+      "title": "Building the dot cloud",
+      "what": "Creates the large cloud of tiny dots that forms the street, lane markings, curbs, year ticks, ground, tower walls, window patches, corner edges, roofs, engagement floor slabs and sky dust. Each dot gets a position, size, brightness, a segment and an owner. A low-power setting cuts the dot counts for phones and touch screens.",
+      "why": "Likely reason: a dot cloud lets the whole scene dissolve and reassemble cheaply on the graphics card. The page is described as a dissolved sheet, and the starting positions are scattered in front of the camera to match that idea.",
+      "watch_out": "Changing the fixed random seed (7) or the counts changes the whole layout, so every dot shifts."
+    },
+    {
+      "start": 376,
+      "end": 422,
+      "kind": "method",
+      "name": "AtlasEngine: for",
+      "id": "s16",
+      "hash": "e94345048ab95760",
+      "title": "Ground, tower walls and floor slabs",
+      "what": "Scatters dots over the ground beside the street. For each tower it places dots on the walls in a window pattern, along the vertical edges and across the roof. For each engagement it adds a dense floor slab inside that tower's footprint.",
+      "why": "The window pattern is worked out from each dot's position, so windows form a regular grid on the walls without storing each one separately.",
+      "watch_out": "Each engagement looks up its tower with a forced lookup, so a role missing from the tower list would fail here."
+    },
+    {
+      "start": 423,
+      "end": 479,
+      "kind": "class",
+      "name": "AtlasEngine (part 6)",
+      "id": "s17",
+      "hash": "7a2800edd30fb934",
+      "title": "Project, industry and research buildings",
+      "what": "Defines one helper that draws a box-shaped building made of dots, with a window grid, crisp corners and a roof. The helper is then used for small project buildings, low industry blocks, and research pavilions, which are the research items that are not photos. These buildings give the street its skyline.",
+      "why": "One shared helper keeps every building looking consistent. The code comments say that research papers are their photos and ideas are pavilions past the end of the street.",
+      "watch_out": "Industry sizes come from the node data, with a default if missing. Unusual sizes change how the building looks, and the window pattern assumes positive sizes."
+    },
+    {
+      "start": 480,
+      "end": 527,
+      "kind": "class",
+      "name": "AtlasEngine (part 7)",
+      "id": "s18",
+      "hash": "1abcdab6ffd0a8ec",
+      "title": "Visual archive dots and final packaging",
+      "what": "Draws small dot lattices for visual archive items and scatters sky dust above the street. It then packs all dot data into the format the graphics card needs, creates the shader material with its settings and colors, and adds the finished cloud to the scene.",
+      "why": "The lattices and sky dust are decoration. The packing step is needed because the shader can only read data in those buffer formats.",
+      "watch_out": "The material's uniform values set the starting look, and the reduced-motion setting turns off drift at this step."
+    },
+    {
+      "start": 528,
+      "end": 575,
+      "kind": "method",
+      "name": "AtlasEngine: buildNodes",
+      "id": "s19",
+      "hash": "91c57c48033a312a",
+      "title": "Node dots and connecting lines",
+      "what": "buildNodes places each node as a point and marks whether it is an experience or not, so the shader can style them differently. buildEdges draws a line between each pair of linked nodes, sets up their brightness values, and then refreshes all highlight states. Users see the points and the network lines between them.",
+      "why": "Storing each node's state in a shared array lets highlighting update without rebuilding the geometry.",
+      "watch_out": "buildEdges looks up each link's two nodes by id with a forced lookup. A link that points to a missing node will fail when the engine starts."
+    },
+    {
+      "start": 576,
+      "end": 610,
+      "kind": "method",
+      "name": "AtlasEngine: buildTowerBoxes",
+      "id": "s20",
+      "hash": "39c3c341389ff666",
+      "title": "Outline boxes and the drop line",
+      "what": "buildTowerBoxes creates a faint outline box around each role's tower. These boxes stay hidden until that role is selected or hovered. buildDropLine creates a dashed line that can run from a selected point straight down to the ground.",
+      "why": "The outline shows the boundary of a role, and the drop line helps the visitor judge a point's height. Both are built from the same tower positions as the dots.",
+      "watch_out": "The outline boxes and the dots both come from the tower positions, so any change to tower sizes must be made in one place or the two will drift apart."
+    },
+    {
+      "start": 611,
+      "end": 654,
+      "kind": "method",
+      "name": "AtlasEngine: refreshStates",
+      "id": "s21",
+      "hash": "b4bcd57258f9785b",
+      "title": "Deciding what is highlighted",
+      "what": "refreshStates works out, for every node, whether it is selected, linked to the selection, part of the active role, or dimmed. It also sets how bright each line and each segment should be, and which memory items should lift off the page. Visitors see the highlighting change when they hover or select.",
+      "why": "All highlight rules sit in one function, so every interaction gives the same result. The rules are applied in a fixed order, and the first rule that matches wins.",
+      "watch_out": "Rule order matters. Moving one rule above another changes which items look highlighted or dimmed."
+    },
+    {
+      "start": 655,
+      "end": 714,
+      "kind": "class",
+      "name": "AtlasEngine (part 11)",
+      "id": "s22",
+      "hash": "eef7d7fa88839adb",
+      "title": "Playing a role's moments in order",
+      "what": "focusMemories gathers a role's memory items, puts project scenes first, then photos, then papers, preloads them and starts playback. It returns false when there is nothing to play. The timing constants set how long a moment takes: about 7.2 seconds for photos and 4.6 seconds for project scenes. playMoments then schedules the stages of each moment, starting with a camera flight to the spot where the photo was taken.",
+      "why": "The comment says the order is the same for every role and that the experience is like walking through a memory palace. The order is fixed in the code, so it does not depend on the data.",
+      "watch_out": "focusMemories returns false when a role has no playable items. Any caller must handle that case, as the tour does."
+    },
+    {
+      "start": 715,
+      "end": 767,
+      "kind": "class",
+      "name": "AtlasEngine (part 12)",
+      "id": "s23",
+      "hash": "e74fa3b6e8a68b8e",
+      "title": "Moment stages, stopping and single moments",
+      "what": "Continues playMoments. At each stage the memory layer changes state, and at the third stage the camera steps sideways and back so the depth of the photo shows. When all moments finish, the view resets and a finish callback runs. stopMoments cancels every scheduled step and clears the moment on screen. playMoment plays one moment on its own when a visitor picks it.",
+      "why": "The comment says the sideways step lets the depth reveal itself. Stopping cancels the timers so nothing keeps running after the visitor moves on.",
+      "watch_out": "With reduced motion on, every moment is timed to 60 percent of its normal length. Any new timer must be added to the list that stopMoments clears, or it will fire after a stop."
+    },
+    {
+      "start": 768,
+      "end": 822,
+      "kind": "method",
+      "name": "AtlasEngine: setSegments",
+      "id": "s24",
+      "hash": "2172cb846a99716f",
+      "title": "Selecting nodes and moving the camera",
+      "what": "setSegments highlights the chosen topic segments and dims the rest. focusExperience moves the camera either to an overview of a role or to a spot in the street, looking at its tower. selectNode selects one node, flies to it, or plays its moment when it has one. resetView returns the camera to the full overview.",
+      "why": "Each action has its own camera framing so the visitor always sees the chosen item clearly.",
+      "watch_out": "selectNode first tries to play a moment for memory items. If that fails, it falls back to a plain selection, so a memory item can behave differently depending on whether it can be played."
+    },
+    {
+      "start": 823,
+      "end": 876,
+      "kind": "method",
+      "name": "AtlasEngine: if",
+      "id": "s25",
+      "hash": "978b0a1ac4490d96",
+      "title": "Drop line, camera motion and click detection",
+      "what": "updateDrop shows the drop line from the selected point down to the ground, or hides it when nothing is selected. flyTo animates the camera smoothly, or jumps straight there when reduced motion is on. The pointer handlers track each press and treat it as a click only if the pointer moved less than 6 pixels and was held under 700 milliseconds. Then the hit test picks a node or reports an empty click.",
+      "why": "The distance and time limits tell a click apart from a drag used to rotate the view. Dragging also cancels any camera flight in progress.",
+      "watch_out": "Touch uses a larger pick area (28 pixels, against 15 for a mouse), so fingers can hit small points. Changing either number changes how easy points are to tap."
+    },
+    {
+      "start": 877,
+      "end": 935,
+      "kind": "method",
+      "name": "AtlasEngine: hitTest",
+      "id": "s26",
+      "hash": "725a68494a37fe5d",
+      "title": "Finding what is under the pointer",
+      "what": "hitTest looks first for the nearest visible point within the given pixel radius, skipping dimmed points. If none is close, it checks the on-screen rectangles of the role towers and returns the nearest one in front.",
+      "why": "Points are tiny, so a radius is used. Towers are large, so a rectangle test is enough for them.",
+      "watch_out": "Points with a dimmed state cannot be clicked or hovered at all, which is intentional but can surprise anyone testing the view."
+    },
+    {
+      "start": 936,
+      "end": 972,
+      "kind": "method",
+      "name": "AtlasEngine: if",
+      "id": "s27",
+      "hash": "7888d4055d481946",
+      "title": "Main animation loop each frame",
+      "what": "Runs every frame while the view is open. It moves the camera along any flight, updates the controls, recalculates screen positions, updates hover, eases the segment brightness, advances the memory layer, updates shader time and fades the outline boxes. Then it draws the scene and the overlay. It stops when the engine is disposed.",
+      "why": "Keeping all animation in one loop keeps the parts in step. The frame step is capped at 0.05 seconds, so a long pause such as switching tabs does not make things jump.",
+      "watch_out": "The loop schedules its next frame at the start. Tab visibility is handled separately, so changes to this order can cause double loops or stalls."
+    },
+    {
+      "start": 973,
+      "end": 1023,
+      "kind": "method",
+      "name": "AtlasEngine: project",
+      "id": "s28",
+      "hash": "02e9a2f69a71622c",
+      "title": "Turning 3D positions into screen positions",
+      "what": "project converts each node's position into a point on screen and records whether it is visible. For each role tower it projects all eight corners of the box, and then records the smallest rectangle that holds them. updateHover works out which item is under the pointer and updates the hover state and cursor shape.",
+      "why": "Labels, clicks, the hover box and the moment readout all need screen positions, and this is the one place they are computed each frame.",
+      "watch_out": "A tower is only marked usable when all corners are in front of the camera, so a tower partly behind the camera gets no hover box or click area."
+    },
+    {
+      "start": 1024,
+      "end": 1075,
+      "kind": "method",
+      "name": "AtlasEngine: if",
+      "id": "s29",
+      "hash": "5cf46a6b5e4780a8",
+      "title": "Role box and label placement",
+      "what": "Places the bracket box and caption around a hovered role. Then it places node labels in priority order: selected or hovered first, then roles, then related items, then items in the active role or segment. Labels that would overlap a higher priority label are hidden.",
+      "why": "The greedy overlap check keeps the text readable instead of piling labels on top of one another.",
+      "watch_out": "The label width is measured once and then kept. If a label's text or font changes size later, the layout can be wrong until the label is reset."
+    },
+    {
+      "start": 1076,
+      "end": 1105,
+      "kind": "method",
+      "name": "AtlasEngine: if",
+      "id": "s30",
+      "hash": "9ecb5fe4c1168707",
+      "title": "Selected tag and year markers",
+      "what": "Shows a small coordinate tag next to the selected point and places the year markers along the street. It also updates the camera position readout when one is present.",
+      "why": "The coordinate readout makes the 3D space feel measurable, which fits the palace idea. Year markers help orient the visitor in time.",
+      "watch_out": ""
+    },
+    {
+      "start": 1106,
+      "end": 1158,
+      "kind": "method",
+      "name": "AtlasEngine: drawMomentOverlay",
+      "id": "s31",
+      "hash": "1ad6385ada3781eb",
+      "title": "Readout panel for the moment on stage",
+      "what": "drawMomentOverlay builds a readout box beside the moment that is playing. It shows the company, role, period, project or moment, industry, problem, place and coordinates. If any corner of the moment's box is behind the camera, everything is hidden. The text is rebuilt only when the moment changes.",
+      "why": "The comment says the readout is pinned to the top-left corner of the box, so it stays near the object it describes.",
+      "watch_out": "The readout only refreshes when the moment id changes, so editing the underlying data while a moment plays will not show until the next moment."
+    },
+    {
+      "start": 1159,
+      "end": 1193,
+      "kind": "method",
+      "name": "AtlasEngine: if",
+      "id": "s32",
+      "hash": "74bf0bca4e153ccd",
+      "title": "Highlight caption, tags and ruler",
+      "what": "Shows a highlight caption from the role's highlights list. Once the cloud has lifted into depth, it shows up to six tags with point numbers and draws lines linking the tags to the readout. It also draws a ruler of tick marks down one edge of the moment's box.",
+      "why": "Likely reason: the numbered tags and ruler give the moment a measuring-tool look that matches the rest of the view.",
+      "watch_out": "Only six tag slots exist, so any tagged point beyond the sixth is never shown."
+    },
+    {
+      "start": 1194,
+      "end": 1222,
+      "kind": "method",
+      "name": "AtlasEngine: dispose",
+      "id": "s33",
+      "hash": "4862fb1388203433",
+      "title": "Cleaning up when the view closes",
+      "what": "dispose marks the engine as finished and stops the animation loop. It removes every event listener, stops any moment timers, and frees the graphics memory for every geometry and material. Finally it removes the canvas and clears the overlay.",
+      "why": "Without this cleanup, leaving the page would leave graphics memory and listeners behind and slowly leak resources.",
+      "watch_out": "Any new listener, timer or graphics object added later must also be cleaned up here, or it will leak."
+    },
+    {
+      "start": 1223,
+      "end": 1225,
+      "kind": "function",
+      "name": "escapeHtml",
+      "id": "s34",
+      "hash": "5a4566eae27f039e",
+      "title": "Making text safe for HTML",
+      "what": "escapeHtml swaps the characters that have special meaning in HTML, such as angle brackets, ampersands and quotes, for harmless codes. It is used when titles and other text are placed into HTML, so they show as plain text.",
+      "why": "Some labels are written with innerHTML, which reads markup. Escaping stops broken layouts and stops injected markup.",
+      "watch_out": "Any text placed into innerHTML without this function could break the layout or inject markup."
+    }
+  ],
+  "explained_at": "2026-11-10T20:48:46+00:00",
+  "explained_by": "haiku",
+  "summary": "The 3D engine behind the Knowledge Atlas. It builds and animates a point cloud scene, camera, labels, and moment playback, separately from React.",
+  "purpose": "Draws the Atlas scene and reports user actions back to the React interface.",
+  "why": "The engine runs every frame and positions labels on screen, which is easier to manage outside React.",
+  "how": "On creation, builds the scene parts: points, nodes, edges, tower boxes, a drop line, and a memory layer. Each frame, it updates the camera, the shader inputs, the labels, and the moment overlays. It reports hover and selection events through callbacks.",
+  "inputs": "A container element, an overlay element, a camera readout element, callbacks, and three options (reduced motion, low power, assemble).",
+  "outputs": "A rendered 3D scene in the container, labels in the overlay, and events sent back through the callbacks.",
+  "risks": "Uses GPU memory and timers, which must be released in dispose. Only 13 of 34 sections were available, so later parts of the file are not described here.",
+  "debug": "If the scene is blank, check WebGL support and the shader error messages. If labels drift off their points, check the per-frame position update. If the moment overlay stays, check that its timers are cleared.",
+  "summary_hash": "sha256:a833559ed0074729081ff7a4c3cbeb7ef3d052e695884008e94e920dad7eeefb",
+  "note_archive": {
+    "1bdc659d5abb34f7": {
+      "title": "Imports",
+      "what": "Loads the 3D library, the orbit controls, the memory layer, and the atlas and geography data.",
+      "why": "The engine needs the library and the content it draws.",
+      "watch_out": "A renamed export in the data files will break this file."
+    },
+    "1f1247d47e920f74": {
+      "title": "Events sent to React",
+      "what": "Lists the events the engine sends back: hover, picking a node or empty space, and moment progress.",
+      "why": "Keeps the interface state in React while the engine handles drawing.",
+      "watch_out": ""
+    },
+    "31972996a33f0e44": {
+      "title": "Options and paper colour",
+      "what": "Holds three switches (reduced motion, low power, assemble) and the light blue colour used for paper.",
+      "why": "Reduced motion and low power trade visual detail for speed.",
+      "watch_out": "Low power caps the pixel ratio at 1.5."
+    },
+    "7cf07e530b79fca2": {
+      "title": "Segments and overview positions",
+      "what": "Defines the six cluster segments and their order, the street segment, and fixed overview camera targets.",
+      "why": "Shared tables keep the shader and camera in the same order.",
+      "watch_out": "The segment order must match the array size used in the shader."
+    },
+    "40b3b33e4e15e9e3": {
+      "title": "Portrait overview and particle shader",
+      "what": "Sets a second overview camera position for tall screens, then the particle shader that moves points and sets their colour and size.",
+      "why": "Portrait screens need the street to recede vertically.",
+      "watch_out": "The shader has seven segment slots, which must stay in step with the segment list."
+    },
+    "96f8611d7f41a21e": {
+      "title": "Owner brightness and distance rules",
+      "what": "Shader rules that brighten the points of the active owner, dim others, and set point size by distance.",
+      "why": "Highlights one owner at a time while keeping the rest visible.",
+      "watch_out": ""
+    },
+    "529a9233d4dea320": {
+      "title": "Node and edge shaders",
+      "what": "Shader code for drawing nodes and edges, with brightness set by each node's state.",
+      "why": "Nodes and edges need their own looks.",
+      "watch_out": ""
+    },
+    "27c33963c4e60167": {
+      "title": "Repeatable random generator",
+      "what": "Creates a random number source from a seed.",
+      "why": "The scene looks the same on every load.",
+      "watch_out": ""
+    },
+    "3ebb8bf29234c514": {
+      "title": "Bell-curve random values",
+      "what": "Produces random values with a bell-curve spread.",
+      "why": "Gives natural-looking clustering.",
+      "watch_out": ""
+    },
+    "f74efe7dd76cf3a6": {
+      "title": "Camera move description",
+      "what": "Describes a camera move from one position and target to another over a set duration.",
+      "why": "Lets the camera glide between views.",
+      "watch_out": ""
+    },
+    "3d687c919bf2c403": {
+      "title": "Label type and number format",
+      "what": "Stores a screen label with its size, and formats signed numbers for the coordinate readouts.",
+      "why": "Keeps readouts a fixed width.",
+      "watch_out": ""
+    },
+    "732fe5f86b677448": {
+      "title": "Engine state",
+      "what": "Declares the engine class and its state: renderer, camera, controls, materials, selection, pointer, and moment timers.",
+      "why": "Keeps all changing values in one place.",
+      "watch_out": "Anything created here must be released in dispose."
+    },
+    "3ff911d51d6b65ee": {
+      "title": "Constructor: renderer, camera, and scene parts",
+      "what": "Sets up the renderer, fog, camera, and orbit controls with distance and angle limits, builds the scene parts, and creates the memory layer.",
+      "why": "Builds everything once so each frame only updates values.",
+      "watch_out": "The renderer is added to the container, so cleanup must remove it."
+    },
+    "fa0fb723f467e75f": {
+      "title": "Labels, overlay parts and event hookups",
+      "what": "Finishes startup by creating the floating text labels for each node and each year, plus the hidden overlay pieces for the hover box, the selected-point tag and the moment readout. It then connects mouse, touch, window resize and tab-visibility events, and starts the animation loop. The visitor sees the labels and reacts to pointer input.",
+      "why": "Likely reason: these pieces must exist before the first frame is drawn, and the listeners must be attached once when the engine starts. The reduced-motion setting decides whether the assembly animation starts at zero or is skipped.",
+      "watch_out": "The listeners added here must be removed in dispose, or they keep running after the view is closed."
+    },
+    "f97ff7940ade1f7e": {
+      "title": "Building the dot cloud",
+      "what": "Creates the large cloud of tiny dots that forms the street, lane markings, curbs, year ticks, ground, tower walls, window patches, corner edges, roofs, engagement floor slabs and sky dust. Each dot gets a position, size, brightness, a segment and an owner. A low-power setting cuts the dot counts for phones and touch screens.",
+      "why": "Likely reason: a dot cloud lets the whole scene dissolve and reassemble cheaply on the graphics card. The page is described as a dissolved sheet, and the starting positions are scattered in front of the camera to match that idea.",
+      "watch_out": "Changing the fixed random seed (7) or the counts changes the whole layout, so every dot shifts."
+    },
+    "e94345048ab95760": {
+      "title": "Ground, tower walls and floor slabs",
+      "what": "Scatters dots over the ground beside the street. For each tower it places dots on the walls in a window pattern, along the vertical edges and across the roof. For each engagement it adds a dense floor slab inside that tower's footprint.",
+      "why": "The window pattern is worked out from each dot's position, so windows form a regular grid on the walls without storing each one separately.",
+      "watch_out": "Each engagement looks up its tower with a forced lookup, so a role missing from the tower list would fail here."
+    },
+    "7a2800edd30fb934": {
+      "title": "Project, industry and research buildings",
+      "what": "Defines one helper that draws a box-shaped building made of dots, with a window grid, crisp corners and a roof. The helper is then used for small project buildings, low industry blocks, and research pavilions, which are the research items that are not photos. These buildings give the street its skyline.",
+      "why": "One shared helper keeps every building looking consistent. The code comments say that research papers are their photos and ideas are pavilions past the end of the street.",
+      "watch_out": "Industry sizes come from the node data, with a default if missing. Unusual sizes change how the building looks, and the window pattern assumes positive sizes."
+    },
+    "1abcdab6ffd0a8ec": {
+      "title": "Visual archive dots and final packaging",
+      "what": "Draws small dot lattices for visual archive items and scatters sky dust above the street. It then packs all dot data into the format the graphics card needs, creates the shader material with its settings and colors, and adds the finished cloud to the scene.",
+      "why": "The lattices and sky dust are decoration. The packing step is needed because the shader can only read data in those buffer formats.",
+      "watch_out": "The material's uniform values set the starting look, and the reduced-motion setting turns off drift at this step."
+    },
+    "91c57c48033a312a": {
+      "title": "Node dots and connecting lines",
+      "what": "buildNodes places each node as a point and marks whether it is an experience or not, so the shader can style them differently. buildEdges draws a line between each pair of linked nodes, sets up their brightness values, and then refreshes all highlight states. Users see the points and the network lines between them.",
+      "why": "Storing each node's state in a shared array lets highlighting update without rebuilding the geometry.",
+      "watch_out": "buildEdges looks up each link's two nodes by id with a forced lookup. A link that points to a missing node will fail when the engine starts."
+    },
+    "39c3c341389ff666": {
+      "title": "Outline boxes and the drop line",
+      "what": "buildTowerBoxes creates a faint outline box around each role's tower. These boxes stay hidden until that role is selected or hovered. buildDropLine creates a dashed line that can run from a selected point straight down to the ground.",
+      "why": "The outline shows the boundary of a role, and the drop line helps the visitor judge a point's height. Both are built from the same tower positions as the dots.",
+      "watch_out": "The outline boxes and the dots both come from the tower positions, so any change to tower sizes must be made in one place or the two will drift apart."
+    },
+    "b4bcd57258f9785b": {
+      "title": "Deciding what is highlighted",
+      "what": "refreshStates works out, for every node, whether it is selected, linked to the selection, part of the active role, or dimmed. It also sets how bright each line and each segment should be, and which memory items should lift off the page. Visitors see the highlighting change when they hover or select.",
+      "why": "All highlight rules sit in one function, so every interaction gives the same result. The rules are applied in a fixed order, and the first rule that matches wins.",
+      "watch_out": "Rule order matters. Moving one rule above another changes which items look highlighted or dimmed."
+    },
+    "eef7d7fa88839adb": {
+      "title": "Playing a role's moments in order",
+      "what": "focusMemories gathers a role's memory items, puts project scenes first, then photos, then papers, preloads them and starts playback. It returns false when there is nothing to play. The timing constants set how long a moment takes: about 7.2 seconds for photos and 4.6 seconds for project scenes. playMoments then schedules the stages of each moment, starting with a camera flight to the spot where the photo was taken.",
+      "why": "The comment says the order is the same for every role and that the experience is like walking through a memory palace. The order is fixed in the code, so it does not depend on the data.",
+      "watch_out": "focusMemories returns false when a role has no playable items. Any caller must handle that case, as the tour does."
+    },
+    "e74fa3b6e8a68b8e": {
+      "title": "Moment stages, stopping and single moments",
+      "what": "Continues playMoments. At each stage the memory layer changes state, and at the third stage the camera steps sideways and back so the depth of the photo shows. When all moments finish, the view resets and a finish callback runs. stopMoments cancels every scheduled step and clears the moment on screen. playMoment plays one moment on its own when a visitor picks it.",
+      "why": "The comment says the sideways step lets the depth reveal itself. Stopping cancels the timers so nothing keeps running after the visitor moves on.",
+      "watch_out": "With reduced motion on, every moment is timed to 60 percent of its normal length. Any new timer must be added to the list that stopMoments clears, or it will fire after a stop."
+    },
+    "2172cb846a99716f": {
+      "title": "Selecting nodes and moving the camera",
+      "what": "setSegments highlights the chosen topic segments and dims the rest. focusExperience moves the camera either to an overview of a role or to a spot in the street, looking at its tower. selectNode selects one node, flies to it, or plays its moment when it has one. resetView returns the camera to the full overview.",
+      "why": "Each action has its own camera framing so the visitor always sees the chosen item clearly.",
+      "watch_out": "selectNode first tries to play a moment for memory items. If that fails, it falls back to a plain selection, so a memory item can behave differently depending on whether it can be played."
+    },
+    "978b0a1ac4490d96": {
+      "title": "Drop line, camera motion and click detection",
+      "what": "updateDrop shows the drop line from the selected point down to the ground, or hides it when nothing is selected. flyTo animates the camera smoothly, or jumps straight there when reduced motion is on. The pointer handlers track each press and treat it as a click only if the pointer moved less than 6 pixels and was held under 700 milliseconds. Then the hit test picks a node or reports an empty click.",
+      "why": "The distance and time limits tell a click apart from a drag used to rotate the view. Dragging also cancels any camera flight in progress.",
+      "watch_out": "Touch uses a larger pick area (28 pixels, against 15 for a mouse), so fingers can hit small points. Changing either number changes how easy points are to tap."
+    },
+    "725a68494a37fe5d": {
+      "title": "Finding what is under the pointer",
+      "what": "hitTest looks first for the nearest visible point within the given pixel radius, skipping dimmed points. If none is close, it checks the on-screen rectangles of the role towers and returns the nearest one in front.",
+      "why": "Points are tiny, so a radius is used. Towers are large, so a rectangle test is enough for them.",
+      "watch_out": "Points with a dimmed state cannot be clicked or hovered at all, which is intentional but can surprise anyone testing the view."
+    },
+    "7888d4055d481946": {
+      "title": "Main animation loop each frame",
+      "what": "Runs every frame while the view is open. It moves the camera along any flight, updates the controls, recalculates screen positions, updates hover, eases the segment brightness, advances the memory layer, updates shader time and fades the outline boxes. Then it draws the scene and the overlay. It stops when the engine is disposed.",
+      "why": "Keeping all animation in one loop keeps the parts in step. The frame step is capped at 0.05 seconds, so a long pause such as switching tabs does not make things jump.",
+      "watch_out": "The loop schedules its next frame at the start. Tab visibility is handled separately, so changes to this order can cause double loops or stalls."
+    },
+    "02e9a2f69a71622c": {
+      "title": "Turning 3D positions into screen positions",
+      "what": "project converts each node's position into a point on screen and records whether it is visible. For each role tower it projects all eight corners of the box, and then records the smallest rectangle that holds them. updateHover works out which item is under the pointer and updates the hover state and cursor shape.",
+      "why": "Labels, clicks, the hover box and the moment readout all need screen positions, and this is the one place they are computed each frame.",
+      "watch_out": "A tower is only marked usable when all corners are in front of the camera, so a tower partly behind the camera gets no hover box or click area."
+    },
+    "5cf46a6b5e4780a8": {
+      "title": "Role box and label placement",
+      "what": "Places the bracket box and caption around a hovered role. Then it places node labels in priority order: selected or hovered first, then roles, then related items, then items in the active role or segment. Labels that would overlap a higher priority label are hidden.",
+      "why": "The greedy overlap check keeps the text readable instead of piling labels on top of one another.",
+      "watch_out": "The label width is measured once and then kept. If a label's text or font changes size later, the layout can be wrong until the label is reset."
+    },
+    "9ecb5fe4c1168707": {
+      "title": "Selected tag and year markers",
+      "what": "Shows a small coordinate tag next to the selected point and places the year markers along the street. It also updates the camera position readout when one is present.",
+      "why": "The coordinate readout makes the 3D space feel measurable, which fits the palace idea. Year markers help orient the visitor in time.",
+      "watch_out": ""
+    },
+    "1ad6385ada3781eb": {
+      "title": "Readout panel for the moment on stage",
+      "what": "drawMomentOverlay builds a readout box beside the moment that is playing. It shows the company, role, period, project or moment, industry, problem, place and coordinates. If any corner of the moment's box is behind the camera, everything is hidden. The text is rebuilt only when the moment changes.",
+      "why": "The comment says the readout is pinned to the top-left corner of the box, so it stays near the object it describes.",
+      "watch_out": "The readout only refreshes when the moment id changes, so editing the underlying data while a moment plays will not show until the next moment."
+    },
+    "74bf0bca4e153ccd": {
+      "title": "Highlight caption, tags and ruler",
+      "what": "Shows a highlight caption from the role's highlights list. Once the cloud has lifted into depth, it shows up to six tags with point numbers and draws lines linking the tags to the readout. It also draws a ruler of tick marks down one edge of the moment's box.",
+      "why": "Likely reason: the numbered tags and ruler give the moment a measuring-tool look that matches the rest of the view.",
+      "watch_out": "Only six tag slots exist, so any tagged point beyond the sixth is never shown."
+    },
+    "4862fb1388203433": {
+      "title": "Cleaning up when the view closes",
+      "what": "dispose marks the engine as finished and stops the animation loop. It removes every event listener, stops any moment timers, and frees the graphics memory for every geometry and material. Finally it removes the canvas and clears the overlay.",
+      "why": "Without this cleanup, leaving the page would leave graphics memory and listeners behind and slowly leak resources.",
+      "watch_out": "Any new listener, timer or graphics object added later must also be cleaned up here, or it will leak."
+    },
+    "5a4566eae27f039e": {
+      "title": "Making text safe for HTML",
+      "what": "escapeHtml swaps the characters that have special meaning in HTML, such as angle brackets, ampersands and quotes, for harmless codes. It is used when titles and other text are placed into HTML, so they show as plain text.",
+      "why": "Some labels are written with innerHTML, which reads markup. Escaping stops broken layouts and stops injected markup.",
+      "watch_out": "Any text placed into innerHTML without this function could break the layout or inject markup."
+    }
+  }
+}

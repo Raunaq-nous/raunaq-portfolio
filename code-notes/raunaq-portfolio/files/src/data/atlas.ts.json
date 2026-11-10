@@ -1,0 +1,424 @@
+{
+  "schema_version": 1,
+  "path": "src/data/atlas.ts",
+  "language": "TypeScript",
+  "lines": 463,
+  "hash": "sha256:1f2536c14edb19363349426d4e0f17e89b8f6d4342b2b66030eb55c7e016f6b0",
+  "area": "src-data",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Hand-tuned layout numbers with no test visible.",
+      "Missing links are dropped silently.",
+      "Some lookups assume a role exists and will fail if it does not."
+    ]
+  },
+  "terms": [
+    {
+      "term": "node",
+      "meaning": "a single point in the Atlas that can be selected"
+    },
+    {
+      "term": "edge",
+      "meaning": "a line linking two nodes"
+    },
+    {
+      "term": "cluster",
+      "meaning": "a named group of nodes of one type, such as Builds"
+    },
+    {
+      "term": "seeded random",
+      "meaning": "a pseudo-random sequence that gives the same numbers every time because it starts from a fixed seed"
+    },
+    {
+      "term": "time street",
+      "meaning": "the layout idea of a row of towers placed by year"
+    }
+  ],
+  "depends_on": [
+    "src/data/battles.ts",
+    "src/data/projects.ts",
+    "src/data/research.ts",
+    "src/data/curiosities.ts",
+    "src/data/assets.ts",
+    "src/data/geo.ts"
+  ],
+  "used_by": [
+    "The Atlas page and its components (not visible in this packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 21,
+      "kind": "setup",
+      "name": "File setup, ClusterId, NodeKind, ModelShape, Vec3",
+      "id": "s1",
+      "hash": "9340e77ddbd8c982",
+      "title": "Core types and imports",
+      "what": "Brings in the role, project, paper, curiosity, photo and place data, and defines the cluster, node and model names.",
+      "why": "The types give every node a fixed shape so the 3D scene reads them consistently.",
+      "watch_out": "A new node kind must be added to the kind list before it can be used."
+    },
+    {
+      "start": 22,
+      "end": 28,
+      "kind": "type",
+      "name": "AtlasCluster",
+      "id": "s2",
+      "hash": "50d30b524aad4952",
+      "title": "Cluster shape",
+      "what": "Describes a cluster: an id, a short code, a label and a description.",
+      "why": "Gives each group of nodes a visible name.",
+      "watch_out": ""
+    },
+    {
+      "start": 29,
+      "end": 33,
+      "kind": "type",
+      "name": "AtlasLink",
+      "id": "s3",
+      "hash": "13365385af4ee7f1",
+      "title": "Outside link shape",
+      "what": "Describes a labelled web link attached to a node.",
+      "why": "Lets nodes point to papers or live demos.",
+      "watch_out": ""
+    },
+    {
+      "start": 34,
+      "end": 60,
+      "kind": "type",
+      "name": "AtlasNode",
+      "id": "s4",
+      "hash": "c0bbb8416706387d",
+      "title": "Node shape",
+      "what": "Lists every field a node may hold: identity, cluster, text, links, shape, photo, size, year, scene details and 3D position.",
+      "why": "One shape keeps all node types in one list.",
+      "watch_out": "Every node needs a position, or it cannot be placed."
+    },
+    {
+      "start": 61,
+      "end": 68,
+      "kind": "type",
+      "name": "SceneInfo",
+      "id": "s5",
+      "hash": "d670a1a62c81de5f",
+      "title": "Project scene details",
+      "what": "Holds a project's number in its role, its industry, its problem type and its locations, shown beside its scene.",
+      "why": "Lets the gallery show project details without re-reading the data.",
+      "watch_out": ""
+    },
+    {
+      "start": 69,
+      "end": 74,
+      "kind": "type",
+      "name": "AtlasEdge",
+      "id": "s6",
+      "hash": "f3467ab5159ed0c6",
+      "title": "Relationship shape",
+      "what": "A link has a start, an end and a kind such as contains, built, sector, informs, context or illustrative.",
+      "why": "The kind decides what the relationship means on screen.",
+      "watch_out": "A kind outside the allowed list fails the type check."
+    },
+    {
+      "start": 75,
+      "end": 86,
+      "kind": "value",
+      "name": "clusters",
+      "id": "s7",
+      "hash": "919fd2f33fa3866c",
+      "title": "The seven clusters",
+      "what": "Defines the seven clusters in order, with codes S01 to S07, names and descriptions.",
+      "why": "Keeps the visible cluster names and descriptions together.",
+      "watch_out": ""
+    },
+    {
+      "start": 87,
+      "end": 99,
+      "kind": "function",
+      "name": "rng, round",
+      "id": "s8",
+      "hash": "5278f1458012a518",
+      "title": "Repeatable random numbers and rounding",
+      "what": "Creates a seeded random generator so the same seed gives the same numbers, and rounds values to two decimal places.",
+      "why": "Keeps positions stable so coordinates do not shuffle between builds.",
+      "watch_out": "Changing a seed or the number of random calls moves every node that uses them."
+    },
+    {
+      "start": 100,
+      "end": 105,
+      "kind": "function",
+      "name": "yearsOf",
+      "id": "s9",
+      "hash": "0b92edfc7cad3671",
+      "title": "Years of a role",
+      "what": "Reads the years from a role's period text; a period marked present runs to 2026.5.",
+      "why": "Years set each tower's width and its place on the timeline.",
+      "watch_out": "Needs a four-digit year in the text; without one the year is undefined."
+    },
+    {
+      "start": 106,
+      "end": 109,
+      "kind": "value",
+      "name": "timeline",
+      "id": "s10",
+      "hash": "24953e6de2b45052",
+      "title": "Roles in time order",
+      "what": "Sorts roles by start year and sets the timeline from 2012.5 to 2027.5 across a street 96 units long.",
+      "why": "Keeps the street in time order.",
+      "watch_out": "Changing the timeline limits shifts every tower sideways."
+    },
+    {
+      "start": 110,
+      "end": 112,
+      "kind": "function",
+      "name": "xForYear",
+      "id": "s11",
+      "hash": "78543fde7c41515f",
+      "title": "Year to street position",
+      "what": "Converts a year into a horizontal position along the street, centred on zero.",
+      "why": "Puts each item at the right point in time. The half-width of the street is also set here.",
+      "watch_out": ""
+    },
+    {
+      "start": 113,
+      "end": 120,
+      "kind": "function",
+      "name": "towerSide, Draft, drafts",
+      "id": "s12",
+      "hash": "71a8ab84b47263b3",
+      "title": "Tower sides and draft list",
+      "what": "Alternates towers between the two sides of the street, and creates the empty list that collects nodes before final codes are given.",
+      "why": "Alternating sides keeps neighbouring towers from overlapping.",
+      "watch_out": "Drafts have no code yet; do not read codes from them."
+    },
+    {
+      "start": 121,
+      "end": 162,
+      "kind": "value",
+      "name": "towerPos",
+      "id": "s13",
+      "hash": "b977490ab385c4a5",
+      "title": "Towers and engagement floors",
+      "what": "For each role in time order, sets the tower's size and position from its years and project count, then adds the role node and one node per engagement, stacked as floors.",
+      "why": "Taller and wider towers show roles with more projects and more years.",
+      "watch_out": "Heights divide by the project count; this is safe only because the loop does not run when the count is zero."
+    },
+    {
+      "start": 163,
+      "end": 165,
+      "kind": "value",
+      "name": "ORIGIN_EXP",
+      "id": "s14",
+      "hash": "f3ccac808b5d7ded",
+      "title": "Origins for builds",
+      "what": "Maps two origin keys to the roles they belong to; any other origin counts as independent.",
+      "why": "Lets builds sit beside the role they came from.",
+      "watch_out": "Only two origins are listed, so a new origin falls back to the independent group."
+    },
+    {
+      "start": 166,
+      "end": 199,
+      "kind": "value",
+      "name": "buildGroups",
+      "id": "s15",
+      "hash": "80bfc1705c32a281",
+      "title": "Builds beside their roles",
+      "what": "Groups projects by origin and places each in a row beside its role's tower, or at the present end of the street for independent builds, with links to its page and code.",
+      "why": "Keeps builds near their source role so the story reads along the street.",
+      "watch_out": "Independent builds all gather near the present end, so new independent builds crowd that spot."
+    },
+    {
+      "start": 200,
+      "end": 225,
+      "kind": "value",
+      "name": "industryRoles",
+      "id": "s16",
+      "hash": "3b26f777bc58b75d",
+      "title": "Industry nodes above roles",
+      "what": "Creates one node per industry, placed above the average position of its roles, taller when more roles share it.",
+      "why": "Shows where each sector sits relative to the work.",
+      "watch_out": "Industry names come from the role data; a typo creates a separate industry node."
+    },
+    {
+      "start": 226,
+      "end": 229,
+      "kind": "type",
+      "name": "SceneDraft",
+      "id": "s17",
+      "hash": "a00088d0ca7f6dd5",
+      "title": "Project scene shape",
+      "what": "Describes a scene draft: the scene details plus the role id and description.",
+      "why": "Keeps scenes typed before they are placed.",
+      "watch_out": ""
+    },
+    {
+      "start": 230,
+      "end": 246,
+      "kind": "value",
+      "name": "scenesByRole, sceneCount, momentCount",
+      "id": "s18",
+      "hash": "b99d3642bb0f7c62",
+      "title": "Scenes and counts per role",
+      "what": "Makes one scene per key project for each role, or one general scene if it has none, and counts the scenes and photo moments for each role.",
+      "why": "Each role gets the same sequence in its gallery.",
+      "watch_out": "These counts decide the gallery height, so adding a photo changes the layout."
+    },
+    {
+      "start": 247,
+      "end": 252,
+      "kind": "function",
+      "name": "momentHub, anchors",
+      "id": "s19",
+      "hash": "c25b3f21c2405452",
+      "title": "Gallery hub above each role",
+      "what": "Works out the centre point of a role's gallery, raised as its rows increase, and sets up storage for gallery anchors.",
+      "why": "The hub is the point the view aims at.",
+      "watch_out": "Assumes the role exists in the tower list; an unknown role will crash this step."
+    },
+    {
+      "start": 253,
+      "end": 266,
+      "kind": "function",
+      "name": "galleryPos, momentAnchor, galleryCenter",
+      "id": "s20",
+      "hash": "1661139769c5c684",
+      "title": "Gallery positions and anchors",
+      "what": "Places each scene or photo on a grid of four columns behind its role, records the direction each faces, and exposes lookups for anchors and gallery centres.",
+      "why": "Rooms face outward so visitors look away from the street.",
+      "watch_out": "The grid is fixed at four columns; changing it moves every gallery."
+    },
+    {
+      "start": 267,
+      "end": 326,
+      "kind": "function",
+      "name": "galleryRows",
+      "id": "s21",
+      "hash": "9b316de37a9988da",
+      "title": "Scenes and papers into galleries",
+      "what": "Adds one gallery node per project scene, each with a spec sheet of role, project number, problem, location and period, then places the research papers in the research gallery.",
+      "why": "The spec sheets are drawn in 3D from these rows.",
+      "watch_out": "Papers are placed in the research role's gallery by a fixed role id, so new papers always join that gallery."
+    },
+    {
+      "start": 327,
+      "end": 355,
+      "kind": "value",
+      "name": "ideaDrafts",
+      "id": "s22",
+      "hash": "212ac88951cdd778",
+      "title": "Research threads and curiosities as pavilions",
+      "what": "Makes an idea node for each open research thread and each curiosity, then spreads them in a ring of pavilions beyond the end of the street.",
+      "why": "Ideas are not tied to a year, so they sit off the timeline.",
+      "watch_out": "The ring is spread evenly, so the more ideas there are, the tighter the spacing."
+    },
+    {
+      "start": 356,
+      "end": 366,
+      "kind": "value",
+      "name": "visualBase, paperMemoryIds",
+      "id": "s23",
+      "hash": "8fcbeb386fb9f0a4",
+      "title": "Visual archive and paper memory ids",
+      "what": "Places the portrait and three placeholder 3D shapes in the visual archive, and builds a set of ids for papers so photos already shown as papers are not duplicated.",
+      "why": "The ids let the photo step skip papers that already have nodes.",
+      "watch_out": "The three shapes are placeholders, not real models."
+    },
+    {
+      "start": 367,
+      "end": 391,
+      "kind": "value",
+      "name": "memByRole, extraNodes",
+      "id": "s24",
+      "hash": "b4cf2144b59602ed",
+      "title": "Photos into role galleries",
+      "what": "Places each non-paper photo in its role's gallery as a numbered moment, and creates an empty list for extra hand-added nodes.",
+      "why": "Photos sit beside the role they belong to.",
+      "watch_out": "Photos whose role is missing from the timeline are skipped silently, so a typo in a role id removes them."
+    },
+    {
+      "start": 392,
+      "end": 396,
+      "kind": "value",
+      "name": "nodes, ids",
+      "id": "s25",
+      "hash": "11efeaa81a7b430d",
+      "title": "Final node list and codes",
+      "what": "Combines all the nodes and gives each one a code such as N-001, and records the set of ids for link checks.",
+      "why": "Codes give visitors a short reference on screen.",
+      "watch_out": "Codes come from position, so adding or moving a node earlier renumbers the later ones."
+    },
+    {
+      "start": 397,
+      "end": 405,
+      "kind": "value",
+      "name": "derived",
+      "id": "s26",
+      "hash": "21a56dca3e36bc0a",
+      "title": "Automatic links for roles",
+      "what": "Starts the link list with contains links from roles to their engagements, papers and photos, built links to their builds, and sector links to their industries.",
+      "why": "Relationships come from the data, so the graph updates when the data changes.",
+      "watch_out": ""
+    },
+    {
+      "start": 406,
+      "end": 415,
+      "kind": "value",
+      "name": "industryNames",
+      "id": "s27",
+      "hash": "b1de9672ffda3436",
+      "title": "Engagements linked to industries",
+      "what": "Connects each engagement to an industry node when the names match, so it appears under the right sector.",
+      "why": "Likely reason: matching names avoids a separate mapping list.",
+      "watch_out": "Matching is loose: it uses partial names and first words, so unrelated industries can be linked by accident."
+    },
+    {
+      "start": 416,
+      "end": 440,
+      "kind": "function",
+      "name": "b, extraEdges, edges",
+      "id": "s28",
+      "hash": "ef1c11948dea7855",
+      "title": "Hand-written links and final edges",
+      "what": "Adds named relationships between ideas, curiosities, builds, papers and visual shapes, then returns only links whose two ends exist.",
+      "why": "Some relationships cannot be worked out from the data, so they are written by hand.",
+      "watch_out": "A typo in a hand-written id drops that link silently."
+    },
+    {
+      "start": 441,
+      "end": 447,
+      "kind": "function",
+      "name": "neighbours, clusterOf",
+      "id": "s29",
+      "hash": "d4e8020be3c22eb9",
+      "title": "Neighbours and cluster lookup",
+      "what": "Returns every node linked to a given node, and finds a cluster's details by its id.",
+      "why": "Used to show related items beside a selected node.",
+      "watch_out": "The cluster lookup assumes the id exists and fails for an unknown one."
+    },
+    {
+      "start": 448,
+      "end": 463,
+      "kind": "function",
+      "name": "overviewOf",
+      "id": "s30",
+      "hash": "9881668b13cb3b92",
+      "title": "Summary of one role",
+      "what": "Groups everything attached to one role (engagements, builds, industries, papers and photos) for its overview panel. The file also exports the tower positions.",
+      "why": "Likely reason: the overview panel needs these lists split by type.",
+      "watch_out": "Assumes the role exists in the battle list; an unknown id causes an error."
+    }
+  ],
+  "explained_at": "2026-11-10T20:59:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the 3D Atlas graph: every role, engagement, build, industry, paper, photo and idea, placed in space and linked to related items.",
+  "purpose": "Supplies the Atlas with its points, their positions, their text and the links between them.",
+  "why": "The header comment says roles stand in time order along a street, so positions match real time, and placement is fixed so the coordinates shown are the true ones.",
+  "how": "1) Defines the shapes for clusters, nodes and links. 2) Places each role as a tower along the timeline. 3) Stacks engagements as floors inside each tower, puts builds beside their origin role, and puts industries above their roles. 4) Places each role's project scenes and photos in a wall of rooms, with papers and idea pavilions. 5) Gives each node a code such as N-001. 6) Creates the links, then keeps only links whose two ends exist.",
+  "inputs": "Battle (role) data, project data, research papers and threads, curiosities, the photo and portrait registry, and place data.",
+  "outputs": "The node list, the edge list, the cluster list, the timeline and helper lookups used by the Atlas.",
+  "risks": "Positions come from hand-tuned numbers, so changing a role's years moves its tower and everything attached. Codes depend on order, so adding a node renumbers later ones. Some lookups assume a role exists and fail if it does not. Links to missing nodes are dropped silently.",
+  "debug": "If a node is missing, check it was added to the node list and that its owner matches a role id. If links are missing, check both ends exist with exact ids. If a tower is misplaced, check its period text includes years. Changed codes after an edit are expected.",
+  "summary_hash": "sha256:1f2536c14edb19363349426d4e0f17e89b8f6d4342b2b66030eb55c7e016f6b0"
+}
