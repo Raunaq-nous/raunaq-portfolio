@@ -8,6 +8,7 @@ import { useMode } from './ModeContext';
 
 export const navItems = [
   { href: '/#builds', calm: 'AI builds', nerd: 'cd builds', match: '/work' },
+  { href: '/code/', calm: 'Code', nerd: 'cd code', match: '/code' },
   { href: '/#experience', calm: 'Experience', nerd: 'cd experience' },
   { href: '/atlas/', calm: 'Palace', nerd: 'cd palace', match: '/atlas' },
   { href: '/#curiosities', calm: 'Curiosities', nerd: 'cd curiosities' },

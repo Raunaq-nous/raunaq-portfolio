@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { ImageMedia, VideoMedia } from './MediaSlot';
 import Reveal from './Reveal';
 import CodeGraph from './CodeGraph';
+import CodeExplorerLink from './CodeExplorerLink';
 import PixelImage from './PixelImage';
 import { mediaFor } from '@/data/assets';
 import { getProject, parseProcess, projects, relatedProjects, splitSystemLabel } from '@/data/projects';
@@ -86,6 +87,7 @@ export default function ProjectDetail({ slug }: { slug: string }) {
                   Repository <span aria-hidden>↗</span>
                 </a>
               )}
+              <CodeExplorerLink slug={slug} variant="header" />
             </div>
           </div>
         </div>
@@ -169,6 +171,7 @@ export default function ProjectDetail({ slug }: { slug: string }) {
           <p className="mt-6 max-w-xl text-[14px] text-grey-2">
             Every technology in the build, from interface to deployment, and the AI features it runs. Hover a node to trace its links.
           </p>
+          <CodeExplorerLink slug={slug} />
         </Section>
 
         <Section n={num()} title="Demo">
