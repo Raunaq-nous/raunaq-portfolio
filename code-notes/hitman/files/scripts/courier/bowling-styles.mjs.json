@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "path": "scripts/courier/bowling-styles.mjs",
+  "language": "JavaScript",
+  "lines": 79,
+  "hash": "sha256:5a0dd2a027d302beae8fdf2dfd86a98101def3816240ee332433f4ee2a66f22e",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Failure paths exit with a success code.",
+      "No test is visible, and the run depends on live external services."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Wikidata",
+      "meaning": "a free public database of facts, maintained by volunteers"
+    },
+    {
+      "term": "SPARQL",
+      "meaning": "the query language used to ask Wikidata questions"
+    },
+    {
+      "term": "Register",
+      "meaning": "Cricsheet's list linking its player ids to other sites' ids"
+    },
+    {
+      "term": "CSV",
+      "meaning": "a plain text table where values are separated by commas"
+    }
+  ],
+  "depends_on": [
+    "node:crypto",
+    "node:fs",
+    "node:path",
+    "Wikidata",
+    "Cricsheet people register"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup, UA, meta, done",
+      "id": "s1",
+      "hash": "6435b96ed516c843",
+      "title": "Setup, user agent and status writer",
+      "what": "Reads the folder arguments with defaults, names the request header, and defines a helper that writes the meta file and stops with a status.",
+      "why": "Writes a record of every run so the result can be judged later.",
+      "watch_out": "Each stop exits with a success code, so only the status text tells failures apart."
+    },
+    {
+      "start": 15,
+      "end": 26,
+      "kind": "value",
+      "name": "bowlers",
+      "id": "s2",
+      "hash": "5c1f85cf88039e5f",
+      "title": "Collect bowlers and download the register",
+      "what": "Scans every match file for bowlers and records each one's Cricsheet id and name, then fetches the Cricsheet people register.",
+      "why": "Only the bowlers in these matches are needed.",
+      "watch_out": "The register download is not retried, so one network failure stops the run with a status."
+    },
+    {
+      "start": 27,
+      "end": 43,
+      "kind": "function",
+      "name": "parseCsv",
+      "id": "s3",
+      "hash": "5b2468227b8ea8db",
+      "title": "Read the register as a table",
+      "what": "Reads the register as comma-separated rows, handling quoted fields and line breaks inside quotes.",
+      "why": "Register fields can hold commas and quotes, so a plain split would break them.",
+      "watch_out": "If the header names change, the run stops with a register-unrecognised status rather than guessing."
+    },
+    {
+      "start": 44,
+      "end": 56,
+      "kind": "value",
+      "name": "cricinfo, ids",
+      "id": "s4",
+      "hash": "bdf8550e0a2e0868",
+      "title": "Cricinfo ids and the style property",
+      "what": "Keeps only bowlers whose cricinfo id is a plain number, records the register's fingerprint, and finds the bowling style property by its English label. Stops with no-property if the label search finds nothing.",
+      "why": "Non-numeric ids are dropped so they can never be placed into a query.",
+      "watch_out": "A bowler without a numeric cricinfo id is silently left out of the style lookup."
+    },
+    {
+      "start": 57,
+      "end": 71,
+      "kind": "value",
+      "name": "styles, csv",
+      "id": "s5",
+      "hash": "834363d3d6e7f6d2",
+      "title": "Query styles in batches",
+      "what": "Asks Wikidata, in batches of 150 cricinfo ids, which bowling style labels each player has, and keeps the results per bowler.",
+      "why": "Likely reason: batches keep each request small, and the pause is a courtesy to a public service.",
+      "watch_out": "A failed batch stops the whole run rather than skipping that batch."
+    },
+    {
+      "start": 72,
+      "end": 79,
+      "kind": "value",
+      "name": "lines",
+      "id": "s6",
+      "hash": "7720481baba93116",
+      "title": "Write the table",
+      "what": "Writes one row per bowler with id, name, cricinfo id, Wikidata item and joined style labels, then counts how many have a style.",
+      "why": "The table is the output the models read.",
+      "watch_out": "A bowler with several styles has them joined by semicolons in one cell, which a plain reader may misread."
+    }
+  ],
+  "explained_at": "2026-11-11T09:44:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Looks up each Indian Premier League bowler's bowling style, pace or spin, from Wikidata and writes a table.",
+  "purpose": "Adds a bowling style to each bowler so the models can use it, without guessing.",
+  "why": "The file header says it never guesses: a bowler with no recorded style gets an empty field, and the run is recorded in a meta file.",
+  "how": "Collects bowler ids from the match files, downloads the people register, maps to cricinfo ids, finds the bowling style property by its label, queries style labels in batches of 150 with a one-second pause, then writes the table and a status file.",
+  "inputs": "A folder of match JSON files and an output folder.",
+  "outputs": "bowling-styles.csv and bowling-styles.meta.json, which records the status, coverage and query time.",
+  "risks": "Failed steps exit with a success code, so an automated run may not notice. Responses from the web services are trusted as they arrive.",
+  "debug": "Open the meta file. Its status shows where the run stopped, such as register-failed or query-failed, together with the HTTP code.",
+  "summary_hash": "sha256:5a0dd2a027d302beae8fdf2dfd86a98101def3816240ee332433f4ee2a66f22e"
+}

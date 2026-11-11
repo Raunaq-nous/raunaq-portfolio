@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "path": "src/engine/outcomeModel.ts",
+  "language": "TypeScript",
+  "lines": 120,
+  "hash": "sha256:8ce4f6b41f7940dc9ea5571dbb228cc76d138a2552066ff8bfbee2f9b61e2cf2",
+  "area": "src-engine",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this packet, and the statistics are complex.",
+      "The file has clear comments on the data rules, such as how extras and wickets on illegal balls are handled.",
+      "Settings and artifact versioning are present, which helps reproduce results."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Outcome",
+      "meaning": "What happens on one legal ball: runs from 0 to 6, or a wicket."
+    },
+    {
+      "term": "Legal ball",
+      "meaning": "A delivery that counts toward the over. Wides and no-balls are not legal balls."
+    },
+    {
+      "term": "Bucket",
+      "meaning": "A group of similar match situations that share one outcome estimate."
+    },
+    {
+      "term": "Smoothing",
+      "meaning": "Pulling a small group's estimate toward a broader group so it is not driven by a few results."
+    },
+    {
+      "term": "Era weight",
+      "meaning": "A weight that makes recent seasons count more than older ones when estimating."
+    },
+    {
+      "term": "Global distribution",
+      "meaning": "The overall outcome estimate used when nothing more specific is available."
+    }
+  ],
+  "depends_on": [
+    "src/engine/chaseWp.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup, ChaseBall, Sample, BALL_BANDS, WICKET_BANDS, RATE_BANDS, TARGET_BANDS",
+      "id": "s1",
+      "hash": "2f23357bc3d6997b",
+      "title": "File setup, band edges and data shapes",
+      "what": "Describes the model, defines the ball and sample shapes, and sets the band edges for balls left, wickets, run rate and target.",
+      "why": "The header explains the purpose, and the target bands are commented as setting the match's scoring environment, such as pitch and era.",
+      "watch_out": "Band edges are shared with the options file in part and must match saved artifacts, or lookups will quietly miss."
+    },
+    {
+      "start": 15,
+      "end": 20,
+      "kind": "function",
+      "name": "bucketKey, parentKey",
+      "id": "s2",
+      "hash": "14eeaf00a0aacef7",
+      "title": "Bucket keys",
+      "what": "Builds the key for a fine bucket from target, balls left, wickets and run rate, and the key for a parent bucket from the same values without run rate.",
+      "why": "Likely reason: the fine and parent keys let the model fall back from detailed to general situations.",
+      "watch_out": "Key text must be built the same way when training and predicting, or predictions will never find their buckets."
+    },
+    {
+      "start": 21,
+      "end": 53,
+      "kind": "function",
+      "name": "chaseSamples",
+      "id": "s3",
+      "hash": "6c4aa67d0b9434ef",
+      "title": "Turning a chase into training samples",
+      "what": "Walks through one match's second innings in bowling order, turning each legal ball into a sample with its state and outcome. Extras from wides and no-balls carry forward to the next legal ball, and a wicket on an illegal delivery is moved to the next legal ball. The state stops once the chase has ended.",
+      "why": "The doc comment explains that carry-over and wicket handling exist to match how a chase is scored.",
+      "watch_out": "The outcome is capped at six runs, but the score keeps the full runs, so a six-plus delivery is recorded as six."
+    },
+    {
+      "start": 54,
+      "end": 67,
+      "kind": "type",
+      "name": "OutcomeArtifact",
+      "id": "s4",
+      "hash": "e556ce5efb167d7b",
+      "title": "Saved outcome model shape",
+      "what": "Defines what the saved model file holds: version, years trained and held out, the era half-life, smoothing settings, sample count, the global distribution, parent and bucket distributions, and whether target bands are used.",
+      "why": "The comments explain that the target conditioning flag is only written when it is turned off.",
+      "watch_out": "Held-out years are recorded but not used in fitting, so they serve as a label only, not a guard."
+    },
+    {
+      "start": 68,
+      "end": 71,
+      "kind": "function",
+      "name": "keyTarget, zero",
+      "id": "s5",
+      "hash": "d3bdffa2d2292809",
+      "title": "Target key choice",
+      "what": "Returns the real target when the model is conditioned on target, or a fixed value otherwise.",
+      "why": "The comment says this lets an artifact ignore the target when the target conditioning is turned off.",
+      "watch_out": "Turning off target conditioning removes target differences entirely, so the estimate for a high target and a low target becomes the same."
+    },
+    {
+      "start": 72,
+      "end": 75,
+      "kind": "function",
+      "name": "normalise",
+      "id": "s6",
+      "hash": "3b237ee805352955",
+      "title": "Helpers for empty counts and distributions",
+      "what": "Makes empty outcome counts and turns a set of counts into a distribution that adds up to one.",
+      "why": "Used by the fitting steps. Reason for splitting these out not stated in the code.",
+      "watch_out": "If no counts are present, the total is zero and the division produces invalid values."
+    },
+    {
+      "start": 76,
+      "end": 81,
+      "kind": "function",
+      "name": "shrink",
+      "id": "s7",
+      "hash": "ec8eb9999e817608",
+      "title": "Blending counts with a prior",
+      "what": "Adds a weighted default distribution to the counts and then turns the result into a distribution.",
+      "why": "Likely reason: this is how small buckets are steadied toward their parent, the same idea as shrinkage in the options file.",
+      "watch_out": "The weight used here must match the saved settings, or buckets will be smoothed differently from what was tested."
+    },
+    {
+      "start": 82,
+      "end": 106,
+      "kind": "function",
+      "name": "fitOutcomes",
+      "id": "s8",
+      "hash": "62ba9e6bf68ddc1b",
+      "title": "Training the outcome model",
+      "what": "Fits the model from the training years only, weighting each sample by how recent its season is, then builds the global, parent and bucket distributions, smoothing each level toward the one above it.",
+      "why": "The doc comment says training uses only past seasons so future seasons cannot leak in, and the era weight comes from the half-life setting.",
+      "watch_out": "The default settings only apply when no settings object is passed at all. A partly filled settings object leaves the missing values undefined."
+    },
+    {
+      "start": 107,
+      "end": 112,
+      "kind": "function",
+      "name": "predictOutcome",
+      "id": "s9",
+      "hash": "1c9d0cd65064e59c",
+      "title": "Predicting the next ball outcome",
+      "what": "Gives the outcome distribution for a state in a chase of a given target. It uses the bucket if one exists, then the parent, then the global distribution.",
+      "why": "The doc comment describes this fallback order, which keeps predictions available for rare situations.",
+      "watch_out": "The fallback to the global distribution hides how thin the data was, so a state with no bucket looks as reliable as one with many samples."
+    },
+    {
+      "start": 113,
+      "end": 120,
+      "kind": "function",
+      "name": "predictStyles",
+      "id": "s10",
+      "hash": "a5da92ffbd13f53f",
+      "title": "Playing styles for a chaser",
+      "what": "Gives the chaser's own distribution plus those of the same state with fewer wickets in hand. This lets the chaser play as if it had fewer wickets.",
+      "why": "The doc comment says a side can always bat as if it had fewer wickets, which keeps win probability from rising when a wicket falls.",
+      "watch_out": "The win probability calculation relies on this rule to stay monotonic in wickets, so removing it would make wickets appear to help the chaser."
+    }
+  ],
+  "explained_at": "2026-11-11T09:56:13+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the per-ball outcome model for chases: for a given match situation it estimates how likely each outcome (0 to 6 runs or a wicket) is, learned from older seasons.",
+  "purpose": "Gives the win probability calculations a realistic estimate of what happens next ball, based on the situation and the target.",
+  "why": "The header says the model is fitted on second innings of older seasons, with era weights and smoothing from detailed to general buckets. Reasons for weighting older seasons less are described as era weighting, but the business reason is not stated.",
+  "how": "1) Turns each second innings delivery into legal ball samples, carrying extras and handling wickets on illegal balls. 2) Groups samples into fine buckets by target, balls left, wickets, and run rate, plus coarser parent buckets without run rate. 3) Trains only on the training years, weighting recent seasons more. 4) Smooths each parent toward the global distribution and each bucket toward its parent. 5) Gives a prediction by checking the bucket, then the parent, then the global distribution.",
+  "inputs": "Ball-by-ball records for the second innings, with runs, extras, extra type, wicket flag, target and bowler where known. Also the training years and smoothing settings.",
+  "outputs": "Samples of states and outcomes, a saved artifact with global, parent and bucket distributions, and predicted outcome distributions for a state.",
+  "risks": "Assumes a full 20-over chase, so rain-affected matches must be removed upstream or the estimates will be wrong. Changing band edges invalidates saved artifacts. The default settings apply only when no settings object is passed.",
+  "debug": "If predictions look off, first check the sample count in the artifact and whether the state falls into a bucket with few samples. Check the target band and whether the artifact is marked as target-conditioned. If a prediction seems stuck on the global distribution, the bucket key probably does not match the saved buckets.",
+  "summary_hash": "sha256:8ce4f6b41f7940dc9ea5571dbb228cc76d138a2552066ff8bfbee2f9b61e2cf2"
+}

@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "path": "src/llm/verifier.ts",
+  "language": "TypeScript",
+  "lines": 60,
+  "hash": "sha256:e3e62d2140db6ce9fbe04067acca656a9e65f2841f474e9f6cbc32660245eec2",
+  "area": "src-llm",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The logic is clear and gives a reason for each rejection.",
+      "A related injection test is referenced but not shown, so coverage is unconfirmed."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Pure function",
+      "meaning": "output depends only on the inputs, with no outside effects"
+    },
+    {
+      "term": "ISO date",
+      "meaning": "a date written as year, month, day, such as 2026-11-11"
+    },
+    {
+      "term": "Tolerance",
+      "meaning": "the allowed margin of rounding error"
+    },
+    {
+      "term": "Ordinal",
+      "meaning": "a number used as a position, such as 7th"
+    },
+    {
+      "term": "Cutoff",
+      "meaning": "the snapshot date after which nothing exists in the output"
+    }
+  ],
+  "depends_on": [
+    "src/llm/bannedTerms.ts",
+    "src/llm/contract.ts"
+  ],
+  "used_by": [
+    "src/llm/index.ts",
+    "src/llm/verified.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup, Rejection",
+      "id": "s1",
+      "hash": "81b9d4402be5a7f4",
+      "title": "Imports and rejection shape",
+      "what": "Brings in the banned phrase list and the claim and fact types. Defines a rejection as the claim number that failed and the reason.",
+      "why": "Likely reason: readable reasons make the logs useful when a claim is dropped.",
+      "watch_out": "Claim numbers start at zero, so count from zero when reading the logs."
+    },
+    {
+      "start": 6,
+      "end": 12,
+      "kind": "type",
+      "name": "Verdict",
+      "id": "s2",
+      "hash": "63bd2da2aab2c055",
+      "title": "Verdict and number patterns",
+      "what": "Defines the verdict as a pass or fail flag with its list of rejections. Sets three text patterns: one for numbers including ordinals such as 7th, one for ISO dates, and one for four-digit years from 1900 to 2099.",
+      "why": "The comments say numbers include ordinals but identifiers such as f1 are not numbers.",
+      "watch_out": "Identifiers are excluded on purpose, so a number inside a name could be missed or wrongly matched when new names are added."
+    },
+    {
+      "start": 13,
+      "end": 26,
+      "kind": "function",
+      "name": "allowedNumbers",
+      "id": "s3",
+      "hash": "3b4898504ef1e9e1",
+      "title": "Numbers a fact allows",
+      "what": "Lists the numbers a set of facts permits: a numeric value directly, numbers inside text values, and a value between 0 and 1 also counts as a percentage.",
+      "why": "The doc comment states that a 0 to 1 value may be quoted as a percentage.",
+      "watch_out": "A fact stored as 0.5 also permits 50, so a claim quoting 50 can pass even if the fact meant something else."
+    },
+    {
+      "start": 27,
+      "end": 35,
+      "kind": "function",
+      "name": "matches",
+      "id": "s4",
+      "hash": "0fcee48003fb2990",
+      "title": "Number match with tolerance",
+      "what": "Decides whether a quoted number matches an allowed one, allowing a rounding margin based on how many decimal places the claim wrote.",
+      "why": "The doc comment says a match is judged at the precision it was written.",
+      "watch_out": "Fewer decimals means a wider margin, so a whole number quoted in the text can match a fact a little off."
+    },
+    {
+      "start": 36,
+      "end": 60,
+      "kind": "function",
+      "name": "verifyClaims",
+      "id": "s5",
+      "hash": "4309508b122dd28e",
+      "title": "Check each claim",
+      "what": "Checks each claim: OBSERVED and DERIVED claims need source ids, every source id must be known, cited facts and any dates or years must not be after the cutoff, banned phrases are rejected, and every number in the text must match a cited fact. The verdict passes only if nothing is rejected.",
+      "why": "The doc comment states these rules gate every generated item.",
+      "watch_out": "Numbers are only licensed by cited facts, so a claim with a number and no sources is rejected even if it is an editorial kind."
+    }
+  ],
+  "explained_at": "2026-11-11T10:06:45+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks each generated claim against the facts and the rules, and returns pass or fail with reasons. It is the gate that every generated item must pass.",
+  "purpose": "Stop invented numbers, unknown sources, future dates and banned words from reaching readers.",
+  "why": "The header says it is pure and deterministic, so the same claims always get the same verdict and it can be tested.",
+  "how": "1) Index the facts by id. 2) For each claim, check it has sources when it needs them. 3) Check every source exists and is not after the cutoff. 4) Check dates and years are not after the cutoff. 5) Check banned phrases. 6) Check each number against the cited facts, allowing for rounding. 7) Return the verdict.",
+  "inputs": "The list of claims, the list of facts, and the cutoff date.",
+  "outputs": "A verdict: a pass or fail flag, and a list of rejections giving the claim number and reason.",
+  "risks": "It checks only what its rules describe, so a claim can pass while still misleading. Number matching is text-based, so unusual wording can slip through. With no facts, every number is rejected.",
+  "debug": "Read the rejection reasons, remembering claim numbers start at zero. If a valid number is rejected, check the cited source ids and the fact value. If a date is rejected, check the cutoff value.",
+  "summary_hash": "sha256:e3e62d2140db6ce9fbe04067acca656a9e65f2841f474e9f6cbc32660245eec2"
+}

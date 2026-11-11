@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "path": "scripts/fit-calibration-rolling.ts",
+  "language": "TypeScript",
+  "lines": 179,
+  "hash": "sha256:0c70760c3e9624a020f12122a556d8664e9d69a127b358f9aa7642320c4236d0",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only part of the file was in the packet.",
+      "The gate and test logic were not visible, so they could not be checked."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Rolling origin",
+      "meaning": "a way of testing where each season is judged using only the seasons before it"
+    },
+    {
+      "term": "Calibration",
+      "meaning": "checking whether stated chances match how often things actually happen"
+    },
+    {
+      "term": "Isotonic map",
+      "meaning": "a fitted rule that corrects predicted chances while keeping their order"
+    },
+    {
+      "term": "Expected calibration error (ECE)",
+      "meaning": "a single number for how far stated chances are from real outcomes on average"
+    }
+  ],
+  "depends_on": [
+    "@/engine/calibration",
+    "@/engine/chaseWp",
+    "@/engine/matchCalibration",
+    "@/engine/outcomeModel",
+    "./fit-outcomes"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup, Ball",
+      "id": "s1",
+      "hash": "c1b5830836b66e94",
+      "title": "Header and imports",
+      "what": "Describes the test method and loads the modules for calibration, chase probability, outcome models and the sample loader.",
+      "why": "The header states the rule that each season is judged without its own data.",
+      "watch_out": "Editing the evaluation or tuning seasons after seeing results weakens the test."
+    },
+    {
+      "start": 15,
+      "end": 19,
+      "kind": "type",
+      "name": "Choices, EVAL_SEASONS, GRID",
+      "id": "s2",
+      "hash": "1b33807b864284b7",
+      "title": "Tuning grid and evaluation seasons",
+      "what": "Sets 2024 as the only tuning season and 2025 and 2026 as evaluation seasons, then builds 18 combinations of settings: decay speed for the outcome model, whether the target is part of the model, and the isotonic setting.",
+      "why": "Likely reason: a fixed grid lets the choice be made on one season only. The meaning of the null isotonic setting is not stated in the code, though it likely means no recalibration.",
+      "watch_out": "If results from 2025 or 2026 are used to pick settings, the evaluation is contaminated."
+    },
+    {
+      "start": 20,
+      "end": 26,
+      "kind": "value",
+      "name": "GATE, VARIANTS, Variant, rrr",
+      "id": "s3",
+      "hash": "af2059b8e3a48947",
+      "title": "Pass rule and test variants",
+      "what": "Sets the gate: at least 40 matches, 1000 bootstrap runs, a 95 percent level, and a calibration error no higher than 0.05. Lists three test variants and caps the required run rate at 36 in one helper.",
+      "why": "The header says the literal rule is the project owner's written test, and the two other variants were measured for fairness (decision D-029). The reason for the cap is not stated in the code.",
+      "watch_out": "The cap at 36 flattens very high required run rates, so the model cannot tell them apart."
+    },
+    {
+      "start": 27,
+      "end": 31,
+      "kind": "function",
+      "name": "round, seasons",
+      "id": "s4",
+      "hash": "0fa7bcf0fba7056a",
+      "title": "Rounding helper and season list",
+      "what": "Provides a helper that trims numbers to a fixed number of decimal places. It also loads all chase records once and lists the IPL seasons found in them, in order.",
+      "why": "Likely reason: keeps the saved report short and gives the script one ordered list of seasons to loop over.",
+      "watch_out": "The season list is built from whatever years appear in the data, so a missing or broken year silently changes which seasons get tested."
+    },
+    {
+      "start": 32,
+      "end": 40,
+      "kind": "function",
+      "name": "chaseModels",
+      "id": "s5",
+      "hash": "ff24e6557f0307b3",
+      "title": "Cached chase models per target",
+      "what": "Returns a function that builds the chase probability model for a given target score the first time it is asked, then reuses that model.",
+      "why": "Likely reason: building a model is slow and many matches share a target, so caching avoids repeated work.",
+      "watch_out": "The cache lasts only for one run, so nothing is reused between runs."
+    },
+    {
+      "start": 41,
+      "end": 52,
+      "kind": "function",
+      "name": "exactWp",
+      "id": "s6",
+      "hash": "85f9f8dc9b6504b0",
+      "title": "Exact win probability for every ball",
+      "what": "Scores each ball in a given list with the exact model. It handles one target at a time so only one model sits in memory.",
+      "why": "The code's approach keeps memory use low. The comment does not say more than that.",
+      "watch_out": "Results are returned in the same order as the input list, and callers rely on that order."
+    },
+    {
+      "start": 53,
+      "end": 57,
+      "kind": "function",
+      "name": "outcomeModelFor",
+      "id": "s7",
+      "hash": "8cb6c1284922d521",
+      "title": "Outcome model fitted on earlier seasons",
+      "what": "Fits the per-ball outcome model using only seasons before the chosen season. The chosen season and later seasons are held out for testing.",
+      "why": "A season is only scored by a model that never saw its results, which keeps the test honest.",
+      "watch_out": "The half-life, bucket size and parent size are fixed numbers in this code, so changing them needs a manual edit."
+    },
+    {
+      "start": 58,
+      "end": 70,
+      "kind": "function",
+      "name": "fitWindow",
+      "id": "s8",
+      "hash": "561acc43bcf68d72",
+      "title": "Calibration window and run-rate baseline",
+      "what": "Uses the three seasons before the test season to fit the probability correction map and a simple run-rate comparison line. Older seasons can count less, and each match counts once in total.",
+      "why": "Likely reason: the three seasons before a test season are the only data that would be known in advance.",
+      "watch_out": "Each match gets a total weight of one, so a long match does not count more than a short one."
+    },
+    {
+      "start": 71,
+      "end": 78,
+      "kind": "function",
+      "name": "evaluate",
+      "id": "s9",
+      "hash": "484174387ca997d1",
+      "title": "Scoring one season against actual results",
+      "what": "For the test season, produces three sets of predictions (recalibrated, raw and run-rate) and their Brier scores. A lower Brier score means more accurate predictions.",
+      "why": "Shows whether the correction actually helps before the model is trusted.",
+      "watch_out": "The predictions and results are matched by position, so changing the order of the input balls would misalign them."
+    },
+    {
+      "start": 79,
+      "end": 106,
+      "kind": "function",
+      "name": "fairness",
+      "id": "s10",
+      "hash": "eddf381eb361c500",
+      "title": "Fairness check by simulation",
+      "what": "Replays each season's chases many times using the model's own probabilities. It then checks whether the calibration test still passes, and whether probabilities shifted up or down by a set margin get caught. It reports rates and a yes or no verdict for each variant.",
+      "why": "Likely reason: shows whether the calibration test is strict enough to catch an error of the chosen size.",
+      "watch_out": "The verdict needs at least 90 percent passes on honest data and at least 80 percent catches on shifted data, so small threshold changes can flip the result."
+    },
+    {
+      "start": 107,
+      "end": 115,
+      "kind": "function",
+      "name": "drift",
+      "id": "s11",
+      "hash": "e91b6c485dfef244",
+      "title": "Yearly drift summary",
+      "what": "For each season, reports the match count, chase win rate, average target and runs per legal ball.",
+      "why": "Lets the owner see whether scoring conditions have changed over time, since that can break the model's assumptions.",
+      "watch_out": "Runs per legal ball counts only numeric outcomes, so records with missing outcomes add zero runs."
+    },
+    {
+      "start": 116,
+      "end": 166,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s12",
+      "hash": "047033dd0f48fe62",
+      "title": "Tuning, evaluation of 2025 and 2026",
+      "what": "Picks the outcome-model and calibration settings that score best on 2024 data. Then it tests 2025 and 2026 separately and stores match-by-match predictions. A season passes only if calibration passes, the corrected model beats both comparison scores, and the literal variant passes the fairness check.",
+      "why": "Settings are chosen on one season and tested on later ones, so the test results do not influence the choice.",
+      "watch_out": "The chosen setting is the lowest Brier score with ECE as the tie-breaker, so changing the grid or the tie-breaker can change every later result. This section also writes the outcomes-v2 file as a side effect."
+    },
+    {
+      "start": 167,
+      "end": 179,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s13",
+      "hash": "89d0beea5c5d1c7b",
+      "title": "Production model and saved outputs",
+      "what": "Fits the model for the next season on all available data, writes the outcome model file and the calibration file with a fingerprint, and prints whether the gate passed.",
+      "why": "Produces the files the app reads when it needs a model for the coming season.",
+      "watch_out": "Both output files are overwritten without a backup, and the fingerprint changes if anything in the content changes."
+    }
+  ],
+  "explained_at": "2026-11-11T09:46:47+00:00",
+  "explained_by": "haiku",
+  "summary": "Judges the chase model fairly: each season is tested using only earlier seasons, and a set of match-level checks decides whether the model is good enough. Only the first 26 lines and three sections were in the packet, so the rest of the file is unknown.",
+  "purpose": "Rolling-origin calibration: fit on the seasons before, then test on the season that follows.",
+  "why": "The header says each season is judged without its own data, and tuning uses 2024 only.",
+  "how": "From the visible parts: for each season, fits the outcome model on earlier seasons, a probability map on the three seasons before it, and tests the season untouched. A grid of 18 settings is tuned on 2024. The rest of the logic was not in the packet.",
+  "inputs": "Ball-level chase samples from the outcome fitting script, and an environment setting for the number of simulations.",
+  "outputs": "According to the header, data/models/calibration-v2.json and data/models/outcomes-v2.json. The rest was not visible.",
+  "risks": "Changing the tuning or evaluation seasons after seeing results breaks the fairness of the test. The rest of the logic was not visible, so its risks are unknown.",
+  "debug": "Check the season split, and that 2024 tuning and 2025 to 2026 evaluation stayed separate.",
+  "summary_hash": "sha256:0c70760c3e9624a020f12122a556d8664e9d69a127b358f9aa7642320c4236d0"
+}

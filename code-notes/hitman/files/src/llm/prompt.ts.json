@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "path": "src/llm/prompt.ts",
+  "language": "TypeScript",
+  "lines": 39,
+  "hash": "sha256:bd7b0fd8baa3e5950f35734e6a0df28a196085554871dea656892729124dd81d",
+  "area": "src-llm",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The cleaner's character list includes invisible characters that are hard to check by eye and need a dedicated test.",
+      "No test is visible in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Prompt injection",
+      "meaning": "hidden text inside a document that tries to steer an AI"
+    },
+    {
+      "term": "Snapshot cutoff",
+      "meaning": "the date after which nothing is treated as existing"
+    },
+    {
+      "term": "Zero-width character",
+      "meaning": "an invisible character that takes no space on screen"
+    },
+    {
+      "term": "Bidi control",
+      "meaning": "a character that changes the direction text is displayed in"
+    }
+  ],
+  "depends_on": [
+    "src/llm/contract.ts"
+  ],
+  "used_by": [
+    "src/llm/retrieval.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 4,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "de68a1b4529c6c66",
+      "title": "Header on untrusted text",
+      "what": "Explains that retrieved text is treated as untrusted: it is sent as data in its own field, cleaned and capped, and the checker still verifies every claim against the facts.",
+      "why": "Stated in the header comment, as a defence against instructions hidden in retrieved text.",
+      "watch_out": "This file is a safety boundary, so any change should be reviewed together with the verifier."
+    },
+    {
+      "start": 5,
+      "end": 8,
+      "kind": "type",
+      "name": "RetrievedText",
+      "id": "s2",
+      "hash": "0ad18152f9f70fc2",
+      "title": "Retrieved document shape",
+      "what": "Describes one piece of retrieved text: its id, source id, text and the time it was observed.",
+      "why": "Likely reason: a fixed shape lets retrieval and prompt building agree.",
+      "watch_out": "The observed time drives the cutoff filter, so each document must carry a correct one."
+    },
+    {
+      "start": 9,
+      "end": 17,
+      "kind": "function",
+      "name": "cleanUntrusted",
+      "id": "s3",
+      "hash": "061cb95058ccebe4",
+      "title": "Text cleaner",
+      "what": "Removes control characters and invisible or text-direction characters, squashes runs of whitespace, and cuts each document to a maximum of 2000 characters.",
+      "why": "The doc comment states the cleaner strips control and bidi tricks, collapses whitespace and caps length.",
+      "watch_out": "The removal list contains invisible characters that are hard to see in an editor, so any edit to it should be tested."
+    },
+    {
+      "start": 18,
+      "end": 26,
+      "kind": "type",
+      "name": "ModelInput",
+      "id": "s4",
+      "hash": "66759265c543afd2",
+      "title": "Model input shape",
+      "what": "Describes the full package sent to the model: the snapshot cutoff, depth level, language, facts, the list of untrusted text, and a note telling the model to ignore instructions in that text.",
+      "why": "Likely reason: keeps trusted facts and untrusted text in separate fields.",
+      "watch_out": "Depth and language have fixed choices, so a new choice must be added in the type and wherever it is read."
+    },
+    {
+      "start": 27,
+      "end": 39,
+      "kind": "function",
+      "name": "buildModelInput",
+      "id": "s5",
+      "hash": "04af5308b48e3ed6",
+      "title": "Build the model input",
+      "what": "Assembles the package for one request. Drops any fact or document observed after the cutoff, cleans the document text, and uses quick depth and English when none is given.",
+      "why": "The doc comment states that nothing observed after the cutoff reaches the model.",
+      "watch_out": "An invalid cutoff date makes every fact fail the check, so all facts are silently dropped rather than an error being raised."
+    }
+  ],
+  "explained_at": "2026-11-11T10:06:45+00:00",
+  "explained_by": "haiku",
+  "summary": "Packs facts and retrieved text into the model's input, keeping untrusted text in its own cleaned field and dropping anything observed after the cutoff.",
+  "purpose": "Stop the model seeing future information and stop it obeying instructions hidden in documents.",
+  "why": "The header says retrieved text travels as data in its own field, so instructions inside it cannot change the output. The note field tells the model to ignore them.",
+  "how": "1) Receive facts, retrieved documents and the cutoff date. 2) Keep only items observed at or before the cutoff. 3) Clean each document's text and cap its length. 4) Build the input with depth, language and the note. 5) Return it for the model call.",
+  "inputs": "Facts, optional retrieved documents, the snapshot cutoff date, and optional depth and language.",
+  "outputs": "A model input package with filtered facts and cleaned untrusted context.",
+  "risks": "The verifier is the real safety net, since untrusted text still reaches the model. The 2000 character cap can cut a document mid-sentence.",
+  "debug": "If the model lacks facts, compare their observed dates with the cutoff. If a document is missing, check its observed date and source. If text looks garbled, check the cleaner.",
+  "summary_hash": "sha256:bd7b0fd8baa3e5950f35734e6a0df28a196085554871dea656892729124dd81d"
+}

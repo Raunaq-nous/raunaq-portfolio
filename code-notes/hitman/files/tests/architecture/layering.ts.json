@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "path": "tests/architecture/layering.ts",
+  "language": "TypeScript",
+  "lines": 67,
+  "hash": "sha256:a57b8207965531d3515436d3281a311b00d46e2b353bc65cb9cd88ade023cf2d",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The import matching is a text pattern, not a real parser, so it can miss unusual import forms.",
+      "No run result is visible in this file, so I could not confirm it passes on the current code.",
+      "The engine allowed-package list is empty, which should be confirmed as intended."
+    ]
+  },
+  "terms": [
+    {
+      "term": "import",
+      "meaning": "a line in a code file that pulls in code written in another file"
+    },
+    {
+      "term": "layer",
+      "meaning": "a level in the app's structure, such as data access, business logic, or screens, where lower levels must not depend on higher ones"
+    },
+    {
+      "term": "cross-cutting",
+      "meaning": "code used by many parts of the app, such as permissions or AI helpers, that enters through one agreed door"
+    }
+  ],
+  "depends_on": [
+    "node:fs",
+    "node:path"
+  ],
+  "used_by": [
+    "Not visible in the packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup, LAYERS, RANK",
+      "id": "s1",
+      "hash": "f39eaf3548a4fb54",
+      "title": "Setup and layer order",
+      "what": "Declares the file's tools and the ordered list of layers, plus a rank for each layer that says which ones may depend on which. This is the rulebook the other sections check against.",
+      "why": "Keeps the layer order in one place so every rule reads from the same ranking.",
+      "watch_out": "If a new layer is added to the app, it must be added here or the check will not know where it sits."
+    },
+    {
+      "start": 8,
+      "end": 11,
+      "kind": "type",
+      "name": "Violation",
+      "id": "s2",
+      "hash": "cc196f5e0e91446f",
+      "title": "Violation record shape",
+      "what": "Defines what one problem report looks like: the file, the import text, and the message.",
+      "why": "Gives every failure the same shape so reports can be printed or sorted the same way.",
+      "watch_out": ""
+    },
+    {
+      "start": 12,
+      "end": 21,
+      "kind": "function",
+      "name": "listFiles",
+      "id": "s3",
+      "hash": "62ccb5fce2c3a4d8",
+      "title": "Finding all code files",
+      "what": "Walks through every folder under the source root and collects TypeScript files, skipping type-declaration files.",
+      "why": "The check needs the full list of files to inspect, and it skips declaration files because they hold no runtime imports to judge.",
+      "watch_out": "Only files ending in the three recognised TypeScript extensions are checked, so a new file type would be skipped silently."
+    },
+    {
+      "start": 22,
+      "end": 28,
+      "kind": "function",
+      "name": "target",
+      "id": "s4",
+      "hash": "325845be566ad624",
+      "title": "Resolving where an import points",
+      "what": "Turns an import text into a path relative to the source root, or returns nothing for outside packages. It handles the project's @ alias and relative paths.",
+      "why": "The rules compare locations, so every import has to be converted to a comparable location first.",
+      "watch_out": "Only the @ alias and dot-relative paths are understood; any other custom alias will be treated as an outside package."
+    },
+    {
+      "start": 29,
+      "end": 33,
+      "kind": "function",
+      "name": "domainLayer",
+      "id": "s5",
+      "hash": "4244e49ee9cf7fc8",
+      "title": "Reading a domain's area and layer",
+      "what": "Given a path inside the domain folder, works out which business area it belongs to and which layer it sits in. Returns nothing for paths outside that structure.",
+      "why": "The layer rules only apply to files inside the domain folders, so this decides whether a file is covered.",
+      "watch_out": "A folder that does not match the expected area and layer naming pattern is quietly excluded from every layer rule."
+    },
+    {
+      "start": 34,
+      "end": 36,
+      "kind": "value",
+      "name": "ENGINE_ALLOWED_PACKAGES",
+      "id": "s6",
+      "hash": "2d7b7649fd562b96",
+      "title": "Engine package allowance list",
+      "what": "Holds the list of outside packages the pure engine is allowed to import, and a pattern that recognises database modules.",
+      "why": "The engine must stay free of input and output code, so the allowance list is the only exception path and the database pattern is the thing it must not reach.",
+      "watch_out": "The allowance list is currently empty, so adding any outside package to the engine will fail the check until the list is updated."
+    },
+    {
+      "start": 37,
+      "end": 64,
+      "kind": "function",
+      "name": "checkFile",
+      "id": "s7",
+      "hash": "d9b6b3e8da303df0",
+      "title": "Checking one file's imports",
+      "what": "Reads one file's text, finds each import, and applies the rules: engine purity, no database in the UI, no route code or cross-cutting code direct from domains, no upward layer imports, and no reaching into another domain's repository or config.",
+      "why": "This is where each architecture rule actually lives, so it is the place to change when the rules change.",
+      "watch_out": "The rules use exact path prefixes, so renaming a folder like the engine or the providers folder will silently disable the matching rule."
+    },
+    {
+      "start": 65,
+      "end": 67,
+      "kind": "function",
+      "name": "checkTree",
+      "id": "s8",
+      "hash": "ba83ff295176b692",
+      "title": "Checking the whole source tree",
+      "what": "Runs the single-file check on every file found under the source root and gathers all violations into one list.",
+      "why": "This is the entry point that a test runner calls to check the whole codebase at once.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-11T09:10:37+00:00",
+  "explained_by": "haiku",
+  "summary": "A structural check that reads every source file and reports imports that break the agreed layer order, with a fix hint for each break.",
+  "purpose": "Keeps the code organised so that lower, more basic layers never depend on higher, more visible ones, and so the pure engine stays free of database and framework code.",
+  "why": "Without this check, a developer could quietly import a database helper into a screen or a route handler into core logic, and the app would still run while getting harder to change.",
+  "how": "It lists all non-test TypeScript files under the source root, reads each one, and finds every import, export-from, dynamic import and require. Each import is resolved to a path inside the source tree or marked as an outside package. It then applies four rules: the engine may only import engine code or approved packages, the UI may not touch database modules, domains may not reach into route code or cross-cutting code directly, and a domain may not import a higher layer or another domain's repository or config. Every break becomes a violation with a message that says how to fix it.",
+  "inputs": "A source root folder path. The function checkTree reads every file under it; checkFile can also be given one file's path and text.",
+  "outputs": "A list of violations. Each violation has the file path, the import text that caused it, and a plain message explaining the fix.",
+  "risks": "The check uses pattern matching rather than a full code parser, so unusual import styles or multi-line edge cases could be missed or misread. The allowed-package list for the engine is currently empty, which means the engine may not import any outside package at all.",
+  "debug": "If the check fails, read the message: it names the file and the import. If a valid import is flagged, check the layer order in the layer list and the rank table. If the check misses something, test a sample import against the import pattern. If it fails on a file that is not in the source tree, check the source root that was passed in.",
+  "summary_hash": "sha256:a57b8207965531d3515436d3281a311b00d46e2b353bc65cb9cd88ade023cf2d"
+}

@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "path": "scripts/fit-calibration-walkforward.ts",
+  "language": "TypeScript",
+  "lines": 173,
+  "hash": "sha256:db6d91f1019edc8126703ba3b4664daecf2375a0aa4c256aa415bef266d1243f",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated test is visible for this script.",
+      "Results depend on environment settings with defaults, so runs with different settings are not directly comparable.",
+      "Writes data/models/calibration-v3.json directly without a backup."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Calibration",
+      "meaning": "Whether a stated probability matches how often the event really happens. A 70 percent forecast should come true about 70 percent of the time."
+    },
+    {
+      "term": "Walk-forward",
+      "meaning": "A test that moves forward in time, using only what was known before each step, so no future result leaks into a prediction."
+    },
+    {
+      "term": "Isotonic map",
+      "meaning": "A stepwise correction curve that turns raw probabilities into calibrated ones while keeping their order."
+    },
+    {
+      "term": "Brier score",
+      "meaning": "An accuracy score for probabilities. It is the average squared gap between the predicted chance and the actual result, where lower is better."
+    },
+    {
+      "term": "Slope test",
+      "meaning": "A statistical check of whether predicted probabilities move one-for-one with real outcomes. A rejected test means the model is off."
+    },
+    {
+      "term": "Out of sample",
+      "meaning": "Scored on data the model was not trained on."
+    }
+  ],
+  "depends_on": [
+    "@/engine/calibration",
+    "@/engine/chaseWp",
+    "@/engine/matchCalibration",
+    "@/engine/outcomeModel",
+    "scripts/fit-outcomes.ts",
+    "node:crypto",
+    "node:fs"
+  ],
+  "used_by": [
+    "Not visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup, Ball, CHOICES, TUNE_SEASONS, EVAL_SEASONS",
+      "id": "s1",
+      "hash": "17cdfd47ce8c19ea",
+      "title": "File header, types and fixed choices",
+      "what": "Describes the script: it recalibrates the model after each completed date in a season, tunes one update rate on 2023 and 2024, and tests 2025 and 2026. It also fixes the outcome-model choices copied from an earlier tuning run.",
+      "why": "The header states the purpose, and the fixed choices come from an earlier tuning run recorded in the comment.",
+      "watch_out": "The half-life and target conditioning are typed in by hand, so if the earlier tuning changes this script must be updated too."
+    },
+    {
+      "start": 19,
+      "end": 26,
+      "kind": "value",
+      "name": "ETAS, SHIFTS, round",
+      "id": "s2",
+      "hash": "46803e58a2b1dc57",
+      "title": "Tuning and gate constants",
+      "what": "Lists the update rates to try, reads run sizes from environment settings with defaults, and sets the largest allowed Brier gap to the run-rate baseline and the list of shift sizes to test.",
+      "why": "Likely reason: keeps the slow simulations adjustable, so quick test runs need no code edits.",
+      "watch_out": "Lower environment values give faster but noisier results, so compare runs only when they use the same settings."
+    },
+    {
+      "start": 27,
+      "end": 31,
+      "kind": "function",
+      "name": "rrr, seasons",
+      "id": "s3",
+      "hash": "8bca6cc681524de3",
+      "title": "Required run rate helper and season list",
+      "what": "Turns a ball state into the required runs per over, capped at 36, and lists the seasons in order.",
+      "why": "Likely reason: the cap stops unusual early-over states from dominating the baseline fit.",
+      "watch_out": "Any state above the cap is treated as equal to the cap, which can hide extreme cases."
+    },
+    {
+      "start": 32,
+      "end": 35,
+      "kind": "function",
+      "name": "outcomeModelFor",
+      "id": "s4",
+      "hash": "ca31738ec3da7ddb",
+      "title": "Outcome model for a season",
+      "what": "Fits the outcome model for a given season using only earlier seasons and the fixed choices above.",
+      "why": "Keeps each season's predictions out of sample.",
+      "watch_out": "This uses its own fixed settings, separate from the rolling script, so the two can drift apart."
+    },
+    {
+      "start": 36,
+      "end": 49,
+      "kind": "function",
+      "name": "exactWp, SeasonData, ownExact",
+      "id": "s5",
+      "hash": "fab11855855a06f9",
+      "title": "Exact scoring and season data shapes",
+      "what": "Scores every ball with the exact model, grouped by target, and defines the shape of the per-season data that the rest of the script passes around. It also keeps a module-wide cache so each season is scored once.",
+      "why": "Likely reason: the cache avoids recomputing the same season at every tuning step.",
+      "watch_out": "The cache is keyed only by season, so it must not be reused if the fixed choices change within one run."
+    },
+    {
+      "start": 50,
+      "end": 61,
+      "kind": "function",
+      "name": "seasonExact",
+      "id": "s6",
+      "hash": "4fafc87c01a40e58",
+      "title": "Out-of-sample season scoring",
+      "what": "Scores a season with a model fitted only on earlier seasons, and stores the result in the cache.",
+      "why": "Ensures each season's predictions are made without seeing that season's results.",
+      "watch_out": "The cache lasts for one run only, so a long run that changes data midway keeps stale results for the rest of that run."
+    },
+    {
+      "start": 62,
+      "end": 83,
+      "kind": "function",
+      "name": "seasonData, flat",
+      "id": "s7",
+      "hash": "6082a622fbdbb403",
+      "title": "Pre-season map and match predictions",
+      "what": "Builds the starting probability correction map and run-rate baseline from the three seasons before the test season. Then, for each match in the season, produces its base, exact and baseline predictions.",
+      "why": "Gives the walk-forward updates a fair starting point that uses only earlier data.",
+      "watch_out": "The flattening helper uses loose type casts, so a wrong field name would fail silently instead of at compile time."
+    },
+    {
+      "start": 84,
+      "end": 90,
+      "kind": "function",
+      "name": "scoreSeason",
+      "id": "s8",
+      "hash": "4e74880ebcba0604",
+      "title": "Scoring one season with one update rate",
+      "what": "Runs the walk-forward update on a season with a chosen rate and computes three Brier scores. Each match is joined with its exact and baseline predictions.",
+      "why": "Lets the script compare update rates on the same set of matches.",
+      "watch_out": "The join assumes every match is found, so a missing match would break the lookup."
+    },
+    {
+      "start": 91,
+      "end": 120,
+      "kind": "function",
+      "name": "simulate",
+      "id": "s9",
+      "hash": "a68c59d07d4765fd",
+      "title": "Simulated seasons and detection power",
+      "what": "Plays out chases under each season's model many times. It counts how often the slope test passes on honest data, and how often it catches probabilities shifted up or down by each tested size.",
+      "why": "Shows how large a bias must be before the gate reliably notices it.",
+      "watch_out": "Shifted probabilities are clamped between 0.01 and 0.99, so extreme predictions behave differently from real use."
+    },
+    {
+      "start": 121,
+      "end": 173,
+      "kind": "function",
+      "name": "main",
+      "id": "s10",
+      "hash": "d4703a743056f731",
+      "title": "Main run: tune, evaluate, gate and save",
+      "what": "Tunes the update rate on 2023 and 2024 by Brier score. Tests 2025 and 2026 together with a slope test, runs five checks, and saves the calibration file with a fingerprint. The file is marked as passing only when all five checks pass.",
+      "why": "Keeps the pass decision in one place, so the saved file always states whether the model passed.",
+      "watch_out": "The pass rule uses a 15 point detection limit and a 0.002 Brier gap, so these numbers decide pass or fail and should not be loosened quietly."
+    }
+  ],
+  "explained_at": "2026-11-11T09:46:47+00:00",
+  "explained_by": "haiku",
+  "summary": "Recalibrates the win-probability model as each match date finishes in a season, and gates the result on 2025 and 2026 data.",
+  "purpose": "Checks whether the chase win-probability model stays calibrated when it learns from the season as it goes, and saves a pass or fail file for the app to read.",
+  "why": "A model that was right last year can drift. Updating it during the season is meant to correct drift, but the update must be tested out of sample to be trusted.",
+  "how": "Fixes the outcome-model choices and tunes one update rate on 2023 and 2024. Builds a starting map from the three seasons before each test season. Replays the walk-forward update on 2025 and 2026, pools the matches, runs a slope test and five checks, simulates fairness and detection power, then writes the calibration file with a fingerprint.",
+  "inputs": "Chase ball data loaded through the fit-outcomes loader, the fixed choices typed in this file, and environment settings for run sizes.",
+  "outputs": "data/models/calibration-v3.json, containing the tuning grid, per-season results, pooled statistics, simulation results, the five checks, a pass or fail flag and the production update rule. Also prints progress to the console.",
+  "risks": "Changing the choices or the update rate changes the pass result. Environment settings change the precision of the simulations. Writing the output overwrites the previous v3 file.",
+  "debug": "If the gate fails, read the five checks first, then the per-season slope and Brier lines. If results look different between runs, compare the environment settings and the fixed choices. If the file is missing, confirm the data/models folder exists.",
+  "summary_hash": "sha256:db6d91f1019edc8126703ba3b4664daecf2375a0aa4c256aa415bef266d1243f"
+}

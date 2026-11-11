@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "path": "src/llm/gemini.ts",
+  "language": "TypeScript",
+  "lines": 48,
+  "hash": "sha256:a310b9daaef85c316decb6e1039bbbc056056f4dbba57a1681fc769d97711e30",
+  "area": "src-llm",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are thrown and handled by callers, but this file sets no timeout or retry.",
+      "The injectable client suggests tests exist, but none are visible in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Gemini",
+      "meaning": "Google's family of AI models"
+    },
+    {
+      "term": "Token",
+      "meaning": "a small piece of text, the unit the model is measured and billed in"
+    },
+    {
+      "term": "Temperature",
+      "meaning": "how much randomness the model uses in its wording, where 0.2 keeps it steady"
+    },
+    {
+      "term": "JSON",
+      "meaning": "a plain text format for structured data"
+    },
+    {
+      "term": "Latency",
+      "meaning": "the time one call takes"
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "src/llm/provider.ts",
+    "@google/genai (passed in by the caller, not imported here)"
+  ],
+  "used_by": [
+    "src/llm/index.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 4,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "08606af4e4efa89b",
+      "title": "Imports and purpose",
+      "what": "Brings in the schema library and the shared provider types. The header says this file talks to Google's Gemini model and asks for JSON output checked against a schema.",
+      "why": "Stated in the header comment.",
+      "watch_out": ""
+    },
+    {
+      "start": 5,
+      "end": 15,
+      "kind": "type",
+      "name": "GeminiClient",
+      "id": "s2",
+      "hash": "fbc40849591b9610",
+      "title": "Client shape for testing",
+      "what": "Describes the small part of Google's client this app uses: one generate call that takes a model name, prompt, system text, JSON format and token limit, and returns text with token counts. Tests can plug in a fake that has the same shape.",
+      "why": "The comment says it is injectable so tests never touch the network.",
+      "watch_out": "Any change to what the app sends must be mirrored here, or the fake and the real client will drift apart."
+    },
+    {
+      "start": 16,
+      "end": 18,
+      "kind": "type",
+      "name": "Prices",
+      "id": "s3",
+      "hash": "15ce7b41230cb0ec",
+      "title": "Price settings",
+      "what": "Holds the price per million input and output tokens for one model tier. The prices come from environment settings, and when one is missing the cost is reported as null rather than estimated.",
+      "why": "The comment says cost is never guessed.",
+      "watch_out": "A wrong price gives wrong cost logs, so the values must match Google's current pricing."
+    },
+    {
+      "start": 19,
+      "end": 24,
+      "kind": "type",
+      "name": "GeminiOptions",
+      "id": "s4",
+      "hash": "9a487ed5fd54bb86",
+      "title": "Options for the provider",
+      "what": "Bundles what the provider needs: the client, a model name for each tier (fast and deep), and optional prices.",
+      "why": "Likely reason: keeps setup in one place so the provider can be built in tests or production.",
+      "watch_out": "Each tier needs a model name, and the provider refuses to start without them."
+    },
+    {
+      "start": 25,
+      "end": 48,
+      "kind": "class",
+      "name": "GeminiProvider",
+      "id": "s5",
+      "hash": "568b7c1ae77ba5a7",
+      "title": "Gemini provider",
+      "what": "Runs one generation. It refuses to start if a model name is missing. For each call it sends the task and input as JSON with the system text and token limit, asks for JSON shaped by the request's schema, parses the reply through that schema, counts tokens, works out the cost and returns the result.",
+      "why": "Likely reason: one place to call Gemini keeps logging and checks consistent.",
+      "watch_out": "Empty replies and malformed JSON both throw errors, and the caller relies on that to fall back to the template, so swallowing these errors would hide failures."
+    }
+  ],
+  "explained_at": "2026-11-11T10:06:45+00:00",
+  "explained_by": "haiku",
+  "summary": "Connects to Google's Gemini model to write analysis, asks for JSON output, and checks the reply against the schema.",
+  "purpose": "Provide the live text generator used when a Gemini key and model names are configured.",
+  "why": "Structured JSON plus a schema check keeps model output in the agreed shape. Likely reason the client is passed in: tests can run without touching the network.",
+  "how": "1) Check both model names are set. 2) Send the task, input and system text with a JSON output format, a token limit and a low temperature of 0.2. 3) Read the reply text and fail if it is empty. 4) Parse it and check it against the schema. 5) Count tokens, work out cost if prices are set, and return the result.",
+  "inputs": "A generation request (task name, system text, input data, schema, model tier, token limit), plus model names and optional prices. Where the API key is read is not in this file.",
+  "outputs": "A result with the checked output, provider name gemini, model name, token counts, latency in milliseconds and cost in USD, or null when no price is set.",
+  "risks": "A failed call throws an error, so callers must catch it. The input leaves the app and goes to an outside service. Cost is only accurate if the price settings are correct.",
+  "debug": "If every answer falls back to the template, check GEMINI_API_KEY and the GEMINI_MODEL settings. If parsing fails, look at the raw reply against the schema. If cost is null, the GEMINI_PRICE settings are unset.",
+  "summary_hash": "sha256:a310b9daaef85c316decb6e1039bbbc056056f4dbba57a1681fc769d97711e30"
+}

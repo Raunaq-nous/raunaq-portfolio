@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "path": "src/adapters/index.ts",
+  "language": "TypeScript",
+  "lines": 44,
+  "hash": "sha256:dc10ac0686b1098fa5814284e38407cbae30685b4a89a5be9c50290a9b24b819",
+  "area": "other",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only the store licence is checked in this file.",
+      "Type casts remove some compile-time checks.",
+      "No tests are visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "adapter",
+      "meaning": "A small piece of code that reads one source's data and converts it into the app's format."
+    },
+    {
+      "term": "registry",
+      "meaning": "A central list that the rest of the app looks things up in."
+    },
+    {
+      "term": "source pending",
+      "meaning": "A state that means a sport has no licensed data source yet."
+    },
+    {
+      "term": "rights policy",
+      "meaning": "A written record of what the app may do with a data source."
+    },
+    {
+      "term": "type cast",
+      "meaning": "A forced label that tells the compiler to accept a value as a given type."
+    }
+  ],
+  "depends_on": [
+    "@/domain/facts/types",
+    "@/rights",
+    "src/adapters/cricket/cricsheet.ts",
+    "src/adapters/f1/openf1.ts",
+    "src/adapters/football/statsbomb.ts",
+    "src/adapters/types.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ec1a14582e60b371",
+      "title": "Imports and purpose",
+      "what": "The header says each source must pass a rights check before any data is parsed, so unlicensed data never reaches storage. It brings in the sport types, the rights check and the three parsers.",
+      "why": "Keeps the licence rule in one visible place.",
+      "watch_out": "The check here covers storing only, not showing or deriving, which need their own checks."
+    },
+    {
+      "start": 10,
+      "end": 16,
+      "kind": "type",
+      "name": "SourceAdapter",
+      "id": "s2",
+      "hash": "0c4d5dde224e62f6",
+      "title": "Shape every adapter must follow",
+      "what": "Defines what a working source provides: its sport, its source id, a status of available, and a parse step that takes a document and a rights context and returns events.",
+      "why": "Lets every sport be used in the same way.",
+      "watch_out": "The rights context must be passed through to the parse step, or the check cannot run."
+    },
+    {
+      "start": 17,
+      "end": 24,
+      "kind": "function",
+      "name": "adapter",
+      "id": "s3",
+      "hash": "6f80b72b42be2d23",
+      "title": "Wrapping a parser with a rights check",
+      "what": "Builds an adapter that checks the store right first and runs the parser only if it is allowed. Uses it to create the cricket, F1 and football adapters.",
+      "why": "Likely reason: makes the check impossible to forget for these three sports.",
+      "watch_out": "A source with no policy file is refused, so a new source needs a policy before it will run."
+    },
+    {
+      "start": 25,
+      "end": 29,
+      "kind": "value",
+      "name": "PENDING_REASON",
+      "id": "s4",
+      "hash": "fda681c3c963118e",
+      "title": "Reasons some sports have no source",
+      "what": "Holds the plain-language reasons that basketball and tennis have no source yet.",
+      "why": "Explains the gap honestly instead of showing empty results.",
+      "watch_out": "These texts are shown to users, so they must match the translated messages in the i18n file."
+    },
+    {
+      "start": 30,
+      "end": 33,
+      "kind": "function",
+      "name": "sourcePending",
+      "id": "s5",
+      "hash": "459cd627d6cd7830",
+      "title": "Building the pending entry",
+      "what": "Returns a pending entry for a sport, using its stored reason or a general one.",
+      "why": "Gives the app a clear state to show for sports with no data.",
+      "watch_out": "A sport without a stored reason gets a general message, which may be less helpful."
+    },
+    {
+      "start": 34,
+      "end": 41,
+      "kind": "value",
+      "name": "ADAPTERS",
+      "id": "s6",
+      "hash": "1301f626d938071f",
+      "title": "Map of sport to source",
+      "what": "Maps each of the five sports to its working adapter or its pending entry.",
+      "why": "Gives the rest of the app one place to look up a sport's source.",
+      "watch_out": "The casts turn off some type checks, so a wrong input shape only shows up when the code runs."
+    },
+    {
+      "start": 42,
+      "end": 44,
+      "kind": "function",
+      "name": "liveAdapters",
+      "id": "s7",
+      "hash": "147d3b110f0ba243",
+      "title": "Listing only working sources",
+      "what": "Returns only the adapters marked available, leaving out the pending sports.",
+      "why": "Likely reason: ingest work should only touch sources that really exist.",
+      "watch_out": "A sport that becomes available is picked up automatically, so its policy must be checked first."
+    }
+  ],
+  "explained_at": "2026-11-11T19:27:50+00:00",
+  "explained_by": "haiku",
+  "summary": "The list of data sources the app uses, with one adapter per sport or a note that the source is still pending.",
+  "purpose": "It tells the rest of the app which sports have working data and why the others do not.",
+  "why": "One central list means every sport is handled the same way and licence checks cannot be skipped.",
+  "how": "It defines what a working source must provide. It wraps each parser so the store licence is checked first. It stores the reasons basketball and tennis are pending, then maps each of the five sports to its adapter or pending note. Finally it lists only the working adapters.",
+  "inputs": "The sport name and the source document passed to an adapter, with a rights context.",
+  "outputs": "The adapter for a sport, a pending entry with a reason, or the list of working adapters.",
+  "risks": "The map casts adapters to a general type, so the compiler cannot catch wrong input shapes. Only the store right is checked here.",
+  "debug": "If a sport returns a rights error, check its policy file and the store flag. If a sport is missing from the app, check whether it appears in the map as pending.",
+  "summary_hash": "sha256:dc10ac0686b1098fa5814284e38407cbae30685b4a89a5be9c50290a9b24b819"
+}

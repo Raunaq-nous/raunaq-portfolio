@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "path": "src/lib/admin.ts",
+  "language": "TypeScript",
+  "lines": 25,
+  "hash": "sha256:f8f268a488576a6738237805a9dd9e3e90f6e45fad161fc5b18ad3f95aeb772a",
+  "area": "other",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "This controls access to sensitive routes, but no tests are visible in the packet.",
+      "The email match depends on the settings loader lowercasing the list, which is not visible here.",
+      "The secret is compared with a plain equality check."
+    ]
+  },
+  "terms": [
+    {
+      "term": "bearer token",
+      "meaning": "A secret string sent in the request header to prove who is calling."
+    },
+    {
+      "term": "session",
+      "meaning": "The record that says who is signed in, kept between requests."
+    },
+    {
+      "term": "cron job",
+      "meaning": "A task that runs automatically on a timer, such as every night."
+    },
+    {
+      "term": "403 Forbidden",
+      "meaning": "A standard reply meaning the request is understood but not allowed."
+    },
+    {
+      "term": "route",
+      "meaning": "A web address that the server handles with a piece of code."
+    }
+  ],
+  "depends_on": [
+    "next/server",
+    "next-auth/next",
+    "src/lib/auth.ts",
+    "src/providers/env"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d77f3590946c0a45",
+      "title": "Imports",
+      "what": "Brings in the response helper, the session reader, the sign-in settings and the environment reader.",
+      "why": "These are needed to read the request and the signed-in user.",
+      "watch_out": ""
+    },
+    {
+      "start": 6,
+      "end": 22,
+      "kind": "function",
+      "name": "isAdminRequest",
+      "id": "s2",
+      "hash": "8cca5f3afc911fc4",
+      "title": "Who counts as an admin",
+      "what": "Returns yes if the request carries the scheduled-job secret, or if the signed-in user's email is in the admin list. Otherwise returns no.",
+      "why": "Keeps destructive and scoring routes limited to the owner and automated jobs.",
+      "watch_out": "The email must match the admin list in lower case, and an empty list means email admins are never accepted."
+    },
+    {
+      "start": 23,
+      "end": 25,
+      "kind": "function",
+      "name": "adminOnly",
+      "id": "s3",
+      "hash": "6d6bba31ae9b240c",
+      "title": "Refusal response",
+      "what": "Builds a 403 reply with the message that admin access is required.",
+      "why": "Gives every protected route the same refusal.",
+      "watch_out": "The calling route must return this reply itself, since this helper does not stop the route on its own."
+    }
+  ],
+  "explained_at": "2026-11-11T19:27:50+00:00",
+  "explained_by": "haiku",
+  "summary": "The gatekeeper for sensitive routes: it lets in scheduled jobs that present the secret, and signed-in admins listed by email.",
+  "purpose": "It protects routes that delete data or change scores, so that only the owner or scheduled jobs can use them.",
+  "why": "Likely reason: these routes must not be open to every visitor.",
+  "how": "It first checks whether the request carries the scheduled-job secret as a bearer token. If not, and the admin list is not empty, it reads the signed-in user's email and checks it against the list. If neither matches, access is refused. A separate helper builds the refusal response.",
+  "inputs": "The incoming request, its authorisation header, and the signed-in session.",
+  "outputs": "A yes or no answer, and a 403 Forbidden JSON reply for refused requests.",
+  "risks": "If ADMIN_EMAILS holds upper-case letters, no email will match. An empty admin list blocks all email sign-ins.",
+  "debug": "If an admin is refused, check that the email is in ADMIN_EMAILS in lower case and that the user is signed in. For scheduled jobs, check the bearer token matches the secret exactly.",
+  "summary_hash": "sha256:f8f268a488576a6738237805a9dd9e3e90f6e45fad161fc5b18ad3f95aeb772a"
+}

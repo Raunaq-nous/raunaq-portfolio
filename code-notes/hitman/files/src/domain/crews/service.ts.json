@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/crews/service.ts",
+  "language": "TypeScript",
+  "lines": 125,
+  "hash": "sha256:76f1002b580b3efe316cca3421a81ed273edb325f80080ba1b2d6226cf8a5759",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only the owner's blocks are checked when joining.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "owner",
+      "meaning": "the member who controls a crew and can remove members or change its code"
+    },
+    {
+      "term": "secure random numbers",
+      "meaning": "random values hard to predict, suitable for codes that act as keys"
+    }
+  ],
+  "depends_on": [
+    "node:crypto",
+    "@prisma/client",
+    "@/domain/shared/types",
+    "@/domain/users/types",
+    "./types",
+    "./repo"
+  ],
+  "used_by": [
+    "src/domain/contests/service.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup, newInviteCode",
+      "id": "s1",
+      "hash": "ec5cfc1ef791f930",
+      "title": "Imports and invite code maker",
+      "what": "Brings in the random number source, error types, the public user shape and the repository. Builds six character invite codes from letters and digits, leaving out look-alike characters such as O and 0.",
+      "why": "Likely reason: secure randomness makes codes hard to guess, and leaving out look-alikes helps people type them.",
+      "watch_out": ""
+    },
+    {
+      "start": 12,
+      "end": 16,
+      "kind": "function",
+      "name": "requireMembership",
+      "id": "s2",
+      "hash": "312dd0e90c3d4b1b",
+      "title": "Membership gate",
+      "what": "Stops the request unless the user is in the crew. Non-members get a not-found error, so outsiders cannot tell a crew exists.",
+      "why": "Likely reason: keeps crew existence private, as the comment states.",
+      "watch_out": ""
+    },
+    {
+      "start": 17,
+      "end": 31,
+      "kind": "function",
+      "name": "getCrewForMember",
+      "id": "s3",
+      "hash": "94f61812d77190d2",
+      "title": "Full crew view for a member",
+      "what": "Returns a crew's details and member list for a member. Members the viewer has blocked stay in the list but show a generic name and no picture.",
+      "why": "Likely reason: blocked people remain in shared crews, but the blocker should not see their names.",
+      "watch_out": "The invite code is included, so every member can see it."
+    },
+    {
+      "start": 32,
+      "end": 36,
+      "kind": "function",
+      "name": "listMyCrews",
+      "id": "s4",
+      "hash": "112c603305803c71",
+      "title": "Crews a user is in",
+      "what": "Returns a summary of each crew for the user, with the member count and whether the user owns it.",
+      "why": "Likely reason: builds the crew list page.",
+      "watch_out": ""
+    },
+    {
+      "start": 37,
+      "end": 41,
+      "kind": "function",
+      "name": "memberIds",
+      "id": "s5",
+      "hash": "e1f392fa27831085",
+      "title": "Member ID list",
+      "what": "Confirms the caller is a member, then returns all member IDs for the crew.",
+      "why": "Likely reason: a guarded lookup so non-members cannot list members.",
+      "watch_out": ""
+    },
+    {
+      "start": 42,
+      "end": 53,
+      "kind": "function",
+      "name": "withFreshCode",
+      "id": "s6",
+      "hash": "1c73f5edf3bbad4d",
+      "title": "Retry for invite code clash",
+      "what": "Tries to make and save an invite code up to five times, retrying only when the database reports a duplicate.",
+      "why": "Likely reason: random codes can rarely clash, and the retry handles it.",
+      "watch_out": ""
+    },
+    {
+      "start": 54,
+      "end": 57,
+      "kind": "function",
+      "name": "createCrew",
+      "id": "s7",
+      "hash": "0ef9ff5d15317270",
+      "title": "Creating a crew",
+      "what": "Creates a crew with a fresh invite code and makes the caller its owner.",
+      "why": "Likely reason: each new crew gets its own code straight away.",
+      "watch_out": ""
+    },
+    {
+      "start": 58,
+      "end": 64,
+      "kind": "function",
+      "name": "requireOwner",
+      "id": "s8",
+      "hash": "5fc0c22b29424b0d",
+      "title": "Owner only check",
+      "what": "Confirms the caller is a member and the owner of the crew, and otherwise refuses with a not-found or forbidden error.",
+      "why": "Likely reason: several actions are for owners only, and this keeps that check in one place.",
+      "watch_out": ""
+    },
+    {
+      "start": 65,
+      "end": 77,
+      "kind": "function",
+      "name": "leaveCrew",
+      "id": "s9",
+      "hash": "93f46db14360d15c",
+      "title": "Leaving a crew",
+      "what": "Lets a member leave. An owner may leave only if they are the last member, in which case the crew is deleted.",
+      "why": "Likely reason: prevents a crew from being left with no owner.",
+      "watch_out": "An owner who is the last member leaving deletes the crew, and that cannot be undone."
+    },
+    {
+      "start": 78,
+      "end": 85,
+      "kind": "function",
+      "name": "removeMember",
+      "id": "s10",
+      "hash": "a01d311ae1704790",
+      "title": "Owner removes a member",
+      "what": "Lets the owner remove another member. The owner cannot remove themselves, and the target must be in the crew.",
+      "why": "Likely reason: stops an owner removing themselves and leaving the crew without one.",
+      "watch_out": ""
+    },
+    {
+      "start": 86,
+      "end": 91,
+      "kind": "function",
+      "name": "rotateInviteCode",
+      "id": "s11",
+      "hash": "25a546a27d026359",
+      "title": "Owner resets invite code",
+      "what": "Lets the owner replace the crew's invite code, so old codes and links stop working.",
+      "why": "Likely reason: lets an owner shut out people who hold an old link.",
+      "watch_out": ""
+    },
+    {
+      "start": 92,
+      "end": 98,
+      "kind": "function",
+      "name": "transferOwnership",
+      "id": "s12",
+      "hash": "e6d8ce55c608bdf7",
+      "title": "Owner hands over the crew",
+      "what": "Lets the owner make another current member the owner.",
+      "why": "Likely reason: lets a crew carry on when its owner steps back.",
+      "watch_out": ""
+    },
+    {
+      "start": 99,
+      "end": 112,
+      "kind": "function",
+      "name": "joinCrew",
+      "id": "s13",
+      "hash": "fea5e8370d83b389",
+      "title": "Joining with a code",
+      "what": "Finds the crew by invite code and adds the user as a member. A wrong code, or a block by the owner, gives the same not-found message.",
+      "why": "Likely reason: a blocked person gets the same reply as a wrong code, so they cannot tell they are blocked.",
+      "watch_out": "Only the owner's blocks are checked, so a block by another member does not stop someone joining."
+    },
+    {
+      "start": 113,
+      "end": 125,
+      "kind": "function",
+      "name": "joinOrOpen",
+      "id": "s14",
+      "hash": "c81eba176d57588b",
+      "title": "Join or open from a link",
+      "what": "Used by invite links. If the user is already in the crew, it returns the crew without joining. If a race makes the join fail with a conflict, it also returns the crew.",
+      "why": "Likely reason: a link opened twice, for example by a prefetch, should not show an error.",
+      "watch_out": "The joined flag says whether a new join happened, so callers must check it, not just the ID."
+    }
+  ],
+  "explained_at": "2026-11-11T09:37:03+00:00",
+  "explained_by": "haiku",
+  "summary": "Crew rules: creating, joining by code or link, leaving, owner actions, and member views.",
+  "purpose": "The rules behind every crew feature.",
+  "why": "Likely reason: the header says checks sit here so every page and API that uses this service is protected.",
+  "how": "1. Check membership or ownership. 2. Apply the action. 3. Return results or raise a clear error. Invite codes are made from secure random numbers, with up to five retries on a clash.",
+  "inputs": "A user ID, a crew ID, names, invite codes, and target user IDs.",
+  "outputs": "Crew details, summaries, IDs, new invite codes, or errors.",
+  "risks": "Only the owner's blocks decide who can join. Members can see the invite code. An owner who leaves a one-person crew deletes it.",
+  "debug": "Not found hides non-members. Conflict means the user is already in the crew. Forbidden means the caller is not the owner.",
+  "summary_hash": "sha256:76f1002b580b3efe316cca3421a81ed273edb325f80080ba1b2d6226cf8a5759"
+}

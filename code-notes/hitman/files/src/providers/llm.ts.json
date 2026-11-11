@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "path": "src/providers/llm.ts",
+  "language": "TypeScript",
+  "lines": 57,
+  "hash": "sha256:65ed0b331f365faf17e5c547aff331278f923dbdb218bb93ca9bcaa959da498f",
+  "area": "src-providers",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Saving failures are logged and never break generation, which is a good safety choice.",
+      "Silent fallback to templates and unvalidated price settings can hide problems.",
+      "The recording of verified calls appears to keep only the last attempt, which needs checking."
+    ]
+  },
+  "terms": [
+    {
+      "term": "LLM (large language model)",
+      "meaning": "An AI model that writes text from a prompt."
+    },
+    {
+      "term": "Provider",
+      "meaning": "The component that actually produces text, either a real model or a template."
+    },
+    {
+      "term": "Verified claims",
+      "meaning": "Statements that have been checked against their sources before being shown."
+    },
+    {
+      "term": "Fallback",
+      "meaning": "Using a second option when the first one fails or is not available."
+    }
+  ],
+  "depends_on": [
+    "@google/genai",
+    "@/llm",
+    "./env",
+    "./log",
+    "@/lib/prisma",
+    "@/llm/verified",
+    "@/llm/verifier",
+    "@/llm/retrieval",
+    "@/llm/prompt",
+    "@/llm/prompts/production"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup, price",
+      "id": "s1",
+      "hash": "308dbed85d6d9733",
+      "title": "File setup, imports and price helper",
+      "what": "Describes the file, brings in the model client, provider types, settings and logger, and defines a helper that turns two price strings into a price pair only when both are given.",
+      "why": "The header states the Gemini and template rule. The price helper's purpose is clear from its name and use.",
+      "watch_out": "The price helper converts text to numbers without checking them, so a non-number becomes an invalid price with no warning."
+    },
+    {
+      "start": 11,
+      "end": 28,
+      "kind": "function",
+      "name": "llmProvider, Entry",
+      "id": "s2",
+      "hash": "12bb418a22c1dbd2",
+      "title": "Choosing the language model provider",
+      "what": "Creates the provider once. It uses Gemini when the key is set, the two model names are set, and the app is not under test. Otherwise it uses the template provider.",
+      "why": "The header says Gemini is never used under test, so tests stay predictable and free.",
+      "watch_out": "Missing model names quietly produce template text, so the owner may not notice the model is off."
+    },
+    {
+      "start": 29,
+      "end": 36,
+      "kind": "function",
+      "name": "record",
+      "id": "s3",
+      "hash": "fd3380f00b82118e",
+      "title": "Saving a call record",
+      "what": "Logs each model call with its provider, model, tokens, time and cost, and saves a matching record in the background. The record holds no prompt or output text. A failure to save is logged as a warning and does not stop generation.",
+      "why": "The doc comment says persistence failures never break generation, and the design keeps text out of records.",
+      "watch_out": "If the database is down, the only record is the log line, so keep logs if you rely on cost history."
+    },
+    {
+      "start": 37,
+      "end": 44,
+      "kind": "function",
+      "name": "generate",
+      "id": "s4",
+      "hash": "4192dd23a4aad677",
+      "title": "Generating text with fallback",
+      "what": "Runs a generation request through the chosen provider with the fallback logic, and records each attempt as it happens.",
+      "why": "Likely reason: each attempt is recorded so the cost of fallbacks is visible.",
+      "watch_out": "Every attempt is recorded without a verified flag, so the verified status is only added in the claims path."
+    },
+    {
+      "start": 45,
+      "end": 57,
+      "kind": "function",
+      "name": "generateClaims",
+      "id": "s5",
+      "hash": "7fe4b7887eaf52e4",
+      "title": "Generating verified claims",
+      "what": "Runs a verified generation request and returns sourced claims. It records the call with a verified flag: empty for templates, and true or false for whether the model's claims passed checking.",
+      "why": "The comment says the flag shows whether the model's own claims passed the verifier, which matters for trust in model text.",
+      "watch_out": "The callback keeps overwriting the saved attempt, so if the verified path tries more than once, only the final attempt is recorded."
+    }
+  ],
+  "explained_at": "2026-11-11T09:56:13+00:00",
+  "explained_by": "haiku",
+  "summary": "Chooses which language model writes the app's text: Gemini when it is fully configured and not under test, otherwise built-in templates. It also records each call's cost and speed, without saving the prompt or output text.",
+  "purpose": "Lets the app produce verified, sourced text and keeps a record of model use and cost for review.",
+  "why": "The header says Gemini is used only when its key is set and never under test, and templates are used otherwise. Those are the stated reasons.",
+  "how": "1) Checks the settings and picks Gemini, with its fast and deep models and prices, or the template provider. 2) Keeps one provider for the life of the process. 3) For each call, logs the details and saves a record in the background. 4) For verified claims, asks the verifier module for sourced claims and records whether the model's claims passed.",
+  "inputs": "Generation requests from other modules, the settings for keys and model names, and the price settings from the raw environment.",
+  "outputs": "Generated text or verified claims, plus a log line and a stored record for each model attempt.",
+  "risks": "If the key is set but model names are missing, the app silently uses templates. Prices are read straight from the environment, not checked by the settings schema, so a typo means no cost is recorded. Only the last attempt in verified generation seems to be recorded.",
+  "debug": "If the app shows template text when you expected model text, check the key, the two model names and that the app is not under test. If costs are blank, check the four price variables. If records are missing, check the database and the warning logged when saving fails.",
+  "summary_hash": "sha256:65ed0b331f365faf17e5c547aff331278f923dbdb218bb93ca9bcaa959da498f"
+}

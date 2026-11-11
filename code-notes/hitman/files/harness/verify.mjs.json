@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "path": "harness/verify.mjs",
+  "language": "JavaScript",
+  "lines": 51,
+  "hash": "sha256:4321a11469aeed7f503fbabd6b2f19d9b95ba649b78bbe491228f8b5ca6006be",
+  "area": "other",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test of this gate is visible in the packet.",
+      "In --clean mode, if creating the worktree fails, the cleanup step can also fail and hide the first error.",
+      "Clean mode tests only committed code, not uncommitted changes."
+    ]
+  },
+  "terms": [
+    {
+      "term": "verification gate",
+      "meaning": "A set of checks that must pass before work is treated as done."
+    },
+    {
+      "term": "npm script",
+      "meaning": "A named command in package.json, such as lint or test, that runs a tool."
+    },
+    {
+      "term": "git worktree",
+      "meaning": "A second working copy of the project in another folder, linked to the same git history."
+    },
+    {
+      "term": "exit code",
+      "meaning": "The number a program returns when it ends. Zero means success and anything else means failure."
+    },
+    {
+      "term": "typecheck",
+      "meaning": "A check that the code uses its data types consistently, without running it."
+    },
+    {
+      "term": "e2e (end-to-end test)",
+      "meaning": "A test that drives the real app in a browser, the way a user would."
+    },
+    {
+      "term": "ANSI colour codes",
+      "meaning": "Hidden text inside program output that tells a terminal which colour to use."
+    }
+  ],
+  "depends_on": [
+    "node:child_process",
+    "node:fs",
+    "package.json",
+    "harness/feature_list.json",
+    "harness/check-features.mjs",
+    "harness/init.mjs"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4533d0c06614d744",
+      "title": "Header notes and imports",
+      "what": "The top comments list the four modes and what each adds. The imports bring in tools for running commands and reading files.",
+      "why": "The comments tell the owner what each flag does without reading the rest of the file.",
+      "watch_out": "Keep the mode list in these comments in step with the flags the code actually reads."
+    },
+    {
+      "start": 10,
+      "end": 12,
+      "kind": "value",
+      "name": "args",
+      "id": "s2",
+      "hash": "5882730bca67fb6b",
+      "title": "Reading command-line flags",
+      "what": "Reads the flags passed when the script is run. It decides whether to show all output, which checks to run, and how many lines of error output to show.",
+      "why": "Flags are how the owner chooses between a quick check and a full check.",
+      "watch_out": "A misspelled flag is ignored without warning, so the script quietly runs the default mode."
+    },
+    {
+      "start": 13,
+      "end": 16,
+      "kind": "function",
+      "name": "run",
+      "id": "s3",
+      "hash": "f0572074858748d0",
+      "title": "Running one shell command",
+      "what": "Runs one command in a shell, collects its output and its exit code, and returns both. In verbose mode the output is shown live instead of collected.",
+      "why": "Every step goes through this one helper, so results are handled the same way everywhere.",
+      "watch_out": "A very large output is held in memory, up to 256 MB, before it is shown."
+    },
+    {
+      "start": 17,
+      "end": 34,
+      "kind": "function",
+      "name": "tail, passing, createdBy, steps",
+      "id": "s4",
+      "hash": "3475efed58db7260",
+      "title": "Trimming output and clean-run mode",
+      "what": "Trims error output to its last 60 lines and shortens very long lines. In clean mode it creates a fresh copy of the last commit, runs the setup script and the full checks inside it, then deletes the copy. Outside clean mode it reads the step list from package.json and the feature list.",
+      "why": "Likely reason: long logs hide the real error, and a fresh copy shows whether the committed code works on its own.",
+      "watch_out": "The clean copy is made from the last commit, so changes that are not committed are never tested."
+    },
+    {
+      "start": 35,
+      "end": 51,
+      "kind": "value",
+      "name": "results",
+      "id": "s5",
+      "hash": "a29c3935b8106537",
+      "title": "Running steps and printing summary",
+      "what": "Runs each step in order, marks any missing npm script as MISSING or SKIP, prints a table with the result of each step, shows the first failure, and prints RESULT: PASS or RESULT: FAIL. When CI is not set, it sets CI to 1 for the commands it runs.",
+      "why": "A single ordered run stops early and shows the first real problem.",
+      "watch_out": "In --ci mode a missing script is skipped only while its owning feature is not yet marked as passing, and a missing lint or build script always fails."
+    }
+  ],
+  "explained_at": "2026-11-11T19:27:50+00:00",
+  "explained_by": "haiku",
+  "summary": "A checking script that runs the project's quality checks in order and prints one pass or fail summary.",
+  "purpose": "It answers one question for the owner: is the project in a state that can be trusted? It runs the feature list check, lint, typecheck, unit tests, and in the full mode a build and browser tests.",
+  "why": "It gives one command that runs every gate the same way, so nobody has to remember the list or the order.",
+  "how": "It reads the flags, then either runs a clean copy of the latest commit or runs the steps in order. For each step it runs the command, records PASS, FAIL, SKIP or MISSING, and stops at the first failure. It then prints a table, the last 60 lines of the first failure, and a final RESULT line with an exit code.",
+  "inputs": "Command-line flags: --quick, --ci, --clean and --verbose. It also reads package.json, harness/feature_list.json, and the current git commit when --clean is used.",
+  "outputs": "A printed summary table and a RESULT line. The process exit code is 0 for pass and 1 for fail.",
+  "risks": "A clean run tests only the last commit, so uncommitted edits are not checked. The --ci mode can skip a missing script, which makes a pass look better than the code really is.",
+  "debug": "Run it with --verbose to see the full output of each step. If a step says MISSING, check that package.json has that script. If --clean fails before the checks start, look at the git worktree output and check that the repository has at least one commit.",
+  "summary_hash": "sha256:4321a11469aeed7f503fbabd6b2f19d9b95ba649b78bbe491228f8b5ca6006be"
+}

@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "path": "tests/unit/facts/leakage.test.ts",
+  "language": "TypeScript",
+  "lines": 52,
+  "hash": "sha256:a1cb9d89fa3b9e3d989e37f5ccd7bb89de576bd41280c6d9b8d2148d8c5e3c16",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Tests the key rules directly: late data, corrections, and unlicensed sources.",
+      "Uses a real database and a clean reset before running.",
+      "Each test has a clear expected answer."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Bitemporal",
+      "meaning": "Tracking two times for each record: when it happened, and when the app learned about it."
+    },
+    {
+      "term": "Leakage",
+      "meaning": "Using information that was not known yet, which makes a view look better or more accurate than it really was."
+    },
+    {
+      "term": "Cutoff",
+      "meaning": "The chosen moment at which the app is pretending to look."
+    },
+    {
+      "term": "Incident",
+      "meaning": "One recorded event in a match, such as a ball, here stored with its timestamps and source."
+    },
+    {
+      "term": "Supersede",
+      "meaning": "Replace an earlier record with a corrected one, while keeping the original."
+    }
+  ],
+  "depends_on": [
+    "vitest",
+    "@/lib/prisma",
+    "@/domain/facts/service",
+    "../../helpers/db"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup, start",
+      "id": "s1",
+      "hash": "826473ab93ee4b2a",
+      "title": "Sets up test event in database",
+      "what": "Sets a fixed start time for the test event and loads the database and helper functions that the tests need.",
+      "why": "Likely reason: a fixed start time makes every timestamp in the tests predictable.",
+      "watch_out": "The reset helper clears test data before setup, so these tests must never point at a database that holds real data."
+    },
+    {
+      "start": 8,
+      "end": 10,
+      "kind": "function",
+      "name": "sec",
+      "id": "s2",
+      "hash": "f4bf4242daa5e6da",
+      "title": "Converts seconds into timestamps",
+      "what": "Turns a number of seconds into a timestamp counted from the test event's start time.",
+      "why": "Likely reason: it lets tests write cutoffs as simple second counts, which is easier to read.",
+      "watch_out": "All times are relative to the start, so changing the start time shifts every cutoff in the tests together."
+    },
+    {
+      "start": 11,
+      "end": 25,
+      "kind": "function",
+      "name": "ball",
+      "id": "s3",
+      "hash": "9e0839103976e145",
+      "title": "Creates a test ball record",
+      "what": "Stores one ball record in the test database, with chosen runs or a wicket and a chosen delay between when it happened and when it was observed.",
+      "why": "Likely reason: it lets each test add late or odd records cheaply without repeating the full setup.",
+      "watch_out": "Each record gets a random source reference, so duplicate-record checks elsewhere will not catch these test records."
+    },
+    {
+      "start": 26,
+      "end": 52,
+      "kind": "test group",
+      "name": "bitemporal reads and leakage",
+      "id": "s4",
+      "hash": "22296f3067289394",
+      "title": "Checks reads ignore future and unlicensed data",
+      "what": "Checks that the match state at a cutoff counts only balls that happened and were seen by then. Checks that late-arriving balls are ignored, that a correction applies only from when it was seen, and that records from unlicensed sources are left out.",
+      "why": "Likely reason: the app must show only what was known at the chosen moment, and must only show data it has rights to display.",
+      "watch_out": "Event time and observed time are different. Mixing them up would let future information leak into a past view."
+    }
+  ],
+  "explained_at": "2026-11-11T09:18:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests that the app's match-state view only uses information that was actually known at a chosen time, so it cannot accidentally show the future.",
+  "purpose": "Protects against data leaks, where a view at one time uses balls that happened or were recorded later.",
+  "why": "Likely reason: a replay or prediction that sees the future is misleading and would break the fairness of fan calls.",
+  "how": "Before the tests, it resets the test database and creates a competition, season and event, then adds four synthetic balls with delayed observation times. Each test then reads the match state at a chosen cutoff. It checks that balls seen after the cutoff are ignored, that a correction only applies from when it was seen, and that unlicensed sources are left out.",
+  "inputs": "Synthetic incidents in the test database with two timestamps each: when the event happened and when it was observed.",
+  "outputs": "Pass or fail results. The tests write to the test database and clear it before the run.",
+  "risks": "The tests write real rows to whatever database they point at, so pointing them at a real database would damage its data. Timing mistakes in the test setup would hide real leaks.",
+  "debug": "If a test fails, check the cutoff time it uses and the observed time of the record. Look at the function that reads the state at a cutoff and confirm it filters on observed time, not only on event time.",
+  "summary_hash": "sha256:a1cb9d89fa3b9e3d989e37f5ccd7bb89de576bd41280c6d9b8d2148d8c5e3c16"
+}

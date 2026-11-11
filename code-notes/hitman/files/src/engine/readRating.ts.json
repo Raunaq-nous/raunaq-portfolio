@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "path": "src/engine/readRating.ts",
+  "language": "TypeScript",
+  "lines": 38,
+  "hash": "sha256:02a331a21b4b4fb7aa4764077446ceba5d94817a31ea55830c17f495e5981421",
+  "area": "src-engine",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this packet, and the update is a core piece of the product.",
+      "The header documents the rules clearly, and inputs are checked for valid ranges."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Elo rating",
+      "meaning": "A skill number that goes up after a good result and down after a bad one, with the size of the change depending on how surprising the result was."
+    },
+    {
+      "term": "Expected score",
+      "meaning": "The chance of success the rating predicts for a given difficulty, between 0 and 1."
+    },
+    {
+      "term": "Floor",
+      "meaning": "A lowest allowed value. Here, no rating goes below 100."
+    },
+    {
+      "term": "Difficulty",
+      "meaning": "A number for how hard a moment is, which works like an opponent rating in the Elo formula."
+    }
+  ],
+  "depends_on": [],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup, expectedScore",
+      "id": "s1",
+      "hash": "bd00efc5d84f0f88",
+      "title": "Rating settings and expected score",
+      "what": "Sets the starting rating, the floor, and the margin scale, and gives the expected score from a rating and a difficulty using the standard Elo formula.",
+      "why": "The header states the starting value and floor. The margin scale used for read weight is not explained in the code.",
+      "watch_out": "The expected score formula assumes the standard 400-point scale, so changing that number changes how fast ratings move."
+    },
+    {
+      "start": 11,
+      "end": 15,
+      "kind": "function",
+      "name": "actualScore",
+      "id": "s2",
+      "hash": "eac4bc958fd95401",
+      "title": "Turning a read into a score",
+      "what": "Gives 1 if the read earned points (the pick was the best option), 0 if it earned none or lost, and 0.5 for a tie.",
+      "why": "The doc comment says the result decides whether the pick was the best option.",
+      "watch_out": "Wrong and tie reads are both zero or half, so a read that narrowly missed the best option counts the same as one that was far off, except through weight."
+    },
+    {
+      "start": 16,
+      "end": 18,
+      "kind": "function",
+      "name": "readWeight",
+      "id": "s3",
+      "hash": "f12702c0fb26d4c5",
+      "title": "How much a read counts",
+      "what": "Gives the weight of a read from its margin in points, capped at 1, so a near tie barely moves anything.",
+      "why": "The doc comment says the margin sets the size of the change, with a near tie counting little.",
+      "watch_out": "The cap means any read with a margin of twenty points or more counts the same, so very large margins are not rewarded."
+    },
+    {
+      "start": 19,
+      "end": 27,
+      "kind": "function",
+      "name": "momentDifficulty, RatingUpdate",
+      "id": "s4",
+      "hash": "29f89febe8f7f451",
+      "title": "Moment difficulty and the saved update shape",
+      "what": "Computes a moment's difficulty from the gap between its options and its leverage percentile. Smaller gaps and higher leverage both make a moment harder. It also defines the shape of an update result.",
+      "why": "The header says moments carry their own difficulty rating. The formula's constants are not explained in the code.",
+      "watch_out": "The leverage percentile must be between 0 and 1, otherwise the function refuses. The gap is capped at 20 points, so larger gaps look the same."
+    },
+    {
+      "start": 28,
+      "end": 38,
+      "kind": "function",
+      "name": "updateRating",
+      "id": "s5",
+      "hash": "8dee0b008a2d2b63",
+      "title": "Updating the rating after a read",
+      "what": "Computes the new rating after a read, using a step size of 40 for the first 20 graded calls and 24 afterwards. It keeps the rating at or above the floor and moves the moment's difficulty slowly in the opposite direction.",
+      "why": "The comments say a wrong pick never gains and the best pick never loses, and that the margin sets the size of change.",
+      "watch_out": "The moment's difficulty change uses a fixed step of 8 that is not passed in as a setting, so it cannot be tuned without editing the code."
+    }
+  ],
+  "explained_at": "2026-11-11T09:56:13+00:00",
+  "explained_by": "haiku",
+  "summary": "Keeps a skill rating for a user's decision reads, similar to a chess rating, where a correct read raises the rating and a wrong one lowers it, with each change depending on how decisive the read was.",
+  "purpose": "Gives users a rating that moves over time based on their decisions, and moves the difficulty of each moment slightly in the opposite direction.",
+  "why": "The header describes the scheme: a difficulty-weighted Elo rating, a starting value of 1200, a higher step size for the first 20 graded calls, and a floor of 100. The reason for these choices is not explained in the code beyond the header.",
+  "how": "1) Works out a moment's difficulty from how close the options are and how much leverage the moment has. 2) Converts the read into a score: 1 for the best option, 0 for a wrong pick, 0.5 for a tie. 3) Weights the read by its margin. 4) Computes the expected score from the rating and difficulty. 5) Moves the rating up or down, not below the floor, and moves the difficulty the other way slowly.",
+  "inputs": "The current rating, the number of graded calls so far, the moment's difficulty, the gap between options and the leverage percentile, and the points a read earned.",
+  "outputs": "The new rating and difficulty, the step size used, the expected and actual scores, and the weight applied.",
+  "risks": "The step size changes after 20 graded calls, so the first calls move the rating much more. Difficulty has no floor or cap in the update, so it can drift without limit. A read with zero points has no effect.",
+  "debug": "If ratings jump too much, check the number of graded calls and the weight. If a user's rating stops at 100, the floor is being hit. If difficulty values look extreme, check the gap and percentile inputs, which must stay within the stated limits.",
+  "summary_hash": "sha256:02a331a21b4b4fb7aa4764077446ceba5d94817a31ea55830c17f495e5981421"
+}

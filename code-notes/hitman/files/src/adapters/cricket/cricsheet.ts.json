@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "path": "src/adapters/cricket/cricsheet.ts",
+  "language": "TypeScript",
+  "lines": 87,
+  "hash": "sha256:97611ac9c294f908e07eac50df6dfc9d105a3ed44255a6a057af43a1c968c445",
+  "area": "other",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet, although the comment says replays are reproducible for tests.",
+      "The rain check looks only for the presence of a method field.",
+      "Fake timings are used for both event time and observed time, which hides when the data was really recorded."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Cricsheet",
+      "meaning": "A free public database of cricket match records."
+    },
+    {
+      "term": "ball-by-ball",
+      "meaning": "A record that describes every single delivery in a match."
+    },
+    {
+      "term": "delivery",
+      "meaning": "One ball bowled by the bowler to the batter."
+    },
+    {
+      "term": "over",
+      "meaning": "A set of six legal balls bowled from one end."
+    },
+    {
+      "term": "innings",
+      "meaning": "One team's turn to bat in a match."
+    },
+    {
+      "term": "extras",
+      "meaning": "Runs not scored off the bat, such as wides, no-balls, byes and leg-byes."
+    },
+    {
+      "term": "D/L method",
+      "meaning": "A formula, Duckworth-Lewis, that resets the target score when rain interrupts a match."
+    },
+    {
+      "term": "schema",
+      "meaning": "A written rule for what shape the data must have, used to check it."
+    },
+    {
+      "term": "zod",
+      "meaning": "A library that checks data against a schema and reports mismatches."
+    },
+    {
+      "term": "incident",
+      "meaning": "A single recorded event in a match, such as a ball, a wicket or a goal."
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "@/domain/facts/types",
+    "src/adapters/types.ts"
+  ],
+  "used_by": [
+    "src/adapters/index.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1187f1e1b3d8423c",
+      "title": "Source notes and imports",
+      "what": "The header explains that this file converts Cricsheet records into events and that the match times are fixed for replays. It brings in the checking library and shared types.",
+      "why": "The fixed times make replays and tests give the same answer every time.",
+      "watch_out": "The times shown are replay times, not the moment each ball was bowled."
+    },
+    {
+      "start": 7,
+      "end": 15,
+      "kind": "value",
+      "name": "delivery",
+      "id": "s2",
+      "hash": "753f6e431a465fa2",
+      "title": "Shape of one ball",
+      "what": "Describes the fields expected for each ball: the batter, bowler, runs scored, extras and any dismissals. A ball that does not match is rejected.",
+      "why": "Likely reason: bad source data is caught early instead of producing wrong numbers.",
+      "watch_out": "If Cricsheet renames a field, every match fails to load."
+    },
+    {
+      "start": 16,
+      "end": 33,
+      "kind": "value",
+      "name": "cricsheetMatch",
+      "id": "s3",
+      "hash": "f149693ae4f0a840",
+      "title": "Shape of a whole match file",
+      "what": "Describes the full match: data version, dates, the two teams, season, venue, outcome, and the innings with their overs. Extra fields are allowed.",
+      "why": "Lets the parser reject malformed files and still accept new fields that Cricsheet adds.",
+      "watch_out": "The rules require exactly two teams and at least one date, so unusual matches may be rejected."
+    },
+    {
+      "start": 34,
+      "end": 38,
+      "kind": "type",
+      "name": "CricsheetMatch",
+      "id": "s4",
+      "hash": "41822953a31916e2",
+      "title": "Match type and fixed constants",
+      "what": "Exports the type of a checked match, the source name cricsheet, and the 30-second gap between balls.",
+      "why": "The source name links this data to its rights record, and the gap is a fixed clock for replays.",
+      "watch_out": "Changing the source name breaks the link to its rights policy."
+    },
+    {
+      "start": 39,
+      "end": 87,
+      "kind": "function",
+      "name": "parseCricsheet, isRainAffected, isTie",
+      "id": "s5",
+      "hash": "00602a44eb9d7891",
+      "title": "Turning a match file into events",
+      "what": "Creates one ball record for each delivery, in order, using the fixed clock. It also builds the competition, the team names, the venue and the outcome. Two helpers mark rain-affected matches and tied matches.",
+      "why": "Likely reason: the chance calculation must skip matches where the target changed or the result is not a normal win.",
+      "watch_out": "The rain check only looks for a method field, so any field named method counts as rain."
+    }
+  ],
+  "explained_at": "2026-11-11T19:27:50+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns one Cricsheet match file of ball-by-ball cricket records into a match with one incident per ball.",
+  "purpose": "It lets the app show cricket matches and ball events, such as wickets and extras, with a traceable source.",
+  "why": "Cricket data from Cricsheet arrives as nested overs and balls, and the rest of the app needs a flat, checked list of events.",
+  "how": "It first checks the file's shape using a schema. It then builds a match start time, walks every innings, over and ball in order, and creates one ball incident for each delivery with a fixed 30-second gap. It fills in the teams, venue, competition and outcome, then returns the result. Two small helpers flag rain-affected matches and ties.",
+  "inputs": "The raw JSON of one Cricsheet match file and its file id, such as 1082591.",
+  "outputs": "A ParsedEvent with its ball incidents. The helpers return true or false for rain-affected and tied matches.",
+  "risks": "The match start time and the time for each ball are made up, not real. The file fails completely if any delivery has an unexpected shape.",
+  "debug": "If a match fails to load, check the error from the schema: it names the field that did not match. Check the Cricsheet format version in the meta data. For wrong timings, check the fixed start time and 30-second spacing.",
+  "summary_hash": "sha256:97611ac9c294f908e07eac50df6dfc9d105a3ed44255a6a057af43a1c968c445"
+}

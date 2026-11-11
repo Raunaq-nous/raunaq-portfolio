@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "path": "scripts/select-golden-moments.ts",
+  "language": "TypeScript",
+  "lines": 169,
+  "hash": "sha256:96d40dff0e3f5d40a1c22041b736bae998a52ba7efb7e91d9fa744687041bcf8",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated test is visible for this script.",
+      "Clock times are assumed at 30 seconds per delivery, so cutoffs are approximate.",
+      "Depends on the order of rows in the data files."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Leverage",
+      "meaning": "How much one ball can change the chance of winning at that point in the match."
+    },
+    {
+      "term": "Decile",
+      "meaning": "One tenth of a ranked list. The top decile here is the highest tenth by leverage."
+    },
+    {
+      "term": "Pre-lock",
+      "meaning": "Information a user can see before they make a call."
+    },
+    {
+      "term": "Reveal",
+      "meaning": "The result that is shown only after the user has locked in an answer."
+    },
+    {
+      "term": "Data contract",
+      "meaning": "A set of rules a match must meet to be used for chase modelling."
+    }
+  ],
+  "depends_on": [
+    "@/adapters/types",
+    "@/domain/facts/contract",
+    "@/engine/chaseWp",
+    "@/engine/moments",
+    "@/engine/outcomeModel",
+    "@/engine/options",
+    "scripts/fit-outcomes.ts",
+    "data/models/outcomes-v1.json",
+    "data/models/options-v1.json",
+    "data/derived/ipl-matches.csv.gz",
+    "data/derived/ipl-balls.csv.gz"
+  ],
+  "used_by": [
+    "Not visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup, SEASONS",
+      "id": "s1",
+      "hash": "fb0fb384dfafa792",
+      "title": "Setup and season list",
+      "what": "Explains the purpose, lists the three seasons and the target count of fifty.",
+      "why": "Using seasons after the training data keeps the grading honest.",
+      "watch_out": "The seasons and the count are fixed in code, so changing them needs an edit and a rerun."
+    },
+    {
+      "start": 19,
+      "end": 27,
+      "kind": "value",
+      "name": "CAPS, Row, csv",
+      "id": "s2",
+      "hash": "2d0b2ec50446e583",
+      "title": "Selection limits and timing",
+      "what": "Sets the caps on moments per season, phase, team and answer, and the thirty seconds assumed between deliveries.",
+      "why": "Caps keep the set varied so one season or phase does not dominate.",
+      "watch_out": "Most picks come from the death overs by design, so the set is not evenly spread across a match."
+    },
+    {
+      "start": 28,
+      "end": 46,
+      "kind": "function",
+      "name": "eventFromDerived",
+      "id": "s3",
+      "hash": "32daa09636d6f89f",
+      "title": "Turning stored rows into a match record",
+      "what": "Rebuilds a match from its stored ball rows in the same shape the Cricsheet reader produces, with an assumed clock of thirty seconds per delivery.",
+      "why": "Lets the same contract check used for live data run on stored data.",
+      "watch_out": "The clock is assumed, so the cutoff times are approximate and not the real match times."
+    },
+    {
+      "start": 47,
+      "end": 53,
+      "kind": "function",
+      "name": "answerOf, oversOf",
+      "id": "s4",
+      "hash": "622ede10ba47181f",
+      "title": "Answer helpers",
+      "what": "Turns the best option into a higher, current or lower answer relative to the current rate band, and builds the over label shown to users.",
+      "why": "Gives every moment one comparable answer for the grading view.",
+      "watch_out": "Answers compare against each state's own rate band, so changing the band rule changes every answer."
+    },
+    {
+      "start": 54,
+      "end": 56,
+      "kind": "value",
+      "name": "DECISIONS_FOR",
+      "id": "s5",
+      "hash": "5c9ff658789c4cf2",
+      "title": "Decision types per phase",
+      "what": "Lists which decision types are tried in each phase, in order.",
+      "why": "The comment says death-over pace versus spin lacks style data, so that type is left out of the death overs.",
+      "watch_out": "The death-bowling question is never used here, because it is not in this list."
+    },
+    {
+      "start": 57,
+      "end": 62,
+      "kind": "value",
+      "name": "QUESTION",
+      "id": "s6",
+      "hash": "f3fe31954f290401",
+      "title": "Question wording",
+      "what": "Holds the question text shown for each decision type.",
+      "why": "Gives users plain questions instead of internal names.",
+      "watch_out": "The keys must match the decision type names exactly, otherwise a moment has no question."
+    },
+    {
+      "start": 63,
+      "end": 120,
+      "kind": "function",
+      "name": "buildMoments (part 1)",
+      "id": "s7",
+      "hash": "5689ce5ea3934bc0",
+      "title": "Finding and picking high-leverage moments",
+      "what": "Loads the models and data, rebuilds each chase, skips matches that fail the contract or have no decisive result, scores each state's leverage, keeps the top decile, finds gradeable decisions, and picks a varied fifty. It also defines the after-facts helper.",
+      "why": "Leverage measures how much a ball can swing the result, so the top states are the most useful questions.",
+      "watch_out": "The state before each delivery depends on the order of rows, so out-of-order data gives wrong moments."
+    },
+    {
+      "start": 121,
+      "end": 169,
+      "kind": "method",
+      "name": "buildMoments: for",
+      "id": "s8",
+      "hash": "6b931b7ec5068e39",
+      "title": "Building the final records",
+      "what": "Adds the after-facts for each moment: the win probability path, the window of balls the chasing side actually bowled, and the reveal. It then builds each record with pre-lock information and the observed cutoff time, and writes the file.",
+      "why": "Keeps everything after the decision hidden until the reveal.",
+      "watch_out": "The after-facts must read only balls after the cutoff. A wrong delivery index would leak later results into the pre-lock part."
+    }
+  ],
+  "explained_at": "2026-11-11T09:46:47+00:00",
+  "explained_by": "haiku",
+  "summary": "Picks fifty high-impact decision moments from the 2024 to 2026 IPL chases for the Decision Lab, and stores each with its hidden after-facts.",
+  "purpose": "Creates the set of graded questions the Decision Lab shows to users.",
+  "why": "Moments must come from seasons the earlier models never saw, so the grading is fair.",
+  "how": "Rebuilds each match from stored rows, skips matches that fail the data contract or have no decisive result, scores each state's leverage, keeps the top decile, finds gradeable decisions, picks fifty spread across seasons, phases, teams and answers, then adds the hidden facts and writes the file with a fingerprint.",
+  "inputs": "The outcome model and options files, plus the derived match and ball files for the three seasons.",
+  "outputs": "data/fixtures/moments/golden-moments.json with the fifty moments, their pre-lock information, decision options, reveal data and after-facts, plus a fingerprint and summary line.",
+  "risks": "The clock times are invented at 30 seconds per delivery, so cutoffs are approximate. The results depend on the row order in the data files, and changing the caps changes which moments are picked.",
+  "debug": "If there are too few moments, check the number of states scored and the matches excluded in the summary. If answers look skewed, check the caps and the decision types per phase. If cutoffs look wrong, check the delivery timing assumption.",
+  "summary_hash": "sha256:96d40dff0e3f5d40a1c22041b736bae998a52ba7efb7e91d9fa744687041bcf8"
+}

@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "path": "src/llm/verified.ts",
+  "language": "TypeScript",
+  "lines": 30,
+  "hash": "sha256:a33a53b9e7adcda1cf4ff25e10dcfcdcb280ddfd6482df99fa625cd3394b8b9b",
+  "area": "src-llm",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The fallback and hard failure paths are clearly written.",
+      "No test is visible in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Verification",
+      "meaning": "a check that each claim matches its cited facts"
+    },
+    {
+      "term": "Claim",
+      "meaning": "one statement of analysis with a kind and its sources"
+    },
+    {
+      "term": "Rejection",
+      "meaning": "a recorded reason that a specific claim failed"
+    }
+  ],
+  "depends_on": [
+    "src/llm/contract.ts",
+    "src/llm/index.ts",
+    "src/llm/provider.ts",
+    "src/llm/verifier.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "fe877397f1e3f5c1",
+      "title": "Imports",
+      "what": "Brings in the claims schema, the log type, the fallback generator, the provider types and the verifier.",
+      "why": "Likely reason: this file joins the model call to the checks.",
+      "watch_out": ""
+    },
+    {
+      "start": 7,
+      "end": 19,
+      "kind": "type",
+      "name": "VerifiedRequest, VerifiedResult",
+      "id": "s2",
+      "hash": "5501fa11a59aa138",
+      "title": "Request and result shapes",
+      "what": "The request holds a task name, system text, facts, cutoff date, tier, a template that builds claims from facts, and optional extra input. The result holds the claims, their source (model or template) and any rejection reasons.",
+      "why": "Likely reason: callers need to know whether text came from the model or the safe template, and why.",
+      "watch_out": "Rejections describe the model's failed claims, not the template's, so read the source field to know which claims were used."
+    },
+    {
+      "start": 20,
+      "end": 30,
+      "kind": "function",
+      "name": "generateVerified",
+      "id": "s3",
+      "hash": "d6f7194dd03dfece",
+      "title": "Generate, check, then fall back",
+      "what": "Asks the provider for claims and checks them against the facts. If they pass, they are used. If not, the template claims are built, checked, and used; if the template also fails, an error is raised.",
+      "why": "The header states it falls back to the template when the model's claims fail.",
+      "watch_out": "The output limit is fixed at 800 tokens here, so a long claim list can be cut short and fail the check."
+    }
+  ],
+  "explained_at": "2026-11-11T10:06:45+00:00",
+  "explained_by": "haiku",
+  "summary": "Asks the model for claims, checks each one against the facts, and swaps in the safe template claims if any fail.",
+  "purpose": "Make sure published analysis only states facts that can be verified.",
+  "why": "The header says it falls back to the template when the model's claims fail, so a bad output never reaches readers.",
+  "how": "1) Build the input from facts and cutoff. 2) Call generation with fallback. 3) Run the verifier on the claims. 4) If they pass, return the model's claims. 5) If not, build template claims, verify them, and return them with the model's rejection reasons. 6) If the template also fails, raise an error.",
+  "inputs": "A provider, a verified request (task, system text, facts, cutoff, tier, template function, optional extra input), and a logging function.",
+  "outputs": "A verified result with the claims, where they came from (model or template), and any rejection reasons.",
+  "risks": "The template is trusted to be correct, so a broken template stops the whole item. The output limit is fixed at 800 tokens, so long claim lists can be cut short and then fail.",
+  "debug": "Read the rejections in the result: each gives a claim number and a reason. If the source is always template, read those reasons. If an error says the template fails verification, fix the template for that task.",
+  "summary_hash": "sha256:a33a53b9e7adcda1cf4ff25e10dcfcdcb280ddfd6482df99fa625cd3394b8b9b"
+}

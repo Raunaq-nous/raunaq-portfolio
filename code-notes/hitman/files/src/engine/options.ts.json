@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "path": "src/engine/options.ts",
+  "language": "TypeScript",
+  "lines": 106,
+  "hash": "sha256:a459506ae7f7820cc06a6020f34a0e8303fb6d900b3c0c17b7e7f6791b60adad",
+  "area": "src-engine",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this packet.",
+      "The file explains its rules in comments, and it refuses bad inputs such as fewer than two options."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Win probability (WP)",
+      "meaning": "The chance the batting side wins the chase from a given point in the match."
+    },
+    {
+      "term": "Shrinkage",
+      "meaning": "Pulling an estimate toward a safer default when there is little data, so noise does not dominate."
+    },
+    {
+      "term": "Pseudo-observation",
+      "meaning": "A made-up count added to real counts to give the default estimate some weight."
+    },
+    {
+      "term": "Coin flip band",
+      "meaning": "A small gap between the top two options, too small to say one is really better."
+    },
+    {
+      "term": "Decision window",
+      "meaning": "The number of legal balls during which the chosen option applies before the normal model takes over."
+    },
+    {
+      "term": "Backward induction",
+      "meaning": "Working out a chance by starting at the end of a process and stepping back to the present."
+    }
+  ],
+  "depends_on": [
+    "src/engine/chaseWp.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup, Counts, zeroCounts",
+      "id": "s1",
+      "hash": "3d6f69fa7bcf992b",
+      "title": "File setup and counts",
+      "what": "Describes the file's role, imports the chase model pieces, and defines the outcome counts type and a helper that makes empty counts for every outcome.",
+      "why": "The header explains where the file fits in the wider win probability design.",
+      "watch_out": "Outcome counts must cover every outcome the model knows, or totals will be wrong."
+    },
+    {
+      "start": 10,
+      "end": 20,
+      "kind": "function",
+      "name": "shrinkToward, OptionInput, OptionResult, Decision",
+      "id": "s2",
+      "hash": "b2809182a02dc772",
+      "title": "Blending counts with a default estimate",
+      "what": "Blends an option's outcome counts with a default distribution using a fixed number of pseudo-observations, and defines the input, result and decision shapes.",
+      "why": "The doc comment explains the blend: real counts pull the estimate, and the default steadies it when counts are small.",
+      "watch_out": "If there are no counts and the pseudo-observation weight is zero, the function refuses to divide by zero."
+    },
+    {
+      "start": 21,
+      "end": 30,
+      "kind": "function",
+      "name": "optionWp",
+      "id": "s3",
+      "hash": "c5d7750504c4ab15",
+      "title": "Win chance during the decision window",
+      "what": "Gives the chase's win chance if the batting side faces a given outcome distribution for the decision window, then the normal model afterwards. It uses exact step-by-step calculation.",
+      "why": "The doc comment says the calculation is exact so the effect of the window carries through the rest of the chase.",
+      "watch_out": "The window must be at least one ball. Larger windows than the balls left are handled by the end of the chase."
+    },
+    {
+      "start": 31,
+      "end": 42,
+      "kind": "function",
+      "name": "decide",
+      "id": "s4",
+      "hash": "098d0d9566bf53f9",
+      "title": "Ranking options and flagging close calls",
+      "what": "Ranks the options by win chance, measures the gap between the top two in percentage points, and marks the decision as a coin flip if the gap is too small or insufficient if any option has too few samples. The best option is only named when neither flag applies.",
+      "why": "The doc comment explains that close gaps are not graded and thin options are flagged, not hidden.",
+      "watch_out": "The coin-flip threshold is a probability (0.02 by default) but the gap is in points, so the code multiplies by 100. Changing one without the other changes the rule."
+    },
+    {
+      "start": 43,
+      "end": 45,
+      "kind": "function",
+      "name": "bandOf",
+      "id": "s5",
+      "hash": "424bf566d4f8ca23",
+      "title": "Band lookup helper",
+      "what": "Finds the position of the first band edge at or above a value, which turns a number into a band index.",
+      "why": "The comment says this matches how the outcome model bands its values.",
+      "watch_out": "A value above every edge returns -1, not a band, so a value outside the edge range will break lookups."
+    },
+    {
+      "start": 46,
+      "end": 66,
+      "kind": "function",
+      "name": "fitOptionCounts, totalCount, BALL_EDGES, WICKET_EDGES, RATE_EDGES, INTENT_LABELS",
+      "id": "s6",
+      "hash": "600ff364a3d7f791",
+      "title": "Pooling counts and band definitions",
+      "what": "Groups weighted outcome counts by option and situation, provides totals, and defines the band edges for balls left, wickets in hand and run rate, plus the labels for intent. It also builds the situation key and the run rate band of a state.",
+      "why": "The doc comment says counts are pooled over balls-left and wickets bands, and the edges match the decision lab design.",
+      "watch_out": "The band edges are shared with the outcome model. Changing them in one file without the other will misalign estimates and lookups."
+    },
+    {
+      "start": 67,
+      "end": 74,
+      "kind": "function",
+      "name": "sampleOptions, DECISION_TYPES, DecisionType",
+      "id": "s7",
+      "hash": "eb723f52f2a55ca6",
+      "title": "Labels a historical ball receives",
+      "what": "Gives the option labels that a past ball counts toward: the run rate band its side faced, and, in the death overs only, the bowler's style.",
+      "why": "The doc comment says death overs add bowler style. Reason for limiting style to the death overs not stated in the code.",
+      "watch_out": "A ball with no known bowler style gets only the run rate label, so style counts are smaller than run rate counts."
+    },
+    {
+      "start": 75,
+      "end": 95,
+      "kind": "function",
+      "name": "momentOptions, OptionArtifact",
+      "id": "s8",
+      "hash": "8feb65312463d608",
+      "title": "Decision types and options for a moment",
+      "what": "Lists the three decision types, namely next over intent, chase tempo, and death bowling, and builds the options each offers with its decision window and labels. Next over intent offers the bands one above, the same and one below, with a six-ball window. Chase tempo offers neighbouring bands with a twelve-ball window. Death bowling offers pace or spin with a six-ball window, only in the last four overs.",
+      "why": "The doc comment describes what each decision type offers.",
+      "watch_out": "A decision window is capped at the balls left, so near the end of a chase the window shrinks and the decision means less."
+    },
+    {
+      "start": 96,
+      "end": 106,
+      "kind": "function",
+      "name": "momentDecision",
+      "id": "s9",
+      "hash": "cb10b144b540f2a8",
+      "title": "Shape of the saved option data",
+      "what": "Defines the shape of the saved option artifact: its version, the years it was trained on, shrinkage and sample settings, whether style data exists, and the counts themselves.",
+      "why": "Likely reason: the saved file must carry the settings that were used, so results can be reproduced and compared.",
+      "watch_out": "If the saved file is trained with different band edges than the code uses, lookups will silently find nothing."
+    }
+  ],
+  "explained_at": "2026-11-11T09:56:13+00:00",
+  "explained_by": "haiku",
+  "summary": "Works out which option is best for a decision in a chase, such as attacking or holding the run rate for the next over, and says when the answer is too close or too thinly supported to grade.",
+  "purpose": "Lets the decision lab grade a choice by estimating each option's win chance and flagging cases where the grade would not be fair.",
+  "why": "The header says each option has its own ball outcome estimate, shrunk toward the normal estimate when data is thin, and that options within the coin-flip band are not graded.",
+  "how": "1) Counts ball outcomes for each option in each situation. 2) Blends those counts with the normal estimate, so thin data leans on the normal estimate. 3) For each option, works out the win chance if that estimate applies for the decision window, then returns to the normal model. 4) Ranks options and compares the top two. 5) Flags the decision as a coin flip or insufficient when the gap or sample is too small.",
+  "inputs": "The current chase state, the normal outcome model, each option's outcome distribution and sample count, and window and sample size settings.",
+  "outputs": "Each option's win chance, sample size and sufficiency flag, plus the best option (or nothing), the gap in percentage points, and flags for coin flip and insufficient data.",
+  "risks": "Thin options are flagged, but the shrink amount sets how much the normal estimate dominates. A ball count above the last band edge gives a band index of -1, which will break lookups. Changing the coin-flip threshold changes which decisions are graded.",
+  "debug": "If a decision shows no best option, check the insufficient flag first and then the gap. If the gap looks odd, check that the window size is right for the decision type. If labels do not match options, check the situation key and band edges.",
+  "summary_hash": "sha256:a459506ae7f7820cc06a6020f34a0e8303fb6d900b3c0c17b7e7f6791b60adad"
+}

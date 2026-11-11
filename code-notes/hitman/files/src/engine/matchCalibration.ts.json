@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "path": "src/engine/matchCalibration.ts",
+  "language": "TypeScript",
+  "lines": 218,
+  "hash": "sha256:b79f9bebb95ad1e08cd78b8491ed73f501be71f3800cd81735a02c0193999f49",
+  "area": "src-engine",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this packet, so the statistics are not shown to be correct.",
+      "The slope test description mentions an alpha setting that the code does not accept.",
+      "The design is documented with a reference to a decision record and a design doc, which helps a reader check intent."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Calibration",
+      "meaning": "How well predicted chances match real results. If the model says 70 percent often, those cases should win about 70 percent of the time."
+    },
+    {
+      "term": "Bootstrap",
+      "meaning": "Estimating uncertainty by repeatedly resampling the data with replacement and recalculating the result each time."
+    },
+    {
+      "term": "Brier score",
+      "meaning": "An error score for probability predictions. Lower is better, and a confident wrong prediction costs the most."
+    },
+    {
+      "term": "Logit",
+      "meaning": "A stretched version of a probability, used so that a logistic line can fit it."
+    },
+    {
+      "term": "Expected calibration error",
+      "meaning": "The average gap between predicted and observed rates across bands, weighted by how many matches each band holds."
+    },
+    {
+      "term": "Bonferroni correction",
+      "meaning": "A safety adjustment that makes the confidence ranges wider when many bands are tested at once."
+    },
+    {
+      "term": "Walk-forward",
+      "meaning": "Testing that only uses information from earlier dates to predict later dates, which avoids cheating with future data."
+    }
+  ],
+  "depends_on": [
+    "src/engine/chaseWp.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup, MatchSample",
+      "id": "s1",
+      "hash": "150fcb3317a0d590",
+      "title": "File setup and match sample shape",
+      "what": "Imports the chase model building blocks and defines the shape of one prediction record: a predicted probability, the result, and the match it belongs to.",
+      "why": "The header says the match is the unit of evidence, so every sample carries its match identifier.",
+      "watch_out": "Every sample must include the match identifier, or matches will be merged or counted wrongly."
+    },
+    {
+      "start": 8,
+      "end": 21,
+      "kind": "function",
+      "name": "seededRandom, bin",
+      "id": "s2",
+      "hash": "2aeaab38e8708cad",
+      "title": "Repeatable random numbers and probability bands",
+      "what": "Provides a random number generator that gives the same sequence for the same seed, and a helper that puts a probability into one of ten bands from 0 to 9.",
+      "why": "The file header says the test is deterministic and seeded, so results can be repeated exactly.",
+      "watch_out": "Probabilities outside 0 to 1 will fall outside the bands and can break later lookups."
+    },
+    {
+      "start": 22,
+      "end": 46,
+      "kind": "function",
+      "name": "mergeBuckets, MatchBucket, MatchCalibrationResult",
+      "id": "s3",
+      "hash": "a6b08567dfd0bd57",
+      "title": "Merging bands and result types",
+      "what": "Joins the ten probability bands from left to right until each new band holds at least the minimum number of distinct matches, and gives the leftover top end to the last band. It also defines the shapes of the per-band and overall results.",
+      "why": "Likely reason: a band with few matches gives unreliable calibration, so thin bands are merged.",
+      "watch_out": "If the total is below the minimum, one band still forms, which may be too thin to trust."
+    },
+    {
+      "start": 47,
+      "end": 97,
+      "kind": "function",
+      "name": "matchCalibrationTest",
+      "id": "s4",
+      "hash": "0d1fa1575549b6f7",
+      "title": "Main calibration test",
+      "what": "Runs the full calibration test. It groups predictions by match and band, resamples whole matches to build ranges, and returns a pass or fail with per-band detail, the overall error and a debiased error.",
+      "why": "The doc comment describes the rule: each interval must contain its band's average prediction, and the overall error must stay under the limit.",
+      "watch_out": "The result of each match is taken from its first sample, which assumes all balls in a match share one result."
+    },
+    {
+      "start": 98,
+      "end": 105,
+      "kind": "function",
+      "name": "matchBrier",
+      "id": "s5",
+      "hash": "e2a0dd3da14458ce",
+      "title": "Brier score per match",
+      "what": "Computes the Brier score with each match counted once. It averages each match's squared errors, then averages across matches.",
+      "why": "The doc comment says every match counts once, so long chases do not outweigh short ones.",
+      "watch_out": "A match with no samples would cause a division by zero, so the input must contain only matches with predictions."
+    },
+    {
+      "start": 106,
+      "end": 126,
+      "kind": "function",
+      "name": "fitLogistic, logistic",
+      "id": "s6",
+      "hash": "1699fff602da0b8f",
+      "title": "Logistic fit and the logistic curve",
+      "what": "Fits a line on the logit scale using weighted Newton-Raphson steps, and gives the probability that line predicts at any point.",
+      "why": "The doc comment describes the method. Reason for choosing it not stated in the code beyond calibration use.",
+      "watch_out": "The fit stops after fifty steps or when the change is tiny, so a very poorly behaved input may return values that have not converged."
+    },
+    {
+      "start": 127,
+      "end": 151,
+      "kind": "function",
+      "name": "simulateChase, clampP, logit, sigmoid, WalkForwardMatch",
+      "id": "s7",
+      "hash": "4896671f86bcd6f1",
+      "title": "Simulated chase and helper functions",
+      "what": "Plays a chase forward using the model's own played distributions until it ends, deciding a tie by a fair coin as a super over would. It also holds helper functions for clamping, logit and sigmoid, and the type for a walk-forward match.",
+      "why": "The doc comment says a simulated chase is calibrated by construction, which is what the fairness check needs.",
+      "watch_out": "The helper clamp keeps probabilities away from exactly 0 and 1, so extreme predictions are slightly changed before the logit is taken."
+    },
+    {
+      "start": 152,
+      "end": 177,
+      "kind": "function",
+      "name": "walkForward",
+      "id": "s8",
+      "hash": "ccc51c90810ccdcc",
+      "title": "Walk-forward daily adjustment",
+      "what": "Adjusts predictions day by day within a season. After each date, a shared intercept moves by the learning rate times the summed errors of that date's matches, and each match is only scored using adjustments from earlier dates.",
+      "why": "The doc comment says matches on the same day must not inform each other, so the adjustment only uses earlier dates.",
+      "watch_out": "Adjustments are summed, not averaged, so a day with many matches moves the intercept more than a day with few."
+    },
+    {
+      "start": 178,
+      "end": 187,
+      "kind": "function",
+      "name": "calibrationLine",
+      "id": "s9",
+      "hash": "58490b0f452eddd3",
+      "title": "Calibration line fit",
+      "what": "Fits the calibration line of result against logit prediction, giving each match a total weight of one, so long matches do not dominate.",
+      "why": "The doc comment says each match weighs one, and perfect calibration gives an intercept of 0 and a slope of 1.",
+      "watch_out": "Matches with predictions that are all extreme can pull the slope strongly, so check the input spread."
+    },
+    {
+      "start": 188,
+      "end": 218,
+      "kind": "function",
+      "name": "calibrationSlopeTest",
+      "id": "s10",
+      "hash": "2cbdd90c7dedc2b8",
+      "title": "Slope and intercept test",
+      "what": "Tests whether the calibration intercept is 0 and the slope is 1 together, using uncertainty estimated by resampling whole matches. It compares the result to a fixed chi-squared cut-off.",
+      "why": "The doc comment explains the joint test. The use of a fixed 5 percent cut-off is not explained in the code.",
+      "watch_out": "The doc mentions an alpha setting but the function does not accept one, so changing the significance level requires a code change."
+    }
+  ],
+  "explained_at": "2026-11-11T09:56:13+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests whether the win probabilities the model gives during chases match what actually happened, treating each whole match as one piece of evidence.",
+  "purpose": "Checks model calibration (predicted chances against real results) and gives a pass or fail, with uncertainty ranges, so model changes can be judged fairly.",
+  "why": "The file header explains that balls from one chase share one result, so counting balls would overstate the evidence. Counting whole matches avoids that.",
+  "how": "1) Groups each prediction into a probability band, merging neighbouring bands until each has enough matches. 2) For each match, averages its predictions in each band. 3) Resamples whole matches many times to build uncertainty ranges for the observed win rate in each band. 4) Checks that each range contains the band's average prediction and that the overall calibration error is small enough. 5) Also offers a Brier score, a logistic calibration line with a slope test, a walk-forward adjustment across dates, and a seeded chase simulator.",
+  "inputs": "Lists of samples, each with a predicted probability, a 0 or 1 result, and a match identifier. Test settings such as minimum matches per band, bootstrap count, confidence level, maximum error, seed, and option flags.",
+  "outputs": "Per-band results with predicted and observed rates and ranges, overall calibration error, match count, and a pass flag. Also Brier scores, calibration intercept and slope, a slope test result, and adjusted predictions with the daily adjustments.",
+  "risks": "The pass decision depends on the chosen bands, bootstrap count and seed, so results can shift with settings. The result of each match is taken from its first sample only, which assumes every ball in a match has the same result. The slope test uses a fixed 5 percent cut-off even though the doc mentions an alpha option that is not in the code.",
+  "debug": "If a test fails, look at the per-band list first to find which band is off, then check its match count, since thin bands give wide ranges. If results change between runs, check that the same seed is passed. If a band shows nothing or missing values, check that predictions lie between 0 and 1.",
+  "summary_hash": "sha256:b79f9bebb95ad1e08cd78b8491ed73f501be71f3800cd81735a02c0193999f49"
+}

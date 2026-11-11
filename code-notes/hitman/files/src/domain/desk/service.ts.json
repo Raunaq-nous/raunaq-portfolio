@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/desk/service.ts",
+  "language": "TypeScript",
+  "lines": 154,
+  "hash": "sha256:f1c414e47ee3bdd6967ba748b66060710a8b8bf687884325a1b7a1e3451be186",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Cricket matches with no swing are labelled rain even when the cause is different.",
+      "The verifier that decides model phrasing is not in this packet.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "win probability",
+      "meaning": "the chance a team wins at a given moment of a match"
+    },
+    {
+      "term": "swing",
+      "meaning": "how much that chance changed over a short span of play"
+    },
+    {
+      "term": "receipt",
+      "meaning": "a record of which source a fact came from and when it was seen"
+    }
+  ],
+  "depends_on": [
+    "@/adapters",
+    "@/engine/outcomeModel",
+    "@/providers/cache",
+    "@/providers/llm",
+    "@/providers/rights",
+    "@/domain/stories/service",
+    "@/i18n",
+    "@/domain/facts/types",
+    "./repo",
+    "./types"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup, receiptOf",
+      "id": "s1",
+      "hash": "2dd61ff400443f20",
+      "title": "Imports and receipts",
+      "what": "Brings in the sport adapters, the model, the cache, the phrasing tool, the rights checks and the story helpers. Also builds the receipt attached to each number, which marks it as verified delayed data with a replay clock.",
+      "why": "Likely reason: the Desk promises that every number has a receipt.",
+      "watch_out": "The receipt always labels the source as verified and delayed, so a new kind of source must be labelled here too."
+    },
+    {
+      "start": 18,
+      "end": 42,
+      "kind": "function",
+      "name": "item, Replays",
+      "id": "s2",
+      "hash": "df4578ca57a87f3c",
+      "title": "Building one Desk item",
+      "what": "Turns one replay into a Desk item: name, competition, season, the biggest win probability swing with its receipt, up to three stories, and the source attribution text.",
+      "why": "Likely reason: one shape per match keeps the brief page simple.",
+      "watch_out": "A swing appears only when the sport has a model and the chase is valid."
+    },
+    {
+      "start": 43,
+      "end": 68,
+      "kind": "function",
+      "name": "replays",
+      "id": "s3",
+      "hash": "d10815f71dbee628",
+      "title": "Loading replays with rights",
+      "what": "Loads each replay for cricket, football and F1 that the rights rules allow to be shown. Sources that are refused or still pending are listed with the reason.",
+      "why": "Likely reason: sources that cannot be shown publicly are listed as pending instead of being hidden silently.",
+      "watch_out": "Only rights refusals are caught. Any other parsing error stops the whole load."
+    },
+    {
+      "start": 69,
+      "end": 82,
+      "kind": "function",
+      "name": "deskBrief",
+      "id": "s4",
+      "hash": "dbfec95b84140aa8",
+      "title": "Ranking the Desk brief",
+      "what": "Builds the sorted brief: items with a modelled swing first, biggest swing first, then by top story priority, then by ID. The result is kept for a day.",
+      "why": "Likely reason: the largest swings are the most interesting, and the daily cache avoids recomputing.",
+      "watch_out": "Items without a swing sort below all items that have one, so a sport with no model always appears last."
+    },
+    {
+      "start": 83,
+      "end": 87,
+      "kind": "function",
+      "name": "snapshotOf",
+      "id": "s5",
+      "hash": "44389d8b5076690e",
+      "title": "Snapshot time",
+      "what": "Finds the latest observation time behind a Desk item, using its swing and its stories.",
+      "why": "Likely reason: shows how up to date an item is.",
+      "watch_out": "The sort depends on times written in one consistent text format."
+    },
+    {
+      "start": 88,
+      "end": 105,
+      "kind": "function",
+      "name": "itemFacts",
+      "id": "s6",
+      "hash": "44265d13d9acde43",
+      "title": "Facts an item may state",
+      "what": "Lists every fact an item may state. Each has a source, a time, and a kind: observed, model estimate or derived. Any text from the phrasing step must use these facts.",
+      "why": "Likely reason: the verifier can check each claim against a listed fact.",
+      "watch_out": "A new kind of fact must be known to the verifier and the templates, or it will not be checked."
+    },
+    {
+      "start": 106,
+      "end": 126,
+      "kind": "value",
+      "name": "DEPTH_TEXT",
+      "id": "s7",
+      "hash": "419e8ee816ff35ad",
+      "title": "English and Hindi phrasing",
+      "what": "Holds the sentence templates for each depth in English and Hindi, filling in facts such as the team, percentages and swing points.",
+      "why": "Likely reason: the Desk must read in both supported languages even without the model.",
+      "watch_out": "The English and Hindi sentences must be kept in step, since a change to one can leave the other saying something different."
+    },
+    {
+      "start": 127,
+      "end": 148,
+      "kind": "function",
+      "name": "depthTemplate",
+      "id": "s8",
+      "hash": "272222dc7e705523",
+      "title": "Template claims per depth",
+      "what": "Builds the claims for Quick (one line), Tactical (the swing and up to two stories) and Analyst (also the method). Each claim records its kind and the facts it uses.",
+      "why": "Likely reason: this is the fallback text used when model phrasing is off or fails the check.",
+      "watch_out": "When there is no story, a placeholder phrase is shown instead."
+    },
+    {
+      "start": 149,
+      "end": 154,
+      "kind": "function",
+      "name": "phraseItem",
+      "id": "s9",
+      "hash": "486c9fa0931410f0",
+      "title": "Phrasing with model and fallback",
+      "what": "Asks the phrasing tool for claims for one item at one depth, using the fast model, the fact list and the template as fallback. Reports whether the words came from the model or the template.",
+      "why": "Likely reason: the comment says model wording is used only when it passes the verifier, otherwise the template is used.",
+      "watch_out": "The verifier sits inside the phrasing tool, which is not in this packet, so this behaviour cannot be fully checked here."
+    }
+  ],
+  "explained_at": "2026-11-11T09:37:03+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the Desk brief: ranked match replays with receipts, phrased in English or Hindi.",
+  "purpose": "Drives the content of the Desk page.",
+  "why": "Likely reason: each number carries a receipt so users can check where it came from.",
+  "how": "1. Load replays the rights rules allow. 2. Build an item per replay with swing and stories. 3. Sort and cache the brief for a day. 4. Build the facts an item may state. 5. Phrase the item with the model or with templates.",
+  "inputs": "Replay files, the model, rights settings, language, and depth.",
+  "outputs": "The brief, the fact list, and the claims, with a note of whether the model or the template was used.",
+  "risks": "Only rights refusals are caught when loading. The rain label is used for any cricket match without a swing.",
+  "debug": "An empty brief: check the pending list. Odd ordering: check swing values and story priority. Odd wording: check the phrasing tool's verifier.",
+  "summary_hash": "sha256:f1c414e47ee3bdd6967ba748b66060710a8b8bf687884325a1b7a1e3451be186"
+}

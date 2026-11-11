@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "path": "tests/unit/facts/replay.test.ts",
+  "language": "TypeScript",
+  "lines": 62,
+  "hash": "sha256:85a44e13ead4192150e388ede4d4e58951023a48d8e9f7430161b42f95d05ef8",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Uses a real match file and checks specific scores and timings.",
+      "Covers repeatability, resume, and error codes.",
+      "Edge cases such as an empty header are tested directly."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Frame",
+      "meaning": "One step of a replay, such as one ball, with its time and the running score."
+    },
+    {
+      "term": "Server-sent events",
+      "meaning": "A way for a server to keep sending updates to a browser over one open connection."
+    },
+    {
+      "term": "Last-Event-ID",
+      "meaning": "A header a browser sends to say which update it last received, so the stream can continue from there."
+    },
+    {
+      "term": "Replay speed",
+      "meaning": "How many times faster than real time the replay runs. At 60 times speed, 30 seconds of match time takes half a second."
+    },
+    {
+      "term": "Endpoint",
+      "meaning": "A web address the app answers on, here the replay address for an event."
+    }
+  ],
+  "depends_on": [
+    "vitest",
+    "node:fs",
+    "@/adapters/cricket/cricsheet",
+    "@/domain/facts/ingest",
+    "@/domain/facts/replay",
+    "@/app/api/replay/[eventId]/route",
+    "../../helpers/db"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "9c628e049fc67e64",
+      "title": "Loads the 2008 match for replay",
+      "what": "Resets the test database and loads the 2008 KKR v RCB match as the test event, with each ball timed 30 seconds after the last.",
+      "why": "Likely reason: a real, fixed match gives predictable frames and scores to check against.",
+      "watch_out": "The expected scores are tied to this match file, so a new version of the file will break the score checks."
+    },
+    {
+      "start": 14,
+      "end": 21,
+      "kind": "function",
+      "name": "read",
+      "id": "s2",
+      "hash": "d3d555aea953e949",
+      "title": "Reads a streamed response",
+      "what": "Takes a streamed text response and splits it into separate events, so each event's id, type and data can be checked.",
+      "why": "Likely reason: streamed text is hard to check directly, so tests turn it into a simple list.",
+      "watch_out": "The splitter assumes each field fits on one line and the data is JSON. Multi-line data would be read incorrectly."
+    },
+    {
+      "start": 22,
+      "end": 62,
+      "kind": "test group",
+      "name": "incident replay (replay)",
+      "id": "s3",
+      "hash": "e9fdfb04b520d5b4",
+      "title": "Checks the replay feed and endpoint",
+      "what": "Checks that frames are timed on the replay clock, the running score per innings matches the match, planning is repeatable, and the stream waits between frames and resumes after a given id. Also checks the web endpoint returns an event stream, returns 404 for unknown events, and returns 400 for an invalid speed.",
+      "why": "Likely reason: a replay must match the real match, run at the chosen speed, and recover from a dropped connection.",
+      "watch_out": "An empty Last-Event-ID header must mean start from the beginning. The test guards this edge, so changes to header handling could skip the first frame silently."
+    }
+  ],
+  "explained_at": "2026-11-11T09:18:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the match replay feature: it plans timed frames from a real match, streams them as server-sent events, resumes after a dropped connection, and validates the web endpoint.",
+  "purpose": "Makes sure a replay is repeatable, runs at the chosen speed, can resume where it stopped, and rejects bad requests.",
+  "why": "Likely reason: replays are streamed to the browser, so they must be repeatable and resumable when a connection drops. Reason not stated in the code for every test.",
+  "how": "Loads the 2008 KKR v RCB match into the test database with fixed timestamps. Plans frames on a replay clock, dividing the gap between balls by the speed. Checks the running score for each innings. Streams frames with a wait between them, and resumes from the last event id. Finally calls the web endpoint and checks its status codes and headers.",
+  "inputs": "A saved Cricsheet match file for 2008 KKR v RCB, the speed setting, and a last event id from the request header.",
+  "outputs": "A list of timed frames, a stream of server-sent events ending with an end event, and HTTP status codes 200, 400 or 404.",
+  "risks": "Expected scores are tied to this match file, so a new version of the fixture breaks them. An empty last-event-id header is treated as a fresh start, which is a subtle edge.",
+  "debug": "If a replay test fails, check the planned frame times first. Then check the score totals against the match file. For stream problems, read the raw text the stream produces.",
+  "summary_hash": "sha256:85a44e13ead4192150e388ede4d4e58951023a48d8e9f7430161b42f95d05ef8"
+}

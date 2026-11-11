@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "path": "src/providers/cache.ts",
+  "language": "TypeScript",
+  "lines": 73,
+  "hash": "sha256:3885e62f2a93d584d074b96dca8cecea9a5e89f66a533d2873c613503e84824a",
+  "area": "src-providers",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Settings are checked when the store is created, and the size limit is enforced.",
+      "The header and method comments explain each behaviour clearly.",
+      "No test is visible in this packet, so the readiness rests on the code reading only."
+    ]
+  },
+  "terms": [
+    {
+      "term": "TTL (time to live)",
+      "meaning": "How long a stored value stays fresh before it is treated as expired."
+    },
+    {
+      "term": "LRU (least recently used)",
+      "meaning": "A removal rule that drops the value that has gone unused the longest."
+    },
+    {
+      "term": "Stale",
+      "meaning": "An old value that is past its fresh time but is still held, so it can be shown with its age."
+    }
+  ],
+  "depends_on": [],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "type",
+      "name": "CacheOptions",
+      "id": "s1",
+      "hash": "64f9b34fe8bb0dfa",
+      "title": "Cache settings",
+      "what": "Defines the settings for a cache: how long values stay fresh, the most entries allowed, and an optional clock for testing.",
+      "why": "The header explains that every entry has a key, an age and an expiry, and the size is capped.",
+      "watch_out": "The clock option lets tests control time, so changing the default clock changes how expiry behaves."
+    },
+    {
+      "start": 9,
+      "end": 15,
+      "kind": "type",
+      "name": "CacheHit",
+      "id": "s2",
+      "hash": "10e33b0fc1205635",
+      "title": "Cache read result shape",
+      "what": "Defines what a read returns: the value, when it was saved, its age, and whether it is still fresh.",
+      "why": "The comment on the peek method says this lets pages show honest stale states such as a value from three minutes ago.",
+      "watch_out": "The age is measured from the save time, so a value read often keeps its age."
+    },
+    {
+      "start": 16,
+      "end": 64,
+      "kind": "class",
+      "name": "TtlCache, registry",
+      "id": "s3",
+      "hash": "0d5b2367d451ea09",
+      "title": "The cache store",
+      "what": "Holds the stored values and provides the operations to read a fresh value, read any stored value with its age, save, delete and clear, and count entries. Saving past the size limit removes the oldest entries first. Reading also marks an entry as recently used.",
+      "why": "The header explains the cache is bounded and keyed, and the least recently used removal keeps the most useful entries.",
+      "watch_out": "Reading an entry moves it to the most recently used position, so a value that is checked often will be kept longer than one that is not."
+    },
+    {
+      "start": 65,
+      "end": 73,
+      "kind": "function",
+      "name": "namedCache",
+      "id": "s4",
+      "hash": "884ad428de1fa96e",
+      "title": "Shared named caches",
+      "what": "Gives the same cache to every caller that uses the same name within one server instance, creating it on first use.",
+      "why": "The comment says the same name returns the same cache, such as a shared live score store.",
+      "watch_out": "Only the first caller's settings are used. A later caller with different settings is silently given the original cache."
+    }
+  ],
+  "explained_at": "2026-11-11T09:56:13+00:00",
+  "explained_by": "haiku",
+  "summary": "A small memory store for temporary values that expire after a set time and that never grow beyond a size limit, with the least recently used values removed first.",
+  "purpose": "Lets the app keep recent results, such as a live score, without recalculating or calling outside services each time.",
+  "why": "The header says to use this instead of module-level variables, because each entry has a key, an age and an expiry, and the size is bounded.",
+  "how": "1) Stores a value with the time it was saved. 2) On reading, marks the entry as recently used and reports its age and whether it is still fresh. 3) Returns only fresh values through the simple read. 4) When a save pushes the store over its size limit, removes the oldest entries. 5) Shares named caches so the same name gets the same store.",
+  "inputs": "Cache settings: time to live, maximum entries and an optional clock. Then keys and values to store or read.",
+  "outputs": "Fresh values, or stale values with their age, or nothing when missing.",
+  "risks": "Expired entries stay in memory until they are pushed out by the size limit, so the store is bounded by count rather than time. Named caches keep the settings of the first caller, and later settings are ignored.",
+  "debug": "If old data keeps showing, check the time to live and whether the stale read is being used. If memory seems high, check the maximum entries. If a named cache behaves oddly, check which caller created it first.",
+  "summary_hash": "sha256:3885e62f2a93d584d074b96dca8cecea9a5e89f66a533d2873c613503e84824a"
+}

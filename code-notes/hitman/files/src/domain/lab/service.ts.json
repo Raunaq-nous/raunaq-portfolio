@@ -1,0 +1,398 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/lab/service.ts",
+  "language": "TypeScript",
+  "lines": 350,
+  "hash": "sha256:79d52590ea7bf19de3181853d64f530826a1ec4c0f0c74a45231090acbb7c070",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet.",
+      "The lock rule is hard-coded to historical mode.",
+      "The anomaly check logs errors but never stops a lock, so failures there are easy to miss."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Brier score",
+      "meaning": "A score from 0 to 1 for how close a confidence was to the outcome. Lower is better."
+    },
+    {
+      "term": "Read Rating",
+      "meaning": "The app's skill rating for a fan, built from graded calls."
+    },
+    {
+      "term": "Calibration",
+      "meaning": "How well stated confidence matches how often picks are right."
+    },
+    {
+      "term": "Win probability (WP)",
+      "meaning": "The chance a side wins from a given match state."
+    },
+    {
+      "term": "Leverage",
+      "meaning": "How much one decision could change the outcome."
+    },
+    {
+      "term": "Coin flip",
+      "meaning": "A call where the options are so close that no grade is given."
+    },
+    {
+      "term": "Alter Ego",
+      "meaning": "A persona summary of a fan's picks, shown after ten graded calls."
+    },
+    {
+      "term": "Cache",
+      "meaning": "A stored copy of data kept in memory so it is not reloaded every time."
+    },
+    {
+      "term": "Rebuild",
+      "meaning": "Deleting and recalculating stored results from the source data."
+    }
+  ],
+  "depends_on": [
+    "src/providers/cache",
+    "src/domain/shared/types",
+    "src/domain/analytics/service",
+    "src/engine/grader",
+    "src/engine/readRating",
+    "src/engine/reliability",
+    "src/engine/alterEgo",
+    "src/engine/options",
+    "src/engine/anticheat",
+    "src/providers/log",
+    "src/domain/lab/repo.ts",
+    "src/domain/lab/types.ts"
+  ],
+  "used_by": [
+    "src/domain/roster/service.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "16bf5b8b7308aa7a",
+      "title": "Imports and cache setup",
+      "what": "Brings in the cache, error type, tracking, database layer, grading, rating, reliability, Alter Ego, option ranking, anomaly checks, logging and shared types. Sets up one cache entry for the moments file.",
+      "why": "Reason not stated in the code beyond the imports.",
+      "watch_out": "The cache holds one entry, so adding a second cache key would push the first out."
+    },
+    {
+      "start": 18,
+      "end": 26,
+      "kind": "function",
+      "name": "file, moments",
+      "id": "s2",
+      "hash": "f64dafdb372e6cee",
+      "title": "Cached access to the moments file",
+      "what": "Returns the full moments file, reading it from disk once and keeping it for a day. A helper returns just the moments.",
+      "why": "Likely reason: the file is read often and reloading it on every request would be slow.",
+      "watch_out": "A replaced moments file can take up to a day to appear unless the cache is cleared."
+    },
+    {
+      "start": 27,
+      "end": 37,
+      "kind": "function",
+      "name": "toPrelock",
+      "id": "s3",
+      "hash": "90e8f42737fea0ee",
+      "title": "Strips a moment down to what fans see",
+      "what": "Builds the pre-lock view of a moment: teams, state, question, choices with labels, and the cutoff time. It leaves out win estimates and the reveal.",
+      "why": "Fans must not see the answer before they lock.",
+      "watch_out": "Any field copied here becomes visible to fans, so check it is safe before adding one."
+    },
+    {
+      "start": 38,
+      "end": 42,
+      "kind": "function",
+      "name": "listMoments",
+      "id": "s4",
+      "hash": "0e2dedd344ce1e67",
+      "title": "Moments sorted by importance",
+      "what": "Returns every moment in its fan-safe form, sorted with the highest leverage first and ties sorted by id.",
+      "why": "The comment says the highest leverage moment comes first.",
+      "watch_out": "The sort runs on every call; this is fine for a small list but would slow down with many moments."
+    },
+    {
+      "start": 43,
+      "end": 47,
+      "kind": "function",
+      "name": "getMoment",
+      "id": "s5",
+      "hash": "ad09c9d5d6b7ebc5",
+      "title": "Fetches one moment for a fan",
+      "what": "Returns the fan-safe view of one moment by id, or nothing if the id is unknown.",
+      "why": "Reason not stated in the code beyond its name.",
+      "watch_out": "Returns nothing for an unknown id, so callers must handle that case."
+    },
+    {
+      "start": 48,
+      "end": 52,
+      "kind": "function",
+      "name": "storedMoment",
+      "id": "s6",
+      "hash": "390fe1f89dd79c35",
+      "title": "Full moment for server use only",
+      "what": "Returns the complete stored moment, including model estimates and the reveal, for locking and grading.",
+      "why": "The comment says this is server side only.",
+      "watch_out": "Passing this result to a page or API response would expose the answer before lock."
+    },
+    {
+      "start": 53,
+      "end": 78,
+      "kind": "function",
+      "name": "lockCall",
+      "id": "s7",
+      "hash": "3c480e3ce8bffcad",
+      "title": "Locks a fan's pick on a moment",
+      "what": "Accepts a fan's pick and confidence on one moment and saves it once. Refuses unknown moments, picks that are not options, confidence outside 50 to 99 percent, a second lock on the same moment, and any lock the rule does not allow. The server sets the lock time.",
+      "why": "The comment says each moment is locked once, the reveal is only shown after a lock, and a lock is final.",
+      "watch_out": "The allowed check always uses historical mode, so live moments need that mode changed here."
+    },
+    {
+      "start": 79,
+      "end": 84,
+      "kind": "function",
+      "name": "leveragePercentile",
+      "id": "s8",
+      "hash": "2dda05a7649908f0",
+      "title": "How important a moment is among all",
+      "what": "Gives a moment's leverage as a position from 0 to 1 among all golden moments. Returns the middle value when there are fewer than two moments.",
+      "why": "Reason stated in the comment: it feeds the moment's difficulty.",
+      "watch_out": "The position depends on the whole set, so adding or removing moments changes the difficulty of later rebuilds."
+    },
+    {
+      "start": 85,
+      "end": 99,
+      "kind": "function",
+      "name": "gradeCall",
+      "id": "s9",
+      "hash": "9f722a51acf115aa",
+      "title": "Scores one call",
+      "what": "Pure calculation of one call's grade: whether it was a coin flip (no grade), read points from exact win estimates, whether the pick was the best option, the Brier score for the confidence, and the new rating. The decision is graded, not the result.",
+      "why": "The comment says the decision is graded rather than the outcome.",
+      "watch_out": "A coin flip is recorded with no grade and the rating does not move, so the rating reflects only gradeable calls."
+    },
+    {
+      "start": 100,
+      "end": 130,
+      "kind": "function",
+      "name": "gradePending",
+      "id": "s10",
+      "hash": "3f3787a8ec779dea",
+      "title": "Grades a fan's unscored calls in order",
+      "what": "Finds the fan's locked calls with no review yet and grades them one by one in lock order, so each rating builds on the one before. If a late lock appeared before already graded calls, those later reviews are deleted and rebuilt. A call graded event fires once per call.",
+      "why": "The comment says ratings must depend only on the calls, not on the order they were graded.",
+      "watch_out": "Existing reviews are deleted before the new ones are written, so a failure between those steps can leave calls without reviews until grading runs again."
+    },
+    {
+      "start": 131,
+      "end": 151,
+      "kind": "function",
+      "name": "reviewCall",
+      "id": "s11",
+      "hash": "a167712fdeec4a90",
+      "title": "Builds a fan's review of one call",
+      "what": "Grades any pending calls first, then returns the full review of one of the fan's calls: pick, grade, rating change, choices with estimates, reveal, receipts with hashes, the after-lock path, and the strongest alternative. Refuses if the fan has no lock on that moment.",
+      "why": "The comment says no lock means no reveal.",
+      "watch_out": "The alternative shown is the highest-estimate choice other than the pick, so the review changes if estimates change."
+    },
+    {
+      "start": 152,
+      "end": 159,
+      "kind": "function",
+      "name": "nextMomentFor",
+      "id": "s12",
+      "hash": "bdb01dedd464da57",
+      "title": "Next moment the fan has not called",
+      "what": "From a given moment, looks forward through the list (wrapping to the start) for the next one the fan has not locked, or returns nothing if all are called.",
+      "why": "Reason stated in the comment: it moves the fan on to a new moment.",
+      "watch_out": "An unknown starting id makes the search begin at the first moment rather than raising an error."
+    },
+    {
+      "start": 160,
+      "end": 179,
+      "kind": "function",
+      "name": "regradeUser, PHASE_DOMAIN, DOMAINS, cap",
+      "id": "s13",
+      "hash": "a9d307a2e3744615",
+      "title": "Rebuilds all a fan's reviews",
+      "what": "Deletes every review for a fan and regrades all their calls from scratch. The lower lines set up the skill domain names (decision types and the three match phases) and a helper that capitalises labels.",
+      "why": "The comment says this is for reproducibility checks and model upgrades.",
+      "watch_out": "All the fan's review history is erased first, so if the process stops midway, reviews stay partly missing until grading runs again."
+    },
+    {
+      "start": 180,
+      "end": 216,
+      "kind": "function",
+      "name": "notebook",
+      "id": "s14",
+      "hash": "1b87827a112cf394",
+      "title": "Builds the fan's Notebook page",
+      "what": "Assembles the Notebook: every locked call, optionally filtered by decision type, a reliability chart, Brier over time, skill domains, rating history with a provisional flag, and warnings about small samples. The rating ignores the filter.",
+      "why": "The comment describes these as the Notebook's parts.",
+      "watch_out": "The rating uses all calls even when a filter is set, so the filtered list and the rating can seem to disagree."
+    },
+    {
+      "start": 217,
+      "end": 226,
+      "kind": "function",
+      "name": "weekStart, TowerCall, TowerRow, ratingOf",
+      "id": "s15",
+      "hash": "732eb8b21d12eea1",
+      "title": "Week start and tower row shapes",
+      "what": "Works out the Monday midnight UTC that starts the week containing a date, defines the shape of a call and a tower row, and gives a fan's current rating from their last graded call, or the starting rating if none.",
+      "why": "The comment says the crew tower is weekly.",
+      "watch_out": "Weeks start on Monday in UTC, so a fan in another time zone sees the week change at a different local time."
+    },
+    {
+      "start": 227,
+      "end": 229,
+      "kind": "function",
+      "name": "rankBy",
+      "id": "s16",
+      "hash": "9e06d67e8dc73adb",
+      "title": "Ranks fans by rating",
+      "what": "Sorts people by rating, highest first, with ties sorted alphabetically by name, and gives each a position starting at one.",
+      "why": "Reason not stated in the code beyond its name.",
+      "watch_out": "Ties are always settled by name, which may feel arbitrary to fans with equal ratings."
+    },
+    {
+      "start": 230,
+      "end": 250,
+      "kind": "function",
+      "name": "towerEntries",
+      "id": "s17",
+      "hash": "447834ef2100f740",
+      "title": "Builds the crew timing tower",
+      "what": "Computes the tower rows: rank by rating now and at the start of the week, mean Brier score, calls locked this week, the last five results as good, poor or none, and the rank change since the week began. Rows are sorted by rank.",
+      "why": "The comment describes these as the tower's columns.",
+      "watch_out": "The rank change uses only calls locked before this week, so a fan's rank can move because other members' grades changed."
+    },
+    {
+      "start": 251,
+      "end": 259,
+      "kind": "function",
+      "name": "crewTower",
+      "id": "s18",
+      "hash": "a3c1025f300516fe",
+      "title": "Grades members and builds their tower",
+      "what": "For a crew, grades each member's pending calls, loads their calls, and returns the tower rows.",
+      "why": "The comment says grading comes first so the tower is current.",
+      "watch_out": "Grading for all members runs at the same time, so a large crew puts a burst of load on the database."
+    },
+    {
+      "start": 260,
+      "end": 276,
+      "kind": "function",
+      "name": "shareCard",
+      "id": "s19",
+      "hash": "5445c676f2082891",
+      "title": "Share card for a graded call",
+      "what": "Builds the card a fan can share: heading CALLED IT for a hit or MY READ otherwise, the question, confidence, grade in points or a coin-flip message, the match line, and a calibration label. Returns nothing if the call or its grade is missing. The pick itself is not on the card.",
+      "why": "The comment on the card type says the card must not reveal the best option to someone who has not called it.",
+      "watch_out": "The card includes the fan's display name, which becomes public once the card is shared."
+    },
+    {
+      "start": 277,
+      "end": 299,
+      "kind": "function",
+      "name": "alterEgoFor",
+      "id": "s20",
+      "hash": "7c6b733e7bcb19ec",
+      "title": "Computes a fan's Alter Ego",
+      "what": "Builds the Alter Ego persona from graded calls: whether the fan picked above or below the expected run-rate band, the phase, decision type, confidence, hit, leverage, and whether they matched the crowd when enough others picked. Hidden until ten graded calls. Can grade pending calls first.",
+      "why": "The comments say public paths only read existing grades, while a fan's own page grades first.",
+      "watch_out": "The crowd comparison is skipped unless enough other fans picked the moment, so results depend on how many people use the app."
+    },
+    {
+      "start": 300,
+      "end": 305,
+      "kind": "function",
+      "name": "shareAlterEgo",
+      "id": "s21",
+      "hash": "8dbbbc403d238a19",
+      "title": "Turns on sharing for an Alter Ego",
+      "what": "Creates a random, revocable share token for a fan's Alter Ego, but only once it is revealed (ten graded calls). Returns the token.",
+      "why": "The comment says sharing is opt-in.",
+      "watch_out": "Anyone with the token can view the card, so the token must be treated like a password."
+    },
+    {
+      "start": 306,
+      "end": 311,
+      "kind": "function",
+      "name": "stopSharingAlterEgo, alterEgoShareToken",
+      "id": "s22",
+      "hash": "59c210613d8081b9",
+      "title": "Revoke share link and read its token",
+      "what": "Removes a fan's share link so it stops working, and returns the current token if one exists.",
+      "why": "Reason stated in the code: sharing is revocable.",
+      "watch_out": "Revoking deletes the token at once, so any page still showing the old link stops working immediately."
+    },
+    {
+      "start": 312,
+      "end": 317,
+      "kind": "function",
+      "name": "alterEgoCardByToken",
+      "id": "s23",
+      "hash": "55dea6d4b3e008e0",
+      "title": "Public Alter Ego card by link",
+      "what": "Given a share token, returns the public Alter Ego card for its owner, or nothing for an unknown or revoked token. Reads existing grades only.",
+      "why": "The comment says this is the public route, so it does not grade.",
+      "watch_out": "This is a public route, so an unknown token must return nothing and never hint that a user exists."
+    },
+    {
+      "start": 318,
+      "end": 326,
+      "kind": "function",
+      "name": "alterEgoCard",
+      "id": "s24",
+      "hash": "0128a60d9eec490d",
+      "title": "Builds the public card",
+      "what": "Builds the public card: display name, persona label, the lead evidence line, graded count and a calibration label. Returns nothing if the fan has no name or the Alter Ego is not revealed.",
+      "why": "Reason not stated in the code beyond the comment.",
+      "watch_out": "Only the first evidence line is used, and it may be empty if the evidence list is empty."
+    },
+    {
+      "start": 327,
+      "end": 345,
+      "kind": "function",
+      "name": "seasonFile",
+      "id": "s25",
+      "hash": "c2eaccb6e23305f0",
+      "title": "Builds the Season File summary",
+      "what": "Builds a printable season summary: call counts, coin flips, hit rate, mean Brier and mean read, best and worst three reads, reliability, rating history, the Alter Ego label if revealed, and warnings. Flags older than an hour are the only ones logged later.",
+      "why": "The comment describes this as the printable summary for the fan.",
+      "watch_out": "The best and worst lists come from the same calls, so a fan with few calls can see the same call in both lists."
+    },
+    {
+      "start": 346,
+      "end": 350,
+      "kind": "function",
+      "name": "integrityFlags",
+      "id": "s26",
+      "hash": "5410ade54db0c8a9",
+      "title": "Flags suspicious lock patterns",
+      "what": "Runs the anomaly check over a fan's calls, optionally only those locked since a given time, and returns the flags for review. Results are only logged and never block anything.",
+      "why": "The comments describe the flags as a stub for later review.",
+      "watch_out": "Nothing stops a flagged fan, so any future use of these flags needs its own design."
+    }
+  ],
+  "explained_at": "2026-11-11T09:40:50+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the rules of the Decision Lab: which moments exist, how a lock is accepted, how calls are graded and rated, and how the Notebook, crew tower, share card, Alter Ego and Season File are built.",
+  "purpose": "Gives the Lab pages one place for results, while the repository only stores data.",
+  "why": "Likely reason: keeps grading and ratings reproducible from stored calls. The comments refer to decision records (D-034, D-040, D-041, D-043) and feature codes (F-L-02 and others) that are not in this file.",
+  "how": "1. Loads the moments file once and caches it for a day. 2. Shows fans only the pre-lock view of each moment. 3. Locks a call after checking the pick, the confidence and the lock rule. 4. Grades every pending call in lock order, computing read points, calibration hit, Brier score and the rating. 5. Builds the review, Notebook, tower, share card, Alter Ego, Season File and anomaly flags from graded calls.",
+  "inputs": "User ids, moment ids, a pick with a confidence, optional filters, crew member lists and a time.",
+  "outputs": "Moment lists, lock confirmations, reviews, the Notebook, tower rows, share cards, Alter Ego identities, season summaries and anomaly flags.",
+  "risks": "Grading can delete and rebuild stored reviews when a late lock appears. The lock rule is hard-coded to historical, so live moments need the setting changed. Anomaly flags are only logged. Public paths read existing grades only.",
+  "debug": "If a pick is refused, check that the option is one of the moment's options and that confidence is 50 to 99 percent. If ratings look off, check lock order and whether reviews were rebuilt. If a moment is missing, check the cache and the moments file. Compare the hashes on a review to find a changed data file.",
+  "summary_hash": "sha256:79d52590ea7bf19de3181853d64f530826a1ec4c0f0c74a45231090acbb7c070"
+}

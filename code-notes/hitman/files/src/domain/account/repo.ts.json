@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/account/repo.ts",
+  "language": "TypeScript",
+  "lines": 40,
+  "hash": "sha256:4070fccf16d52d5c500fca4d2187da0bd00b972908498fcfc36fcfa2da05307e",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The export does not list alter ego shares, but deletion removes them.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "transaction",
+      "meaning": "a group of database changes that either all happen or none happen"
+    },
+    {
+      "term": "hard delete",
+      "meaning": "removing a record from the database for good, with no recovery"
+    }
+  ],
+  "depends_on": [
+    "@/lib/prisma"
+  ],
+  "used_by": [
+    "src/domain/account/service.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 2,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "41cb39d66d79f879",
+      "title": "Database client import",
+      "what": "Brings in the shared database client that every query in this file uses.",
+      "why": "Likely reason: this file talks to the database through one shared client.",
+      "watch_out": ""
+    },
+    {
+      "start": 3,
+      "end": 18,
+      "kind": "function",
+      "name": "exportRows",
+      "id": "s2",
+      "hash": "30d3efd742c32e7a",
+      "title": "Collecting a user's data for export",
+      "what": "Reads everything the app stores about one user at the same time: profile, crews, reports, blocks, teams, scores, analytics events, lab calls and reviews. Each group returns only chosen fields.",
+      "why": "Likely reason: the export must include personal data, and choosing fields keeps secrets such as the password out of it.",
+      "watch_out": "Alter ego share records are left out of the export even though deletion removes them."
+    },
+    {
+      "start": 19,
+      "end": 40,
+      "kind": "function",
+      "name": "eraseUser",
+      "id": "s3",
+      "hash": "1a27f99a4f4d1c92",
+      "title": "Permanently deleting a user",
+      "what": "Erases one user and their data in one all or nothing step. Crews they own pass to their longest-standing other member, or are deleted if no one else is in them. Then their memberships, reports, blocks, scores, teams, analytics, shares, reviews and lab calls are removed, and the user row is removed last.",
+      "why": "Likely reason: one transaction stops the account from being left half deleted.",
+      "watch_out": "Deleting reports also removes reports other people made about this user, which may remove evidence used in moderation. The code does not say whether that is intended."
+    }
+  ],
+  "explained_at": "2026-11-11T09:37:03+00:00",
+  "explained_by": "haiku",
+  "summary": "Collects all of a user's stored data for export and permanently erases a user and their data.",
+  "purpose": "Holds the raw database work behind the export and delete account features.",
+  "why": "Likely reason: keeps database queries out of the service layer so the rules stay easy to read.",
+  "how": "1. For export, load ten groups of the user's records at the same time, each limited to chosen fields. 2. For deletion, open one transaction. 3. Hand owned crews to the longest-standing member, or delete them if no one else is in them. 4. Remove linked records. 5. Remove the user row last.",
+  "inputs": "A user ID string.",
+  "outputs": "For export, an object grouping the user's records. For deletion, nothing, or an error if it fails.",
+  "risks": "Deletion is permanent. It also removes other people's reports about this user. The export does not include alter ego shares, which deletion does remove.",
+  "debug": "If export is missing data, check the matching group in the export list. If deletion fails, read the database error, because the transaction should leave nothing half deleted.",
+  "summary_hash": "sha256:4070fccf16d52d5c500fca4d2187da0bd00b972908498fcfc36fcfa2da05307e"
+}

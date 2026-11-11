@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "path": "tests/unit/engine/wp.test.ts",
+  "language": "TypeScript",
+  "lines": 100,
+  "hash": "sha256:ef3143f73882bdb5a654450b9326aeae595bda5aaa435dd8be3770d0ce5e5477",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Covers edge states, rule ordering, consistency from ball to ball, and invalid input.",
+      "Repeats key checks on the real saved model, not only on made-up tables.",
+      "Tolerances are tight, so small errors will show."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Win probability",
+      "meaning": "The chance the chasing team wins from the current state."
+    },
+    {
+      "term": "Leverage",
+      "meaning": "How much the win chance could move on the next ball. A higher number means the next ball matters more."
+    },
+    {
+      "term": "Martingale",
+      "meaning": "A fair-game rule: the expected win chance after the next ball equals the win chance now."
+    },
+    {
+      "term": "Outcome table",
+      "meaning": "The chance of each result on the next ball, for example 0 runs, 4 runs, 6 runs or a wicket."
+    },
+    {
+      "term": "Monotonic",
+      "meaning": "Always moving in one direction, for example the chance never rises when runs needed rises."
+    }
+  ],
+  "depends_on": [
+    "vitest",
+    "node:fs",
+    "@/engine/outcomeModel",
+    "@/engine/chaseWp",
+    "data/models/outcomes-v1.json"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup, flat, deathy",
+      "id": "s1",
+      "hash": "04ba036a09abff21",
+      "title": "Sets up made-up outcome tables",
+      "what": "Defines two invented outcome tables: a flat one, and a death-heavy one that has more wickets and sixes in the last 24 balls.",
+      "why": "Likely reason: the tests need known inputs whose answers can be reasoned about. The tables are invented, so they test logic only.",
+      "watch_out": "These tables are not real cricket data, so the tests prove the logic works, not that the numbers are right."
+    },
+    {
+      "start": 10,
+      "end": 64,
+      "kind": "test group",
+      "name": "exact chase win probability (wp)",
+      "id": "s2",
+      "hash": "2a10e73c57a38eb3",
+      "title": "Checks the chase win-probability logic",
+      "what": "Checks the edge cases: a win, loss or tie at the end of a chase. Checks that the chance rises with wickets and balls in hand and falls as runs needed rises. Checks the martingale rule, that rules out inconsistent probabilities. Checks that leverage is zero at the end and highest near the death. Checks that invalid tables and states raise errors, and that the chaser plays the style with the best chance.",
+      "why": "Likely reason: these checks confirm the calculation is correct and consistent before it is trusted with real data.",
+      "watch_out": "The martingale check is the most important correctness test here. If it fails, the probabilities are not consistent from one ball to the next."
+    },
+    {
+      "start": 65,
+      "end": 100,
+      "kind": "test group",
+      "name": "exact chase win probability on the fitted IPL outcome model (wp)",
+      "id": "s3",
+      "hash": "3a28fdea0e9be84b",
+      "title": "Checks the saved IPL model",
+      "what": "Repeats the main checks on the saved IPL outcome model. The start of a 180 chase must sit between 20 and 80 percent. Checks that the chance is monotonic across a large grid, and that the played style is the best style on offer.",
+      "why": "Likely reason: the made-up tables do not prove the real model behaves correctly, so the checks are repeated on the real saved file.",
+      "watch_out": "This group reads a saved data file. If that file changes, these results change even when the code is correct."
+    }
+  ],
+  "explained_at": "2026-11-11T09:18:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the cricket chase win-probability calculation, both on made-up outcome tables and on the saved IPL model.",
+  "purpose": "Makes sure the chance of the chasing team winning behaves logically: it rises with wickets and balls in hand, falls with runs needed, and stays consistent from one ball to the next.",
+  "why": "Likely reason: users see these probabilities, so they must be consistent and never contradict each other. Reason not stated in the code for every individual check.",
+  "how": "Creates two made-up outcome tables, one flat and one heavy in wickets and sixes at the death. Checks edge states such as a win, loss or tie. Then checks that probabilities move the right way across a grid of states. A key check confirms that the expected chance after the next ball equals the chance now. The last group repeats the main checks on the saved IPL model file.",
+  "inputs": "Made-up outcome tables in the test file and the saved IPL outcome model in data/models/outcomes-v1.json. Chase states hold balls left, wickets lost and runs needed.",
+  "outputs": "Pass or fail results. No files or database are changed.",
+  "risks": "The real-model tests depend on a saved file. If it is regenerated or missing, results change even when the code is fine. Monotonic checks over large grids can be slow.",
+  "debug": "If a monotonic check fails, find the state it names and compare the chance with its neighbours. If the martingale check fails, the probability is not consistent between balls, which is a serious bug. Start with the chase calculation module.",
+  "summary_hash": "sha256:ef3143f73882bdb5a654450b9326aeae595bda5aaa435dd8be3770d0ce5e5477"
+}

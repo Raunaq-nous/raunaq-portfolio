@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "path": "src/engine/calibration.ts",
+  "language": "TypeScript",
+  "lines": 92,
+  "hash": "sha256:125e2ab1acb4d900a717e66b5794c4b518a49f15f07e42f899a2ee5217210476",
+  "area": "src-engine",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Calibration is a known issue noted elsewhere in the code, so the gate is not yet a clean pass.",
+      "No tests are visible in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "isotonic",
+      "meaning": "a rule that the corrected value never falls as the predicted value rises"
+    },
+    {
+      "term": "bucket",
+      "meaning": "a band of predicted chances, here 10 percentage points wide"
+    },
+    {
+      "term": "cluster",
+      "meaning": "a group of samples that share one outcome, such as one match"
+    },
+    {
+      "term": "standard error",
+      "meaning": "the typical size of random noise in a measured rate"
+    },
+    {
+      "term": "calibrated",
+      "meaning": "stated chances match how often those events really happen"
+    }
+  ],
+  "depends_on": [],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup, Sample, IsotonicMap",
+      "id": "s1",
+      "hash": "b8f462cf46d2764a",
+      "title": "Sample and map shapes",
+      "what": "Describes one sample: predicted chance, what happened (0 or 1), and an optional weight. Also describes the saved map of points.",
+      "why": "Likely reason: a shared format for the training data and the saved correction.",
+      "watch_out": "The weight is optional and counts as 1 when missing, so a sample with no weight counts fully."
+    },
+    {
+      "start": 7,
+      "end": 28,
+      "kind": "function",
+      "name": "fitIsotonic",
+      "id": "s2",
+      "hash": "220d7afc5f7126cd",
+      "title": "Fitting the correction map",
+      "what": "Sorts samples by predicted chance, groups them, and merges neighbours whenever the earlier group has a higher observed rate than the later one, so the result never falls. Returns the points.",
+      "why": "Likely reason: the standard way to correct probabilities without assuming a fixed shape.",
+      "watch_out": "Empty input throws, and very few samples give a jagged map that may not generalise."
+    },
+    {
+      "start": 29,
+      "end": 42,
+      "kind": "function",
+      "name": "applyIsotonic, Bucket",
+      "id": "s3",
+      "hash": "cce4bca719d46a3c",
+      "title": "Applying the correction and band type",
+      "what": "Turns a predicted chance into a corrected one by straight-line steps between points, and holds the first and last values flat beyond the ends. Defines the shape of one band's results.",
+      "why": "Likely reason: smooth between points, flat at the ends, so nothing is extrapolated.",
+      "watch_out": "Values beyond the fitted range are held at the nearest end, so the correction cannot predict past the data."
+    },
+    {
+      "start": 43,
+      "end": 54,
+      "kind": "function",
+      "name": "buckets",
+      "id": "s4",
+      "hash": "89129fc34be71c9a",
+      "title": "Grouping results into 10-point bands",
+      "what": "Splits samples into ten bands from 0 to 100 percent. For each band reports the count, average predicted chance, observed rate and the gap in points.",
+      "why": "Likely reason: both the reliability chart and the gate need these bands.",
+      "watch_out": "The top band includes exactly 100 percent, while the others exclude their upper edge."
+    },
+    {
+      "start": 55,
+      "end": 63,
+      "kind": "function",
+      "name": "calibrationGate, BucketPower",
+      "id": "s5",
+      "hash": "8687f8b9ca7004b7",
+      "title": "Pass or fail gate and power shape",
+      "what": "Checks every band with at least 200 samples and passes only if none is more than 5 points off. Returns the failing bands and how many were checked. Also defines the power result shape.",
+      "why": "Likely reason: a fixed release check, as the header says.",
+      "watch_out": "Bands with fewer samples are not checked, and if none qualify the gate passes without checking anything."
+    },
+    {
+      "start": 64,
+      "end": 70,
+      "kind": "function",
+      "name": "normalCdf",
+      "id": "s6",
+      "hash": "3c3cec6e95bb402f",
+      "title": "Normal curve chance function",
+      "what": "Calculates the chance that a standard normal value falls below a number, approximated to within about 0.00000015.",
+      "why": "Likely reason: the power calculation needs it, and the standard formula is approximated rather than built in.",
+      "watch_out": "A similar helper exists in the basketball model, so a fix in one may need copying to the other."
+    },
+    {
+      "start": 71,
+      "end": 92,
+      "kind": "function",
+      "name": "gatePower",
+      "id": "s7",
+      "hash": "f21f966de8feb6c1",
+      "title": "Power check for the gate",
+      "what": "For each band, estimates how much the observed rate would vary by chance when samples from the same match share an outcome. Also estimates the chance a perfectly calibrated model passes each band and all bands together.",
+      "why": "Likely reason: shows whether the gate can tell good calibration from bad. The code treats bands as independent.",
+      "watch_out": "Treating bands as independent is an assumption, so the overall pass chance is only an estimate."
+    }
+  ],
+  "explained_at": "2026-11-11T09:52:59+00:00",
+  "explained_by": "haiku",
+  "summary": "Adjusts predicted win chances so they match what really happened, and checks that every 10-point band is within 5 points of its observed rate.",
+  "purpose": "Keeps the app's probabilities honest, and blocks a release when they are not.",
+  "why": "The header describes isotonic recalibration and a calibration gate, a fixed check that must pass.",
+  "how": "Sorts samples by predicted chance, merges neighbouring groups that break the rising trend, then maps any predicted chance to a corrected one by straight-line steps between points. The gate checks each band with enough samples. A power calculation estimates how often a good model would pass.",
+  "inputs": "Samples of predicted chance and outcome (0 or 1), with optional weights and cluster names for the power check.",
+  "outputs": "A correction map, the 10-point band results, a pass or fail gate result, and power figures.",
+  "risks": "Bands with too few samples are skipped, so the gate can pass with little checking. Samples from the same match are related, so treating them as separate overstates confidence.",
+  "debug": "If the gate fails, read the failing bands it lists. If the correction looks wrong, check the sample order and weights. Empty input throws an error.",
+  "summary_hash": "sha256:125e2ab1acb4d900a717e66b5794c4b518a49f15f07e42f899a2ee5217210476"
+}

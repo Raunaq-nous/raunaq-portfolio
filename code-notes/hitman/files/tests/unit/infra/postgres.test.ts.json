@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "path": "tests/unit/infra/postgres.test.ts",
+  "language": "TypeScript",
+  "lines": 35,
+  "hash": "sha256:0bfcdfd3151d6c385b520bced4c79926af802e5998dcea55ca5060e0ad24f572",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Protects against running migrations during build.",
+      "Checks local setup and the migration history.",
+      "Simple checks that are easy to read and verify by hand."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Migration",
+      "meaning": "A saved script that changes the database structure in a planned, ordered way."
+    },
+    {
+      "term": "Postgres",
+      "meaning": "A widely used database program that stores the app's data."
+    },
+    {
+      "term": "Docker Compose",
+      "meaning": "A file that starts the app's supporting programs, here a local Postgres, with one command."
+    },
+    {
+      "term": "Build step",
+      "meaning": "The automatic steps that prepare the app before it is run or deployed."
+    }
+  ],
+  "depends_on": [
+    "vitest",
+    "node:fs",
+    "prisma/schema.prisma",
+    "prisma/migrations",
+    "docker-compose.yml",
+    "scripts/db-up.mjs",
+    "package.json",
+    "vercel.json"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup, read",
+      "id": "s1",
+      "hash": "ba2025a27284370b",
+      "title": "Reads project setup files",
+      "what": "Defines a small helper that reads a project file as text so the other checks can search it.",
+      "why": "Likely reason: the checks look at configuration text rather than running the setup, which is quicker and safe.",
+      "watch_out": "The helper reads files relative to the project folder, so running the tests from another folder will fail to find them."
+    },
+    {
+      "start": 6,
+      "end": 35,
+      "kind": "test group",
+      "name": "postgres everywhere with a migration history",
+      "id": "s2",
+      "hash": "f98b1347ce024cfe",
+      "title": "Checks database setup and migrations",
+      "what": "Checks the schema uses Postgres, the first migration creates the user table, migration folders are timestamped and in order, local Postgres runs through docker compose with an embedded fallback, and build, install and deploy steps never run migrations, while the database migration script does.",
+      "why": "Likely reason: migrations should run only when someone chooses to run them, so a build cannot change the database by accident.",
+      "watch_out": "Migrations must be run deliberately through the database migration script. Adding one to a build step would change the database without a clear decision, and this test would catch it."
+    }
+  ],
+  "explained_at": "2026-11-11T09:18:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the project's setup rules for the Postgres database: the provider is Postgres, migrations are ordered and present, local setup is documented, and build steps never change the database.",
+  "purpose": "Keeps the database setup consistent and stops database changes from running automatically during build or install.",
+  "why": "Likely reason: running schema changes during build could alter a live database without a deliberate decision. Reason not stated in the code for the other checks.",
+  "how": "Reads project files as text and checks for the expected provider, the first migration, the ordering of migration folders, the local Postgres setup in the compose file and setup script, and that build, install and deploy scripts do not run migrations.",
+  "inputs": "Project files: the schema file, migration folders, the compose file, the local setup script, the package file and the deploy config.",
+  "outputs": "Pass or fail results. No files or database are changed.",
+  "risks": "These checks read files directly, so renaming or moving a file fails a test even if the app still works. Patterns are simple text matches, so reformatting a file can break them.",
+  "debug": "If a test fails, open the file it names and check the exact text the test expects. For migration checks, confirm the folder names start with a 14-digit timestamp.",
+  "summary_hash": "sha256:0bfcdfd3151d6c385b520bced4c79926af802e5998dcea55ca5060e0ad24f572"
+}

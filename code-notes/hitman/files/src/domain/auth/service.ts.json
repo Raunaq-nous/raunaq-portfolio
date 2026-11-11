@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/auth/service.ts",
+  "language": "TypeScript",
+  "lines": 43,
+  "hash": "sha256:ba0d7ae133ffa4d1c517de3aea0f93b90a02b52bc6719e4a4159ec4b05df6eeb",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Rate limits are in memory and may reset on restart or not be shared between servers, which is likely.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "bcrypt",
+      "meaning": "a slow method for turning a password into a hash"
+    },
+    {
+      "term": "rate limit",
+      "meaning": "a cap on how many attempts are allowed in a time window"
+    },
+    {
+      "term": "timing attack",
+      "meaning": "learning secret information by measuring how long replies take"
+    }
+  ],
+  "depends_on": [
+    "bcryptjs",
+    "@prisma/client",
+    "@/domain/shared/types",
+    "@/providers/rateLimit",
+    "./types",
+    "./repo"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "04edc486c0f947cd",
+      "title": "Imports and file purpose",
+      "what": "Brings in the hashing library, the rate limiter, the error type and the database calls. The file states that password hashes never leave this module.",
+      "why": "Likely reason: keeps hashing and sign-in checks in one place.",
+      "watch_out": ""
+    },
+    {
+      "start": 10,
+      "end": 16,
+      "kind": "value",
+      "name": "limits",
+      "id": "s2",
+      "hash": "fdc928c204a6dc16",
+      "title": "Attempt limits",
+      "what": "Sets the limits: 10 sign-in tries per email and 30 per network address in 15 minutes, and 5 sign-ups per network address per hour.",
+      "why": "Likely reason: slows down password guessing and mass account creation.",
+      "watch_out": "The limits are held in memory, so they reset on restart and are likely not shared across several servers."
+    },
+    {
+      "start": 17,
+      "end": 20,
+      "kind": "function",
+      "name": "dummyHash",
+      "id": "s3",
+      "hash": "f7027affeac44a6d",
+      "title": "Dummy hash for timing",
+      "what": "Creates one fake password hash the first time it is needed and reuses it. It is checked when an email is unknown, so the reply takes about as long as a real check.",
+      "why": "Likely reason: stops attackers learning which emails have accounts from reply speed.",
+      "watch_out": "It uses the same hashing cost as sign-up, so the two must stay matched."
+    },
+    {
+      "start": 21,
+      "end": 30,
+      "kind": "function",
+      "name": "register",
+      "id": "s4",
+      "hash": "c166aa161d5d3b58",
+      "title": "Creating an account",
+      "what": "Checks the sign-up limit for the network address, hashes the password, saves the user and records when the age was confirmed. A duplicate email gives a deliberately vague message.",
+      "why": "Likely reason: the vague message stops people learning which emails are registered.",
+      "watch_out": "The email is trusted as already cleaned, so callers must run the input rules first."
+    },
+    {
+      "start": 31,
+      "end": 43,
+      "kind": "function",
+      "name": "verifyCredentials",
+      "id": "s5",
+      "hash": "b079b1541abe3457",
+      "title": "Checking a sign-in",
+      "what": "Cleans the email, counts the attempt against both the email and the network address, refuses if either is over its limit, and compares the password. Success clears the email counter.",
+      "why": "Likely reason: counting before checking means every attempt counts, including wrong guesses.",
+      "watch_out": "The network counter is not cleared on success, so a busy shared network can be blocked sooner."
+    }
+  ],
+  "explained_at": "2026-11-11T09:37:03+00:00",
+  "explained_by": "haiku",
+  "summary": "Handles sign-up and sign-in checks, with limits on attempts.",
+  "purpose": "Core rules for creating accounts and checking passwords.",
+  "why": "Likely reason: hashing, attempt limits and vague error messages protect accounts from guessing and enumeration.",
+  "how": "1. Sign-up: apply the network limit, hash the password, save the user, and turn a duplicate email into a vague message. 2. Sign-in: clean the email, count the attempt, look up the user, compare with the stored hash or a dummy hash, and clear the email counter on success.",
+  "inputs": "Name, email, password, network address, and the age confirmation.",
+  "outputs": "A new user ID, a user record, null for wrong details, or a rate limit error.",
+  "risks": "Limits are kept in memory. The network counter is not cleared on success, so shared networks hit the limit sooner.",
+  "debug": "If sign-in always fails, check the hash comparison and email cleaning. If users are locked out, check the limit counters.",
+  "summary_hash": "sha256:ba0d7ae133ffa4d1c517de3aea0f93b90a02b52bc6719e4a4159ec4b05df6eeb"
+}

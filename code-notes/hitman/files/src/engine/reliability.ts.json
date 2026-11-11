@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "path": "src/engine/reliability.ts",
+  "language": "TypeScript",
+  "lines": 51,
+  "hash": "sha256:80d525f6ec3c0fc01407d01ac2e7012f18a76e7fa4422a86f1e70b90ad1cccec",
+  "area": "src-engine",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this packet.",
+      "Small samples are flagged clearly, which is a stated goal of the file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Reliability",
+      "meaning": "Whether stated confidence matches real outcomes. A 70 percent call should be right about seven times in ten."
+    },
+    {
+      "term": "Brier score",
+      "meaning": "An error score for a probability forecast, where lower is better and zero is perfect."
+    },
+    {
+      "term": "Hit rate",
+      "meaning": "The share of calls that turned out right."
+    },
+    {
+      "term": "Small sample",
+      "meaning": "A group with too few calls for its numbers to be trusted."
+    }
+  ],
+  "depends_on": [
+    "src/engine/grader.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup, ScoredCall, Bucket",
+      "id": "s1",
+      "hash": "4a532ac176d4d03e",
+      "title": "File setup and call shapes",
+      "what": "Describes the file, sets the minimum count for a trustworthy group, and defines the shapes of a scored call and a confidence bucket.",
+      "why": "The header states that small samples are flagged rather than hidden, and the minimum count sets the cut-off.",
+      "watch_out": "Changing the minimum count changes which groups are flagged, so it should be a deliberate decision."
+    },
+    {
+      "start": 11,
+      "end": 27,
+      "kind": "function",
+      "name": "reliabilityBuckets",
+      "id": "s2",
+      "hash": "b2f713da9610ceb5",
+      "title": "Confidence buckets",
+      "what": "Sorts each call into a bucket from 50 to 59 percent up to 90 to 99 percent, then works out how many calls each bucket holds, their average confidence, their hit rate, and whether each is a small sample.",
+      "why": "The doc comment explains that the buckets show how often calls at each confidence were right.",
+      "watch_out": "Confidence is rounded to the nearest percent before bucketing, so a value such as 0.595 lands in the higher bucket."
+    },
+    {
+      "start": 28,
+      "end": 39,
+      "kind": "function",
+      "name": "brierSeries, DomainScore",
+      "id": "s3",
+      "hash": "33662832112381ad",
+      "title": "Running Brier score",
+      "what": "Gives each call's Brier score in order, with the running average up to that call.",
+      "why": "The doc comment says each call's score is shown with the running mean, so progress over time is visible.",
+      "watch_out": "The running mean depends on the order of the calls, so the input must be sorted by time."
+    },
+    {
+      "start": 40,
+      "end": 51,
+      "kind": "function",
+      "name": "domainScores",
+      "id": "s4",
+      "hash": "803f7667d689368f",
+      "title": "Skill scores by domain",
+      "what": "For each skill domain in a given order, gives the number of calls, the average read points and the hit rate. Domains with fewer calls than the minimum are flagged.",
+      "why": "The doc comment says a call counts in each of its domains, so a call can show in several rows.",
+      "watch_out": "Because a call can count in several domains, adding up the domain rows double counts calls."
+    }
+  ],
+  "explained_at": "2026-11-11T09:56:13+00:00",
+  "explained_by": "haiku",
+  "summary": "Calculates the numbers for the decision notebook: how reliable calls are at each confidence level, the running accuracy score over time, and the skill in each domain.",
+  "purpose": "Lets users and the product see whether their stated confidence matches how often they were right.",
+  "why": "The header says the maths is for the notebook, and that small samples are flagged rather than hidden. The choice of ten-point buckets is not explained in the code.",
+  "how": "1) Groups each scored call into a confidence bucket from 50 to 99 percent. 2) Calculates the average confidence and hit rate for each bucket, marking small buckets. 3) Works out each call's Brier score and a running average in order. 4) For each skill domain, averages read points and hit rate across the calls tagged with that domain.",
+  "inputs": "Scored calls, each with a confidence between 0.5 and 0.99 and a hit flag, plus read points and domain lists for domain scores.",
+  "outputs": "Confidence bucket summaries, a series of Brier scores with running means, and per-domain summaries with small-sample flags.",
+  "risks": "Confidence outside 0.5 to 0.99 is refused, so a 1.0 confidence will throw an error. A call with several domains is counted in each, so domain totals will not add up to the overall total.",
+  "debug": "If a bucket shows odd figures, check its small-sample flag first. If an input throws, check the confidence value. If domain counts look inflated, that is expected because one call can count in several domains.",
+  "summary_hash": "sha256:80d525f6ec3c0fc01407d01ac2e7012f18a76e7fa4422a86f1e70b90ad1cccec"
+}

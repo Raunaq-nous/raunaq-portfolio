@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "path": "src/providers/rateLimit.ts",
+  "language": "TypeScript",
+  "lines": 46,
+  "hash": "sha256:a3a6c553811bf4fecd68317b92076491114d728aa9f9a24680be63f0e893ee54",
+  "area": "src-providers",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The window and wait calculations are described in comments.",
+      "The limit is per instance and the address can be spoofed, which the header partly acknowledges.",
+      "No test is visible in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Fixed window",
+      "meaning": "A counting rule where the limit resets at a set time after the first attempt in that window."
+    },
+    {
+      "term": "Proxy",
+      "meaning": "A server that sits in front of the app and passes requests along, often adding the original address to a header."
+    },
+    {
+      "term": "Forwarded header",
+      "meaning": "A request header that records the address a request came from before it passed through a proxy."
+    }
+  ],
+  "depends_on": [
+    "./cache"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup, RateLimitRule, RateLimitResult",
+      "id": "s1",
+      "hash": "5212128b7d112752",
+      "title": "File setup and rule shapes",
+      "what": "Describes the limiter's purpose and scope, and defines the rule shape (limit and window length) and the result shape (allowed, remaining, wait).",
+      "why": "The header says the limiter is per instance and is enough for a single-region beta.",
+      "watch_out": "Because counts are not shared between instances, the header's beta note matters if the app is scaled out."
+    },
+    {
+      "start": 7,
+      "end": 36,
+      "kind": "class",
+      "name": "RateLimiter",
+      "id": "s2",
+      "hash": "610786535b4d2e98",
+      "title": "Rate limiter",
+      "what": "Keeps a count per client key inside a fixed window. Each attempt adds one, the window starts at the first attempt and is not extended by later ones, and the result says whether the attempt is within the limit, with the remaining attempts and wait time. It also allows resetting one key or all keys.",
+      "why": "The comment says the window is anchored to its first attempt, so a steady stream of attempts cannot keep the client blocked forever.",
+      "watch_out": "Rejected attempts still add to the count, so a client that keeps trying keeps extending its own count until the window ends."
+    },
+    {
+      "start": 37,
+      "end": 46,
+      "kind": "function",
+      "name": "clientIp",
+      "id": "s3",
+      "hash": "ed2cdaf1c4f818b6",
+      "title": "Client address lookup",
+      "what": "Finds the client's address from the forwarded header, taking the first address listed, or the real-IP header if that is missing. It returns unknown when neither is present.",
+      "why": "The doc comment says the first forwarded address is the client, as set by the hosting proxy.",
+      "watch_out": "Anyone can send a forwarded header, so this is only trustworthy when the host overwrites it. Unknown clients all share one limit."
+    }
+  ],
+  "explained_at": "2026-11-11T09:56:13+00:00",
+  "explained_by": "haiku",
+  "summary": "Limits how often one client can make a request in a time window, such as a set number of attempts per minute, and reports how long to wait when the limit is reached.",
+  "purpose": "Protects routes such as sign-in or generation from being overused or abused.",
+  "why": "The header says it is a fixed window rate limiter on the bounded cache, per server instance, good enough for a single region beta. That is the stated reason.",
+  "how": "1) Looks up the current window for a client key. 2) Starts a new window if none exists or the old one has ended. 3) Counts the attempt and saves the window, with the window start unchanged. 4) Reports whether the attempt is allowed, how many remain, and how long to wait. It also identifies the client from request headers.",
+  "inputs": "A client key such as an address, plus the limit and window length. For client addresses, the request headers.",
+  "outputs": "Whether the attempt is allowed, the remaining attempts, and the wait in milliseconds. Also a client address string.",
+  "risks": "Counts are kept per server instance, so several instances let a client get the limit each. Requests without a usable address share one bucket. The address comes from a forwarded header, which a client can fake if the proxy does not overwrite it.",
+  "debug": "If a client is blocked too early, check whether many users share one address, such as behind a proxy. If a client is never blocked, check whether several instances or a changing address are involved. Check the forwarded address header is set by the host.",
+  "summary_hash": "sha256:a3a6c553811bf4fecd68317b92076491114d728aa9f9a24680be63f0e893ee54"
+}

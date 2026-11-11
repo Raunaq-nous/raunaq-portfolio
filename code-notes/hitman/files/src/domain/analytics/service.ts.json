@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/analytics/service.ts",
+  "language": "TypeScript",
+  "lines": 25,
+  "hash": "sha256:c3e34457acb3d55b198f0ee641fa9d9d1ab57003b8674eae5aac39d33dd53002",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "One-time events can be saved twice under simultaneous requests.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "validation",
+      "meaning": "checking input against rules before using it"
+    },
+    {
+      "term": "race condition",
+      "meaning": "a bug where two things happening at the same moment interfere with each other"
+    }
+  ],
+  "depends_on": [
+    "@/domain/shared/types",
+    "./types",
+    "./repo",
+    "./kpi"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "2b216e4c15839f7d",
+      "title": "Imports and file purpose",
+      "what": "Brings in the error type, the event rules and the repository. The file states that unknown events and unexpected details are refused and never saved.",
+      "why": "Likely reason: keeps bad or personal data out of the analytics log.",
+      "watch_out": ""
+    },
+    {
+      "start": 6,
+      "end": 13,
+      "kind": "function",
+      "name": "track",
+      "id": "s2",
+      "hash": "892918e36d4d322d",
+      "title": "Recording an event",
+      "what": "Checks an event's name and details against its rules, then saves it. An unknown name or an extra field raises an invalid-input error.",
+      "why": "Likely reason: only checked data is stored, which matches the rule against free text and personal data.",
+      "watch_out": ""
+    },
+    {
+      "start": 14,
+      "end": 18,
+      "kind": "function",
+      "name": "trackOnce",
+      "id": "s3",
+      "hash": "6bd87431dd27f3c3",
+      "title": "Recording a one-time event",
+      "what": "Records an event only the first time a given user triggers it, such as the first alter ego reveal.",
+      "why": "Likely reason: the weekly measures count first-time moments, so repeats would inflate them.",
+      "watch_out": "The code checks first and writes second, so two simultaneous requests can both pass the check."
+    },
+    {
+      "start": 19,
+      "end": 25,
+      "kind": "function",
+      "name": "kpisForWeek",
+      "id": "s4",
+      "hash": "72dbbff2a0d86396",
+      "title": "Weekly summary report",
+      "what": "Produces the summary for the week containing a chosen day. It uses events up to 44 days after that week's start, or up to now if that is earlier.",
+      "why": "Likely reason: 44 days covers the week plus the longest retention window, and capping at now avoids counting future data.",
+      "watch_out": "The reason the KPI module is loaded only when this runs is not stated in the code."
+    }
+  ],
+  "explained_at": "2026-11-11T09:37:03+00:00",
+  "explained_by": "haiku",
+  "summary": "Records product events after checking them, and builds the weekly summary for reports.",
+  "purpose": "The entry point for saving analytics events and producing weekly numbers.",
+  "why": "Likely reason: checks keep unknown or personal data out of the analytics log.",
+  "how": "1. Find the event's rule. 2. Refuse unknown names. 3. Check the details against the rule. 4. Save the event. For one-time events, check first. For weekly numbers, load history up to 44 days after the week start, capped at now, and pass it to the KPI module.",
+  "inputs": "An event name, its details, and a user ID or nothing for anonymous events. For weekly numbers, a day and a current time.",
+  "outputs": "The saved event's ID, nothing for one-time events, or a validation error. A weekly summary.",
+  "risks": "The one-time check is not atomic, so two simultaneous requests can both save the event.",
+  "debug": "A refused event shows a message naming the first problem. If weekly numbers look wrong, check the day used and the events loaded.",
+  "summary_hash": "sha256:c3e34457acb3d55b198f0ee641fa9d9d1ab57003b8674eae5aac39d33dd53002"
+}

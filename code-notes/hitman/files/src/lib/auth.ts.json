@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "path": "src/lib/auth.ts",
+  "language": "TypeScript",
+  "lines": 59,
+  "hash": "sha256:23ea5996f419428996469e0a8285a5c6482588eabac3259100f091f04c08d72f",
+  "area": "other",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "This controls sign-in, but no tests are visible in the packet.",
+      "The rate limit sits in another file, so this file cannot show it is working.",
+      "The secret rules are enforced in the settings loader, not here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "session",
+      "meaning": "The record that says who is signed in, kept between requests."
+    },
+    {
+      "term": "JWT (signed token)",
+      "meaning": "A token that holds session data and is signed so it cannot be changed without detection."
+    },
+    {
+      "term": "credentials provider",
+      "meaning": "A sign-in method that checks an email and password the user types in."
+    },
+    {
+      "term": "rate limit",
+      "meaning": "A cap on how often one client can try, to slow down guessing."
+    },
+    {
+      "term": "IP address",
+      "meaning": "The network address that identifies the device making a request."
+    }
+  ],
+  "depends_on": [
+    "next-auth",
+    "next-auth/providers/credentials",
+    "@/domain/auth/service",
+    "@/providers/rateLimit",
+    "@/providers/env"
+  ],
+  "used_by": [
+    "src/lib/admin.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4ca2ff8194c90ed4",
+      "title": "Sign-in setup and types",
+      "what": "Declares that a session includes a user id, and brings in the sign-in provider, the credential checker, the client address helper and the settings reader.",
+      "why": "Lets the rest of the app read the user id from a session without type errors.",
+      "watch_out": "The type declaration must stay in place, or code that reads the user id will not type check."
+    },
+    {
+      "start": 16,
+      "end": 20,
+      "kind": "function",
+      "name": "sessionSecret",
+      "id": "s2",
+      "hash": "79975d2a6f2b7b4b",
+      "title": "Signing key for sessions",
+      "what": "Reads the secret used to sign sessions from the settings.",
+      "why": "Signing stops anyone forging a session token.",
+      "watch_out": "Changing this secret signs every user out, and the minimum length rule is enforced in the settings loader, not here."
+    },
+    {
+      "start": 21,
+      "end": 59,
+      "kind": "value",
+      "name": "authOptions",
+      "id": "s3",
+      "hash": "68c60d119b733053",
+      "title": "Email and password sign-in",
+      "what": "Configures sign-in with email and password, which calls the credential checker with the client address. Stores the user id in a signed token, sends sign-in to /login, and keeps no session table in the database.",
+      "why": "Likely reason: a signed token avoids a database lookup on every request.",
+      "watch_out": "The rate limit is applied inside the credential checker, so changing that code changes sign-in protection without any change here."
+    }
+  ],
+  "explained_at": "2026-11-11T19:27:50+00:00",
+  "explained_by": "haiku",
+  "summary": "The sign-in setup: users sign in with email and password, and a signed token keeps them signed in.",
+  "purpose": "It lets people sign in to the app and tells the rest of the app who they are.",
+  "why": "Likely reason: a signed token keeps sessions working without a database lookup on every request.",
+  "how": "It declares that sessions carry a user id, builds the signing secret, and configures the email and password provider. The provider checks the password and applies a rate limit by client address. The user id is copied into the token and the session, and sign-in is sent to the /login page.",
+  "inputs": "The email, password and client address from the sign-in form, plus the signing secret from the settings.",
+  "outputs": "A signed session for a valid sign-in, or a failed sign-in.",
+  "risks": "Changing the signing secret signs every user out. Sign-in protection lives in another file, so changing that file changes this behaviour.",
+  "debug": "If sign-in fails, check the rate limit message and the credential check. If users are signed out unexpectedly, check that the signing secret has not changed.",
+  "summary_hash": "sha256:23ea5996f419428996469e0a8285a5c6482588eabac3259100f091f04c08d72f"
+}

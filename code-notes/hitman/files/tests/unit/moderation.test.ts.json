@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "path": "tests/unit/moderation.test.ts",
+  "language": "TypeScript",
+  "lines": 84,
+  "hash": "sha256:95b469817148e69950eac45fc0f47987c76548e5cd23f62f6d401b93670fceb5",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The checks are clear and cover the main permissions, but no test run result was provided.",
+      "Several tests depend on earlier tests changing shared data, so they must run in order."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Test",
+      "meaning": "A short program that checks the app does what it should and reports pass or fail."
+    },
+    {
+      "term": "Mock",
+      "meaning": "A stand-in for a real service, here used to pretend a user is signed in."
+    },
+    {
+      "term": "Block",
+      "meaning": "A user choice that hides another person from you and stops them from joining your crews."
+    },
+    {
+      "term": "Route",
+      "meaning": "A web address the app answers, such as the reports page for a crew."
+    }
+  ],
+  "depends_on": [
+    "src/domain/crews/service",
+    "src/domain/moderation/service",
+    "src/providers/auth",
+    "src/lib/prisma",
+    "tests/helpers/db",
+    "src/app/api/crews/[crewId]/reports/route"
+  ],
+  "used_by": [
+    "Run by the test runner as part of the unit tests."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3c838ecfabf612ca",
+      "title": "Test setup and fake sign-in",
+      "what": "Loads the crew and moderation functions and the database, and replaces the real sign-in check with a fake one that uses a variable. Declares the named test users and the crew.",
+      "why": "Lets each test act as a particular user without a real login.",
+      "watch_out": "The fake sign-in variable must be reset when a test ends or the next test may act as the wrong user."
+    },
+    {
+      "start": 18,
+      "end": 27,
+      "kind": "function",
+      "name": "code",
+      "id": "s2",
+      "hash": "4fe576cdaa28ffe7",
+      "title": "Shared crew setup",
+      "what": "Before the tests run, clears the test database, creates an owner, two members and an outsider, and puts the members into the owner's crew using its invite code.",
+      "why": "Gives every test the same starting crew so the checks build on each other.",
+      "watch_out": "Later tests depend on this shared crew, so changing the setup changes many results."
+    },
+    {
+      "start": 28,
+      "end": 42,
+      "kind": "test group",
+      "name": "moderation: report",
+      "id": "s3",
+      "hash": "9f5f512bafc00e51",
+      "title": "Reporting members",
+      "what": "Checks that members can report other members with a reason and note, that reporting yourself or an outsider is refused, and that only the owner can list and resolve reports.",
+      "why": "Reports are sensitive, so only the crew owner should see them.",
+      "watch_out": "Any loosened permission check here would let ordinary members read or close reports."
+    },
+    {
+      "start": 43,
+      "end": 64,
+      "kind": "test group",
+      "name": "moderation: remove and block",
+      "id": "s4",
+      "hash": "672bd31299202431",
+      "title": "Removing and blocking members",
+      "what": "Checks that the owner can remove a member. Checks that blocking hides the blocked person's real name from the blocker only, removes them from crews the blocker owns, stops them rejoining, and that blocking yourself or an unknown user is refused.",
+      "why": "Likely reason: blocking is a personal choice, so the name should be hidden from the person who blocked, not from everyone.",
+      "watch_out": "Name hiding is the privacy rule here. If it applies to the wrong viewer, the wrong person's name is shown or hidden."
+    },
+    {
+      "start": 65,
+      "end": 84,
+      "kind": "test group",
+      "name": "moderation: owner transfer",
+      "id": "s5",
+      "hash": "f4c0004601b38cd5",
+      "title": "Handing over ownership and web routes",
+      "what": "Checks that only the current owner can hand the crew to another member, that the new owner gains control, and that the old owner can then leave. Also checks the report web route returns 401 when signed out, 400 for an invalid reason, and 403 for a non-owner.",
+      "why": "Ownership must be clear so a crew is never left without control, and web routes must refuse people who are not allowed in.",
+      "watch_out": "These route tests change the shared fake sign-in value, so they must run after the other tests that depend on it."
+    }
+  ],
+  "explained_at": "2026-11-11T09:20:15+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the crew moderation rules: reporting members, the owner reviewing reports, blocking, removing members, handing over ownership, and the matching web routes.",
+  "purpose": "Makes sure only the right people can see reports, remove members, block others or take over a crew, and that blocked people are hidden from the blocker.",
+  "why": "Likely reason: crew moderation touches other people's privacy and control, so mistakes here would be visible and harmful.",
+  "how": "Creates a crew with an owner, two members and an outsider. Then runs checks as different signed-in users, including the owner, members, an outsider and a signed-out visitor. Finally checks the web routes return the right status codes.",
+  "inputs": "Test users and a test crew created in a test database, plus a fake signed-in user that the tests switch between.",
+  "outputs": "Pass or fail results for each permission and error rule. There are no outputs to users.",
+  "risks": "Shared state across tests means one failing step can cause later steps to fail for unrelated reasons. A weakened permission check would let ordinary members see reports.",
+  "debug": "Start with the test that fails and check which signed-in user it used. Check that the test database is reset at the start. Look at the moderation service for the rule being tested.",
+  "summary_hash": "sha256:95b469817148e69950eac45fc0f47987c76548e5cd23f62f6d401b93670fceb5"
+}

@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "path": "scripts/fit-outcomes.ts",
+  "language": "TypeScript",
+  "lines": 59,
+  "hash": "sha256:aba3aa9eaa622270a5c84557e6bf815c22294fc70bf1f41745ac3479bdb2cd65",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated test is visible for this script.",
+      "Missing columns become blank values instead of errors.",
+      "Other scripts read its output file by name, so a bad output affects them all."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Chase",
+      "meaning": "The second innings, where a team tries to reach the target score."
+    },
+    {
+      "term": "Legal ball",
+      "meaning": "A delivery that counts toward the six balls of an over. Wides and no-balls do not count."
+    },
+    {
+      "term": "Cricsheet",
+      "meaning": "A public source of ball-by-ball cricket records, used here as the raw data."
+    },
+    {
+      "term": "Bucket",
+      "meaning": "A group of similar game situations whose outcomes are averaged together."
+    }
+  ],
+  "depends_on": [
+    "@/engine/outcomeModel",
+    "data/derived/ipl-matches.csv.gz",
+    "data/derived/ipl-balls.csv.gz",
+    "node:crypto",
+    "node:fs",
+    "node:zlib"
+  ],
+  "used_by": [
+    "scripts/fit-calibration.ts",
+    "scripts/fit-options.ts",
+    "scripts/fit-calibration-walkforward.ts",
+    "scripts/select-golden-moments.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "8717801706bfef07",
+      "title": "Purpose and setup",
+      "what": "Explains that the script fits the per-ball model from the derived data, holds out the latest three seasons, and writes a versioned output file. Also lists the imports.",
+      "why": "The header states the purpose and the held-out rule.",
+      "watch_out": "The held-out rule is fixed in code as the last three seasons, so changing it needs an edit to this file."
+    },
+    {
+      "start": 9,
+      "end": 24,
+      "kind": "function",
+      "name": "parseCsv",
+      "id": "s2",
+      "hash": "a82491d795f4495e",
+      "title": "Reading comma-separated text",
+      "what": "Turns comma-separated text into rows, handling fields in quotes that contain commas or doubled quotes.",
+      "why": "Some fields contain commas inside quotes, so a plain split would break those rows.",
+      "watch_out": "A missing column becomes an empty string, so a misspelled column name shows up as blank values rather than an error."
+    },
+    {
+      "start": 25,
+      "end": 59,
+      "kind": "function",
+      "name": "loadChaseSamples",
+      "id": "s3",
+      "hash": "575d7bf00ea3f4dd",
+      "title": "Loading chase samples",
+      "what": "Reads the match and ball files, drops rain-affected, tied, no-result and shortened matches, and builds one record per legal chase ball with whether the chasing side won.",
+      "why": "Likely reason: the chase model is designed for full 20-over chases, so other matches are excluded.",
+      "watch_out": "Shortened chases are caught by a number check on target overs, so a bad value in that column can quietly remove matches."
+    }
+  ],
+  "explained_at": "2026-11-11T09:46:47+00:00",
+  "explained_by": "haiku",
+  "summary": "Fits the per-ball outcome model from the derived ball data and saves it, holding back the latest three seasons for checking.",
+  "purpose": "Creates the model that predicts what each ball is likely to produce, which every other calibration and decision script depends on.",
+  "why": "Holding back the newest seasons means the model is checked on data it did not train on.",
+  "how": "Reads and unzips the match and ball files, drops matches that cannot be used for chase modelling, builds one chase record per legal ball, splits the seasons into training and held-out sets, fits the outcome model, and writes it with a fingerprint.",
+  "inputs": "data/derived/ipl-matches.csv.gz and data/derived/ipl-balls.csv.gz, plus environment settings for half-life, bucket size and parent size.",
+  "outputs": "data/models/outcomes-<version>.json with the fitted buckets, training and held-out seasons, a fingerprint and a source note. Prints a summary line.",
+  "risks": "Missing or misnamed columns become blank text rather than errors. The held-out split is always the latest three seasons. Writing the file overwrites the previous version of the same name.",
+  "debug": "If the output looks empty, check the chase sample count printed in the summary. If seasons are missing, check the date column in the ball file. If results shift between runs, compare the environment settings.",
+  "summary_hash": "sha256:aba3aa9eaa622270a5c84557e6bf815c22294fc70bf1f41745ac3479bdb2cd65"
+}

@@ -1,0 +1,227 @@
+{
+  "schema_version": 1,
+  "path": "src/app/api/live-score/route.ts",
+  "language": "TypeScript",
+  "lines": 169,
+  "hash": "sha256:d140491963680bb933f1aff832ec0d7c1965e0bd8243e863ab10ad0a4c3f92c0",
+  "area": "src-app",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for this route is visible in the packet.",
+      "Lines 121 to 169, which include the response and GET handler, are not in the packet, so error handling cannot be confirmed.",
+      "Several fields are always empty, so parts of the page will show blanks."
+    ]
+  },
+  "terms": [
+    {
+      "term": "IPL",
+      "meaning": "Indian Premier League, a professional Twenty20 cricket competition"
+    },
+    {
+      "term": "T20 and ODI",
+      "meaning": "short forms of cricket with 20 and 50 overs per side"
+    },
+    {
+      "term": "Cache",
+      "meaning": "a short-term store that keeps a result so it is not fetched again every time"
+    },
+    {
+      "term": "Aggregator",
+      "meaning": "a company that collects data from many sources and sells or shares it"
+    },
+    {
+      "term": "Quota",
+      "meaning": "a limit on how many requests an account may make"
+    },
+    {
+      "term": "Legal balls",
+      "meaning": "counting overs as balls, since an over has six legal balls and a text such as 10.4 means 64 balls"
+    }
+  ],
+  "depends_on": [
+    "next/server",
+    "@/providers/env",
+    "@/providers/cache",
+    "@/providers/rights",
+    "@/providers/log",
+    "@/engine/legalBalls",
+    "@/domain/sources/service",
+    "@/domain/sources/types",
+    "CricketData.org feed"
+  ],
+  "used_by": [
+    "src/components/LiveMatchCenter (likely; not confirmed in the packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "abfeb6f876c9e7df",
+      "title": "Setup and fixed settings",
+      "what": "Brings in the helpers, makes the route always fresh, and sets the source name, the IPL series id and the 30-second cache time.",
+      "why": "The cache time protects the feed's request quota, and the source label is fixed by the licence note.",
+      "watch_out": "The IPL series id is fixed in the file, so a new season needs a new value."
+    },
+    {
+      "start": 17,
+      "end": 32,
+      "kind": "value",
+      "name": "SHORT_NAMES, ApiScore, ApiTeamInfo",
+      "id": "s2",
+      "hash": "01ff29f40d616db0",
+      "title": "Team names and feed shapes",
+      "what": "Maps full team names to short codes and describes the feed's score and match formats.",
+      "why": "Likely reason: short codes fit the scoreboard, and the shapes keep the feed data typed.",
+      "watch_out": "A team name not in the map falls back to initials, so new or renamed teams must be added by hand."
+    },
+    {
+      "start": 33,
+      "end": 36,
+      "kind": "type",
+      "name": "ApiMatch",
+      "id": "s3",
+      "hash": "b71edef20f3585fe",
+      "title": "Feed match shape",
+      "what": "Describes what a match record from the feed holds, such as its id, teams, scores and whether it has started or ended.",
+      "why": "Reason not stated in the code beyond typing the feed data.",
+      "watch_out": "Most fields are optional, so the code must handle missing values."
+    },
+    {
+      "start": 37,
+      "end": 41,
+      "kind": "type",
+      "name": "Innings",
+      "id": "s4",
+      "hash": "5ac5838472298596",
+      "title": "Innings shape",
+      "what": "Describes one innings as the app uses it: runs, wickets, overs, balls and the batting team.",
+      "why": "Reason not stated in the code beyond giving the innings one clear form.",
+      "watch_out": "The ball count can be null when the overs text cannot be read."
+    },
+    {
+      "start": 42,
+      "end": 48,
+      "kind": "type",
+      "name": "Payload, shortName",
+      "id": "s5",
+      "hash": "8d65eda0a25719e6",
+      "title": "Response bundle and short name helper",
+      "what": "Defines the bundle the endpoint returns, and a helper that turns a team name into its short code.",
+      "why": "Likely reason: one stable response for the page to read.",
+      "watch_out": "The all-matches list is typed as empty, so it can never hold data, and the reason is not stated in the code."
+    },
+    {
+      "start": 49,
+      "end": 51,
+      "kind": "function",
+      "name": "ballsFromOvers",
+      "id": "s6",
+      "hash": "d27824ea1bc35022",
+      "title": "Overs to balls conversion",
+      "what": "Turns an overs text such as 10.4 into a count of balls, and returns nothing if the text is malformed.",
+      "why": "The comment says a malformed value must give nothing rather than a guess.",
+      "watch_out": "The conversion relies on the legal balls helper, so changes there change every overs value."
+    },
+    {
+      "start": 52,
+      "end": 57,
+      "kind": "function",
+      "name": "runRate, ballsPerInnings",
+      "id": "s7",
+      "hash": "35336dc6b8d4c248",
+      "title": "Run rate and balls per innings",
+      "what": "Works out the scoring rate rounded to two decimals, and the total balls allowed in a T20 or ODI innings.",
+      "why": "Likely reason: T20 and ODI have fixed over counts, so the balls total is known.",
+      "watch_out": "Other match types return nothing, so chase figures are skipped for them."
+    },
+    {
+      "start": 58,
+      "end": 63,
+      "kind": "function",
+      "name": "battingSide",
+      "id": "s8",
+      "hash": "b9743e7aace15723",
+      "title": "Find the batting team",
+      "what": "Finds which team is batting in an innings by matching full team names, longest name first.",
+      "why": "The comment says matching longest first stops a short name from matching two different teams.",
+      "watch_out": "The match relies on the feed's wording, so a change in that wording could pick the wrong team."
+    },
+    {
+      "start": 64,
+      "end": 71,
+      "kind": "function",
+      "name": "toInnings",
+      "id": "s9",
+      "hash": "dc077d764ec8c341",
+      "title": "Convert feed scores to innings",
+      "what": "Turns the raw score list into a clean list of innings, or an empty list if the feed gives no scores.",
+      "why": "Reason not stated in the code beyond cleaning the feed data.",
+      "watch_out": "Missing runs or wickets default to zero, which could show 0/0 where the true value is unknown."
+    },
+    {
+      "start": 72,
+      "end": 122,
+      "kind": "function",
+      "name": "buildMatch",
+      "id": "s10",
+      "hash": "a4fbfd4df0f4df7a",
+      "title": "Build the match view",
+      "what": "Builds the display data for one match: the score line, the chase status such as runs needed, the two innings, the result and the venue.",
+      "why": "Likely reason: one function prepares every field the page shows.",
+      "watch_out": "Commentary, batsmen, bowlers and extras are always left empty, so the page must not expect them to be filled; the last two lines are not in the packet."
+    },
+    {
+      "start": 123,
+      "end": 127,
+      "kind": "function",
+      "name": "isIpl, label",
+      "id": "s11",
+      "hash": "ec46a1fb9accdd1c",
+      "title": "IPL check and label helpers",
+      "what": "Helpers named isIpl and label; their code is not in the packet.",
+      "why": "Reason not stated in the code, and the code is not visible in the packet.",
+      "watch_out": "Their behaviour is unclear here, so read the file directly before relying on them."
+    },
+    {
+      "start": 128,
+      "end": 134,
+      "kind": "function",
+      "name": "respond",
+      "id": "s12",
+      "hash": "011e65cc7439e112",
+      "title": "Response builder",
+      "what": "A function named respond; its code is not in the packet.",
+      "why": "Reason not stated in the code, and the code is not visible in the packet.",
+      "watch_out": "How it formats errors and cache headers is unclear from the packet."
+    },
+    {
+      "start": 135,
+      "end": 169,
+      "kind": "function",
+      "name": "GET",
+      "id": "s13",
+      "hash": "d08337bce7c8bbf0",
+      "title": "Main GET handler",
+      "what": "The entry point that answers the score request; its code is not in the packet.",
+      "why": "Reason not stated in the code, and the code is not visible in the packet.",
+      "watch_out": "The cache use and fetch error handling are unclear, so check this part directly."
+    }
+  ],
+  "explained_at": "2026-11-11T09:26:07+00:00",
+  "explained_by": "haiku",
+  "summary": "Fetches live IPL cricket scores from a third-party feed and returns a cleaned-up match view, cached for 30 seconds, and never adds made-up data.",
+  "purpose": "Feeds the cricket scores page with current match data.",
+  "why": "The file says the source is not licensed for live use, so every score is marked as delayed and never as live, and the cache protects the feed's request quota.",
+  "how": "Likely order: 1) Check the cache for the IPL series. 2) If missing, fetch the feed. 3) Convert each match with buildMatch. 4) Store the result and return it with the source label and fetch time. The lines after 120 are not in the packet, so the exact steps are unclear.",
+  "inputs": "The CricketData.org feed through an API key in the environment, the IPL series id, and the cache settings.",
+  "outputs": "A payload with the primary match, all IPL matches, the source label, the fetch time and API details.",
+  "risks": "The feed may change its format, the request quota may be used up, and using the feed may breach its terms if it is treated as live.",
+  "debug": "If scores look wrong, check the team name list and buildMatch. If nothing shows, check the API key in the environment and the cache. The response handling after line 120 is not visible, so check that code directly.",
+  "summary_hash": "sha256:d140491963680bb933f1aff832ec0d7c1965e0bd8243e863ab10ad0a4c3f92c0"
+}

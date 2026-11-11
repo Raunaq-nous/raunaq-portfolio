@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/planner/service.ts",
+  "language": "TypeScript",
+  "lines": 68,
+  "hash": "sha256:40300c3406ee56088bc456f28467f65e278378d12a8c893fda8edd28ac84d9a5",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet.",
+      "Errors from the phrasing call are not caught here.",
+      "The source label is a fixed text value."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Deterministic",
+      "meaning": "Gives the same result every time for the same input."
+    },
+    {
+      "term": "Regular expression",
+      "meaning": "A pattern used to match text, such as the question shapes here."
+    },
+    {
+      "term": "Template",
+      "meaning": "Fixed wording with blanks filled from data."
+    },
+    {
+      "term": "Verified generation",
+      "meaning": "Producing text from data and checking that each claim matches the data."
+    },
+    {
+      "term": "Fact",
+      "meaning": "One checked piece of data, with an id and a source."
+    },
+    {
+      "term": "Source id",
+      "meaning": "A label that identifies where a fact came from."
+    }
+  ],
+  "depends_on": [
+    "src/providers/llm",
+    "src/domain/contests/service",
+    "src/domain/crews/service",
+    "src/domain/planner/types.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup, CLEAN",
+      "id": "s1",
+      "hash": "f0c32c9185d18c25",
+      "title": "Imports and text cleanup helper",
+      "what": "Brings in the phrasing and verification tools, the contest and crew services, and the plan types. Also defines a helper that strips trailing punctuation and spaces from a crew name. Users do not see this directly.",
+      "why": "Likely reason: people often type a question mark or full stop after a crew name.",
+      "watch_out": "The helper removes only trailing punctuation, so a name that legitimately ends with one would lose it."
+    },
+    {
+      "start": 10,
+      "end": 22,
+      "kind": "function",
+      "name": "plan",
+      "id": "s2",
+      "hash": "f66b17454ca554ae",
+      "title": "Routes a question to a plan",
+      "what": "Turns a question into one of three fixed plans: crew members, crew leader or my crews. Anything else becomes a retrieval plan, and an empty or over-300-character question is unsupported.",
+      "why": "The comment says only known shapes become database queries.",
+      "watch_out": "Only exact phrasing matches, so a reworded question falls back to the not-indexed message."
+    },
+    {
+      "start": 23,
+      "end": 27,
+      "kind": "function",
+      "name": "findCrewId",
+      "id": "s3",
+      "hash": "ac645bdcbfc0ab16",
+      "title": "Finds a crew id by name",
+      "what": "Looks up the user's crews and returns the id of the one whose name matches, ignoring case, or nothing.",
+      "why": "Reason not stated in the code beyond its name.",
+      "watch_out": "Only the user's own crews are searched, so crews they are not in cannot be queried."
+    },
+    {
+      "start": 28,
+      "end": 47,
+      "kind": "function",
+      "name": "factsFor",
+      "id": "s4",
+      "hash": "96d791a0a370c83e",
+      "title": "Collects facts for a structured question",
+      "what": "Gathers the facts a plan needs: the user's crews and their count, a crew's name, members and count, or the leader and points. Returns an explanation when there is no crew, no members or no scored matches.",
+      "why": "The comment says the facts are limited to what the asking user may see.",
+      "watch_out": "A leader with zero points counts as no scored matches, so a crew where everyone is at zero shows as empty."
+    },
+    {
+      "start": 48,
+      "end": 57,
+      "kind": "function",
+      "name": "templateFor",
+      "id": "s5",
+      "hash": "161670bbbddad6fb",
+      "title": "Fixed sentences for each question",
+      "what": "Gives the plain wording for each of the three question types, filled from the facts by their ids. This is the fallback wording.",
+      "why": "The comment says this is deterministic phrasing and the fallback when model phrasing fails.",
+      "watch_out": "The wording uses fact ids, so renaming an id in the facts step leaves a blank in the sentence."
+    },
+    {
+      "start": 58,
+      "end": 68,
+      "kind": "function",
+      "name": "answer",
+      "id": "s6",
+      "hash": "1c8b9e9edb16877d",
+      "title": "Full answer to a question",
+      "what": "Runs the whole route for one question: plan, then unsupported or retrieval messages, then facts, then phrasing through the verified generation step, returning the sentences and sources.",
+      "why": "The comment says that with no index yet, the planner says so rather than improvising.",
+      "watch_out": "The phrasing call uses the fast model tier, and an error from it is not caught here."
+    }
+  ],
+  "explained_at": "2026-11-11T09:40:50+00:00",
+  "explained_by": "haiku",
+  "summary": "Answers simple questions about the user's crews by routing them to fixed database queries, then phrasing the result through a checked template.",
+  "purpose": "Handles questions such as who is in my crew, who leads, and which crews I am in, without letting a language model choose what to look up.",
+  "why": "The header says routing is deterministic and the model only phrases results.",
+  "how": "1. Trims the question and rejects empty or over-long ones. 2. Matches three fixed question shapes; anything else goes to a retrieval path that says no index exists yet. 3. For a matched question, finds the user's crew by name and loads its facts. 4. Builds a phrasing request with a fixed template and the fact ids. 5. Returns the sentences and their sources.",
+  "inputs": "A user id, the question text and the current time.",
+  "outputs": "An answer with the plan, sentences, sources and, when there is nothing to say, an honest message.",
+  "risks": "Crew names must match exactly, ignoring case, so a typo gives not in a crew. The source label is fixed text rather than a real source record. Phrasing goes through a model call, and an error there is not caught in this file.",
+  "debug": "If the answer says not in a crew, check the spelling and what listMyCrews returns. If a sentence looks wrong, check the template and the facts. If a question is refused, check its length and whether it matches one of the three patterns.",
+  "summary_hash": "sha256:40300c3406ee56088bc456f28467f65e278378d12a8c893fda8edd28ac84d9a5"
+}

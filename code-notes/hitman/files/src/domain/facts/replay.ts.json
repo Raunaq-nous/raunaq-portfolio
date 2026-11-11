@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/facts/replay.ts",
+  "language": "TypeScript",
+  "lines": 73,
+  "hash": "sha256:8fc261ec3c491bdf445255fdda508435df9b78fac4d110cfc69a008d38613b55",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only part of the file was reviewed.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "server-sent events",
+      "meaning": "a way for a server to push updates to a browser over one open connection"
+    }
+  ],
+  "depends_on": [
+    "@/domain/shared/types",
+    "@/providers/rights",
+    "./repo",
+    "./service"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "fab941c7fee7a99a",
+      "title": "Replay setup",
+      "what": "Brings in the error type, the rights check, the store and the time helpers. Describes replaying a stored event's moments in the order they were observed.",
+      "why": "Likely reason: replays reuse stored data, so a replay matches what was recorded.",
+      "watch_out": "The file header says replays are repeatable only if the adapters give fixed times, which this section does not check."
+    },
+    {
+      "start": 8,
+      "end": 18,
+      "kind": "type",
+      "name": "ReplayFrame",
+      "id": "s2",
+      "hash": "196f4c854e4750c5",
+      "title": "Replay frame shape and speed cap",
+      "what": "Defines one step of a replay: its place, its time offset in milliseconds, the incident details, and for cricket the running score for that innings. Also caps replay speed at 3600 times real time.",
+      "why": "Likely reason: a fixed frame shape lets a viewer step through replays the same way each time, and the cap stops runaway speeds.",
+      "watch_out": "The incident payload has no fixed type, so anything reading it must check its type first."
+    },
+    {
+      "start": 19,
+      "end": 42,
+      "kind": "function",
+      "name": "planReplay",
+      "id": "s3",
+      "hash": "1e976ad9babace89",
+      "title": "Builds the timed playback list",
+      "what": "Puts one event's recorded incidents in the order they happened and gives each a time offset from the first, scaled by playback speed. For ball incidents it also works out the running score (runs, wickets, legal balls, per innings), so each frame can show the scoreboard at that moment.",
+      "why": "Likely reason: the replay screen needs a ready-made list of frames so the server can stream them without recalculating.",
+      "watch_out": "The running totals assume balls arrive in order within each innings, so an out-of-order record gives wrong totals."
+    },
+    {
+      "start": 43,
+      "end": 50,
+      "kind": "function",
+      "name": "replayFrames",
+      "id": "s4",
+      "hash": "bceab76bb12fdbc9",
+      "title": "Loads an event and prepares its replay",
+      "what": "Checks that the speed is a number from 1 up to the allowed maximum and that the event exists, then loads the event's current incidents that the app may display and returns the replay frames. Bad input returns a DomainError with code INVALID or NOT_FOUND.",
+      "why": "Reason not stated in the code, but the checks run before any loading, so bad requests fail early.",
+      "watch_out": "The display filter runs before the step that drops superseded corrections, so a correction from a source that cannot be displayed leaves the replaced version showing."
+    },
+    {
+      "start": 51,
+      "end": 54,
+      "kind": "function",
+      "name": "sseEncode",
+      "id": "s5",
+      "hash": "481ddbdf9cb6861a",
+      "title": "Formats one streaming message",
+      "what": "Turns an event name, a payload and an optional number into the text format that browsers expect for a Server-Sent Events feed. The id line is left out when no number is given.",
+      "why": "Likely reason: the replay is sent as a one-way live feed from server to browser, and this is its wire format.",
+      "watch_out": "The payload is converted to JSON, so content that JSON cannot represent, such as circular references, makes it fail."
+    },
+    {
+      "start": 55,
+      "end": 73,
+      "kind": "function",
+      "name": "replayStream",
+      "id": "s6",
+      "hash": "f4c5e904827e34b3",
+      "title": "Streams replay frames at real pace",
+      "what": "Builds a stream that sends frames from a chosen starting index, waiting between frames to match the gap in the original timing, then sends a final end message with the total frame count. Viewers see incidents appear at the pace they happened, scaled by speed.",
+      "why": "The wait goes through an injected sleep function, so callers and tests control the timing.",
+      "watch_out": "The end message reports the full frame count, not the count sent after the starting point, and a starting index past the end sends only the end message."
+    }
+  ],
+  "explained_at": "2026-11-11T09:40:50+00:00",
+  "explained_by": "haiku",
+  "summary": "Plays back a stored event's moments in the order they happened, at a chosen speed.",
+  "purpose": "The replay feature for stored matches.",
+  "why": "Likely reason: recorded times let a replay play out the same way each time.",
+  "how": "1. Load the stored incidents. 2. Order them by observed time. 3. Space them by the real gaps, divided by the speed, up to a cap. 4. Build a frame for each, with the running cricket score where it applies. 5. Send the frames out in order. Only the first six sections of this file were reviewed.",
+  "inputs": "An event ID and a speed.",
+  "outputs": "Timed frames, sent as a stream of text events (the encoder name suggests this).",
+  "risks": "Only part of the file was reviewed here, so the streaming and rights parts are not confirmed.",
+  "debug": "If playback is too fast or too slow, check the speed cap. If frames are missing, check the rights check and the stored data.",
+  "summary_hash": "sha256:8fc261ec3c491bdf445255fdda508435df9b78fac4d110cfc69a008d38613b55"
+}

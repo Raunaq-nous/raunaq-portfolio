@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "path": "src/engine/moments.ts",
+  "language": "TypeScript",
+  "lines": 38,
+  "hash": "sha256:625afdee449aac2ea0b41cc28d4e831c4f8b89ae6cc74c73ff5ea24739ff761a",
+  "area": "src-engine",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this packet.",
+      "The file is short and deterministic, which makes testing straightforward."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Leverage",
+      "meaning": "How much a moment could change the result of the match. High leverage means the decision matters a lot."
+    },
+    {
+      "term": "Decile",
+      "meaning": "One tenth of a list. Top decile means the top ten percent of moments by leverage."
+    },
+    {
+      "term": "Cap",
+      "meaning": "A limit on how many picks can share one feature, such as one season or one team."
+    },
+    {
+      "term": "Nearest rank",
+      "meaning": "A simple way to find a value at a given percentage of a sorted list, taking the first value that reaches that percentage."
+    }
+  ],
+  "depends_on": [],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 4,
+      "kind": "setup",
+      "name": "File setup, Phase",
+      "id": "s1",
+      "hash": "ad8d102db9009206",
+      "title": "File setup and phase names",
+      "what": "Describes the file's purpose and defines the three game phases: powerplay, middle and death.",
+      "why": "The header explains that the selection is about leverage and diversity, and the phase names come from cricket usage.",
+      "watch_out": "Adding a new phase name would require every cap to include it, or the selection will fail."
+    },
+    {
+      "start": 5,
+      "end": 9,
+      "kind": "function",
+      "name": "phaseOf, Candidate",
+      "id": "s2",
+      "hash": "0eaab5ee42ac396e",
+      "title": "Phase labels and candidate shape",
+      "what": "Labels a moment as powerplay, middle or death using how many balls are left: more than 84 is powerplay, 24 or fewer is death, and everything else is middle. It also defines the shape of a candidate moment.",
+      "why": "The doc comment defines powerplay as the first six overs and death as the last four, which matches these thresholds.",
+      "watch_out": "The thresholds assume a full 20-over innings. A shortened match would give the wrong phase."
+    },
+    {
+      "start": 10,
+      "end": 16,
+      "kind": "function",
+      "name": "quantile",
+      "id": "s3",
+      "hash": "f7e5c6d3b5352ba2",
+      "title": "Value at a percentage point",
+      "what": "Returns the value at a given percentage of a list, using the nearest-rank method, and refuses an empty list.",
+      "why": "Likely reason: used to find the leverage cut-off for the top decile, which the header names.",
+      "watch_out": "The function sorts a copy of the list each time, so calling it inside a loop over large data will be slow."
+    },
+    {
+      "start": 17,
+      "end": 38,
+      "kind": "function",
+      "name": "diversify",
+      "id": "s4",
+      "hash": "17201a67d6a6867c",
+      "title": "Greedy diversified pick",
+      "what": "Goes through candidates from highest leverage down. It keeps a candidate only if its match, season, phase, teams and answer caps all allow it, and stops once enough are chosen.",
+      "why": "The doc comment describes the rules: one moment per match, plus caps on season, phase, team and answer, so no fixed answer scores well.",
+      "watch_out": "Because it is greedy, an early high-leverage pick can block later picks. The result is fast and stable but not guaranteed to be the best possible mix."
+    }
+  ],
+  "explained_at": "2026-11-11T09:56:13+00:00",
+  "explained_by": "haiku",
+  "summary": "Chooses the most important moments of the season for the decision lab, spreading them across matches, seasons, phases, teams and answers so no single type dominates.",
+  "purpose": "Produces a varied shortlist of high-leverage moments, so the lab does not show many near-identical situations.",
+  "why": "The header says the selection is top-decile leverage, diversified by match, season, phase and team. The reason for the diversity rules is stated in the doc reference rather than the code.",
+  "how": "1) Labels each moment with a phase from the balls left. 2) Sorts candidates by leverage, highest first, with ties broken by identifier. 3) Walks down the list, skipping any candidate that would break a cap. 4) Stops when enough moments are picked. Also provides a quantile helper.",
+  "inputs": "Candidate moments with identifier, match, season, phase, teams, leverage score and optional answer, plus caps for each diversity rule.",
+  "outputs": "A shortlist of candidate moments, with fewer than requested if the caps cannot all be met. Also a phase label for a ball count and a quantile value.",
+  "risks": "Caps that are too tight return a short list without any error. A moment with a phase name not in the caps will fail the lookup. Ties in leverage are resolved by identifier, so the order is stable but may not be meaningful.",
+  "debug": "If the list is shorter than expected, check each cap against the candidates, especially the answer cap and the per-team cap. If phases look wrong, check the balls-left value, since the powerplay threshold is more than 84 balls.",
+  "summary_hash": "sha256:625afdee449aac2ea0b41cc28d4e831c4f8b89ae6cc74c73ff5ea24739ff761a"
+}

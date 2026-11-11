@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "path": "tests/unit/llm/provider.test.ts",
+  "language": "TypeScript",
+  "lines": 81,
+  "hash": "sha256:66d0beb5aec921617b30100ea3184bfdb7ae0ef9cb1ea0b05e51f0a2fff1a1a5",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Covers success, empty output, bad output, network failure and missing keys.",
+      "Uses a fake client so tests never call the real service.",
+      "Cost is reported as unknown rather than guessed."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Provider",
+      "meaning": "A component that does the AI work, here either the template or the Gemini AI service."
+    },
+    {
+      "term": "Schema",
+      "meaning": "A written rule for the shape of data, here the headline must be a non-empty text."
+    },
+    {
+      "term": "Fallback",
+      "meaning": "A backup answer used when the main method fails."
+    },
+    {
+      "term": "Token",
+      "meaning": "A small piece of text the AI reads or writes. AI services charge by the number of tokens."
+    },
+    {
+      "term": "Latency",
+      "meaning": "How long a request takes to finish."
+    }
+  ],
+  "depends_on": [
+    "vitest",
+    "zod",
+    "@/llm",
+    "@/providers/llm"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup, schema",
+      "id": "s1",
+      "hash": "20c6dcaa98ee343b",
+      "title": "Imports tools and sets output schema",
+      "what": "Brings in the test tools, the provider types and fallback function, and defines a schema that requires a non-empty headline.",
+      "why": "Likely reason: the schema checks AI output has the right shape before the app uses it.",
+      "watch_out": "Other sections depend on this schema, so changing the required fields changes what counts as valid output."
+    },
+    {
+      "start": 6,
+      "end": 10,
+      "kind": "value",
+      "name": "req",
+      "id": "s2",
+      "hash": "082a2b146c8d78c2",
+      "title": "Standard test request",
+      "what": "A standard request asking for a headline from 36 runs and 12 balls, with a fast model, a token limit and a template fallback.",
+      "why": "Likely reason: one shared request keeps the provider tests comparable.",
+      "watch_out": "Many tests reuse this request, so changing it changes their expected output."
+    },
+    {
+      "start": 11,
+      "end": 15,
+      "kind": "function",
+      "name": "fakeClient",
+      "id": "s3",
+      "hash": "0576276bcd6d8001",
+      "title": "Fake Gemini client",
+      "what": "A fake AI client that records each call and returns a set text reply and token counts, without contacting any real service.",
+      "why": "Likely reason: tests must not call a paid external service, so a fake gives controlled answers.",
+      "watch_out": "The fake always supplies token counts. A real reply with missing counts could give different cost results in production."
+    },
+    {
+      "start": 16,
+      "end": 65,
+      "kind": "test group",
+      "name": "llm provider (part 1)",
+      "id": "s4",
+      "hash": "138599050adf4b06",
+      "title": "Checks provider behaviour and fallbacks",
+      "what": "Checks the template provider is free and gives the same answer each time. Checks the Gemini provider sends structured requests with the chosen model, reports tokens, latency and cost. Checks cost is null when no price is set, model ids are required from settings, and empty, invalid or failing output falls back to the template with a log entry for each call. Checks logs do not include the answer text.",
+      "why": "Likely reason: the app must stay reliable and cost-aware even when the AI service fails.",
+      "watch_out": "Cost is shown as null, not zero, when no price is set. Treating null as zero would hide real spending."
+    },
+    {
+      "start": 66,
+      "end": 81,
+      "kind": "test group",
+      "name": "llm provider (part 2)",
+      "id": "s5",
+      "hash": "0494ef5ef2645f51",
+      "title": "Checks no network call under test",
+      "what": "Checks that with no key the template provider is used, and that even with a key set, no network request is made during tests and the output still comes from the template.",
+      "why": "Likely reason: tests must never call the real AI service, which would cost money and make results unpredictable.",
+      "watch_out": "This relies on resetting modules and setting environment values for each test. A missed reset could leak a real key into later tests."
+    }
+  ],
+  "explained_at": "2026-11-11T09:18:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the AI provider layer: a free template provider, a Gemini provider that reports tokens and cost, and a fallback that uses the template when the AI fails.",
+  "purpose": "Makes sure the app always gets an answer, that the cost is reported honestly, and that the app never calls the real AI service during tests.",
+  "why": "Likely reason: the app must still work when the AI is down, and cost must be shown accurately. Reason not stated in the code for the fake client design beyond what the tests show.",
+  "how": "Defines a schema that requires a non-empty headline and a standard request. Uses a fake Gemini client that records calls and returns set text and token counts. Checks the template is deterministic and free, the Gemini provider sends structured JSON with the right model id and reports tokens, latency and cost, cost is null without a price, model ids come from environment settings, and failing output falls back to the template with every call logged. Checks no network call is made in tests even with a key present.",
+  "inputs": "A standard request asking for a headline, fake AI replies, and environment settings for keys and model ids.",
+  "outputs": "Provider results with output, provider name, model, tokens, latency and cost, plus log entries for each call.",
+  "risks": "Cost is null when no price is set, and a dashboard that treats null as zero would under-report spend. Tests change global settings and modules, so a missed reset could leak into later tests.",
+  "debug": "If a provider test fails, check the environment settings for model ids and keys first. Then check the fallback path and the cost calculation with the price values.",
+  "summary_hash": "sha256:66d0beb5aec921617b30100ea3184bfdb7ae0ef9cb1ea0b05e51f0a2fff1a1a5"
+}

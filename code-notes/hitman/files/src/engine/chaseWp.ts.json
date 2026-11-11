@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "path": "src/engine/chaseWp.ts",
+  "language": "TypeScript",
+  "lines": 98,
+  "hash": "sha256:709a6d71fa0cda19829ac3528b9bbae08aac342a828a48666aae27e69b94d5eb",
+  "area": "src-engine",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in this packet.",
+      "Quality depends on the outcome model, which is not in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "memoised",
+      "meaning": "results saved so the same work is never repeated"
+    },
+    {
+      "term": "backward induction",
+      "meaning": "solving from the final state back to the start"
+    },
+    {
+      "term": "outcome distribution",
+      "meaning": "the chance of each ball result, such as a 0, a 4 or a wicket"
+    },
+    {
+      "term": "extras",
+      "meaning": "runs given without the batter hitting, such as wides"
+    },
+    {
+      "term": "free disposal",
+      "meaning": "offering a side every style sides with fewer wickets can play, so extra wickets never lower the chance"
+    }
+  ],
+  "depends_on": [
+    "docs/design-docs/models-and-grading.md (named in the header)"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup, OUTCOMES, Outcome, OutcomeDist, ChaseState",
+      "id": "s1",
+      "hash": "41e1f329e451d802",
+      "title": "Ball outcomes and situation shape",
+      "what": "Lists the eight possible ball results: runs from 0 to 6 and a wicket. Defines the outcome distribution and the situation: balls left, wickets in hand and runs needed.",
+      "why": "Likely reason: a shared format for the model and the calculation.",
+      "watch_out": "Only whole runs from 0 to 6 are listed, so a five-run or seven-run result has no place."
+    },
+    {
+      "start": 10,
+      "end": 16,
+      "kind": "type",
+      "name": "OutcomeModel",
+      "id": "s2",
+      "hash": "10a12062305e096d",
+      "title": "Outcome model input type",
+      "what": "Describes the outside model: for a situation it returns one distribution, or several playing styles to choose from.",
+      "why": "The comment says several styles let the chaser pick the best, which keeps the chance from falling as wickets rise.",
+      "watch_out": "If the model offers styles that do not suit the situation, the chosen style can be wrong without any error."
+    },
+    {
+      "start": 17,
+      "end": 20,
+      "kind": "function",
+      "name": "next",
+      "id": "s3",
+      "hash": "37090b28ee3ffcf7",
+      "title": "Effect of one ball",
+      "what": "Gives the new situation after one ball: a wicket removes a ball and a wicket, and a run result removes a ball and the runs scored.",
+      "why": "Likely reason: the single-step rule that the calculation chains together.",
+      "watch_out": "Runs needed can drop below zero on a winning hit, which the finish check handles."
+    },
+    {
+      "start": 21,
+      "end": 28,
+      "kind": "function",
+      "name": "terminal",
+      "id": "s4",
+      "hash": "fd7849658dc6a837",
+      "title": "Detecting a finished chase",
+      "what": "Returns the final value when the chase is over: 1 when the runs are reached, 0 when wickets or balls run out short, and 0.5 for a tie at the last ball.",
+      "why": "Likely reason: sets the edges of the calculation.",
+      "watch_out": "A tie counts as half a win, which is a deliberate choice that differs from a plain loss."
+    },
+    {
+      "start": 29,
+      "end": 37,
+      "kind": "function",
+      "name": "checkDist",
+      "id": "s5",
+      "hash": "0c63af6a1c0222c2",
+      "title": "Checking a distribution",
+      "what": "Confirms every outcome chance is not negative and that they add to one, within a tiny margin, and throws an error otherwise.",
+      "why": "Likely reason: a bad model would otherwise give wrong answers silently.",
+      "watch_out": "Checks happen only for situations that are actually used, so a bad model entry elsewhere would go unnoticed."
+    },
+    {
+      "start": 38,
+      "end": 45,
+      "kind": "type",
+      "name": "ChaseModel",
+      "id": "s6",
+      "hash": "c2dfb26874919625",
+      "title": "Chase model interface",
+      "what": "Describes what the calculation offers: the win chance, the leverage for a situation, and the distribution played.",
+      "why": "Likely reason: the public interface other parts of the app use.",
+      "watch_out": "Only these three are public, so other helpers cannot be called from outside."
+    },
+    {
+      "start": 46,
+      "end": 94,
+      "kind": "function",
+      "name": "createChaseModel",
+      "id": "s7",
+      "hash": "3acf4fdabfc9b494",
+      "title": "Building the chase calculator",
+      "what": "Builds a calculator that remembers each situation's result. For each live situation it checks every offered style, works out the expected result from the next situations, and keeps the best. Checks the inputs are whole numbers within range, and returns win chance, the style played and leverage.",
+      "why": "Likely reason: the memory stops the same situation being worked out many times, which keeps it fast.",
+      "watch_out": "The memory key packs balls, wickets and runs into one number. That is safe only within the stated limits, since going beyond them could make two situations share a key."
+    },
+    {
+      "start": 95,
+      "end": 98,
+      "kind": "function",
+      "name": "swing",
+      "id": "s8",
+      "hash": "3b32c2053e093fe6",
+      "title": "Swing between two chances",
+      "what": "Gives the size of the change between two win chances, ignoring direction.",
+      "why": "Likely reason: a simple measure of how much a stretch of play moved the match.",
+      "watch_out": "Direction is ignored, so a rise and a fall of the same size look identical."
+    }
+  ],
+  "explained_at": "2026-11-11T09:52:59+00:00",
+  "explained_by": "haiku",
+  "summary": "Works out the exact chance that the chasing side wins a limited-overs cricket chase, from any situation, by working backward from the finish.",
+  "purpose": "Gives the chase win chance and how much each ball can change it, for The Opener and related views.",
+  "why": "The header says it is exact, using memoised backward induction, with the ball outcome model supplied from outside.",
+  "how": "Defines the situation as balls left, wickets in hand and runs needed, and the finishing conditions. For each live situation it tries each playing style offered, works out the expected result from the next situations, keeps the best, and saves results so each situation is worked out once. Leverage is the spread of the next ball's win chance.",
+  "inputs": "An outcome model giving the chance of each ball result for a situation, and the situation to evaluate.",
+  "outputs": "The win chance for a situation, the style the chaser plays, the leverage, and a swing helper.",
+  "risks": "A model whose chances do not add to one throws an error. Limits are 600 balls, 10 wickets and up to 1000 runs. Situations beyond these throw.",
+  "debug": "If results look odd, check the outcome model's distributions. If an invalid situation error appears, check the numbers passed in. Check that the stated limits match the data.",
+  "summary_hash": "sha256:709a6d71fa0cda19829ac3528b9bbae08aac342a828a48666aae27e69b94d5eb"
+}

@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "path": "public/sw.js",
+  "language": "JavaScript",
+  "lines": 64,
+  "hash": "sha256:0c96ecd6a0186db87516e0251a9f0a2d242534a85ad91b0923b7561f82643ee0",
+  "area": "other",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet.",
+      "The code comment says static files are cache-first, but the code is network-first for everything.",
+      "Responses are saved without checking that the request was a GET or that the response succeeded."
+    ]
+  },
+  "terms": [
+    {
+      "term": "service worker",
+      "meaning": "A script the browser runs in the background, separate from the page, that can intercept requests."
+    },
+    {
+      "term": "cache",
+      "meaning": "A saved copy of a web response kept in the browser so it can be reused later."
+    },
+    {
+      "term": "offline",
+      "meaning": "The state when the device has no working internet connection."
+    },
+    {
+      "term": "PWA (progressive web app)",
+      "meaning": "A website that can be installed and used like an app, often with offline support."
+    },
+    {
+      "term": "network-first",
+      "meaning": "Try the internet first and use the saved copy only when that fails."
+    },
+    {
+      "term": "cache-first",
+      "meaning": "Use the saved copy first and go to the internet only when no copy exists."
+    },
+    {
+      "term": "manifest",
+      "meaning": "A small file that tells the browser the app name, icons and install details."
+    }
+  ],
+  "depends_on": [
+    "browser service worker API",
+    "/",
+    "/commentary",
+    "/schedule",
+    "/manifest.json"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 2,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f100bd4d8a3dc8a2",
+      "title": "Cache name and version",
+      "what": "Sets the name of the saved copy store used by the app. Changing this name is what causes old saved copies to be removed.",
+      "why": "A versioned name lets each release replace the files saved by the last one.",
+      "watch_out": "Change this name whenever the saved files change, or users will keep seeing old pages."
+    },
+    {
+      "start": 3,
+      "end": 9,
+      "kind": "value",
+      "name": "STATIC_ASSETS",
+      "id": "s2",
+      "hash": "bf98e19cb3dcd78d",
+      "title": "Pages saved at install",
+      "what": "Lists the home page, commentary, schedule and manifest as the pages saved as soon as the service worker is installed.",
+      "why": "Likely reason: these main screens should open with no connection.",
+      "watch_out": "If any one of these addresses fails to download, the whole install fails."
+    },
+    {
+      "start": 10,
+      "end": 19,
+      "kind": "event handler",
+      "name": "self install handler",
+      "id": "s3",
+      "hash": "fd4ce070819a465d",
+      "title": "Saving pages on first install",
+      "what": "When a new version installs, it downloads and saves the listed pages, then takes control right away without waiting for old tabs to close.",
+      "why": "Likely reason: offline pages become available immediately, and updates apply without a restart.",
+      "watch_out": "Taking control early means an open tab can run newer code while still using older saved files."
+    },
+    {
+      "start": 20,
+      "end": 31,
+      "kind": "event handler",
+      "name": "self activate handler",
+      "id": "s4",
+      "hash": "8e09538d13bd5747",
+      "title": "Removing old saved copies",
+      "what": "When the new version starts, it deletes every saved copy whose name is not the current cache name, then takes control of open pages.",
+      "why": "Without this, old saved copies would fill the browser storage forever.",
+      "watch_out": "Anything in storage with a different name is deleted, including any other cache the app might add later."
+    },
+    {
+      "start": 32,
+      "end": 64,
+      "kind": "event handler",
+      "name": "self fetch handler",
+      "id": "s5",
+      "hash": "658c9778e17efb3a",
+      "title": "Deciding where requests go",
+      "what": "Every request from the app is checked. API calls go to the network, and if that fails they return a JSON message saying the app is offline. Other requests try the network first, save a copy, and fall back to a saved copy or an Offline reply.",
+      "why": "Likely reason: live data must stay fresh, while pages should still open offline.",
+      "watch_out": "The comment says static files are cache-first, but the code is network-first for all requests, and failed or non-GET responses can still be saved, which can cause errors in the background."
+    }
+  ],
+  "explained_at": "2026-11-11T19:27:50+00:00",
+  "explained_by": "haiku",
+  "summary": "A service worker: a background script in the browser that saves copies of pages so the app can still open when the connection drops.",
+  "purpose": "It lets the ALTER EGO web app work offline, and it keeps live score requests going to the network.",
+  "why": "Users on poor connections should still open the main pages, and live data should not come from an old copy.",
+  "how": "On install, it saves the main pages and the manifest. On start, it deletes saved copies from older versions. On each request, API calls go to the network and fail with an Offline message if there is no connection. Other requests try the network first, save a copy, and fall back to the saved copy or an Offline reply.",
+  "inputs": "Browser requests made by the app, and the list of pages and manifest to save.",
+  "outputs": "Responses from the network or from the saved copy, and a saved copy in the browser cache.",
+  "risks": "Old pages can be served to users after an update if the cache name is not changed. Saving responses without checking they succeeded can store error pages.",
+  "debug": "Open the browser developer tools, go to the Application tab, and inspect the service worker and the cache storage. Check that the cache name matches the current version. Clear the site data to remove an old saved copy.",
+  "summary_hash": "sha256:0c96ecd6a0186db87516e0251a9f0a2d242534a85ad91b0923b7561f82643ee0"
+}

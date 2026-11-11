@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/lab/repo.ts",
+  "language": "TypeScript",
+  "lines": 74,
+  "hash": "sha256:489db43120a892dd68a2827c240adf0ce8e3fc92cb059a09ccce7a0b9c9c69fe",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet.",
+      "The moments file path depends on the working folder."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Prisma",
+      "meaning": "The library the app uses to talk to its database."
+    },
+    {
+      "term": "Unique key",
+      "meaning": "A database rule that stops two rows with the same values, here one lock per fan per moment."
+    },
+    {
+      "term": "Upsert",
+      "meaning": "Save a row, creating it if missing or updating it if it exists."
+    },
+    {
+      "term": "Hash",
+      "meaning": "A fingerprint of file contents, used to prove which version of the data was used."
+    },
+    {
+      "term": "Golden moment",
+      "meaning": "A fixed historical decision point used in the Lab."
+    },
+    {
+      "term": "Share token",
+      "meaning": "A random code that lets someone view a card without logging in."
+    }
+  ],
+  "depends_on": [
+    "@prisma/client",
+    "src/lib/prisma",
+    "data/fixtures/moments/golden-moments.json",
+    "node:fs",
+    "node:path"
+  ],
+  "used_by": [
+    "src/domain/lab/service.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7c33b34090860420",
+      "title": "Imports for file and database access",
+      "what": "Brings in file reading, path joining, the database client and the database error types. Users do not see this directly.",
+      "why": "Reason not stated in the code beyond the imports.",
+      "watch_out": "Moving the database client file breaks every query in this file."
+    },
+    {
+      "start": 7,
+      "end": 17,
+      "kind": "type",
+      "name": "StoredMoment, MomentsFile",
+      "id": "s2",
+      "hash": "cd0da973c11cab34",
+      "title": "Shape of a stored golden moment",
+      "what": "Describes what is stored for each moment: match and season, the state before the decision, the choices with model win estimates, the reveal of the result, and the after-lock path, which exists only once a call is locked.",
+      "why": "Likely reason: one stored record holds both what fans see and what stays hidden until they lock.",
+      "watch_out": "Model estimates and the reveal are secret before lock, so anything that sends this type to a browser must remove them first."
+    },
+    {
+      "start": 18,
+      "end": 21,
+      "kind": "function",
+      "name": "momentsFile",
+      "id": "s3",
+      "hash": "edceb95700ea1678",
+      "title": "Reads the golden moments file",
+      "what": "Reads and parses the committed moments file from the data folder and returns all of it, including its fingerprints. The service loads it and caches it.",
+      "why": "Reason not stated in the code. The file is committed and hashed, which suggests the results must be reproducible.",
+      "watch_out": "The path is relative to the working folder, so starting the app from another folder makes this fail."
+    },
+    {
+      "start": 22,
+      "end": 25,
+      "kind": "function",
+      "name": "storedMoments",
+      "id": "s4",
+      "hash": "54a245ae3bd6cc56",
+      "title": "List of stored moments",
+      "what": "Returns only the list of moments from the file.",
+      "why": "Reason not stated in the code beyond its name.",
+      "watch_out": "Nothing is cached here, so each call reads the file again; the service adds caching."
+    },
+    {
+      "start": 26,
+      "end": 39,
+      "kind": "function",
+      "name": "insertCall, reviewSelect, findCall",
+      "id": "s5",
+      "hash": "4d58cca59dd330a3",
+      "title": "Saving a lock and reading a call",
+      "what": "Saves a fan's locked pick with its confidence, and returns nothing if that fan already locked this moment. Also defines which review fields to read and fetches one fan's call for a moment.",
+      "why": "The database unique key on user and moment makes a second lock fail even when two requests race.",
+      "watch_out": "The duplicate check depends on the database rule, not on code, so the rule must stay in place."
+    },
+    {
+      "start": 40,
+      "end": 45,
+      "kind": "function",
+      "name": "callsInLockOrder, ReviewRow, ReviewData",
+      "id": "s6",
+      "hash": "85d24712dd62347e",
+      "title": "A fan's calls in lock order",
+      "what": "Lists all of a fan's calls in the order they were locked, each with its review if graded, and defines the review row types.",
+      "why": "Ratings are built one call at a time, so the order matters.",
+      "watch_out": "Calls with the same lock time are ordered by id, which is stable but arbitrary."
+    },
+    {
+      "start": 46,
+      "end": 64,
+      "kind": "function",
+      "name": "insertReview, calledMomentIds, deleteReviewsFor, deleteReviews, findCallForShare",
+      "id": "s7",
+      "hash": "a9d0fc3d20e041f6",
+      "title": "Saving reviews and reading share data",
+      "what": "Stores a review for a call, keeping the existing one if a concurrent write won. Also lists the moments a fan has called, deletes reviews, and fetches a call with the fan's display name for a share card.",
+      "why": "Two requests can grade the same call at once, and the first write wins.",
+      "watch_out": "The share lookup includes the fan's name, so any public view that uses it exposes that name."
+    },
+    {
+      "start": 65,
+      "end": 74,
+      "kind": "function",
+      "name": "crowdCounts, displayName, shareTokenFor, userForShareToken, createShareToken, deleteShareToken",
+      "id": "s8",
+      "hash": "230ff535a811342b",
+      "title": "Crowd counts and share token handling",
+      "what": "Counts other fans' picks per moment and option, looks up a display name, and creates, reads or deletes the random token for sharing an Alter Ego card. Creating a token for a fan who already has one keeps the old token.",
+      "why": "The comments say this supports the crowd comparison and opt-in sharing.",
+      "watch_out": "A new token passed in does not replace an existing one, so regenerating a link does nothing until the old token is deleted."
+    }
+  ],
+  "explained_at": "2026-11-11T09:40:50+00:00",
+  "explained_by": "haiku",
+  "summary": "The database and file access layer for the Decision Lab: reads the golden moments file, and reads and writes a fan's calls, reviews and share tokens.",
+  "purpose": "Keeps all direct database queries for the Lab in one file, so the Lab rules in the service do not talk to the database directly.",
+  "why": "Likely reason: separating storage from rules keeps the service testable and keeps database details in one place.",
+  "how": "1. Loads the golden moments JSON file from the data folder. 2. Inserts a call, and returns nothing when the fan already locked that moment. 3. Reads a call with its review. 4. Stores a review, keeping an existing one if a concurrent request already wrote it. 5. Counts other fans' picks per moment. 6. Creates, reads and deletes share tokens, and deletes reviews.",
+  "inputs": "User ids, call ids, moment ids, and review data passed in from the service.",
+  "outputs": "Stored moments from the file, call and review rows, counts, display names and share tokens.",
+  "risks": "The moments file is read using a path relative to the working folder, so running from another folder fails. Deleting a user's reviews erases their graded history. A share token leads to the owner, so a leaked token exposes that fan's card.",
+  "debug": "If moments are missing, check the working folder and that the golden moments file exists. If a lock fails unexpectedly, check the unique key on user and moment. If a review disappears, check the regrade path in the service.",
+  "summary_hash": "sha256:489db43120a892dd68a2827c240adf0ce8e3fc92cb059a09ccce7a0b9c9c69fe"
+}

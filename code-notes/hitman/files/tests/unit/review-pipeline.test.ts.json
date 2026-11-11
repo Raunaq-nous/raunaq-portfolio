@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "path": "tests/unit/review-pipeline.test.ts",
+  "language": "TypeScript",
+  "lines": 124,
+  "hash": "sha256:e8834752938150358bd039edfdf6f3c084c2cec5d47b8dfed37aaeb377b8fd3f",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The tests are thorough about grading and reproducibility, but no test run result was provided.",
+      "Tests depend on shared test users and on one order of execution."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Win probability",
+      "meaning": "The estimated chance a team wins at a given moment in a match."
+    },
+    {
+      "term": "Brier score",
+      "meaning": "A score for how close a stated confidence was to what happened, where lower is better."
+    },
+    {
+      "term": "Regrade",
+      "meaning": "Recalculating all grades from the saved fixtures and calls."
+    },
+    {
+      "term": "Golden moment",
+      "meaning": "A fixed, carefully chosen match moment used as a test case."
+    }
+  ],
+  "depends_on": [
+    "src/domain/lab/service",
+    "src/app/api/lab/calls/[momentId]/review/route",
+    "src/engine/readRating",
+    "src/lib/prisma",
+    "tests/helpers/db",
+    "data/fixtures/moments/golden-moments.json"
+  ],
+  "used_by": [
+    "Run by the test runner as part of the unit tests."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 20,
+      "kind": "setup",
+      "name": "File setup, get, bestOf",
+      "id": "s1",
+      "hash": "2ef8e6d902aad79b",
+      "title": "Setup and shared helpers",
+      "what": "Imports the database, the start rating, the test helpers and the lab functions. Signs in through a fake sign-in value and loads the golden moments with their stored win probabilities. Defines helpers that call the review route and find the best option for a moment.",
+      "why": "Lets each grading test use the same fixtures and helpers.",
+      "watch_out": "The tests rely on the golden fixture files, so regenerating those files can change expected values."
+    },
+    {
+      "start": 21,
+      "end": 30,
+      "kind": "function",
+      "name": "worstOf",
+      "id": "s2",
+      "hash": "4d619965318a725d",
+      "title": "Worst option and test users",
+      "what": "Defines a helper that finds the option with the lowest win probability, creates two test users, and resets the fake sign-in before each test.",
+      "why": "Provides a clearly wrong answer to test poor grades, and a clean state for each test.",
+      "watch_out": "Sign-in state is shared, so every test must reset it or the next one may act as the wrong user."
+    },
+    {
+      "start": 31,
+      "end": 82,
+      "kind": "test group",
+      "name": "reveal and grading pipeline (review-pipeline) (part 1)",
+      "id": "s3",
+      "hash": "7f91fcf10318bcb7",
+      "title": "Reveal and grading rules, first part",
+      "what": "Checks that nothing is revealed before a call is locked and that only the caller sees their review. Checks that a graded call returns its grade, rating before and after, the reveal, the options, the receipts, and a stored review that is reused on the next request. Checks that a poor read loses points and rating, and that the rating carries over from earlier calls in lock order.",
+      "why": "Likely reason: reviews must stay hidden until the user commits, and the grading rules must be applied the same way every time.",
+      "watch_out": "The points formula and the Brier value are hard coded, so changing scoring means updating these expectations on purpose."
+    },
+    {
+      "start": 83,
+      "end": 124,
+      "kind": "test group",
+      "name": "reveal and grading pipeline (review-pipeline) (part 2)",
+      "id": "s4",
+      "hash": "01d816048893a506",
+      "title": "Reveal and grading rules, second part",
+      "what": "Checks that a later call reviewed first still grades earlier calls first. Checks that regrading from fixtures and saved calls gives identical reviews without recording new graded events. Checks that a call committed late rebuilds the later reviews so they match a full regrade. Checks that coin-flip calls get no grade, no points, no calibration and no rating change.",
+      "why": "Likely reason: ratings depend on order, so the order must be consistent whenever calls are reviewed or arrive late.",
+      "watch_out": "The late-call test writes a row directly, bypassing normal locking, so it checks the rebuild path and not everyday use."
+    }
+  ],
+  "explained_at": "2026-11-11T09:20:15+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests how a user's locked prediction is graded: the points earned, the rating change, the reveal of the real outcome, the saved review, and how grades are rebuilt when calls arrive late.",
+  "purpose": "Checks that grading follows the stated scoring rules, is fair to user lock order, and can be reproduced exactly from the saved data.",
+  "why": "Likely reason: users see their grades and ratings, so the scoring must be consistent, reproducible and hidden until the call is locked.",
+  "how": "Signs in as a test user, locks calls on golden moments, then asks the review route for the grade. Checks that reviews are hidden until a call is locked, that grades and ratings match the scoring formula, that poor calls lose points, that late calls rebuild later reviews, that a full regrade gives the same result, and that coin-flip calls are not graded.",
+  "inputs": "Golden moment fixtures, stored option win probabilities, and test users and calls.",
+  "outputs": "Pass or fail results for each grading rule.",
+  "risks": "Expected numbers are hard coded from the scoring formula, so any change must be deliberate. Some tests write rows directly, which bypasses normal locking, so they test rebuild logic rather than everyday use.",
+  "debug": "Check the golden moment fixture files first, since regenerating them changes expected values. Compare the grade fields from the review route with the scoring rules.",
+  "summary_hash": "sha256:e8834752938150358bd039edfdf6f3c084c2cec5d47b8dfed37aaeb377b8fd3f"
+}

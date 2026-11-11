@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/stories/service.ts",
+  "language": "TypeScript",
+  "lines": 152,
+  "hash": "sha256:af90afad078ede2690fcd3d5c828647d6f4140f6c9fef2090296f326883eee75",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in the packet.",
+      "The detectors trust the shape of the incident data without checking it here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Chase",
+      "meaning": "the second innings, where a side tries to reach a target"
+    },
+    {
+      "term": "Incident",
+      "meaning": "one recorded event in a match, such as a ball, a shot or a lap"
+    },
+    {
+      "term": "Collapse",
+      "meaning": "several wickets falling in a short spell"
+    },
+    {
+      "term": "Receipt",
+      "meaning": "the record of which incidents a story is based on"
+    }
+  ],
+  "depends_on": [
+    "@/adapters/types",
+    "@/domain/facts/types",
+    "@/engine/chaseWp",
+    "@/engine/outcomeModel",
+    "./config",
+    "./types"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup, WinProbability",
+      "id": "s1",
+      "hash": "27aad3a8425f8ee3",
+      "title": "Imports and the win-probability type",
+      "what": "Brings in the event and incident types, the chase model, the outcome model helpers, the thresholds and titles, and defines what a win-probability function is.",
+      "why": "Keeps the detectors separate from the models that work out chances.",
+      "watch_out": ""
+    },
+    {
+      "start": 11,
+      "end": 26,
+      "kind": "function",
+      "name": "cricketWp, ChasePoint",
+      "id": "s2",
+      "hash": "babb95f7b81bdbd5",
+      "title": "Exact cricket win probability",
+      "what": "Builds a function that gives the chance a chasing side wins from the current state, using a fitted model. It keeps models for up to eight targets so repeated calls are fast.",
+      "why": "Likely reason: building a model for each target is costly, so a small cache is kept.",
+      "watch_out": "When more than eight targets are in use, the oldest is dropped, so varied targets force rebuilds."
+    },
+    {
+      "start": 27,
+      "end": 47,
+      "kind": "function",
+      "name": "chaseSeries",
+      "id": "s3",
+      "hash": "36ecc3d0582eaf09",
+      "title": "Win-probability series for a chase",
+      "what": "Walks through every legal ball of a second-innings chase and records the win chance after each one. Returns nothing for rain-affected or shortened chases, and for other sports.",
+      "why": "The comment says those chases have no exact probability, so no series is made rather than a guess.",
+      "watch_out": "Wides and no-balls do not use up a ball, so a point is only recorded after them when the chase has just ended."
+    },
+    {
+      "start": 48,
+      "end": 58,
+      "kind": "function",
+      "name": "maxSwing",
+      "id": "s4",
+      "hash": "3bd7692b5ea9720d",
+      "title": "Largest swing in a window",
+      "what": "Finds the biggest change in win chance across any run of balls, along with the balls that cover it.",
+      "why": "Shows the single biggest turning point of a chase.",
+      "watch_out": "The first window is measured from the chase's starting chance, so the earliest balls use a different baseline from later ones."
+    },
+    {
+      "start": 59,
+      "end": 63,
+      "kind": "function",
+      "name": "storyTitle",
+      "id": "s5",
+      "hash": "5a87b06f17f96523",
+      "title": "Story title lookup",
+      "what": "Returns a story's title in English or Hindi from its kind and values.",
+      "why": "Keeps the title text in the config file.",
+      "watch_out": "A story kind with no title entry in the chosen language will fail."
+    },
+    {
+      "start": 64,
+      "end": 73,
+      "kind": "function",
+      "name": "story, pct, Ball",
+      "id": "s6",
+      "hash": "f0309b2e029aba0f",
+      "title": "Story builder and percent helper",
+      "what": "Creates a story record: its time comes from the last incident, its priority from the config table, and its receipts from the incidents. Also turns a fraction into a whole percent and defines the internal ball record.",
+      "why": "Every detector builds stories the same way, so the cards look alike.",
+      "watch_out": "A story is dated by its last incident, so it shows the time the moment ended."
+    },
+    {
+      "start": 74,
+      "end": 121,
+      "kind": "function",
+      "name": "cricketStories",
+      "id": "s7",
+      "hash": "51c79c7d796c26e4",
+      "title": "Cricket story detector",
+      "what": "In each innings, looks for big overs (18 or more runs including extras) and collapses (three or more wickets within twelve legal balls). For a chase with an exact model, it also finds the largest swings and a tense finish, when the chase is still close with few balls left.",
+      "why": "Each cut-off comes from the config file, so each is explained in one place.",
+      "watch_out": "Swing stories are capped at about three non-overlapping windows, so a dramatic chase may show fewer swings than happened."
+    },
+    {
+      "start": 122,
+      "end": 132,
+      "kind": "function",
+      "name": "footballStories",
+      "id": "s8",
+      "hash": "5a02df8ad842c66d",
+      "title": "Football story detector",
+      "what": "Turns each shot into a story if it was a goal, labelled late after minute 80, or a missed big chance when the chance quality is 0.3 or more.",
+      "why": "Simple rules keep football cards tied to single shots.",
+      "watch_out": "A shot with no expected-goals value is never treated as a big chance."
+    },
+    {
+      "start": 133,
+      "end": 147,
+      "kind": "function",
+      "name": "f1Stories",
+      "id": "s9",
+      "hash": "679a9f608a74c4bd",
+      "title": "F1 story detector",
+      "what": "Creates a pit-stop story for each lap marked as a pit exit, and a pace story for any car whose fastest lap is at least 1.5 seconds under its median lap.",
+      "why": "Pit exits and fastest laps are the simple signals in the lap data.",
+      "watch_out": "These stories show the raw driver number as the car, unlike the Pit window demo, which letters the cars."
+    },
+    {
+      "start": 148,
+      "end": 152,
+      "kind": "function",
+      "name": "detectStories",
+      "id": "s10",
+      "hash": "c48a29680769e6f1",
+      "title": "Entry point that orders stories",
+      "what": "Picks the right detector for the event's sport, returns an empty list for sports without one, and sorts by priority then time.",
+      "why": "Gives the rest of the app one function to call.",
+      "watch_out": "A sport with no detector silently shows no stories, so a new sport will look empty until a detector is added."
+    }
+  ],
+  "explained_at": "2026-11-11T09:44:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Scans a parsed match and returns its notable moments as ranked stories, each with the evidence it rests on.",
+  "purpose": "Builds the Desk's story cards from real incidents using fixed rules, not a language model's wording.",
+  "why": "The file header says it is rules-first, with explicit thresholds and no model output in the text.",
+  "how": "Based on the sport, it checks cricket, football or F1 events. Cricket uses an exact chase win-probability model where one exists to find big swings, collapses, big overs and tense finishes. Football finds goals and big chances missed. F1 finds pit stops and fast laps. The result is sorted by priority.",
+  "inputs": "A parsed event with its incidents, and for cricket a win-probability function.",
+  "outputs": "A sorted list of story records, each with title, parameters, size, priority, time, source id and receipts.",
+  "risks": "Rain-affected or shortened chases get no swing or tense stories by design, so those matches show fewer. The F1 pit-stop story shows the raw driver number as the car.",
+  "debug": "Start with the sport and the event's incident list. If a story is missing, check its threshold in the config file and whether that sport's detector runs. If cricket swing stories are missing, check whether the chase has an exact probability.",
+  "summary_hash": "sha256:af90afad078ede2690fcd3d5c828647d6f4140f6c9fef2090296f326883eee75"
+}

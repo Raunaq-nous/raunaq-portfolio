@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "path": "tests/unit/auth/auth.test.ts",
+  "language": "TypeScript",
+  "lines": 106,
+  "hash": "sha256:813aa0a54214f26b3bdfff3d1a74f798f0b8abc47975150836ece0eb58474a20",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Covers many security rules with specific expectations.",
+      "Uses a database reset and cleared counters."
+    ]
+  },
+  "terms": [
+    {
+      "term": "rate limit",
+      "meaning": "a cap on how many times one source can try an action within a time window."
+    },
+    {
+      "term": "bcrypt",
+      "meaning": "a password hashing method that scrambles passwords so they cannot be read back."
+    },
+    {
+      "term": "security headers",
+      "meaning": "instructions sent with web pages that tell browsers to protect the visitor."
+    },
+    {
+      "term": "CSP",
+      "meaning": "content security policy, a list of where a page may load scripts and other content from."
+    }
+  ],
+  "depends_on": [
+    "bcryptjs",
+    "@/lib/prisma",
+    "@/providers/rateLimit",
+    "@/providers/securityHeaders",
+    "@/domain/auth/types",
+    "@/domain/auth/service",
+    "@/app/api/register/route",
+    "tests/helpers/db.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup, resetLimits",
+      "id": "s1",
+      "hash": "2dc9e5f032681318",
+      "title": "Auth test setup",
+      "what": "Loads the tools, the rate limiter, the header rules and the sign-up rules, and defines a helper that clears rate-limit counters.",
+      "why": "Likely reason: counters are shared across tests and must be reset.",
+      "watch_out": ""
+    },
+    {
+      "start": 12,
+      "end": 31,
+      "kind": "test group",
+      "name": "auth: rate limiter",
+      "id": "s2",
+      "hash": "1e53a198323f20d0",
+      "title": "Rate limiter behaviour",
+      "what": "Checks the limiter allows the set number of attempts, blocks the next one, resets after its window, and reads the client address from proxy headers.",
+      "why": "Likely reason: stops repeated attempts from one source.",
+      "watch_out": "Trusting the forwarded address header lets a client fake its address if no proxy overwrites it."
+    },
+    {
+      "start": 32,
+      "end": 41,
+      "kind": "test group",
+      "name": "auth: password policy",
+      "id": "s3",
+      "hash": "1f2225d03236e065",
+      "title": "Password length and email cleaning",
+      "what": "Checks passwords must be between 10 and 128 characters, and email addresses are trimmed and lowercased.",
+      "why": "Likely reason: a minimum length is a basic safety rule. Reason for the 128 upper limit is not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 42,
+      "end": 59,
+      "kind": "test group",
+      "name": "age: 18+ beta gate",
+      "id": "s4",
+      "hash": "2bc83ff8c1c79084",
+      "title": "Age confirmation gate",
+      "what": "Checks registration needs an explicit true age confirmation, and records when it was given.",
+      "why": "Likely reason: the beta is limited to adults aged 18 and over.",
+      "watch_out": "The app trusts the user's own confirmation; it does not verify age."
+    },
+    {
+      "start": 60,
+      "end": 96,
+      "kind": "test group",
+      "name": "auth: registration and sign-in",
+      "id": "s5",
+      "hash": "c1139b5795362b5d",
+      "title": "Registration and sign-in rules",
+      "what": "Checks passwords are hashed and never returned, duplicate emails get a generic error, registration and sign-in are rate limited, and short passwords get a 400 response.",
+      "why": "Likely reason: prevents account discovery and password guessing.",
+      "watch_out": "The helper must clear counters between tests, or leftover counts can cause unexpected limits."
+    },
+    {
+      "start": 97,
+      "end": 106,
+      "kind": "test group",
+      "name": "auth: security headers",
+      "id": "s6",
+      "hash": "1f2a1e81981c9ec1",
+      "title": "Security headers",
+      "what": "Checks the policy headers include frame blocking, no content sniffing, referrer rules, transport security, and that development mode alone allows eval.",
+      "why": "Likely reason: protects against clickjacking and script injection.",
+      "watch_out": "The development setting allows unsafe eval, so the production flag must stay off in real deployments."
+    }
+  ],
+  "explained_at": "2026-11-11T09:13:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the account safety rules: rate limits, password length, the 18-plus confirmation, hashed passwords with no leaks, a generic duplicate-email error, sign-in limits, and the security headers.",
+  "purpose": "Protects sign-up and sign-in from abuse and protects stored passwords.",
+  "why": "Likely reason: these rules guard against brute-force attacks, account discovery and data exposure.",
+  "how": "Clears rate-limit counters before each test. Checks the limiter blocks after its limit and resets after its window, and reads the client address from proxy headers. Checks password length between 10 and 128 characters and that email is cleaned. Checks age confirmation must be true and is recorded. Checks passwords are hashed and not returned, duplicate email gives a generic error, registration is limited per network to five attempts, and sign-in is limited per email. Checks the register route rejects short passwords. Checks the security headers are set.",
+  "inputs": "Test users, IP addresses, and the database.",
+  "outputs": "A pass or fail result for each test.",
+  "risks": "Trusting the forwarded address header means a client can fake its address unless a proxy overwrites it. The rate-limit counters must be cleared between tests.",
+  "debug": "If a rate-limit test fails, check whether the counters were cleared. If a password test fails, check the registration rules. If the header test fails, compare the header list with the security settings.",
+  "summary_hash": "sha256:813aa0a54214f26b3bdfff3d1a74f798f0b8abc47975150836ece0eb58474a20"
+}

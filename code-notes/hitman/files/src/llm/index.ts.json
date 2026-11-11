@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "path": "src/llm/index.ts",
+  "language": "TypeScript",
+  "lines": 25,
+  "hash": "sha256:7d1ba6b1bb7e77125db8e22036f6e195bb319ef9f676c2b6e6e7644daac65b55",
+  "area": "src-llm",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Error handling and the fallback are in place.",
+      "No test is visible in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Fallback",
+      "meaning": "a backup route used when the main one fails"
+    },
+    {
+      "term": "Template",
+      "meaning": "pre-written text filled from data, with no AI involved"
+    },
+    {
+      "term": "Log entry",
+      "meaning": "one saved record of a call, without its contents"
+    }
+  ],
+  "depends_on": [
+    "src/llm/provider.ts",
+    "src/llm/template.ts",
+    "src/llm/gemini.ts",
+    "src/llm/contract.ts",
+    "src/llm/verifier.ts"
+  ],
+  "used_by": [
+    "src/llm/verified.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup, CallLog",
+      "id": "s1",
+      "hash": "515e90d0fbaddd16",
+      "title": "Exports and call log shape",
+      "what": "Gathers the public parts of the LLM layer in one place. Defines the log entry written after each call: task, provider, model, token counts, latency, cost and any fallback reason. Inputs and outputs are never logged.",
+      "why": "The header states that every call is logged but contents are not.",
+      "watch_out": "Because the log has no inputs or outputs, debugging a bad reply needs a different route, such as a saved copy of the request."
+    },
+    {
+      "start": 11,
+      "end": 25,
+      "kind": "function",
+      "name": "generateWithFallback",
+      "id": "s2",
+      "hash": "9f78ef9ad7acb7ec",
+      "title": "Run with a safety net",
+      "what": "Tries the chosen provider first. If that fails for any reason (network, refusal or wrong shape), it runs the template instead and logs the reason, unless the first provider was already the template.",
+      "why": "The doc comment says the template is the fallback for failed generation.",
+      "watch_out": "The fallback hides outages from readers, so a drop in quality should be checked against the fallback entries in the log."
+    }
+  ],
+  "explained_at": "2026-11-11T10:06:45+00:00",
+  "explained_by": "haiku",
+  "summary": "Front door of the LLM layer: exports its parts and runs a request with a safe fallback to the template, logging each call.",
+  "purpose": "Make sure every generation returns something, and that every call leaves a cost and latency record.",
+  "why": "The header says every call is logged without inputs or outputs. The fallback exists so a failed model call does not leave a user with nothing.",
+  "how": "1) Call the chosen provider with the request. 2) On success, log the call and return the result. 3) On any error, unless the provider was already the template, build the template result, log it with the error text cut to 120 characters, and return it.",
+  "inputs": "A provider, a generation request, and a logging function.",
+  "outputs": "A generation result from the provider or the template, and one log entry per call.",
+  "risks": "The fallback can hide a broken live provider from users, so the log's fallback field is the main warning sign. If the template fails too, its error is raised.",
+  "debug": "Check the log entries for the fallback text to see why a live call failed. If every result comes from the template, check the provider setup and keys. If costs show null, check the price settings.",
+  "summary_hash": "sha256:7d1ba6b1bb7e77125db8e22036f6e195bb319ef9f676c2b6e6e7644daac65b55"
+}

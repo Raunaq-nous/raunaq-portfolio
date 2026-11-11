@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/facts/service.ts",
+  "language": "TypeScript",
+  "lines": 35,
+  "hash": "sha256:8a30c28b96843bae51521ea9ed3f829f9fe5da3325624cffb59d26e6ed80de68",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or other evidence are visible in the packet.",
+      "The display filter and correction removal run in an order that can keep a replaced record visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Bitemporal",
+      "meaning": "Storing two times for each fact: when it happened and when the system learned about it."
+    },
+    {
+      "term": "Cutoff",
+      "meaning": "The time after which anything recorded is ignored."
+    },
+    {
+      "term": "Superseded",
+      "meaning": "Replaced by a later correction record."
+    },
+    {
+      "term": "Incident",
+      "meaning": "One recorded event in a match, such as a ball, wicket or other change."
+    },
+    {
+      "term": "Legal ball",
+      "meaning": "A delivery that counts toward the over, so wides and no-balls do not count."
+    },
+    {
+      "term": "Repository",
+      "meaning": "The file that talks directly to the database for this area."
+    }
+  ],
+  "depends_on": [
+    "src/providers/rights",
+    "src/domain/facts/repo.ts",
+    "docs/design-docs/bitemporal-store.md"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup, IncidentRow",
+      "id": "s1",
+      "hash": "38f0deaf181ffc83",
+      "title": "Imports and the incident row type",
+      "what": "Brings in the display rights check and the repository, and defines the shape of one incident row as the repository returns it. Users do not see this directly.",
+      "why": "Keeps the row shape tied to whatever the repository returns, so the two stay in step.",
+      "watch_out": "Renaming a field in the repository's select list breaks the types here."
+    },
+    {
+      "start": 7,
+      "end": 14,
+      "kind": "function",
+      "name": "asOf, CricketState",
+      "id": "s2",
+      "hash": "dbe2610930a07cf4",
+      "title": "Keeps only the latest version of each incident",
+      "what": "Removes every incident that a later correction has replaced, and defines the summary type that cricket totals use. Users see corrected records replace older ones without duplicates.",
+      "why": "Corrections are stored as new rows that point to the old one, so this step hides the old row.",
+      "watch_out": "It only works on the rows it is given; if a correcting row is filtered out first, the old row comes back."
+    },
+    {
+      "start": 15,
+      "end": 30,
+      "kind": "function",
+      "name": "foldCricket",
+      "id": "s3",
+      "hash": "7f6220fe3ecac438",
+      "title": "Adds up the cricket score from balls",
+      "what": "Walks through the incidents and totals runs (including extras), legal balls and wickets from ball records. It also records the latest time seen and the list of sources.",
+      "why": "Reason not stated in the code beyond its comment, which gives the cricket counting rules.",
+      "watch_out": "Wides and no-balls add runs but not legal balls, so changing the extra-type check changes the over count."
+    },
+    {
+      "start": 31,
+      "end": 35,
+      "kind": "function",
+      "name": "getStateAt",
+      "id": "s4",
+      "hash": "a9526840951c9993",
+      "title": "Gets the match state at a moment",
+      "what": "The public entry point: fetches an event's incidents as known at the cutoff, drops sources the app may not display, removes replaced records, and totals the rest.",
+      "why": "Reason not stated in the code beyond its comment; it bundles the steps so every caller follows the same rules.",
+      "watch_out": "The rights filter runs before the replaced-record cleanup, so the order can keep an outdated record."
+    }
+  ],
+  "explained_at": "2026-11-11T09:40:50+00:00",
+  "explained_by": "haiku",
+  "summary": "Works out the state of a cricket match at a chosen moment, using only information that was recorded by a chosen cutoff time and that the app is allowed to show.",
+  "purpose": "Answers the question of what the score, wickets and balls were at a given time, as known by a given cutoff. Other parts of the app call getStateAt; the callers are not listed in this file.",
+  "why": "The file header says it reads bitemporal data (docs/design-docs/bitemporal-store.md), so later corrections and records seen after the cutoff cannot change the answer and results can be reproduced.",
+  "how": "1. Fetch incidents observed by the cutoff and effective by the requested time. 2. Keep only sources the app may display. 3. Drop any record that a later correction replaced. 4. Add up legal balls, runs and wickets from ball records. 5. Return the totals with the latest observed time and the list of sources.",
+  "inputs": "An event id, an effective time, an observed cutoff time, and stored incident rows (source, type, payload and times) from the repository.",
+  "outputs": "A CricketState: legal balls, runs, wickets, incident count, latest observed time, and source ids.",
+  "risks": "The display filter runs before corrections are removed, so a correction from a hidden source can leave the replaced record in the totals. Only cricket is handled here. Extras add to runs, while wides and no-balls add runs but not legal balls.",
+  "debug": "If totals look wrong, check the observed cutoff first, since records recorded after it are ignored by design. Then check the source's display rights in providers/rights. Then check which records are superseded. Reproduce with the same cutoff in a test.",
+  "summary_hash": "sha256:8a30c28b96843bae51521ea9ed3f829f9fe5da3325624cffb59d26e6ed80de68"
+}

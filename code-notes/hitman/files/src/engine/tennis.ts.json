@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "path": "src/engine/tennis.ts",
+  "language": "TypeScript",
+  "lines": 137,
+  "hash": "sha256:8f77a399048b67ec140e7bacec54c9d224c8a7da8ef8fa856081b2e66086fb35",
+  "area": "src-engine",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this packet, though the maths can be checked against published values.",
+      "The header cites the source model, and the inputs are checked with clear error messages."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Point importance",
+      "meaning": "How much winning this point changes the chance of winning the match, as a fraction."
+    },
+    {
+      "term": "Deuce",
+      "meaning": "A game tied at 40 all, which continues until one player is two points ahead."
+    },
+    {
+      "term": "Tiebreak",
+      "meaning": "A special game played at six games all in a set, first to seven points with a margin of two."
+    },
+    {
+      "term": "Independent points",
+      "meaning": "The simplifying assumption that each point is decided without regard to earlier points."
+    },
+    {
+      "term": "Memoisation",
+      "meaning": "Remembering results already worked out so the same calculation is not repeated."
+    }
+  ],
+  "depends_on": [],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1725723f00f12eb1",
+      "title": "File setup and model basis",
+      "what": "Describes the file and the published model it follows, and notes that treating points as independent is a close approximation.",
+      "why": "The header cites the source and explains why the independence assumption is acceptable.",
+      "watch_out": "Real points are not fully independent, so a very close match may differ from the model's figures."
+    },
+    {
+      "start": 4,
+      "end": 11,
+      "kind": "type",
+      "name": "TennisModel",
+      "id": "s2",
+      "hash": "c026309727e30fd9",
+      "title": "Match model shape",
+      "what": "Defines the match model: each player's chance of winning a point on their own serve, and whether the match is best of three or five.",
+      "why": "The comments explain each probability and who it applies to.",
+      "watch_out": "The two probabilities are not the same player's chances, so swapping them flips the result."
+    },
+    {
+      "start": 12,
+      "end": 20,
+      "kind": "type",
+      "name": "TennisState",
+      "id": "s3",
+      "hash": "de9e2b815f57f0d8",
+      "title": "In-play state shape",
+      "what": "Defines the current state of a match: sets, games and points for each player, and who serves the current game.",
+      "why": "The comment says that in a tiebreak the serving flag shows who served the first point.",
+      "watch_out": "The serving flag means the first server in a tiebreak, so it can be misread during a tiebreak point."
+    },
+    {
+      "start": 21,
+      "end": 24,
+      "kind": "function",
+      "name": "check",
+      "id": "s4",
+      "hash": "e2a68dea3f62f162",
+      "title": "Probability check",
+      "what": "Refuses any point probability that is zero, one, or outside the range.",
+      "why": "Likely reason: a probability of exactly zero or one would make the formulas divide by zero or give invalid results.",
+      "watch_out": "Points at exactly zero or one are not allowed, so a model with a perfect server cannot be represented."
+    },
+    {
+      "start": 25,
+      "end": 38,
+      "kind": "function",
+      "name": "holdProbability",
+      "id": "s5",
+      "hash": "687f20e6b4e7b908",
+      "title": "Chance of winning a game from a point score",
+      "what": "Gives the chance the serving player wins the game from a given point score. It handles deuce with a formula and terminal scores directly.",
+      "why": "The doc comment shows an example value of about 0.83 for a 0.65 point chance. The closed form at deuce is used to avoid endless recursion.",
+      "watch_out": "The example in the comment is a check value, so a change to the formula should be checked against it."
+    },
+    {
+      "start": 39,
+      "end": 41,
+      "kind": "function",
+      "name": "tiebreakServerIsFirst",
+      "id": "s6",
+      "hash": "528de3698f60f77c",
+      "title": "Serve order in a tiebreak",
+      "what": "Says which player serves a given tiebreak point: the first server serves first, then the serve changes every two points.",
+      "why": "The doc comment describes the serve pattern used in a tiebreak.",
+      "watch_out": "The pattern depends on counting from zero, so off-by-one changes will swap who serves."
+    },
+    {
+      "start": 42,
+      "end": 59,
+      "kind": "function",
+      "name": "tiebreakWinA",
+      "id": "s7",
+      "hash": "b332b3b2ff900b48",
+      "title": "Chance of winning a tiebreak",
+      "what": "Gives the chance the first player wins a tiebreak from a given point score, given who served first. Late tiebreak scores use a formula for the alternating pattern.",
+      "why": "The doc comment explains the closed form at the late stage, where serve alternates every two points.",
+      "watch_out": "The late-stage shortcut assumes the tiebreak is at least six all, so changes to that threshold need care."
+    },
+    {
+      "start": 60,
+      "end": 63,
+      "kind": "function",
+      "name": "setsToWin",
+      "id": "s8",
+      "hash": "0785b99b4059e699",
+      "title": "Sets needed to win",
+      "what": "Gives how many sets a player needs: two in a best of three, three in a best of five.",
+      "why": "Reason not stated in the code beyond the standard tennis rules.",
+      "watch_out": "Any new match format must be added here, or the win counts will be wrong."
+    },
+    {
+      "start": 64,
+      "end": 84,
+      "kind": "function",
+      "name": "fromGameStart",
+      "id": "s9",
+      "hash": "98cec75925e5c928",
+      "title": "Chance of winning from the start of a game",
+      "what": "Gives the match win chance from the start of a game or tiebreak, using stored results so each state is only worked out once. Tiebreaks at six all are handled separately.",
+      "why": "The comments explain that the player who received first in a tiebreak serves first in the next set.",
+      "watch_out": "The stored result key joins the score digits into text, which is safe only while every count stays a single digit."
+    },
+    {
+      "start": 85,
+      "end": 88,
+      "kind": "function",
+      "name": "gameWinA",
+      "id": "s10",
+      "hash": "c4668555cb422862",
+      "title": "Chance of winning a game for player A",
+      "what": "Gives the chance player A wins the current game, depending on whether A is serving. If B is serving, the result is taken from B's side.",
+      "why": "Likely reason: this keeps the serve direction in one place so the other functions do not repeat it.",
+      "watch_out": "Mixing up the server flag here would reverse every result for that game."
+    },
+    {
+      "start": 89,
+      "end": 95,
+      "kind": "function",
+      "name": "afterGame",
+      "id": "s11",
+      "hash": "5416cfdaef0aa6ee",
+      "title": "Moving on after a game",
+      "what": "Checks whether the last game finished a set, either by six games with a two game margin or by seven games. If it did, it moves to the next set; otherwise it continues the current set.",
+      "why": "The rule is written in the code as the tennis set-ending rule, matching how sets end.",
+      "watch_out": "A set of seven games to five or seven to six is covered by the seven game case, so changing that rule would break late set endings."
+    },
+    {
+      "start": 96,
+      "end": 105,
+      "kind": "function",
+      "name": "validate",
+      "id": "s12",
+      "hash": "1b47369600b049ad",
+      "title": "Checking the match state",
+      "what": "Checks the model probabilities and the state values, and refuses a state where a count is negative, a set count has already won the match, or a game count is above seven.",
+      "why": "The check protects the calculations from impossible inputs.",
+      "watch_out": "The check does not test whether the score is reachable in a real match, so some impossible combinations are accepted."
+    },
+    {
+      "start": 106,
+      "end": 117,
+      "kind": "function",
+      "name": "matchWinProbability",
+      "id": "s13",
+      "hash": "924018821be34fdc",
+      "title": "Chance of winning the match now",
+      "what": "Gives the match win chance from any in-play state. It checks the state first, then uses the tiebreak path if the set is at six all, or the game path otherwise.",
+      "why": "This is the entry point the rest of the file builds on.",
+      "watch_out": "A bad state throws an error, so a caller that does not catch it will stop the calculation."
+    },
+    {
+      "start": 118,
+      "end": 127,
+      "kind": "function",
+      "name": "pointImportance",
+      "id": "s14",
+      "hash": "753d54df1b495126",
+      "title": "How much the current point matters",
+      "what": "Measures the chance of winning the match if this point is won, minus the chance if it is lost. The result is between zero and one. Points are simplified after deuce so equivalent scores match.",
+      "why": "The doc comment defines point importance this way, and simplifying after deuce keeps states comparable.",
+      "watch_out": "Simplification is skipped during a tiebreak, so tiebreak scores are compared as they are."
+    },
+    {
+      "start": 128,
+      "end": 133,
+      "kind": "function",
+      "name": "normaliseDeuce",
+      "id": "s15",
+      "hash": "076338d76fd122c3",
+      "title": "Simplifying deuce scores",
+      "what": "Reduces point counts after deuce so that, for example, 5 to 4 is treated the same as 4 to 3.",
+      "why": "The doc comment explains this keeps states valid and comparable.",
+      "watch_out": "The simplification only applies to regular games, and changing its thresholds would change which scores are treated as equal."
+    },
+    {
+      "start": 134,
+      "end": 137,
+      "kind": "function",
+      "name": "pressureIndex",
+      "id": "s16",
+      "hash": "556f1d22cadde30e",
+      "title": "Pressure Index",
+      "what": "Turns the point importance into a whole number from 0 to 100 by rounding its percentage.",
+      "why": "The doc comment defines the index as point importance in percentage points, rounded.",
+      "watch_out": "Rounding means small differences in importance can disappear, so two points can show the same index."
+    }
+  ],
+  "explained_at": "2026-11-11T09:56:13+00:00",
+  "explained_by": "haiku",
+  "summary": "Calculates how much each point matters in a tennis match, and the Pressure Index, a score from 0 to 100 that rates a point by how much it changes the chance of winning the match.",
+  "purpose": "Lets the product show how important the current point is, based on the current score and each player's chance of winning a point.",
+  "why": "The header cites a published model (Klaassen and Magnus, 2001) and states that treating points as independent is a good approximation.",
+  "how": "1) Checks the probabilities and the score are valid. 2) Works out the chance of winning a game from any point score, with a closed form at deuce. 3) Works out the chance of winning a tiebreak, which alternates serve every two points. 4) Combines games and sets into the chance of winning the match from any state, remembering results to avoid repeated work. 5) Compares the match chance if the current point is won and if it is lost, then rounds that gap into a Pressure Index.",
+  "inputs": "A match model with each player's point win chance and whether the match is best of three or five, plus the in-play state: sets, games, points and who is serving.",
+  "outputs": "The match win chance from a state, the point importance as a fraction, and the Pressure Index as a whole number from 0 to 100.",
+  "risks": "The validity check is loose: it checks ranges but not whether the score could actually be reached, so an impossible score may still produce a number. Point probabilities must be strictly between 0 and 1. Changing the point model changes all results.",
+  "debug": "If the Pressure Index looks wrong, check the serving flag first, since it changes which probability applies. Check the set and game counts for a best of three versus five mismatch. If a call throws, the state probably has an invalid count.",
+  "summary_hash": "sha256:8f77a399048b67ec140e7bacec54c9d224c8a7da8ef8fa856081b2e66086fb35"
+}

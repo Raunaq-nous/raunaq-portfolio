@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/scoring/repo.ts",
+  "language": "TypeScript",
+  "lines": 28,
+  "hash": "sha256:6d621e13b63af2ea6575b4af28938bdf7cc2bb167368f83c0f7272246b916c93",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in the packet.",
+      "The XP rule can double count if scoring runs more than once with new events."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Transaction",
+      "meaning": "a group of database changes that all succeed or all cancel"
+    },
+    {
+      "term": "Idempotency key",
+      "meaning": "a unique label for each event, so saving it twice does nothing the second time"
+    },
+    {
+      "term": "XP",
+      "meaning": "experience points a user earns for scoring well"
+    },
+    {
+      "term": "Prisma",
+      "meaning": "the library the app uses to talk to the database"
+    }
+  ],
+  "depends_on": [
+    "@prisma/client",
+    "@/lib/prisma"
+  ],
+  "used_by": [
+    "src/domain/scoring/service.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 4,
+      "kind": "setup",
+      "name": "File setup, findMatch",
+      "id": "s1",
+      "hash": "7740cae0ba4a25ae",
+      "title": "Find a match by id",
+      "what": "Looks up a match and returns only its id and status.",
+      "why": "Likely reason: scoring checks that a match exists before doing any work.",
+      "watch_out": ""
+    },
+    {
+      "start": 5,
+      "end": 9,
+      "kind": "function",
+      "name": "teamsForMatch, LedgerRow",
+      "id": "s2",
+      "hash": "8f0664a4104e07f9",
+      "title": "Team lookup and event row type",
+      "what": "Lists each fantasy team in a match with its owner, captain, vice captain and picked players, and defines the shape of one scoring event row.",
+      "why": "Gives the scoring step what it needs to work out each team's points.",
+      "watch_out": "Only the players a team actually picked are returned, so a player not on the list earns nothing for that team."
+    },
+    {
+      "start": 10,
+      "end": 28,
+      "kind": "function",
+      "name": "appendAndTotal",
+      "id": "s3",
+      "hash": "f767f384af8589ad",
+      "title": "Save events and refresh totals",
+      "what": "Saves new scoring events for each team, skipping ones already saved, then recalculates each team's total and awards XP for new events. It finishes by marking the match completed and returns how many events were new per team.",
+      "why": "The comment says XP is awarded only once, and the duplicate-skipping keys make that possible.",
+      "watch_out": "XP uses the full team total for this version, so a later run that adds new events can award XP again for points already counted."
+    }
+  ],
+  "explained_at": "2026-11-11T09:44:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Database reads and the one write step that records scoring events and team totals for a match.",
+  "purpose": "Stores each scoring event once, and keeps each team's total and the users' experience points (XP) in step with them.",
+  "why": "Likely reason: all writes run in one transaction so a partial update cannot be left behind, and duplicate skipping lets scoring be re-run safely.",
+  "how": "Finds a match, lists its teams with their chosen players and captain, then in one transaction inserts the new scoring events, adds up each team's points for the version, saves that total, gives XP for new events, and marks the match completed.",
+  "inputs": "A match id, a scoring version number, and for each team a user id and its event rows.",
+  "outputs": "A map from team id to the number of events newly written.",
+  "risks": "XP is added as the full team total divided by ten each time new events arrive, so a second partial scoring run may add XP again for points already counted. The code shows no guard against this. Any failure rolls back the whole transaction.",
+  "debug": "If totals look wrong, compare the stored scoring events for that team and version. If XP is missing, check whether the new event count was zero.",
+  "summary_hash": "sha256:6d621e13b63af2ea6575b4af28938bdf7cc2bb167368f83c0f7272246b916c93"
+}

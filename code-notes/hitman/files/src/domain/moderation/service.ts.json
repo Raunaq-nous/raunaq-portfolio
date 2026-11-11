@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "path": "src/domain/moderation/service.ts",
+  "language": "TypeScript",
+  "lines": 49,
+  "hash": "sha256:89bca92ed9d50ec6abf672f85cb93cd43a65a9ce7657cbb6ee44c497b63c7ed8",
+  "area": "src-domain",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are silently ignored when removing a blocked member from crews.",
+      "No tests are visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Membership",
+      "meaning": "Being a member of a crew."
+    },
+    {
+      "term": "Ownership",
+      "meaning": "Being the one owner who can manage a crew."
+    },
+    {
+      "term": "Block",
+      "meaning": "Hides one person from another and keeps them out of the blocker's crews."
+    },
+    {
+      "term": "Report",
+      "meaning": "A complaint one crew member files about another."
+    },
+    {
+      "term": "Transfer of ownership",
+      "meaning": "Giving a crew to a different member."
+    }
+  ],
+  "depends_on": [
+    "src/domain/shared/types",
+    "src/domain/crews/service",
+    "src/domain/moderation/types.ts",
+    "src/domain/moderation/repo.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "365a8dceac619973",
+      "title": "Imports and purpose",
+      "what": "Brings in the error type, the crew service's membership and ownership functions, the report types and the database layer. States the file's purpose: reporting, blocks and owner actions.",
+      "why": "Reason not stated in the code beyond the header comment.",
+      "watch_out": "The file relies on the crew service, so a change to membership rules there changes moderation."
+    },
+    {
+      "start": 7,
+      "end": 15,
+      "kind": "function",
+      "name": "reportMember",
+      "id": "s2",
+      "hash": "32673ddfaa845b53",
+      "title": "Filing a report on a crew member",
+      "what": "Saves a report one member files about another. Refuses self-reports and refuses targets who are not in the crew. Returns the new report's id.",
+      "why": "Reason not stated in the code. The checks suggest reports are limited to people within the same crew.",
+      "watch_out": "The note length limit lives in the input schema, so a direct call to this function can skip it."
+    },
+    {
+      "start": 16,
+      "end": 24,
+      "kind": "function",
+      "name": "listReports",
+      "id": "s3",
+      "hash": "227419664e716455",
+      "title": "Owner reviews open reports",
+      "what": "Only the crew owner can see open reports. Each report shows the names of the two people, with Former member used when someone has left.",
+      "why": "Reason not stated in the code beyond the owner check.",
+      "watch_out": "Names are looked up at listing time, so a renamed user appears with their current name."
+    },
+    {
+      "start": 25,
+      "end": 30,
+      "kind": "function",
+      "name": "resolveReport",
+      "id": "s4",
+      "hash": "8e11b0d66306093f",
+      "title": "Owner closes a report",
+      "what": "Only the owner can close a report, and only one in their own crew. Closing a report that does not exist gives a not found message.",
+      "why": "Reason not stated in the code beyond the owner check.",
+      "watch_out": "Nothing here reopens a report, so closing one is final from this file's point of view."
+    },
+    {
+      "start": 31,
+      "end": 40,
+      "kind": "function",
+      "name": "blockUser",
+      "id": "s5",
+      "hash": "4f5e4b31d8531ac7",
+      "title": "Blocking a user and clearing owned crews",
+      "what": "Records that one person blocks another, refusing self-blocks and unknown users. Then it removes the blocked person from every crew the blocker owns.",
+      "why": "The comment says blocked people are kept out of crews the blocker owns.",
+      "watch_out": "Errors from each removal are swallowed, so someone can stay in a crew without anyone being told."
+    },
+    {
+      "start": 41,
+      "end": 46,
+      "kind": "function",
+      "name": "unblockUser, blockedIds",
+      "id": "s6",
+      "hash": "348f46d453cccccb",
+      "title": "Unblocking and listing blocks",
+      "what": "Removes a block, and gives the list of people a user has blocked so they can be hidden.",
+      "why": "Reason not stated in the code beyond the names.",
+      "watch_out": "Unblocking does not add anyone back into a crew they were removed from."
+    },
+    {
+      "start": 47,
+      "end": 49,
+      "kind": "function",
+      "name": "handOver",
+      "id": "s7",
+      "hash": "385cdae1aa43ea73",
+      "title": "Passing crew ownership to someone",
+      "what": "Hands a crew's ownership to another member through the crew service.",
+      "why": "Reason not stated in the code. The ownership rule itself lives in the crew service.",
+      "watch_out": "This file trusts the crew service to check that the caller is the current owner."
+    }
+  ],
+  "explained_at": "2026-11-11T09:40:50+00:00",
+  "explained_by": "haiku",
+  "summary": "Handles member reports, blocks, reviewing and resolving reports, and passing on crew ownership.",
+  "purpose": "Lets crew members report one another, lets people block others, and lets crew owners see and close reports, remove blocked members and pass on ownership.",
+  "why": "The file header calls these the basics of moderation. Reason for the rules themselves not stated in the code beyond the comments.",
+  "how": "1. Checks the reporter is in the crew and the target is someone else in it, then saves the report. 2. Lets only the owner list open reports, with readable names. 3. Lets only the owner mark a report resolved. 4. Blocks a user and removes them from every crew the blocker owns. 5. Removes a block. 6. Passes ownership to a new owner through the crews service.",
+  "inputs": "The reporter id, crew id, target user id, reason and optional note, plus the owner's ids.",
+  "outputs": "A report id, the list of open reports, and confirmations of blocks and ownership changes.",
+  "risks": "Blocking removes people from owned crews, and any error from that removal is ignored. Members who have left show as Former member. The note length limit is only enforced when input goes through the schema.",
+  "debug": "If a report fails, read the error: it says whether the target is not in the crew or whether the user reported themselves. If a blocked person stays in a crew, check the block and whether the blocker owns that crew. If an ownership handover fails, check the crews service.",
+  "summary_hash": "sha256:89bca92ed9d50ec6abf672f85cb93cd43a65a9ce7657cbb6ee44c497b63c7ed8"
+}

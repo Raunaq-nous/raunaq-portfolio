@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "path": "src/engine/legalBalls.ts",
+  "language": "TypeScript",
+  "lines": 53,
+  "hash": "sha256:61a21f11293c87cd054bacaa9901c5f8b767baa63f9793cfbdcf5f1f4f18ff0b",
+  "area": "src-engine",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this packet, so correctness is not shown by evidence here.",
+      "Bad input is refused with clear error messages, and the feed-safe reader returns nothing instead of failing."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Base-six overs",
+      "meaning": "Cricket counts balls in groups of six, so 10.4 means 10 full overs and 4 more balls."
+    },
+    {
+      "term": "Legal ball",
+      "meaning": "A delivery that counts toward the over. Wides and no-balls are not legal balls."
+    },
+    {
+      "term": "Run rate",
+      "meaning": "Runs scored per six legal balls, which is the usual way to compare scoring speed."
+    }
+  ],
+  "depends_on": [],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b1011d84a24dedab",
+      "title": "File setup and the overs pattern",
+      "what": "Sets the number of balls in an over (six) and the text pattern an overs value must match. Input that does not match the pattern is refused.",
+      "why": "The file header states that cricket overs are base six, so the six-ball rule is kept in one place.",
+      "watch_out": "Changing the number of balls per over would change every conversion in the engine, so it should only change for a different match format."
+    },
+    {
+      "start": 8,
+      "end": 17,
+      "kind": "function",
+      "name": "parseOvers",
+      "id": "s2",
+      "hash": "a829bf3905993124",
+      "title": "Reading an overs value into balls",
+      "what": "Takes overs text or a number such as 10.4 and returns the total legal balls (64 in that example). It refuses a ball part of six or more and any text that is not a valid overs value.",
+      "why": "Likely reason: the rest of the engine needs a count it can add and compare, and overs text cannot be compared directly.",
+      "watch_out": "A number loses trailing zeros, so 10.10 becomes 10.1, which reads as 10 overs and 1 ball."
+    },
+    {
+      "start": 18,
+      "end": 25,
+      "kind": "function",
+      "name": "formatOvers",
+      "id": "s3",
+      "hash": "b88504bd8f274e56",
+      "title": "Showing a ball count as overs",
+      "what": "Turns a ball count back into the overs form used on screen: 64 becomes 10.4 and 60 becomes 10. It refuses negative counts and counts that are not whole numbers.",
+      "why": "Likely reason: people read overs in this form, so the screen needs it while the engine keeps ball counts.",
+      "watch_out": "This produces display text only, so anything that stores or compares overs should use ball counts instead."
+    },
+    {
+      "start": 26,
+      "end": 32,
+      "kind": "function",
+      "name": "runRate",
+      "id": "s4",
+      "hash": "e88b084860b939bd",
+      "title": "Runs scored per six balls",
+      "what": "Gives the run rate, which is runs per six legal balls. It returns nothing before the first legal ball because a rate does not exist yet.",
+      "why": "The doc comment explains that no rate exists before the first ball, so nothing is returned instead of dividing by zero.",
+      "watch_out": "Callers must handle the nothing case, and negative inputs throw an error."
+    },
+    {
+      "start": 33,
+      "end": 39,
+      "kind": "function",
+      "name": "requiredRunRate",
+      "id": "s5",
+      "hash": "a5de274683e06727",
+      "title": "Runs still needed per six balls",
+      "what": "Gives the rate a chasing side needs: runs still required per six balls left. It returns nothing when no legal balls remain, and treats an already passed target as zero runs needed.",
+      "why": "The doc comment describes the required rate for a chase. Reason for the zero floor not stated in the code.",
+      "watch_out": "Once the target is passed the value is zero rather than negative, so a zero here means the chase is complete, not that the side is on track."
+    },
+    {
+      "start": 40,
+      "end": 49,
+      "kind": "function",
+      "name": "tryParseOvers",
+      "id": "s6",
+      "hash": "316e80083a461ad7",
+      "title": "Safe overs reader for feed data",
+      "what": "Does the same job as the main reader but returns nothing for missing or malformed values instead of raising an error. The name and comment suggest it is meant for data from an outside feed.",
+      "why": "The doc comment says it exists for malformed feed values. The callers that use it are not visible in this packet.",
+      "watch_out": "A broken feed value quietly becomes missing data, so a faulty feed can look like a gap rather than an error."
+    },
+    {
+      "start": 50,
+      "end": 53,
+      "kind": "function",
+      "name": "completedOvers",
+      "id": "s7",
+      "hash": "fb96196b699eabc8",
+      "title": "Whole overs finished",
+      "what": "Counts the whole overs finished for a ball count. For example, 64 balls gives 10 finished overs and the partial over is dropped.",
+      "why": "Reason not stated in the code. The name suggests it is used where only full overs are shown.",
+      "watch_out": "A count of 65 balls also gives 10 finished overs, so the partial fifth ball is not shown by this function."
+    }
+  ],
+  "explained_at": "2026-11-11T09:56:13+00:00",
+  "explained_by": "haiku",
+  "summary": "Converts cricket overs between their written form (such as 10.4) and a plain count of legal balls, and calculates run rates from those counts.",
+  "purpose": "Gives the rest of the engine one consistent way to count overs, so that wides and no-balls never move the over count.",
+  "why": "The file header says cricket overs are base six, so 10.4 means 10 overs and 4 balls (64 balls), not the decimal 10.4. Storing legal balls as whole numbers avoids that confusion.",
+  "how": "1) Reads an overs string or number and checks that the ball part is 0 to 5. 2) Turns it into a total ball count. 3) Turns ball counts back into overs text for display. 4) Computes run rates per six balls, returning nothing before the first ball. 5) Provides a version of the reader that returns nothing for bad feed values instead of failing.",
+  "inputs": "Overs as text or a number (such as 10.4), legal ball counts as whole numbers, and run totals as whole numbers.",
+  "outputs": "Legal ball counts, overs text, run rates (or nothing), completed overs as whole numbers, and nothing for malformed feed values.",
+  "risks": "Most functions throw an error on bad input, so any caller that does not handle the error will fail. A run rate of nothing before the first ball must be handled by the caller or a blank or broken value will show.",
+  "debug": "If an over count looks wrong, check whether the overs value arrived as a number: 10.10 as a number is stored as 10.1, which reads as 10 overs and 1 ball. Also check the source feed for ball parts of six or more, which are refused.",
+  "summary_hash": "sha256:61a21f11293c87cd054bacaa9901c5f8b767baa63f9793cfbdcf5f1f4f18ff0b"
+}

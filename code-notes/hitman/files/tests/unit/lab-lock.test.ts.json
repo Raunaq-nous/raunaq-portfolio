@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "path": "tests/unit/lab-lock.test.ts",
+  "language": "TypeScript",
+  "lines": 89,
+  "hash": "sha256:4851fb1340f2693c8bb62100c63b5959aad76eff9d0a84ab9ac1babc66c190e2",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Covers sign-in, one-lock rule, server time, validation, concurrency and rate limit.",
+      "Checks that extra fields from the client are ignored.",
+      "Uses the real database rules for uniqueness and deletion."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Lock",
+      "meaning": "Saving a fan's pick so it cannot be changed afterwards."
+    },
+    {
+      "term": "Golden moment",
+      "meaning": "A fixed, real match situation that fans are asked to predict."
+    },
+    {
+      "term": "Rate limit",
+      "meaning": "A cap on how many requests one user can make in a set time."
+    },
+    {
+      "term": "Concurrency",
+      "meaning": "Several requests arriving at almost the same time, which must still be handled correctly."
+    },
+    {
+      "term": "Cascade delete",
+      "meaning": "A database rule that removes related records automatically when their parent is deleted."
+    }
+  ],
+  "depends_on": [
+    "vitest",
+    "@/lib/prisma",
+    "@/domain/shared/types",
+    "@/domain/lab/service",
+    "@/app/api/lab/calls/route",
+    "../helpers/db"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "63791edb00e1f895",
+      "title": "Sets up fake sign-in and test moments",
+      "what": "Replaces the sign-in check with a fake that the tests control, loads the lock endpoint and lock function, and picks two real golden moments.",
+      "why": "Likely reason: the fake lets each test act as a signed-out visitor or as a chosen user without a real login.",
+      "watch_out": "Because sign-in is faked, these tests do not prove real sign-in works."
+    },
+    {
+      "start": 19,
+      "end": 28,
+      "kind": "function",
+      "name": "post",
+      "id": "s2",
+      "hash": "b0f10150c8efbe6e",
+      "title": "Helper for sending lock requests",
+      "what": "Sends a POST request with a body to the lab calls endpoint, passing text bodies through unchanged.",
+      "why": "Likely reason: passing text through unchanged lets a test send broken JSON on purpose.",
+      "watch_out": "Object bodies are converted to JSON, so a test that expects a specific body format must send text directly."
+    },
+    {
+      "start": 29,
+      "end": 84,
+      "kind": "test group",
+      "name": "lock API: POST /api/lab/calls (lock) (part 1)",
+      "id": "s3",
+      "hash": "6d6eb64ae6b54a77",
+      "title": "Checks locking rules and validation",
+      "what": "Checks that signed-out users are refused, a valid pick is locked with the server's time and ignores client extras, and a second lock is refused while the first stays. Checks that simultaneous locks produce one winner, that moment, option and confidence are validated (confidence must be from 50 to 99 percent), and that more than 20 requests from one user get rate limited.",
+      "why": "Likely reason: picks must be fair and final, and the server must not trust the client for timing or input.",
+      "watch_out": "Locks are final and rate limited. Any change that loosens either rule would let users change picks or flood the server."
+    },
+    {
+      "start": 85,
+      "end": 89,
+      "kind": "test group",
+      "name": "lock API: POST /api/lab/calls (lock) (part 2)",
+      "id": "s4",
+      "hash": "f3d06213d25e0c26",
+      "title": "Checks picks are removed with the account",
+      "what": "Deletes a test user and checks that their lock records are removed too.",
+      "why": "Likely reason: picks belong to the account, so deleting the account should remove them.",
+      "watch_out": "This relies on a cascade delete rule in the database. Removing that rule would leave orphaned picks, and this test would fail."
+    }
+  ],
+  "explained_at": "2026-11-11T09:18:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the API that locks a fan's pick on a lab moment: sign-in required, picks are final, inputs are checked on the server, requests are rate limited, and deleting a user removes their picks.",
+  "purpose": "Makes sure a pick is locked fairly and safely: one per moment, timed by the server, and never changed afterwards.",
+  "why": "Likely reason: once a pick is locked it must be final, or fans could change answers after seeing results. Reason not stated in the code for the rate limit value.",
+  "how": "Replaces the sign-in check with a fake that the tests control. Sends POST requests to the lab calls endpoint with valid and invalid bodies. Checks status codes, that the server sets the lock time, that only one lock wins when requests arrive together, that inputs are validated, that spam is rate limited, and that deleting a user deletes their calls.",
+  "inputs": "Test users, two real golden moments, and request bodies that are valid, invalid or malformed.",
+  "outputs": "Status codes (201, 400, 401, 404, 409, 429), lock records in the test database, and the response body.",
+  "risks": "The sign-in check is replaced by a fake, so these tests do not prove that real sign-in works. Rate limit counts can be affected by other tests using the same user.",
+  "debug": "If a test fails, check the status code it expected against the one returned, then the validation rule for that field. For concurrency failures, check the lock function and the unique key on user and moment.",
+  "summary_hash": "sha256:4851fb1340f2693c8bb62100c63b5959aad76eff9d0a84ab9ac1babc66c190e2"
+}

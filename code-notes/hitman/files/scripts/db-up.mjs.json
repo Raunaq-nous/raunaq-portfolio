@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "path": "scripts/db-up.mjs",
+  "language": "JavaScript",
+  "lines": 57,
+  "hash": "sha256:fc05e7c8ee109fffa53ac03fe78fa4561de8b9d64fa4e51ecc086ac030a73f25",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "A port that answers may belong to a different program.",
+      "No test is visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "PostgreSQL",
+      "meaning": "a widely used open-source database program"
+    },
+    {
+      "term": "Docker",
+      "meaning": "a tool that runs programs in isolated packages called containers"
+    },
+    {
+      "term": "DATABASE_URL",
+      "meaning": "the one setting that holds the database address, user and password"
+    },
+    {
+      "term": "Port",
+      "meaning": "the numbered door on a computer that a program listens on"
+    }
+  ],
+  "depends_on": [
+    "dotenv",
+    "embedded-postgres",
+    "node:child_process",
+    "node:fs",
+    "node:net",
+    "docker (optional)"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "597636dec2d70420",
+      "title": "Settings and early exit",
+      "what": "Loads the environment files, then reads the connection address and refuses to start without one.",
+      "why": "The address is the single source for the host and port.",
+      "watch_out": "The local settings file is read first and wins over the general one."
+    },
+    {
+      "start": 15,
+      "end": 20,
+      "kind": "value",
+      "name": "url",
+      "id": "s2",
+      "hash": "52aba5cb7d7353ee",
+      "title": "Split the address",
+      "what": "Splits the address into host, port, user, password, database name and the data folder path.",
+      "why": "The built-in database needs these as separate values.",
+      "watch_out": "The data folder path is based on the current folder, so running from another folder creates a second database."
+    },
+    {
+      "start": 21,
+      "end": 27,
+      "kind": "function",
+      "name": "reachable, waitFor",
+      "id": "s3",
+      "hash": "3c7c32332cca7597",
+      "title": "Check and wait for the port",
+      "what": "Checks whether something accepts connections on the port, and repeats the check until it does or time runs out.",
+      "why": "Waiting avoids starting a second copy.",
+      "watch_out": "The check only sees an open port, not a database that actually works."
+    },
+    {
+      "start": 28,
+      "end": 38,
+      "kind": "function",
+      "name": "foreground",
+      "id": "s4",
+      "hash": "2445e6640ad617f2",
+      "title": "Run the built-in database in the foreground",
+      "what": "Starts the built-in database in this process, creates the database if missing, and keeps it running until stopped.",
+      "why": "The background mode starts this same mode in a separate process.",
+      "watch_out": "A hard kill can skip the clean shutdown."
+    },
+    {
+      "start": 39,
+      "end": 57,
+      "kind": "function",
+      "name": "main",
+      "id": "s5",
+      "hash": "05ac2730797fc2ee",
+      "title": "Choose how to start",
+      "what": "Skips if the database is already reachable, refuses non-local hosts, uses Docker compose when Docker is available, and otherwise starts a detached background copy of itself and waits.",
+      "why": "The order matches the file header.",
+      "watch_out": "The background copy is started from the script's own file path, which can break on some systems."
+    }
+  ],
+  "explained_at": "2026-11-11T09:44:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Starts the local PostgreSQL database the app needs, using Docker if it is available or a built-in copy if not.",
+  "purpose": "Lets the owner start a working local database with one command.",
+  "why": "The file header states the order: already running, then Docker, then the built-in copy.",
+  "how": "Reads the connection address, checks whether the port answers, refuses non-local hosts, uses Docker compose if Docker responds, otherwise starts a background process running an embedded Postgres in a data folder, and waits up to a minute.",
+  "inputs": "DATABASE_URL from the environment files, and an optional foreground flag.",
+  "outputs": "A running database, a log file in .data, and a status message.",
+  "risks": "Any program answering on the port counts as the database. The database password is passed to the embedded server.",
+  "debug": "Check .data/postgres.log. Run with the foreground flag to see errors directly.",
+  "summary_hash": "sha256:fc05e7c8ee109fffa53ac03fe78fa4561de8b9d64fa4e51ecc086ac030a73f25"
+}

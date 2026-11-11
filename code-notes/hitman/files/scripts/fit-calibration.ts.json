@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "path": "scripts/fit-calibration.ts",
+  "language": "TypeScript",
+  "lines": 46,
+  "hash": "sha256:2b880662a63f140a02c6f3cf5fb16c21c762276680128cef26ecbb08e75d819b",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated test is visible for this script.",
+      "The output folder is not created before writing, unlike the fit-outcomes script."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Calibration map",
+      "meaning": "A correction table that adjusts a raw probability to match observed results."
+    },
+    {
+      "term": "Held-out seasons",
+      "meaning": "Seasons kept back from training so the map can be checked on data it never saw."
+    },
+    {
+      "term": "Reliability bucket",
+      "meaning": "A group of predictions with similar probabilities, compared with how often they actually won."
+    },
+    {
+      "term": "Gate",
+      "meaning": "A pass or fail test that decides whether the calibration is good enough to use."
+    }
+  ],
+  "depends_on": [
+    "@/engine/calibration",
+    "@/engine/chaseWp",
+    "@/engine/outcomeModel",
+    "scripts/fit-outcomes.ts",
+    "data/models/outcomes-v1.json",
+    "node:crypto",
+    "node:fs"
+  ],
+  "used_by": [
+    "Not visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "154045f0fb435ced",
+      "title": "Purpose and imports",
+      "what": "Explains that the script learns a map from raw probabilities to observed win rates on training seasons, and checks it on held-out seasons. It names the output file and imports the helpers it needs.",
+      "why": "The header states the goal, and the imports show it reuses the chase model and the outcome model.",
+      "watch_out": "The output name depends on the version argument, so a new version writes a new file and leaves the old one in place."
+    },
+    {
+      "start": 11,
+      "end": 46,
+      "kind": "function",
+      "name": "buildCalibration",
+      "id": "s2",
+      "hash": "b5b0e143e8833775",
+      "title": "Build the calibration result",
+      "what": "Loads the outcome model file, scores every ball with the exact model, fits the map on training seasons, builds reliability buckets before and after correction, and computes the gate and its power.",
+      "why": "Likely reason: produces everything needed to judge calibration in one result object.",
+      "watch_out": "The era half-life is read from an environment variable with a default of 1, so an unexpected value changes the weighting without any warning."
+    }
+  ],
+  "explained_at": "2026-11-11T09:46:47+00:00",
+  "explained_by": "haiku",
+  "summary": "Learns a correction map from the outcome model's raw probabilities to real win rates, then checks it on held-out seasons.",
+  "purpose": "Produces a calibration file that says how far the chase model's probabilities can be trusted, with a pass or fail gate.",
+  "why": "A probability is only useful if it matches how often the event really happens. The gate checks this on seasons the map never saw.",
+  "how": "Loads the outcome model file, scores every ball with the exact model grouped by target, splits the results into training and held-out seasons, fits the correction map on training seasons, builds reliability buckets before and after correction, computes the gate and its power, and writes the result with a fingerprint.",
+  "inputs": "data/models/outcomes-<version>.json, the chase ball data loaded through fit-outcomes, and an environment setting for the era half-life that defaults to 1.",
+  "outputs": "data/models/calibration-<version>.json with the map, held-out buckets, gate result, gate power and a fingerprint. Also prints a summary to the console.",
+  "risks": "The era weighting is computed but fitting relies on the weights being passed in the sample objects, so a change to that field would silently alter the map. Re-running with a new version leaves older files in place.",
+  "debug": "If the gate fails, look at the held-out buckets to see which probability band is off. If the file is missing, check that the outcome model file exists for that version. If numbers differ between runs, check the era half-life environment setting.",
+  "summary_hash": "sha256:2b880662a63f140a02c6f3cf5fb16c21c762276680128cef26ecbb08e75d819b"
+}

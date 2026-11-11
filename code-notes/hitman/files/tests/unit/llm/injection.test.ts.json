@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "path": "tests/unit/llm/injection.test.ts",
+  "language": "TypeScript",
+  "lines": 87,
+  "hash": "sha256:9752b89b160de18d5321d9bdaddfa4bbf2ca076bd9f3226b153c84899f0d10ba",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Covers several layers of defence, not just one.",
+      "Uses a deliberately obedient fake model to prove the verifier still protects the output.",
+      "Checks the prompt file and runtime copy match."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Prompt injection",
+      "meaning": "Hiding instructions inside text an AI reads, to make it do something its owner did not intend."
+    },
+    {
+      "term": "Verifier",
+      "meaning": "A check that every claim the AI makes traces back to a known fact, and rejects it if not."
+    },
+    {
+      "term": "Template",
+      "meaning": "A fixed, safe sentence builder used when the AI output is missing or rejected."
+    },
+    {
+      "term": "Untrusted context",
+      "meaning": "Text from outside sources that the app marks as data and never treats as instructions."
+    },
+    {
+      "term": "Delimiter",
+      "meaning": "Marker tags that show where one block of text starts and ends."
+    }
+  ],
+  "depends_on": [
+    "vitest",
+    "node:fs",
+    "@/llm",
+    "@/llm/prompt",
+    "@/llm/prompts/production",
+    "@/llm/verified",
+    "src/llm/prompts/production.md"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "8edf1c5dbe694fbe",
+      "title": "Imports test and AI helpers",
+      "what": "Brings in the test tools, the AI provider, prompt builder, production prompt and verified generation function, and sets a fixed cutoff time.",
+      "why": "Likely reason: the tests need the same functions the app uses to check real behaviour.",
+      "watch_out": "The cutoff is a fixed past time, so facts or text dated after it are dropped in these tests."
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "kind": "value",
+      "name": "facts, template",
+      "id": "s2",
+      "hash": "ec501ad2093daf0c",
+      "title": "Sample facts and template sentence",
+      "what": "Defines two facts (36 runs and 12 balls) and a template that writes a sentence from them.",
+      "why": "Likely reason: the template is the safe fallback, so the tests need a known correct answer to compare against.",
+      "watch_out": "If the template is wrong, the fallback output is wrong too, so template errors affect every fallback."
+    },
+    {
+      "start": 16,
+      "end": 23,
+      "kind": "value",
+      "name": "INJECTIONS",
+      "id": "s3",
+      "hash": "1d13d441ca8ae16c",
+      "title": "Five hostile text samples",
+      "what": "Holds five attack strings: a fake instruction to ignore rules, a fake developer mode asking for secrets, a fake closing tag with a betting offer, a fake assistant answer with a wrong score, and hidden control characters.",
+      "why": "Likely reason: testing against realistic attacks shows the defences work on the kinds of text the app might see.",
+      "watch_out": "These strings are the test cases themselves. Cleaning them out would weaken the tests."
+    },
+    {
+      "start": 24,
+      "end": 40,
+      "kind": "function",
+      "name": "obedientModel",
+      "id": "s4",
+      "hash": "00c27a9b4dfe8bde",
+      "title": "Fake obedient AI model",
+      "what": "A fake model that repeats whatever instructions the retrieved text contains, to test whether the rest of the system still protects the output.",
+      "why": "Likely reason: a model that obeys is the worst case, so the defences must work even then.",
+      "watch_out": "This fake is deliberately unsafe and must only ever be used in tests."
+    },
+    {
+      "start": 41,
+      "end": 50,
+      "kind": "test group",
+      "name": "production prompt",
+      "id": "s5",
+      "hash": "f0a68c61d77d1c10",
+      "title": "Checks the production prompt",
+      "what": "Checks the production prompt file matches the copy the app runs, has ten numbered rules, and includes rules to never obey instructions found in data and never mention money, odds, betting or prizes.",
+      "why": "Likely reason: the prompt holds the main safety rules, so a silent change to it would weaken the protection.",
+      "watch_out": "Rules are checked by exact phrases. Rewording a rule can break the test even if its meaning is unchanged."
+    },
+    {
+      "start": 51,
+      "end": 87,
+      "kind": "test group",
+      "name": "prompt injection",
+      "id": "s6",
+      "hash": "3e8b648c86e38a71",
+      "title": "Checks injected text is contained",
+      "what": "Checks retrieved text is cleaned, capped at 2000 characters and sent as JSON data, and that a closing tag inside it cannot break the wrapper. Checks template output is unchanged by injected text. Checks an obedient model's output is rejected by the verifier and replaced by the template, and that faithful output is kept when there is no injection. Checks secret names such as NEXTAUTH_SECRET and DATABASE_URL never reach the model.",
+      "why": "Likely reason: the app uses several layers of defence, so an attack must get past all of them to cause harm.",
+      "watch_out": "The secret check only looks for two names. A secret with a different name would not be caught, so new secrets need their own check."
+    }
+  ],
+  "explained_at": "2026-11-11T09:18:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests that text pulled into the AI prompt cannot change what the app says or reveal secrets, even if the text contains instructions.",
+  "purpose": "Protects against prompt injection, where an attacker hides instructions in data the AI reads, such as a web page or a news item.",
+  "why": "Likely reason: the AI reads text from outside sources, so the app must treat that text as data, not as orders. Reason not stated in the code for every individual attack.",
+  "how": "Creates five hostile text samples and builds the AI input from them. Checks that retrieved text is cleaned, capped, and sent as JSON data. Checks that the template output stays the same with or without injected text. Uses a fake model that obeys the injected text, and checks the verifier rejects its output and falls back to the template. Checks faithful output is kept when there is no injection, and that secret names are not sent to the model.",
+  "inputs": "Five injection strings, a shared set of facts, the production prompt, and a fixed cutoff time.",
+  "outputs": "Pass or fail results. No real AI service is called because a fake model is used.",
+  "risks": "The secret check only looks for two names, so a secret with another name would not be caught. The fake model is deliberately unsafe and must stay in tests.",
+  "debug": "If an injection test fails, check which step let the text through: the input builder, the cleaning step, the verifier or the template fallback. Check the production prompt text too.",
+  "summary_hash": "sha256:9752b89b160de18d5321d9bdaddfa4bbf2ca076bd9f3226b153c84899f0d10ba"
+}

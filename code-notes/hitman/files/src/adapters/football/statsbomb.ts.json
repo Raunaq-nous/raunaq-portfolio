@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "path": "src/adapters/football/statsbomb.ts",
+  "language": "TypeScript",
+  "lines": 72,
+  "hash": "sha256:03675c51d515b29cac663b8aa79bf1ccb950b2ba5404628a9ea0635c3427798c",
+  "area": "other",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet.",
+      "Missing kick-off times fall back to midnight, which gives wrong times.",
+      "The time zone assumption is noted but not corrected."
+    ]
+  },
+  "terms": [
+    {
+      "term": "StatsBomb open data",
+      "meaning": "A free public collection of football match event records."
+    },
+    {
+      "term": "shot",
+      "meaning": "An attempt at goal by a player, recorded with its outcome."
+    },
+    {
+      "term": "xG (expected goals)",
+      "meaning": "The estimated chance, from 0 to 1, that a shot becomes a goal."
+    },
+    {
+      "term": "period",
+      "meaning": "A half of the match, numbered 1 or 2 with extra time after."
+    },
+    {
+      "term": "match id",
+      "meaning": "The number that identifies one match in the source."
+    },
+    {
+      "term": "schema",
+      "meaning": "A written rule for what shape the data must have, used to check it."
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "@/domain/facts/types",
+    "src/adapters/types.ts"
+  ],
+  "used_by": [
+    "src/adapters/index.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "38f683a6440b4cd8",
+      "title": "Source notes and imports",
+      "what": "The header says the file reads one StatsBomb match and keeps only shots and half markers. It brings in the checking library and shared types.",
+      "why": "Keeping only shots and halves keeps the data small and focused on what the app shows.",
+      "watch_out": "Any event type not listed here is dropped without a trace."
+    },
+    {
+      "start": 8,
+      "end": 16,
+      "kind": "value",
+      "name": "match",
+      "id": "s2",
+      "hash": "1c4d7f8d98e2b28f",
+      "title": "Shape of a match record",
+      "what": "Describes the match: id, date, kick-off time, competition, season, both teams, the score, and an optional stadium. Extra fields are allowed.",
+      "why": "Keeps the match details checked before they are stored.",
+      "watch_out": "Kick-off can be empty, and the code then uses midnight, so that match's times are wrong."
+    },
+    {
+      "start": 17,
+      "end": 25,
+      "kind": "value",
+      "name": "event, StatsBombDoc",
+      "id": "s3",
+      "hash": "fe7d5691986fb3c1",
+      "title": "Shape of event records and the input bundle",
+      "what": "Describes one event: its position, half, minute, second, type, team, and optional player and shot details including xG. It also defines the bundle that holds the matches, the events and the match to build.",
+      "why": "Likely reason: keeps raw event data consistent before it is used.",
+      "watch_out": "xG is optional, so a shot without it is stored as empty rather than as a number."
+    },
+    {
+      "start": 26,
+      "end": 72,
+      "kind": "function",
+      "name": "parseStatsBomb",
+      "id": "s4",
+      "hash": "13691ae0cb7c1f78",
+      "title": "Building a match with shots and halves",
+      "what": "Finds the requested match, works out each kept event's time from the kick-off, skips repeated half markers, and records the score and the winner. A draw has no winner.",
+      "why": "Likely reason: both teams log each half start and end, so the duplicate filter keeps one of each.",
+      "watch_out": "Times are stored as if they were UTC, so they should not be compared with real clock times."
+    }
+  ],
+  "explained_at": "2026-11-11T19:27:50+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns one StatsBomb open-data match into a match record with its shots and the start and end of each half.",
+  "purpose": "It lets the app show football shots, expected goals and half markers for one match, with the source named.",
+  "why": "StatsBomb records every event, but the app only needs shots and halves, so the code keeps only those.",
+  "how": "It checks the match list and event list. It finds the requested match, then goes through every event. It keeps shots and half start or end markers, drops repeated half markers, and gives each kept event a time from the kick-off. It then records the teams, the score and the winner.",
+  "inputs": "A bundle containing the matches list, the events list, and the match id to build.",
+  "outputs": "A ParsedEvent with the match details, the kept shot and half incidents, and the score and winner.",
+  "risks": "Kick-off times are stored as if they were UTC, although the source gives local time. Other event types are dropped without a note.",
+  "debug": "If a match is not found, the error gives the missing match id. If shot times look shifted, check the time zone assumption. If a half is counted twice, check the duplicate filter.",
+  "summary_hash": "sha256:03675c51d515b29cac663b8aa79bf1ccb950b2ba5404628a9ea0635c3427798c"
+}

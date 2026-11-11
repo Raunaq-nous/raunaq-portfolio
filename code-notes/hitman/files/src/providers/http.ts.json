@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "path": "src/providers/http.ts",
+  "language": "TypeScript",
+  "lines": 31,
+  "hash": "sha256:880bcdac46d620688f9e28465e46af395df70e8c73c47a3858439dfe10eb436b",
+  "area": "src-providers",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are handled and hidden from clients, which is the stated goal.",
+      "No test is visible in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Route handler",
+      "meaning": "The server code that answers one web address."
+    },
+    {
+      "term": "Zod",
+      "meaning": "A library that describes the shape of data and checks it."
+    },
+    {
+      "term": "HTTP status",
+      "meaning": "A three digit code that tells the browser the outcome, such as 500 for a server failure."
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "next/server",
+    "@/domain/shared/types",
+    "./log"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3826de1ad5a76ba3",
+      "title": "File setup and imports",
+      "what": "Describes the helpers and brings in the response tools, the schema type, the shared error types and the logger.",
+      "why": "The header lists the three jobs: parse, map errors, and hide internals.",
+      "watch_out": "Removing the logger import would hide server errors from the logs."
+    },
+    {
+      "start": 7,
+      "end": 15,
+      "kind": "function",
+      "name": "parseJson",
+      "id": "s2",
+      "hash": "63df67cea11e7aab",
+      "title": "Reading and checking a JSON body",
+      "what": "Reads the request body as JSON and checks it against a schema. A body that is not JSON, or that fails the schema, throws a user-facing error with the first problem.",
+      "why": "The doc is short, but the choice to return the first problem keeps messages simple for users.",
+      "watch_out": "The first problem message reaches the user directly, so it should be phrased for them."
+    },
+    {
+      "start": 16,
+      "end": 21,
+      "kind": "function",
+      "name": "errorResponse",
+      "id": "s3",
+      "hash": "4bf2f1c46cd54543",
+      "title": "Error response builder",
+      "what": "Turns a known domain error into its code, message and status. Any other error is logged and replaced with a generic server failure message.",
+      "why": "The header says internals must never leak, which is why unknown errors get a generic message.",
+      "watch_out": "Only the message is logged for unknown errors, so the stack trace is lost."
+    },
+    {
+      "start": 22,
+      "end": 31,
+      "kind": "function",
+      "name": "route",
+      "id": "s4",
+      "hash": "fa06165f1838a96a",
+      "title": "Route wrapper",
+      "what": "Wraps a route handler so that any error it throws becomes the same safe response.",
+      "why": "The doc comment says it turns thrown domain errors into JSON responses with the right status.",
+      "watch_out": "A handler that catches its own errors will bypass this wrapper, so behaviour may differ between routes."
+    }
+  ],
+  "explained_at": "2026-11-11T09:56:13+00:00",
+  "explained_by": "haiku",
+  "summary": "Helpers for web route handlers: they check incoming JSON against a schema, turn known errors into proper HTTP responses, and hide internal details from unknown errors.",
+  "purpose": "Keeps every route answering in the same safe, consistent way, with clear messages for users and no leaked internals.",
+  "why": "The header says the helpers parse with Zod, map domain errors to HTTP statuses, and never leak internals. Those are the stated reasons.",
+  "how": "1) Reads the request body as JSON and checks it against the schema, returning the first problem as a message. 2) Turns known domain errors into JSON with their own status code. 3) Logs and hides any other error behind a generic message with a 500 status. 4) Wraps a handler so any error it throws goes through the same path.",
+  "inputs": "An incoming request with its body, the schema for the body, and any error thrown by the handler.",
+  "outputs": "The parsed and checked body, or a JSON error response with a code, message and status.",
+  "risks": "The first validation message is sent to the client, so wording in schemas becomes public text. Unknown errors are logged with only their message, not the full stack, which can make them harder to trace.",
+  "debug": "If a client gets a generic error, look at the server log for the unhandled route error entry. If validation fails unexpectedly, check the schema and the request body format.",
+  "summary_hash": "sha256:880bcdac46d620688f9e28465e46af395df70e8c73c47a3858439dfe10eb436b"
+}
