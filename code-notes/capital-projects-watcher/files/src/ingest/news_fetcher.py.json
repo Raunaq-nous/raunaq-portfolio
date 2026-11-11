@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "path": "src/ingest/news_fetcher.py",
+  "language": "Python",
+  "lines": 240,
+  "hash": "sha256:c9a8a7f6ec4653936c2ae27279aeaa2f1e7cf8689ca7f1046f6b0641c5426b26",
+  "area": "src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests were found for this file.",
+      "Feed reads have no visible time limit.",
+      "Per-item save errors are logged but not reflected in the returned count."
+    ]
+  },
+  "terms": [
+    {
+      "term": "RSS",
+      "meaning": "a standard format websites use to publish a list of their latest articles"
+    },
+    {
+      "term": "Feed",
+      "meaning": "one RSS source, such as a news outlet's list of articles"
+    },
+    {
+      "term": "Database session",
+      "meaning": "a working connection used to make a group of database changes together"
+    },
+    {
+      "term": "HTML",
+      "meaning": "the markup language used to build web pages, including tags such as bold or link"
+    },
+    {
+      "term": "Threshold",
+      "meaning": "the cut-off score above which two headlines count as duplicates"
+    }
+  ],
+  "depends_on": [
+    "src/database/connection.py",
+    "src/database/operations.py",
+    "src/models/schemas.py",
+    "src/utils/config.py",
+    "src/utils/helpers.py",
+    "src/utils/logger.py",
+    "feedparser",
+    "requests",
+    "beautifulsoup4"
+  ],
+  "used_by": [
+    "src/pipeline.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 21,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "2691708bb29bf02b",
+      "title": "Imports for news fetching",
+      "what": "Brings in tools for reading RSS feeds and web pages, cleaning HTML, and the database, data shapes, config, helpers, and logger.",
+      "why": "Needed to read feeds, check and clean the results, and save them.",
+      "watch_out": "The requests library is imported but not used in the code shown here, so its role is unclear."
+    },
+    {
+      "start": 22,
+      "end": 76,
+      "kind": "class",
+      "name": "NewsFetcher (part 1)",
+      "id": "s2",
+      "hash": "204b2e357c6597af",
+      "title": "Setting up the fetcher and domain check",
+      "what": "Creates the fetcher with a database connection, the list of allowed news sites, and the title similarity threshold. It also checks whether an article address belongs to an allowed site, and an empty list lets everything through.",
+      "why": "Likely reason: keeps the news limited to trusted outlets.",
+      "watch_out": "The domain check is a loose text match, so any address that contains an allowed name passes."
+    },
+    {
+      "start": 77,
+      "end": 130,
+      "kind": "class",
+      "name": "NewsFetcher (part 2)",
+      "id": "s3",
+      "hash": "d69fa6f0350821e3",
+      "title": "Building items and filtering by date",
+      "what": "Reads each enabled RSS feed, turns every entry into a raw news item with a cleaned summary and an outlet name, and keeps only items from the last set number of days or with no date.",
+      "why": "Converts outside feed data into one standard shape that the rest of the app can use.",
+      "watch_out": "A feed that fails is logged and skipped, so a run can look normal while missing items, and items with no date are always kept."
+    },
+    {
+      "start": 131,
+      "end": 164,
+      "kind": "method",
+      "name": "NewsFetcher: deduplicate_items",
+      "id": "s4",
+      "hash": "6552aad3bc19d977",
+      "title": "Removing repeats within one batch",
+      "what": "Goes through the fetched items and drops any whose web address was already seen, or whose headline is close enough to one already kept.",
+      "why": "The same story often appears in several feeds.",
+      "watch_out": "The first copy is kept and later ones are dropped, so the outlet shown depends on feed order, and the check slows down as the list grows."
+    },
+    {
+      "start": 165,
+      "end": 219,
+      "kind": "method",
+      "name": "NewsFetcher: save_items_to_db",
+      "id": "s5",
+      "hash": "95382ff238914665",
+      "title": "Saving new articles to the database",
+      "what": "Writes each item whose web address is not yet stored as a pending article, then reports how many were saved.",
+      "why": "Stores articles so the pipeline can process them later and so the same article is not stored twice.",
+      "watch_out": "The saved count reflects items added to the session, so if the final save step fails, the number reported can be wrong."
+    },
+    {
+      "start": 220,
+      "end": 228,
+      "kind": "method",
+      "name": "NewsFetcher: _clean_html",
+      "id": "s6",
+      "hash": "0d78ca33743af062",
+      "title": "Stripping HTML from summaries",
+      "what": "Removes web markup from a feed summary and returns plain text.",
+      "why": "Feed summaries often contain markup tags that would clutter the stored text.",
+      "watch_out": "Separate pieces of text are joined with spaces, so the result can contain spaces that were not in the original."
+    },
+    {
+      "start": 229,
+      "end": 240,
+      "kind": "function",
+      "name": "fetch_news",
+      "id": "s7",
+      "hash": "57a494b3628f4844",
+      "title": "Single entry point for fetching news",
+      "what": "Creates a fetcher, runs the full fetch and store job for the last set number of days, and returns how many new articles were saved.",
+      "why": "Gives the pipeline one simple function to call.",
+      "watch_out": "A new fetcher is created on every call, which sets up a new database connection lookup each time."
+    }
+  ],
+  "explained_at": "2026-11-11T22:45:32+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads news from configured RSS feeds, removes duplicates, and saves new articles to the database as pending.",
+  "purpose": "Collects raw news so the pipeline has material to process.",
+  "why": "Likely reason: storing articles first lets the processing step run later and retry if it fails.",
+  "how": "1) Read each enabled feed from config. 2) Keep entries from allowed sites. 3) Turn each entry into a raw item with a cleaned summary and a date. 4) Drop items older than the look-back window. 5) Remove duplicate web addresses and near-identical headlines. 6) Save items whose address is new as pending. 7) Return the count.",
+  "inputs": "The list of feeds, the allowed domains list, the title similarity threshold (default 0.85), and the number of days to look back.",
+  "outputs": "New rows in the raw news table with status pending, and a count of how many were saved.",
+  "risks": "Feeds are read without a visible time limit, so a slow feed may hang a run. Missing dates always pass the filter. Config values that are missing fall back silently.",
+  "debug": "Look in the log for Fetching RSS feed and Error fetching RSS feed lines to find which feed failed. If zero items arrive, check allowed_domains and the enabled flag for each feed. If expected articles are missing, check the title threshold and the look-back window. Check the raw news table for rows with status pending.",
+  "summary_hash": "sha256:c9a8a7f6ec4653936c2ae27279aeaa2f1e7cf8689ca7f1046f6b0641c5426b26"
+}

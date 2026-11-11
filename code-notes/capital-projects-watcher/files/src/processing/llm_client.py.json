@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "path": "src/processing/llm_client.py",
+  "language": "Python",
+  "lines": 183,
+  "hash": "sha256:95d12f0fa8950575a69af62eac28c3ee125c68f5445dacb50a31ee9b3bfe610d",
+  "area": "src-processing",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "The OpenAI call style likely does not exist in the pinned openai 1.6.1 package, which would make every OpenAI call fail. This was not run here.",
+      "The Anthropic call style likely needs a newer library than the pinned anthropic 0.8.1.",
+      "Stacked retries can multiply cost and delay.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "API",
+      "meaning": "A doorway other programs use to ask an online service for results."
+    },
+    {
+      "term": "JSON",
+      "meaning": "A plain text format for structured data, using named fields and lists."
+    },
+    {
+      "term": "Temperature",
+      "meaning": "A setting that controls how varied an AI reply is; lower values give more consistent replies."
+    },
+    {
+      "term": "Retry",
+      "meaning": "Trying the same request again after a failure, often after a short pause."
+    }
+  ],
+  "depends_on": [
+    "openai",
+    "anthropic",
+    "tenacity",
+    "src/utils/config.py",
+    "src/utils/logger.py"
+  ],
+  "used_by": [
+    "src/processing/llm_stages.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "32ae078c3fb95d6d",
+      "title": "Imports and file header",
+      "what": "Loads the OpenAI and Anthropic libraries, the retry helper, the settings object, and the logger.",
+      "why": "Likely reason: each provider's library is needed to make calls.",
+      "watch_out": "Both provider libraries must be installed, or this file will not load at all."
+    },
+    {
+      "start": 18,
+      "end": 74,
+      "kind": "class",
+      "name": "LLMClient (part 1)",
+      "id": "s2",
+      "hash": "731bce43d7dcd873",
+      "title": "Setting up the client for a provider",
+      "what": "When created, reads the provider, model, key, temperature, and retry limit from settings. For Anthropic it builds a client object; for OpenAI it stores the key on the shared OpenAI module.",
+      "why": "Likely reason: lets the client be configured once and reused.",
+      "watch_out": "Settings are read only when the client is first created, so changing the .env file while the app runs has no effect until a restart."
+    },
+    {
+      "start": 75,
+      "end": 118,
+      "kind": "method",
+      "name": "LLMClient: _call_openai",
+      "id": "s3",
+      "hash": "b6d2f6d35ee34867",
+      "title": "Sending a request to OpenAI or Anthropic",
+      "what": "Builds the OpenAI request, adding JSON mode only for GPT-4 family models when asked, or builds the Anthropic request with a 4096-token reply cap. Either way, a failure is logged and passed up to the caller.",
+      "why": "Likely reason: the two companies use different request shapes, so each has its own function.",
+      "watch_out": "The JSON mode switch is never turned on by the callers, so the models are not asked to return strict JSON by the API itself."
+    },
+    {
+      "start": 119,
+      "end": 177,
+      "kind": "method",
+      "name": "LLMClient: call_with_json_validation",
+      "id": "s4",
+      "hash": "ad6703d3343eb5fa",
+      "title": "Getting a checked JSON reply",
+      "what": "Asks for a reply, parses it as JSON, checks that required top-level keys exist, and tries again after a one-second pause if the reply is broken or incomplete.",
+      "why": "Likely reason: AI models sometimes return text that is not valid JSON, and the stages need clean data.",
+      "watch_out": "Each attempt already includes the request retries, so one bad reply can cause up to nine requests."
+    },
+    {
+      "start": 178,
+      "end": 183,
+      "kind": "function",
+      "name": "get_llm_client",
+      "id": "s5",
+      "hash": "aeba27dfc0cd102e",
+      "title": "Getting the shared client",
+      "what": "Returns the one shared client, creating it the first time it is requested.",
+      "why": "Likely reason: avoids rebuilding the client for every processing stage.",
+      "watch_out": "The client keeps the settings it had at first use, so later setting changes need a restart to take effect."
+    }
+  ],
+  "explained_at": "2026-11-11T22:42:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Sends prompts to either OpenAI or Anthropic, returns the reply, retries on failure, and checks that the reply is valid JSON.",
+  "purpose": "Gives the rest of the app one way to talk to whichever AI company is configured.",
+  "why": "Keeping provider-specific calls in one file means the processing stages do not need to know which company is used.",
+  "how": "Reads the provider, model, key, temperature, and retry limit from settings, sends the instruction and news data, retries on errors, parses the reply as JSON, checks required keys, and tries again if the reply is bad.",
+  "inputs": "A system instruction, a user message, an optional list of required keys, and the settings.",
+  "outputs": "Reply text, a parsed JSON dictionary, or an error raised to the caller.",
+  "risks": "The OpenAI call style here appears to belong to an older library than the pinned version, so calls would likely fail. The Anthropic call style likely needs a newer library than the pinned version too. Failures are passed up, and the stages then hide them as empty results. Retries multiply, so one call can make up to nine requests. The Anthropic reply is capped at 4096 tokens, so a long reply may be cut short and fail as invalid JSON.",
+  "debug": "Look in the log for 'OpenAI API error' or 'Anthropic API error' and check the key and model name in settings. If stages return zero events without a crash, check these errors first. For invalid JSON, look for 'Invalid JSON response' and the reply preview logged at debug level.",
+  "summary_hash": "sha256:95d12f0fa8950575a69af62eac28c3ee125c68f5445dacb50a31ee9b3bfe610d"
+}

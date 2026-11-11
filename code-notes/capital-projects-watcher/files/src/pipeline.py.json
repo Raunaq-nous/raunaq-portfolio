@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "path": "src/pipeline.py",
+  "language": "Python",
+  "lines": 188,
+  "hash": "sha256:6eef3f7b5a13e004680ae6d7658f5604c75e8fcaae8eb0af28e1845482157adc",
+  "area": "src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests were found for this file.",
+      "Early exits hide the run summary.",
+      "Older pending articles can wait a long time if no new articles arrive.",
+      "It is unclear whether step 6 uses article objects safely after their session has closed."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ETL",
+      "meaning": "extract, transform, load: collecting data, cleaning it, and storing the result"
+    },
+    {
+      "term": "Pipeline",
+      "meaning": "a fixed sequence of steps where each step passes its result to the next"
+    },
+    {
+      "term": "Batch",
+      "meaning": "a fixed-size group of items handled together in one run"
+    },
+    {
+      "term": "Scheduler",
+      "meaning": "a helper that runs a task again at a set interval"
+    },
+    {
+      "term": "Traceback",
+      "meaning": "the detailed list of where in the code an error happened"
+    }
+  ],
+  "depends_on": [
+    "src/database/connection.py",
+    "src/database/operations.py",
+    "src/ingest/news_fetcher.py",
+    "src/models/schemas.py",
+    "src/processing/entity_resolver.py",
+    "src/processing/llm_stages.py",
+    "src/processing/preprocessor.py",
+    "src/utils/config.py",
+    "src/utils/logger.py",
+    "schedule"
+  ],
+  "used_by": [
+    "Not visible in the packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a54e675178ce89c1",
+      "title": "Imports for the pipeline",
+      "what": "Brings in the steps the pipeline runs, including fetching, preprocessing, AI processing, and saving events, plus the database and logger.",
+      "why": "The pipeline is the place where these separate steps are joined together.",
+      "watch_out": "Each step lives in its own module, so a missing module stops the whole pipeline from starting."
+    },
+    {
+      "start": 19,
+      "end": 72,
+      "kind": "class",
+      "name": "Pipeline (part 1)",
+      "id": "s2",
+      "hash": "3820e72bec8c52ce",
+      "title": "Starting a run and loading new items",
+      "what": "Creates the pipeline with its look-back window and batch size, starts a run with a set of counters, fetches new news, and loads up to one batch of pending articles.",
+      "why": "Steps must run in order, so each run starts by filling the work queue.",
+      "watch_out": "If no new articles are fetched, the run stops early, so older pending articles from earlier failures are not processed until new articles arrive."
+    },
+    {
+      "start": 73,
+      "end": 126,
+      "kind": "class",
+      "name": "Pipeline (part 2)",
+      "id": "s3",
+      "hash": "4544baa14c240b99",
+      "title": "Running the processing steps",
+      "what": "Converts the loaded articles into standard shapes and runs preprocessing and the AI steps. If no events come out, the articles are marked skipped. Otherwise the events are saved and the articles are marked processed.",
+      "why": "Likely reason: each step needs the output of the one before it, so the order is fixed.",
+      "watch_out": "Any error in these steps is caught by one general handler, which leaves the articles pending so they are retried on the next run."
+    },
+    {
+      "start": 127,
+      "end": 165,
+      "kind": "class",
+      "name": "Pipeline (part 3)",
+      "id": "s4",
+      "hash": "14b065864e897743",
+      "title": "Writing the run summary and repeating",
+      "what": "Logs a summary of counts and the time taken, and provides a loop that runs the pipeline every set number of hours.",
+      "why": "Gives a record of each run and lets the pipeline run unattended.",
+      "watch_out": "The summary is only logged when the run reaches the end, so early exits leave no summary, and the timed loop runs until it is stopped by hand."
+    },
+    {
+      "start": 166,
+      "end": 179,
+      "kind": "function",
+      "name": "run_pipeline",
+      "id": "s5",
+      "hash": "2e073019d42e8133",
+      "title": "Simple call to run once",
+      "what": "Creates a pipeline and runs it one time, returning the counts.",
+      "why": "Gives scripts a single call to start a run.",
+      "watch_out": "A new pipeline is created on every call."
+    },
+    {
+      "start": 180,
+      "end": 188,
+      "kind": "function",
+      "name": "run_continuous_pipeline",
+      "id": "s6",
+      "hash": "af0b2032f24bb690",
+      "title": "Simple call to run on a timer",
+      "what": "Starts the timed loop that runs the pipeline on a schedule. It does not return unless it is stopped.",
+      "why": "Convenience for running the pipeline unattended.",
+      "watch_out": "Because the call never returns, any code placed after it will not run until the loop is stopped."
+    }
+  ],
+  "explained_at": "2026-11-11T22:45:32+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the full job in order: fetch news, prepare it, run the AI steps, save events, and mark articles done.",
+  "purpose": "Turns raw news into saved project events.",
+  "why": "Likely reason: each step is kept separate so it can be tested or replaced, and this file only calls them in order.",
+  "how": "1) Fetch new news for the look-back window. 2) Load pending articles up to the batch size. 3) Convert them and run preprocessing. 4) Run the AI steps to build events. 5) Save events with entity resolution. 6) Mark articles processed. 7) Log a summary.",
+  "inputs": "The number of days to look back, batch size, rolling window and schedule interval from config, and pending articles from the database.",
+  "outputs": "Saved events, updated article statuses, and a dictionary of counts.",
+  "risks": "Early exits skip the summary. Errors leave articles pending to be retried. If no new articles arrive, older backlog is not processed. Articles marked skipped are never retried.",
+  "debug": "Read the log lines for Step 1 through Step 6 to see how far a run got. Check the errors counter and the Pipeline error message with its traceback. Check the raw news table for rows marked pending or skipped. If nothing happens, check the fetch count and the feed settings.",
+  "summary_hash": "sha256:6eef3f7b5a13e004680ae6d7658f5604c75e8fcaae8eb0af28e1845482157adc"
+}

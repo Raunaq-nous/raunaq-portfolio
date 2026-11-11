@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "path": "src/processing/preprocessor.py",
+  "language": "Python",
+  "lines": 229,
+  "hash": "sha256:721f8a3a42df171a88366d83fc53bf299365d6068b5d6d96ac7bd70882a890a5",
+  "area": "src-processing",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "The translation service is a free web service with no guaranteed availability.",
+      "The geocoding method is defined but not used in the item step shown.",
+      "Long text is silently cut short before translation."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Language detection",
+      "meaning": "Guessing which language a piece of text is written in."
+    },
+    {
+      "term": "Geocoding",
+      "meaning": "Turning a place name into map coordinates and a country."
+    },
+    {
+      "term": "Nominatim",
+      "meaning": "A free map lookup service run by the OpenStreetMap project."
+    },
+    {
+      "term": "Rate limit",
+      "meaning": "A cap on how many requests a service accepts in a set time."
+    }
+  ],
+  "depends_on": [
+    "dateparser",
+    "deep-translator",
+    "geopy",
+    "langdetect",
+    "src/models/schemas.py",
+    "src/utils/config.py",
+    "src/utils/helpers.py",
+    "src/utils/logger.py"
+  ],
+  "used_by": [
+    "Not visible in the files in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "9920a7185b432b72",
+      "title": "Imports and module header",
+      "what": "Brings in the date parser, the translator, the map lookup tool, the language detector, the data shapes for news and locations, the settings, the number helper, and the logger.",
+      "why": "Likely reason: each preprocessing step depends on one of these libraries.",
+      "watch_out": "The translation, map, and language libraries must be installed, or this file will not load."
+    },
+    {
+      "start": 20,
+      "end": 75,
+      "kind": "class",
+      "name": "Preprocessor (part 1)",
+      "id": "s2",
+      "hash": "d7a4768cb3ceaf0c",
+      "title": "Setup, language detection, and translation",
+      "what": "When created, sets up the map lookup tool with a generic client name and timeout from settings, plus an empty cache. Detects a text's language and falls back to English if detection fails. Translates non-English text to English, keeping the original if translation fails, and cuts text longer than 5000 characters before translating.",
+      "why": "Likely reason: the analysis needs English, and fallbacks keep one bad item from stopping the run.",
+      "watch_out": "Text beyond 5000 characters is silently dropped from the translation, so long articles lose their endings."
+    },
+    {
+      "start": 76,
+      "end": 112,
+      "kind": "method",
+      "name": "Preprocessor: extract_entities",
+      "id": "s3",
+      "hash": "097f83222b378eda",
+      "title": "Pulling numbers and dates from text",
+      "what": "Extracts numbers with a helper and finds dates written in three common styles, converting each to a date value stored in the result. The places list is never filled in this file.",
+      "why": "Likely reason: gives later steps quick facts on amounts and dates without another AI call.",
+      "watch_out": "Stored dates are date objects, which cannot be written to plain JSON as they are, so convert them to text before saving to a file."
+    },
+    {
+      "start": 113,
+      "end": 151,
+      "kind": "method",
+      "name": "Preprocessor: geocode",
+      "id": "s4",
+      "hash": "2279f3de27a3933b",
+      "title": "Looking up coordinates for a place",
+      "what": "Turns a place name into a country, region, and coordinates using the map service, remembers each answer including misses, and returns nothing on timeout or service error.",
+      "why": "Likely reason: project location matching needs coordinates.",
+      "watch_out": "The map service allows about one request per second and this code does not pause, so large runs may be blocked."
+    },
+    {
+      "start": 152,
+      "end": 193,
+      "kind": "method",
+      "name": "Preprocessor: process_item",
+      "id": "s5",
+      "hash": "e96af77b97842aa8",
+      "title": "Processing one news item",
+      "what": "Builds the processed record for one item: keeps the original text, detects its language, translates it if needed, and extracts facts from the English text.",
+      "why": "Likely reason: keeps both the original and English versions so the owner can check translations.",
+      "watch_out": "The title and summary are translated separately, and a failed translation silently leaves the English field in the original language."
+    },
+    {
+      "start": 194,
+      "end": 217,
+      "kind": "method",
+      "name": "Preprocessor: batch_process",
+      "id": "s6",
+      "hash": "8c818f0a4e020dad",
+      "title": "Processing many items safely",
+      "what": "Runs the single-item step over a list, logs and skips any item that fails, and returns the successful results.",
+      "why": "Likely reason: one bad article should not stop the whole batch.",
+      "watch_out": "Skipped items are only logged, so the caller gets fewer results without a list of what was lost."
+    },
+    {
+      "start": 218,
+      "end": 229,
+      "kind": "function",
+      "name": "preprocess_news",
+      "id": "s7",
+      "hash": "c48fd0069fe5cd75",
+      "title": "Simple function for preprocessing",
+      "what": "Creates a preprocessor and runs it over a list of news items in one call.",
+      "why": "Likely reason: gives the pipeline a one-line call.",
+      "watch_out": "Each call creates a new preprocessor, so the place lookup cache is lost between calls."
+    }
+  ],
+  "explained_at": "2026-11-11T22:42:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Cleans up raw news before AI analysis by detecting its language, translating non-English text to English, and pulling out numbers and dates.",
+  "purpose": "Gives the AI English text and extra facts, so the later stages have clean input.",
+  "why": "The analysis instructions expect English, so translation happens first.",
+  "how": "For each item: detect the language, translate the title and summary if they are not English, extract numbers and dates from the English text, and return a dictionary. A place lookup method with a cache exists, but the item step shown does not call it.",
+  "inputs": "Raw news items with URL, title, summary, outlet, and published date.",
+  "outputs": "Dictionaries holding original and English title and summary, the detected language, extracted facts, and the original fields.",
+  "risks": "Translation uses a free web translator that can be rate limited or change without notice. Text beyond 5000 characters is cut off before translation without a warning. The free Nominatim map service has usage limits and this code does not pace requests. If translation fails, the English field silently keeps the original text.",
+  "debug": "Look for 'Translation error', 'Geocoding error', or 'Error processing item' in the log. If English text looks untranslated, check the detected language. If dates are missing, check the date patterns in extract_entities.",
+  "summary_hash": "sha256:721f8a3a42df171a88366d83fc53bf299365d6068b5d6d96ac7bd70882a890a5"
+}

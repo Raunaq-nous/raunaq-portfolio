@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "path": "src/database/operations.py",
+  "language": "Python",
+  "lines": 256,
+  "hash": "sha256:e278e9deb3ca07fed6ddc453c7152afcfd0ec43b065208df3915963308cf1014",
+  "area": "src-database",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The alias search uses a PostgreSQL-only function while the default database is SQLite.",
+      "Alias list changes may not persist.",
+      "The status is overwritten on every update.",
+      "Only 3 of the 7 sections were visible, so the rest was not checked.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Query",
+      "meaning": "A request to the database for rows that match a condition."
+    },
+    {
+      "term": "Alias",
+      "meaning": "An alternate name a project is also known by."
+    },
+    {
+      "term": "Case-insensitive match",
+      "meaning": "A text search that treats capital and small letters as the same."
+    }
+  ],
+  "depends_on": [
+    "sqlalchemy",
+    "src/database/models.py",
+    "src/models/schemas.py"
+  ],
+  "used_by": [
+    "src/processing/entity_resolver.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "2b9a5e081ac4b09d",
+      "title": "Imports for database operations",
+      "what": "Brings in the date tools, query helpers, the database table classes, and the shared data shapes for projects, events, and news.",
+      "why": "Likely reason: operations convert between the data shapes and the table classes.",
+      "watch_out": ""
+    },
+    {
+      "start": 24,
+      "end": 73,
+      "kind": "class",
+      "name": "ProjectOperations (part 1)",
+      "id": "s2",
+      "hash": "21acd49c90403d97",
+      "title": "Saving or updating a project",
+      "what": "Looks for an existing project with the same exact name, country, and sector. If found, it refreshes status, coordinates, owners, and the last-updated date, and adds the name to its alias list. If not found, it adds a new project row to the session.",
+      "why": "Likely reason: keeps one row per project while still recording alternate names.",
+      "watch_out": "The status is always set to whatever the caller passes, which is announced for new projects from the resolver, so a project that was further along could be set back."
+    },
+    {
+      "start": 74,
+      "end": 110,
+      "kind": "method",
+      "name": "ProjectOperations: find_similar_projects",
+      "id": "s3",
+      "hash": "afbad989cf8e80ae",
+      "title": "Finding similar projects",
+      "what": "Searches for projects in the same sector whose name or alias contains the given text. When coordinates are present, it keeps only projects inside a box around that location, sized from the proximity limit, and returns all matches.",
+      "why": "Likely reason: the same project can appear under different names and places, so a loose search catches more matches.",
+      "watch_out": "Coordinates of exactly zero are treated as missing, and the alias search relies on a PostgreSQL-only function."
+    },
+    {
+      "start": 111,
+      "end": 151,
+      "kind": "class",
+      "name": "EventOperations (part 1)",
+      "id": "s4",
+      "hash": "0613ad29ad37c6ce",
+      "title": "Saving and fetching events",
+      "what": "Saves one project event, along with its stakeholders, into the database. It can also look up a single event by its ID.",
+      "why": "Keeps all database writes for events in one place, so other code does not need to know the table layout.",
+      "watch_out": "Nothing is written until the surrounding session is committed, and this code does not commit it."
+    },
+    {
+      "start": 152,
+      "end": 190,
+      "kind": "method",
+      "name": "EventOperations: find_duplicates",
+      "id": "s5",
+      "hash": "45fa3e918a8a750c",
+      "title": "Finding possible repeat events",
+      "what": "Looks for existing events whose title contains the first 50 characters of a new title and whose publish date is within 14 days either way. The packet does not show a caller for this function.",
+      "why": "Likely reason: to avoid saving the same news story twice.",
+      "watch_out": "Matching is a plain text search, so a generic title can match unrelated events, and percent or underscore characters in a title act as search wildcards."
+    },
+    {
+      "start": 191,
+      "end": 213,
+      "kind": "class",
+      "name": "StakeholderOperations",
+      "id": "s6",
+      "hash": "fce08acfe3ec2142",
+      "title": "Saving and finding stakeholders",
+      "what": "Saves one stakeholder linked to an event. It can also list every stakeholder record that has a given stock ticker.",
+      "why": "Stakeholders have their own table so they can be searched by company ticker.",
+      "watch_out": "Ticker matching is exact, so ABC and abc are treated as different tickers."
+    },
+    {
+      "start": 214,
+      "end": 256,
+      "kind": "class",
+      "name": "RawNewsOperations",
+      "id": "s7",
+      "hash": "c11c27333b46762f",
+      "title": "Storing and tracking raw news",
+      "what": "Saves a news article with the status pending, checks whether its web address is already stored, and lists the oldest pending articles. It can also mark an article processed, skipped, or failed with an error message.",
+      "why": "Works as a to-do list so the pipeline knows which articles still need handling.",
+      "watch_out": "Marking an article does nothing, without any error, if the article ID is not found."
+    }
+  ],
+  "explained_at": "2026-11-11T22:45:32+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds functions that save and search projects in the database. Only the project functions are visible in this packet.",
+  "purpose": "Keeps database queries in one place so the rest of the app can make simple calls.",
+  "why": "Separating queries from the logic keeps each file focused on one job.",
+  "how": "Creates or updates a project by exact name, country, and sector. Searches for similar projects by name or alias and by sector, and when coordinates exist, narrows the search to a box around them. The event, stakeholder, and raw news functions are not visible in this packet and are not described here.",
+  "inputs": "A database session plus project values or search values from the resolver.",
+  "outputs": "Project rows added or updated in the session, and lists of matching projects.",
+  "risks": "The alias search relies on a PostgreSQL-only function, so on the default SQLite database a search can fail. Adding to a stored alias list is not noticed by the database. Name matching uses partial text, so a very short or blank name can match many projects. Saving uses exact matching while searching uses fuzzy matching, which can give different answers.",
+  "debug": "If project matching fails on SQLite, look for an error about an array function. If alternate names do not persist, check the alias field after a restart. If a status seems to revert, check what the update sets.",
+  "summary_hash": "sha256:e278e9deb3ca07fed6ddc453c7152afcfd0ec43b065208df3915963308cf1014"
+}

@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "path": "src/utils/helpers.py",
+  "language": "Python",
+  "lines": 184,
+  "hash": "sha256:58f8e5feffb7cb731fbcf7b6ca9a219e99745e0cc6c540dcea3d6455d9358877",
+  "area": "src-utils",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Tests cover basic text and number cases, but the invalid currency test makes a live network call.",
+      "The online rate call has no retry, and no test covers offline behaviour.",
+      "Money extraction keeps only one figure, which can hide others in the same text."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Regular expression",
+      "meaning": "a compact pattern language used to find text that matches a shape, such as a number followed by MW"
+    },
+    {
+      "term": "Fuzzy matching",
+      "meaning": "comparing two texts by how close they are rather than requiring an exact match"
+    },
+    {
+      "term": "SHA-256",
+      "meaning": "a standard method that turns text into a fixed-length code, which changes completely if the text changes"
+    },
+    {
+      "term": "Exchange rate",
+      "meaning": "how many units of one currency equal one US dollar"
+    },
+    {
+      "term": "Cache",
+      "meaning": "a saved copy of data kept locally so it does not have to be fetched again"
+    }
+  ],
+  "depends_on": [
+    "src/utils/config.py",
+    "src/utils/logger.py",
+    "requests",
+    "rapidfuzz"
+  ],
+  "used_by": [
+    "src/ingest/news_fetcher.py",
+    "tests/test_helpers.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "359e880684048eea",
+      "title": "Imports for helper tools",
+      "what": "Brings in the libraries the helper functions need, including hashing, pattern matching, fuzzy text comparison, web requests, and the shared config and logger.",
+      "why": "The helpers rely on these outside libraries and the app's own config and logger.",
+      "watch_out": "The rapidfuzz and requests packages must be installed, or this whole module fails to load."
+    },
+    {
+      "start": 19,
+      "end": 29,
+      "kind": "function",
+      "name": "normalize_text",
+      "id": "s2",
+      "hash": "0269d13c6a5cbe2b",
+      "title": "Cleaning text for comparison",
+      "what": "Converts text to lowercase, collapses repeated spaces, and removes punctuation so two headlines can be compared fairly.",
+      "why": "Makes comparisons ignore differences in capitals, spacing, and punctuation.",
+      "watch_out": "Removing punctuation also removes decimal points and currency symbols, so 1.2 and 12 look the same after cleaning."
+    },
+    {
+      "start": 30,
+      "end": 41,
+      "kind": "function",
+      "name": "text_similarity",
+      "id": "s3",
+      "hash": "c44b6a375d550c12",
+      "title": "Scoring how alike two texts are",
+      "what": "Returns a score from 0 to 1 showing how similar two cleaned texts are, where 1 means identical. It is used to spot near-duplicate headlines.",
+      "why": "Likely reason: news sites often publish the same story with slightly different wording.",
+      "watch_out": "The score compares characters in order, so moving words around can lower it noticeably."
+    },
+    {
+      "start": 42,
+      "end": 46,
+      "kind": "function",
+      "name": "hash_text",
+      "id": "s4",
+      "hash": "fb5bd2ba6de470fe",
+      "title": "Making a fingerprint of text",
+      "what": "Produces a fixed-length SHA-256 code for a piece of text. Identical text always gives the same code.",
+      "why": "Reason not stated in the code. Within this file it is only defined, not used.",
+      "watch_out": "Changing even one character gives a completely different code, so this cannot find near-duplicates."
+    },
+    {
+      "start": 47,
+      "end": 94,
+      "kind": "function",
+      "name": "extract_numbers_from_text",
+      "id": "s5",
+      "hash": "644622c2a9df79a7",
+      "title": "Pulling money and size figures from text",
+      "what": "Scans text for money amounts such as USD 250 million or $1.2 billion, and for sizes such as 500 MW or 120 km. It returns the figures as a dictionary of plain numbers.",
+      "why": "Lets the app record financial and scale facts without needing an AI model to read them.",
+      "watch_out": "For money, only the last amount found is kept, while for each size unit only the first match is kept, so a sentence with several figures may not give the one you expect."
+    },
+    {
+      "start": 95,
+      "end": 143,
+      "kind": "class",
+      "name": "CurrencyConverter (part 1)",
+      "id": "s6",
+      "hash": "e852aa6da615ca03",
+      "title": "Holding and refreshing exchange rates",
+      "what": "Loads saved exchange rates from a local cache file when it starts, and can fetch fresh rates from an online service and save them back to the cache.",
+      "why": "Likely reason: so the app does not ask the internet for rates on every conversion.",
+      "watch_out": "Rates come from a free public service with no key, so if it changes or goes down, conversions can silently use old rates or fail."
+    },
+    {
+      "start": 144,
+      "end": 181,
+      "kind": "method",
+      "name": "CurrencyConverter: convert_to_usd",
+      "id": "s7",
+      "hash": "5f6548dc31de50cd",
+      "title": "Converting money to US dollars",
+      "what": "Turns an amount in another currency into US dollars. It returns nothing if the amount is zero or empty, the currency is unknown, or no rate is available.",
+      "why": "Lets money reported in different currencies be compared on one scale.",
+      "watch_out": "When refreshing rates fails, the function tries the network again on every call, and a zero amount returns nothing rather than zero."
+    },
+    {
+      "start": 182,
+      "end": 184,
+      "kind": "function",
+      "name": "convert_currency",
+      "id": "s8",
+      "hash": "c85bb304252473bd",
+      "title": "Simple shortcut for currency conversion",
+      "what": "Offers a single function that performs the same conversion as the converter, using one shared converter object.",
+      "why": "Likely reason: so other code can convert money with one simple call.",
+      "watch_out": "The shared converter is created when this module first loads, so the cache folder is created and the cache file is read at import time, and callers must check for a None result."
+    }
+  ],
+  "explained_at": "2026-11-11T22:45:32+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds shared helper functions that clean and compare text, pull money and size figures out of sentences, and convert currencies into US dollars.",
+  "purpose": "Gives the rest of the app one tested place for common text and money tasks.",
+  "why": "Likely reason: these tasks are needed in more than one place, so they are kept together.",
+  "how": "1) Clean text by lowering its case and removing punctuation. 2) Compare cleaned texts to get a similarity score. 3) Build a fingerprint with a hash when needed. 4) Scan text for money and size patterns. 5) Load cached exchange rates when the converter starts. 6) Refresh rates from an online service when they are more than a day old. 7) Divide the amount by the stored rate to get US dollars.",
+  "inputs": "Plain text such as headlines and article sentences, a money amount with its currency code, and the cache file location from the config file.",
+  "outputs": "Cleaned text, similarity scores from 0 to 1, a hash string, a dictionary of extracted figures, and a US dollar amount or None.",
+  "risks": "Currency conversion depends on an outside service with a 10 second timeout and no retry. Figure extraction can pick the wrong number when a sentence has several. Similarity scores can misjudge reworded headlines.",
+  "debug": "If conversions return None, check the log for no exchange rate or failed update messages, then open the cache file in the data folder by default to see the stored rates and their update time. If extracted figures look wrong, run the sentence through the extraction function and check which match was kept. If the network is blocked, the rates stay empty and every non-USD conversion fails.",
+  "summary_hash": "sha256:58f8e5feffb7cb731fbcf7b6ca9a219e99745e0cc6c540dcea3d6455d9358877"
+}

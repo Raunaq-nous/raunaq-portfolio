@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "path": "main.py",
+  "language": "Python",
+  "lines": 135,
+  "hash": "sha256:d362262cd4e9020c84b00c7d7fa8125211a0f134885413df1f7c05cdd1a8ab24",
+  "area": "root-files",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Error handling is present at each step.",
+      "No tests are visible to confirm the commands work.",
+      "The dashboard and pipeline modules were not reviewed here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Command-line interface",
+      "meaning": "A way to run a program by typing commands into a terminal."
+    },
+    {
+      "term": "Continuous mode",
+      "meaning": "Running a job again on a timer until the owner stops it."
+    },
+    {
+      "term": "Streamlit",
+      "meaning": "A Python library that turns a script into a web page without web programming."
+    },
+    {
+      "term": "ETL",
+      "meaning": "Extract, transform, load: fetch raw data, clean it, and save it to the database."
+    }
+  ],
+  "depends_on": [
+    "src/database/connection.py",
+    "src/pipeline.py",
+    "src/utils/logger.py",
+    "src/ui/app.py"
+  ],
+  "used_by": [
+    "setup.sh",
+    "run.sh",
+    "setup.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f6f0451524e0b64c",
+      "title": "Imports for the entry point",
+      "what": "Brings in the command-line parser, system tools, the database setup function, the two pipeline runners, and the shared logger. Nothing runs at this step.",
+      "why": "Likely reason: each command below needs one of these pieces.",
+      "watch_out": ""
+    },
+    {
+      "start": 13,
+      "end": 23,
+      "kind": "function",
+      "name": "init_database",
+      "id": "s2",
+      "hash": "0e6a1cf748a0453c",
+      "title": "Creating the database tables",
+      "what": "Runs the database setup when the owner chooses init, logs progress, and reports success. If setup fails, it logs the error and stops the program with a failure code.",
+      "why": "Likely reason: nothing can be stored until the tables exist, so this is the first step in setup.",
+      "watch_out": "A bad database address stops the program right here, before any news is fetched."
+    },
+    {
+      "start": 24,
+      "end": 34,
+      "kind": "function",
+      "name": "run_etl",
+      "id": "s3",
+      "hash": "d4c899db5e19952c",
+      "title": "Running the news pipeline",
+      "what": "Runs the news collection and analysis once for the chosen number of past days, or keeps it running on a timer when continuous mode is chosen. It logs a summary of the results after a single run.",
+      "why": "Likely reason: one function handles both the one-time and scheduled modes so the command line stays simple.",
+      "watch_out": "Continuous mode never finishes on its own, so the owner must stop it with Ctrl+C."
+    },
+    {
+      "start": 35,
+      "end": 51,
+      "kind": "function",
+      "name": "run_ui",
+      "id": "s4",
+      "hash": "8f13dcf5c8198b21",
+      "title": "Starting the web dashboard",
+      "what": "Starts the Streamlit dashboard by running its program file as a separate process, and stops cleanly when the owner presses Ctrl+C.",
+      "why": "Likely reason: Streamlit is a separate program, so the app starts it as a child process.",
+      "watch_out": "The streamlit command is found by name, so it must be on the system path inside the active environment; otherwise the error is logged and the program exits."
+    },
+    {
+      "start": 52,
+      "end": 110,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s5",
+      "hash": "7e8e709138f568c6",
+      "title": "Defining the command options",
+      "what": "Describes the init, etl, and ui commands and their options: days to look back (default 7), continuous mode, and hours between runs (default 4). If no command is typed, it prints help and exits with a failure code.",
+      "why": "Likely reason: lets one program offer several modes, each with its own options and help text.",
+      "watch_out": "The examples in the help text are only words, so editing them does not change behaviour. The default values are what really matter."
+    },
+    {
+      "start": 111,
+      "end": 133,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s6",
+      "hash": "72ba30f5bc62ea99",
+      "title": "Running the chosen command safely",
+      "what": "Runs whichever command was chosen. Ctrl+C ends the program quietly with a success code, and any other error is logged with full details before the program exits with a failure code.",
+      "why": "Likely reason: one error handler gives clear terminal output and a clear success or failure signal to the setup scripts.",
+      "watch_out": "Any error that escapes the pipeline stops the whole program, so a failure in a long run ends it unless something earlier caught the error."
+    },
+    {
+      "start": 134,
+      "end": 135,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s7",
+      "hash": "b60851f8e384a572",
+      "title": "Starting the program when run directly",
+      "what": "When the file is run as python main.py, it calls the main function. When another file only imports it, nothing starts.",
+      "why": "Likely reason: the standard Python pattern that stops importing from starting commands.",
+      "watch_out": "The packaging file points its command at the main function here, so renaming main breaks the installed command."
+    }
+  ],
+  "explained_at": "2026-11-11T22:42:46+00:00",
+  "explained_by": "haiku",
+  "summary": "The command-line entry point. It turns the owner's typed commands init, etl, and ui into calls to the database setup, the news pipeline, and the web dashboard.",
+  "purpose": "Gives the owner one terminal command with a few simple modes.",
+  "why": "One front door for all the app's features makes the setup scripts and documentation simpler.",
+  "how": "Reads the typed command and its options, runs the matching function, and handles Ctrl+C and errors in one place so the program exits with a clear message.",
+  "inputs": "Command-line words such as init, etl with --days, --continuous, and --interval, or ui.",
+  "outputs": "A created database, a pipeline run with a summary line in the log, a running web dashboard, or an error message with an exit code.",
+  "risks": "The ETL run and the dashboard launch depend on other files that are not all visible here. Continuous mode runs until stopped. If the streamlit command is missing, the dashboard fails with a logged error.",
+  "debug": "Run python main.py with no arguments to see the help text. Check the log for 'Failed to initialize database', 'Failed to launch UI', or 'Error:' lines. If the dashboard will not start, check that streamlit is installed in the active environment.",
+  "summary_hash": "sha256:d362262cd4e9020c84b00c7d7fa8125211a0f134885413df1f7c05cdd1a8ab24"
+}

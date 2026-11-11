@@ -1,0 +1,317 @@
+{
+  "schema_version": 1,
+  "name": "Capital-Projects-Watcher",
+  "commit": "bea6779",
+  "synced_at": "2026-11-11T22:46:20+00:00",
+  "summary": "Capital-Projects-Watcher is a tool that collects news about large capital projects (big construction and infrastructure spending), uses AI to pick out real project events, and stores them in a database. It reads news from RSS feeds, cleans and translates the text, then asks an AI model (OpenAI or Anthropic) to find events, attach stakeholders, and score each event. Results are shown in a web dashboard with filters, totals, and a world map. The overall purpose is inferred from the file descriptions, since no overview document was provided.",
+  "who_its_for": "Someone who wants to track capital project news without reading it by hand, such as an analyst or researcher. The files do not say exactly who the intended audience is.",
+  "how_it_runs": "The owner first runs a setup script (setup.sh), then uses main.py or run.sh with commands to set up the database (init), fetch and process news (etl), or open the dashboard (ui). It needs a .env settings file, likely including AI service keys, though the exact settings are not shown.",
+  "start_here": [
+    "main.py",
+    "src/pipeline.py",
+    "src/ingest/news_fetcher.py",
+    "src/processing/llm_stages.py",
+    "src/processing/entity_resolver.py",
+    "src/database/models.py",
+    "src/ui/app.py"
+  ],
+  "areas": [
+    {
+      "id": "root-files",
+      "name": "(root files)",
+      "match": [
+        "*"
+      ],
+      "summary": "Holds the entry point (main.py), setup and run scripts for Mac and Linux, the list of required libraries, packaging settings, and the .env.example template.",
+      "why": "These are how a person installs, configures, and starts the app.",
+      "debug_tips": "If the app will not start, check that setup.sh completed, that .env exists and is filled in, and that the libraries in requirements.txt are installed."
+    },
+    {
+      "id": "src-processing",
+      "name": "src/processing",
+      "match": [
+        "src/processing/*"
+      ],
+      "summary": "Cleans news (language detection, translation, number and date extraction), sends prompts to the AI, and decides whether each event belongs to an existing project or a new one.",
+      "why": "This is where raw news becomes structured, scored project events.",
+      "debug_tips": "For odd or missing events, check llm_client.py for failed or invalid AI replies and llm_stages.py for the instructions given to the AI."
+    },
+    {
+      "id": "src-database",
+      "name": "src/database",
+      "match": [
+        "src/database/*"
+      ],
+      "summary": "Connects to the database, creates the tables, defines what is stored (projects, events, stakeholders, raw news), and saves and searches projects.",
+      "why": "It is the app's memory, shared by the pipeline and the dashboard.",
+      "debug_tips": "If data is missing or errors mention tables, run the init command again and check connection.py. Only the project functions in operations.py were described, so other save logic is unclear."
+    },
+    {
+      "id": "src-utils",
+      "name": "src/utils",
+      "match": [
+        "src/utils/*"
+      ],
+      "summary": "Shared tools: loading settings from .env, text and currency helpers (including conversion to US dollars), and a logger that writes to screen and a rotating log file.",
+      "why": "Many other parts rely on these for consistent settings, numbers, and messages.",
+      "debug_tips": "Check the log file for error messages. Wrong money figures point to helpers.py, which has automated tests."
+    },
+    {
+      "id": "src",
+      "name": "src",
+      "match": [
+        "src/*"
+      ],
+      "summary": "Contains pipeline.py, which runs the full job in order: fetch news, prepare it, run the AI steps, save events, and mark articles done.",
+      "why": "It ties the separate pieces together into one run.",
+      "debug_tips": "Read the logs to see which step stopped, then look in that step's folder."
+    },
+    {
+      "id": "src-ingest",
+      "name": "src/ingest",
+      "match": [
+        "src/ingest/*"
+      ],
+      "summary": "Reads news from configured RSS feeds, removes duplicates, and saves new articles as pending.",
+      "why": "It is the source of all the data the app works on.",
+      "debug_tips": "If no new articles appear, check the feed settings and your internet connection. Duplicates being dropped may be normal."
+    },
+    {
+      "id": "src-models",
+      "name": "src/models",
+      "match": [
+        "src/models/*"
+      ],
+      "summary": "Defines the standard shapes for projects, news events, stakeholders, scores, and raw articles, and checks incoming data against them.",
+      "why": "It keeps data consistent as it moves between steps.",
+      "debug_tips": "Validation errors usually mean the AI returned data in an unexpected shape."
+    },
+    {
+      "id": "src-ui",
+      "name": "src/ui",
+      "match": [
+        "src/ui/*"
+      ],
+      "summary": "A Streamlit web page showing events with filters, totals, a world map, and expandable event cards.",
+      "why": "It is the part a non-technical person actually looks at.",
+      "debug_tips": "If the page is empty, confirm the news job has run and saved events. If it will not open, check that the ui command was used."
+    },
+    {
+      "id": "tests",
+      "name": "tests",
+      "match": [
+        "tests/*"
+      ],
+      "summary": "Automated checks for the helper functions covering text comparison, number extraction, and currency conversion.",
+      "why": "They catch mistakes in the number and text handling.",
+      "debug_tips": "Run the tests after changing helpers.py. No tests are described for the AI, database, or dashboard parts."
+    }
+  ],
+  "decisions": [],
+  "readiness": {
+    "overall": "not-ready",
+    "summary": "Top fixes: add a real test suite with CI, add database migrations and backups, and add authentication plus a documented deploy and rollback process. Also scan git history for secrets and run a dependency audit, since several pins look old.",
+    "checked_at": "2026-11-11T22:46:34+00:00",
+    "checks": [
+      {
+        "id": "starts",
+        "question": "Does the app build and start with one documented command?",
+        "status": "partial",
+        "evidence": "`README.md` documents a Windows quick start via `setup.bat` or `setup.ps1` then `run.bat`, with `INSTALL_MAC.md` for Mac. It needs an interactive menu choice (option 4) and an OpenAI key, so it is not one single command. Build and start were not run.",
+        "next_step": "Add one documented cross-platform start command (for example a Makefile target or `python -m app`) that needs no menu."
+      },
+      {
+        "id": "tests",
+        "question": "Are there automated tests, and do they pass?",
+        "status": "unknown",
+        "evidence": "Not checked: tests were not run in this pass. Only `tests/test_helpers.py` exists, which suggests very thin coverage, and no CI files were found.",
+        "next_step": "Run the tests, add tests for the LLM stages and ingestion, and add a CI workflow that runs them."
+      },
+      {
+        "id": "errors",
+        "question": "When something goes wrong, does the app show a clear message instead of crashing or failing silently?",
+        "status": "unknown",
+        "evidence": "Not checked: static signals are inconclusive. No swallowed-error patterns were matched, but there is no evidence of user-facing error messages or retry handling around feed fetches and LLM calls.",
+        "next_step": "Review the ingestion and LLM call paths for timeouts, retries and clear error messages in the UI."
+      },
+      {
+        "id": "inputs",
+        "question": "Does it check what people type or upload before using it?",
+        "status": "partial",
+        "evidence": "Only 1 input validation match in 1 file. `pydantic` and `pydantic-settings` are listed in `requirements.txt`, so some schema validation is likely, but coverage looks minimal. Feed content and UI filters are not clearly validated.",
+        "next_step": "Validate LLM JSON output and UI filter inputs with pydantic models, and sanitize scraped content."
+      },
+      {
+        "id": "secrets",
+        "question": "Are passwords and API keys kept out of the code and out of git history?",
+        "status": "partial",
+        "evidence": "No secret-looking strings were found in HEAD. `.env.example` is the only tracked env file and `.gitignore` mentions `.env`. Git history was not scanned.",
+        "next_step": "Scan history with gitleaks or trufflehog and rotate any key that was ever committed."
+      },
+      {
+        "id": "access",
+        "question": "Can only the right people see and change things (sign-in and permissions)?",
+        "status": "fail",
+        "evidence": "No auth, session or permission code was found (0 matches). The app looks like a local tool with an interactive UI and no sign-in.",
+        "next_step": "If it will be shared or hosted, put it behind authentication (for example a reverse proxy login) before exposing it; if it stays local, state that in the README."
+      },
+      {
+        "id": "data",
+        "question": "Is important data backed up, and are database changes made through migrations?",
+        "status": "fail",
+        "evidence": "No migrations folder was found. `sqlalchemy` is used with SQLite by default, and no backup process is documented.",
+        "next_step": "Add Alembic migrations and document a backup routine for the SQLite file or Postgres database."
+      },
+      {
+        "id": "dependencies",
+        "question": "Are third-party packages reasonably up to date and free of known security problems?",
+        "status": "unknown",
+        "evidence": "Not checked: the dependency audit was not run. `requirements.txt` pins exact versions but several look old (for example `openai==1.6.1`, `anthropic==0.8.1`, `lxml==4.9.3`, `requests==2.31.0`), and no lockfile with hashes or automated update tooling was found.",
+        "next_step": "Run `pip-audit`, upgrade the old pins, and enable Dependabot or Renovate."
+      },
+      {
+        "id": "logs",
+        "question": "If it breaks while people use it, will logs or alerts show what happened?",
+        "status": "partial",
+        "evidence": "Logging matches appear in only 1 file (12 matches), so most modules likely do not log. No alerting or monitoring configuration was found.",
+        "next_step": "Use the standard `logging` module across ingestion and LLM stages with a log file, and add basic alerting on pipeline failures."
+      },
+      {
+        "id": "performance",
+        "question": "Does it stay fast with realistic amounts of data and users?",
+        "status": "unknown",
+        "evidence": "Not checked: no load or benchmark evidence. Sequential LLM calls, SQLite and per-item processing could be slow at scale, but this was not measured.",
+        "next_step": "Time a realistic ingestion run, add database indexes on common filters, and batch or cache LLM calls."
+      },
+      {
+        "id": "deploy",
+        "question": "Is there a written, repeatable way to deploy it and to roll back a bad release?",
+        "status": "fail",
+        "evidence": "No CI or deploy files were found, and there is no Dockerfile, deploy doc or rollback procedure. The setup scripts target local desktop installs only.",
+        "next_step": "Add a Dockerfile and a short `DEPLOY.md` covering release steps and rollback."
+      },
+      {
+        "id": "docs",
+        "question": "Could someone new run it and understand it from the docs alone?",
+        "status": "pass",
+        "evidence": "`README.md`, `QUICKSTART.md`, `INSTALL_WINDOWS.md`, `INSTALL_MAC.md`, `VSCODE_SETUP.md` and `DATA_SOURCES_GUIDE.md` cover setup, data sources and architecture with a diagram.",
+        "next_step": ""
+      }
+    ],
+    "method": "Static evidence only; tests, build and audit were not run in this pass."
+  },
+  "debug_playbook": [
+    {
+      "symptom": "The app fails to start or complains about missing settings",
+      "likely_area": "root-files",
+      "where_to_look": [
+        ".env.example",
+        "setup.sh",
+        "requirements.txt",
+        "src/utils/config.py"
+      ],
+      "steps": [
+        "Confirm a .env file exists and matches the template in .env.example.",
+        "Re-run setup.sh to rebuild the environment and libraries.",
+        "Check the log file for the first error message."
+      ]
+    },
+    {
+      "symptom": "The dashboard shows no events",
+      "likely_area": "src-ui",
+      "where_to_look": [
+        "src/ui/app.py",
+        "src/pipeline.py",
+        "src/database/connection.py"
+      ],
+      "steps": [
+        "Run init, then etl, then open the dashboard with ui.",
+        "Check the logs to see whether the news job saved any events.",
+        "Clear any filters on the dashboard."
+      ]
+    },
+    {
+      "symptom": "News is fetched but no project events come out",
+      "likely_area": "src-processing",
+      "where_to_look": [
+        "src/processing/llm_client.py",
+        "src/processing/llm_stages.py",
+        "src/processing/preprocessor.py"
+      ],
+      "steps": [
+        "Check that the AI service key in .env is valid.",
+        "Look in the logs for failed or invalid AI replies.",
+        "Check whether translation or cleaning removed the article text."
+      ]
+    },
+    {
+      "symptom": "No new articles are being fetched",
+      "likely_area": "src-ingest",
+      "where_to_look": [
+        "src/ingest/news_fetcher.py",
+        "src/utils/config.py"
+      ],
+      "steps": [
+        "Check the feed list in the settings.",
+        "Test the internet connection and whether the feeds still work.",
+        "Remember that already-seen articles are skipped as duplicates."
+      ]
+    },
+    {
+      "symptom": "Money amounts or sizes look wrong",
+      "likely_area": "src-utils",
+      "where_to_look": [
+        "src/utils/helpers.py",
+        "tests/test_helpers.py"
+      ],
+      "steps": [
+        "Run the tests in tests/test_helpers.py.",
+        "Compare the original sentence with the extracted figure.",
+        "Check the currency conversion rates used, though where they come from is not shown."
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Capital project",
+      "meaning": "A large construction or infrastructure investment, such as a plant, road, or port."
+    },
+    {
+      "term": "ETL",
+      "meaning": "Short for extract, transform, load: fetch the news, process it, and store it. Here it is the etl command."
+    },
+    {
+      "term": "RSS feed",
+      "meaning": "A web address that publishes a list of the latest news articles in a standard format."
+    },
+    {
+      "term": "LLM",
+      "meaning": "A large language model, the AI (OpenAI or Anthropic) that reads articles and picks out events."
+    },
+    {
+      "term": "Pipeline",
+      "meaning": "The ordered series of steps that turns raw news into saved, scored events."
+    },
+    {
+      "term": "Entity resolution",
+      "meaning": "Deciding whether a news event is about a project already stored or a new one."
+    },
+    {
+      "term": "Streamlit",
+      "meaning": "A tool for building simple web dashboards, used for the app's interface."
+    },
+    {
+      "term": ".env file",
+      "meaning": "A private settings file holding configuration such as AI service keys."
+    },
+    {
+      "term": "Stakeholder",
+      "meaning": "A company or party involved in a project."
+    },
+    {
+      "term": "Virtual environment",
+      "meaning": "An isolated space for the app's Python libraries, created by setup.sh."
+    }
+  ],
+  "skipped": []
+}

@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "path": "src/database/models.py",
+  "language": "Python",
+  "lines": 251,
+  "hash": "sha256:b107a13b258f5172433fb6e13c03b5e51e4b9b5960f2fe880395bc7dffca8932",
+  "area": "src-database",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "There is no migration tool, so changing a column later needs manual work.",
+      "The summary view is only a comment and is PostgreSQL-only.",
+      "The drop helper is easy to use by mistake.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Table",
+      "meaning": "A grid of rows and columns in a database that holds one kind of record."
+    },
+    {
+      "term": "Index",
+      "meaning": "An extra lookup structure that speeds up searches on a column."
+    },
+    {
+      "term": "Foreign key",
+      "meaning": "A column that points to a row in another table."
+    },
+    {
+      "term": "Migration",
+      "meaning": "A controlled script that changes an existing database structure."
+    },
+    {
+      "term": "UUID",
+      "meaning": "A long random identifier that is practically unique."
+    }
+  ],
+  "depends_on": [
+    "sqlalchemy"
+  ],
+  "used_by": [
+    "src/database/connection.py",
+    "src/database/operations.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 29,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "0f7956d3b84e155c",
+      "title": "Imports and base class",
+      "what": "Brings in the column types, relationship tools, and the base class that every table inherits from.",
+      "why": "Likely reason: every table needs the same starting point.",
+      "watch_out": "The base class comes from an older SQLAlchemy path that may show deprecation warnings."
+    },
+    {
+      "start": 30,
+      "end": 71,
+      "kind": "class",
+      "name": "GUID",
+      "id": "s2",
+      "hash": "c5b81587a2ae3bdf",
+      "title": "Custom ID type",
+      "what": "Stores each ID as a 36-character text value in SQLite and as a native ID in PostgreSQL, converting in both directions.",
+      "why": "Likely reason: SQLite has no built-in ID type, so the code translates the values.",
+      "watch_out": "A value that is not a valid ID raises an error when saved, so only real IDs should be passed in."
+    },
+    {
+      "start": 72,
+      "end": 88,
+      "kind": "class",
+      "name": "JSONEncodedList",
+      "id": "s3",
+      "hash": "d50e98743f870cb3",
+      "title": "Custom list type",
+      "what": "Stores Python lists as JSON text and turns missing values into empty lists on save and on read.",
+      "why": "Likely reason: lets the same code store lists on both database types without a separate table.",
+      "watch_out": "Adding items to a stored list in place is not noticed by the database, so the change is lost unless the whole field is reassigned."
+    },
+    {
+      "start": 89,
+      "end": 117,
+      "kind": "class",
+      "name": "ProjectDB",
+      "id": "s4",
+      "hash": "529c06e746c7de8c",
+      "title": "Project table",
+      "what": "Defines the project table: name, alternate names, sector, subsector, country, region, coordinates, owners, status, and first and last seen dates, with indexes for searching by place and by sector.",
+      "why": "Likely reason: one row per capital project, which is the main list on the dashboard.",
+      "watch_out": "Date defaults are set when a row is first created, so a last-updated date that is not explicitly refreshed goes stale."
+    },
+    {
+      "start": 118,
+      "end": 168,
+      "kind": "class",
+      "name": "ProjectEventDB",
+      "id": "s5",
+      "hash": "e0d064f52dcd41e3",
+      "title": "Project event table",
+      "what": "Defines one row per news-based milestone, with title, summary, stage, date, money, capacity, locations, scores, sources, and timestamps. Each event links to a project, and indexes support searches by date, impact, stage, and money.",
+      "why": "Likely reason: events are what the dashboard ranks and filters.",
+      "watch_out": "A published date is required, so an event without a date cannot be saved."
+    },
+    {
+      "start": 169,
+      "end": 197,
+      "kind": "class",
+      "name": "StakeholderDB",
+      "id": "s6",
+      "hash": "273855d0bc0154b1",
+      "title": "Stakeholder table",
+      "what": "Defines one row per named party tied to an event, with role, name, optional stock ticker, reasoning, and confidence. Stakeholder rows are deleted automatically with their event.",
+      "why": "Likely reason: one event can involve many parties, so they sit in their own table.",
+      "watch_out": "Deleting an event also deletes its stakeholders, which is intended but can surprise someone cleaning up data."
+    },
+    {
+      "start": 198,
+      "end": 243,
+      "kind": "class",
+      "name": "RawNewsDB",
+      "id": "s7",
+      "hash": "bc9d24e5f148ac6a",
+      "title": "Raw news table and commented summary view",
+      "what": "Defines one row per fetched article with URL, text, language, outlet, fetch time, processing status, and an optional fingerprint. The URL must be unique. A commented-out summary view for faster dashboard queries is stored here as text, not as active code.",
+      "why": "Likely reason: keeps each article so it is not processed twice and so processing progress can be tracked.",
+      "watch_out": "Status is free text such as pending or processed, so a typo creates a new status value silently."
+    },
+    {
+      "start": 244,
+      "end": 248,
+      "kind": "function",
+      "name": "create_tables",
+      "id": "s8",
+      "hash": "318690de8f9080c6",
+      "title": "Create tables helper",
+      "what": "Creates all tables for the given database engine.",
+      "why": "Likely reason: lets other code create tables without going through the connection manager.",
+      "watch_out": "Tables that already exist are skipped, so running it again is safe."
+    },
+    {
+      "start": 249,
+      "end": 251,
+      "kind": "function",
+      "name": "drop_tables",
+      "id": "s9",
+      "hash": "b23377f9ae45659c",
+      "title": "Drop tables helper",
+      "what": "Deletes all tables and all their data for the given database engine.",
+      "why": "Likely reason: a reset tool for development, as the code comment warns.",
+      "watch_out": "Everything stored, including every project, event, and article, is erased with no undo."
+    }
+  ],
+  "explained_at": "2026-11-11T22:42:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the shape of every stored table: projects, project events, stakeholders, and raw news, plus helper types for IDs and lists.",
+  "purpose": "Tells the database which columns, links, and indexes each table needs and how values convert between Python and storage.",
+  "why": "One file for the table definitions means one place to look for the database structure.",
+  "how": "Defines a base class and two custom types that work on both SQLite and PostgreSQL, then the four tables with their columns, links, and indexes. Create and drop helpers sit at the bottom. A commented-out view definition is kept as a note.",
+  "inputs": "Values from the rest of the app, such as project and event fields.",
+  "outputs": "Table definitions used to create tables and to save and read rows.",
+  "risks": "The summary view exists only as a comment and is written for PostgreSQL, so it is not created automatically. The drop helper deletes all data. Changes made by adding to a stored list are not noticed by the database.",
+  "debug": "If a column is missing, check this file and whether the table was created before the change, because existing tables are not updated. If IDs fail to read back, check the custom ID type. If the summary view is missing, it was never created.",
+  "summary_hash": "sha256:b107a13b258f5172433fb6e13c03b5e51e4b9b5960f2fe880395bc7dffca8932"
+}

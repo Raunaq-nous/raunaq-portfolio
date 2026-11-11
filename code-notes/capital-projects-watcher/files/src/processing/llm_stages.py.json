@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "path": "src/processing/llm_stages.py",
+  "language": "Python",
+  "lines": 306,
+  "hash": "sha256:eaad81cff90026d176d84ee2e75a7206e558721eea4ed0e37f2e0cadbdd1cf2d",
+  "area": "src-processing",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Failures are hidden as empty results.",
+      "Scores are produced by the model and are not verified in code.",
+      "The AI client it depends on likely has a call problem.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Prompt",
+      "meaning": "The written instructions and data sent to an AI model."
+    },
+    {
+      "term": "Stage confidence",
+      "meaning": "A 0 to 1 score for how sure we can be that the event really happened."
+    },
+    {
+      "term": "Materiality",
+      "meaning": "A 0 to 1 score for how large or important the project is, mainly by money."
+    },
+    {
+      "term": "Impact score",
+      "meaning": "A combined score that mixes confidence and materiality."
+    }
+  ],
+  "depends_on": [
+    "src/models/schemas.py",
+    "src/processing/llm_client.py",
+    "src/utils/logger.py"
+  ],
+  "used_by": [
+    "Not visible in the files in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 56,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "e1f53c2f3b30b726",
+      "title": "Eventization instructions",
+      "what": "Holds the long instruction text for stage A: what counts as a real project milestone, how to merge duplicates, the allowed sectors and stages, and the exact JSON shape the reply must follow.",
+      "why": "Likely reason: a fixed written contract tells the model what to return, so the code can read it reliably.",
+      "watch_out": "The sector and stage names in this text must match the allowed values in the schema file, or replies will be rejected."
+    },
+    {
+      "start": 57,
+      "end": 110,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "89add66d2f9431cd",
+      "title": "Stakeholder and scoring instructions",
+      "what": "Holds the instructions for stage B, which asks for owners, builders, financiers, regulators, and stock tickers, and for stage C, which gives score bands by evidence and project size plus an impact formula.",
+      "why": "Likely reason: keeps each stage's rules in one place so they can be tuned without code changes.",
+      "watch_out": "The impact formula is calculated by the model, not by code, so its numbers may not match the formula."
+    },
+    {
+      "start": 111,
+      "end": 158,
+      "kind": "class",
+      "name": "LLMProcessor (part 1)",
+      "id": "s3",
+      "hash": "981dbe56295c89cf",
+      "title": "Stage A: finding events",
+      "what": "Turns the news items into a simple list, sends them with the stage A instruction, and returns the parsed events. On any error it logs the error and returns an empty result.",
+      "why": "Likely reason: this is the only stage that creates events, so it must run first.",
+      "watch_out": "Any error here makes the batch look like it had no events, with only one error line in the log."
+    },
+    {
+      "start": 159,
+      "end": 196,
+      "kind": "method",
+      "name": "LLMProcessor: stage_b_stakeholder_mapping",
+      "id": "s4",
+      "hash": "09611ca4b5bae5c7",
+      "title": "Stage B: linking stakeholders",
+      "what": "Sends short summaries of each event to the model and returns stakeholder lists keyed by event ID, or an empty list if the call fails.",
+      "why": "Likely reason: short summaries keep the request small.",
+      "watch_out": "Events whose IDs are missing from the reply get no stakeholders, and the code gives no warning."
+    },
+    {
+      "start": 197,
+      "end": 236,
+      "kind": "method",
+      "name": "LLMProcessor: stage_c_scoring",
+      "id": "s5",
+      "hash": "9ece0bbe6a35da38",
+      "title": "Stage C: scoring events",
+      "what": "Sends each event's title, summary, stage, money, capacity, and sources to the model, and returns scores with a short justification, or an empty result on failure.",
+      "why": "Likely reason: scores depend on evidence and size, so the full details are sent.",
+      "watch_out": "Scores are only as good as the model's judgment, and events without a matching score are left without numbers."
+    },
+    {
+      "start": 237,
+      "end": 294,
+      "kind": "method",
+      "name": "LLMProcessor: process_batch",
+      "id": "s6",
+      "hash": "6714377a29039c68",
+      "title": "Running all three stages in order",
+      "what": "Runs stage A, stops early if no events came out, then attaches stakeholders and scores to each event by matching IDs and returns the enriched list.",
+      "why": "Likely reason: each stage depends on the one before, so they must run in sequence.",
+      "watch_out": "Event IDs must match exactly as text across stages, so any change to an ID breaks the join."
+    },
+    {
+      "start": 295,
+      "end": 306,
+      "kind": "function",
+      "name": "process_with_llm",
+      "id": "s7",
+      "hash": "1162862e4cc7fd75",
+      "title": "Simple entry point for processing",
+      "what": "Creates a processor and runs all three stages on a list of news items in one call.",
+      "why": "Likely reason: gives the pipeline a one-line call.",
+      "watch_out": "Creating a processor gets the shared AI client, so missing settings show up here first."
+    }
+  ],
+  "explained_at": "2026-11-11T22:42:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the written instructions sent to the AI and runs three steps on news items: find real capital-project events, attach stakeholders, and score each event.",
+  "purpose": "Turns raw news into scored project events that the dashboard can show.",
+  "why": "Splitting the work into three stages keeps each instruction focused and easier to adjust.",
+  "how": "Stage A reads news items and returns events. Stage B adds stakeholders by event ID. Stage C adds stage confidence, materiality, and impact scores. The batch step joins the results into one list of event dictionaries.",
+  "inputs": "Preprocessed news dictionaries with title, summary, URL, language, and date, and then the events from earlier stages.",
+  "outputs": "A list of event dictionaries with stakeholders and scores attached, or an empty list.",
+  "risks": "Any stage error is caught and replaced with empty output, so a failure looks like a quiet day with no news. The scores are computed by the model, and the code does not check its arithmetic. Stages B and C match results by event ID, so an ID the model changes silently breaks the link.",
+  "debug": "If no events come out, search the log for 'Stage A error', 'Stage B error', 'Stage C error', or 'No events extracted'. If events lack stakeholders or scores, compare event IDs between the stages in the log. Raw replies are logged when JSON fails.",
+  "summary_hash": "sha256:eaad81cff90026d176d84ee2e75a7206e558721eea4ed0e37f2e0cadbdd1cf2d"
+}

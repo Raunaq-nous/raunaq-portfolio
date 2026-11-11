@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "path": "src/database/connection.py",
+  "language": "Python",
+  "lines": 102,
+  "hash": "sha256:03207a07af57318ce7dd6f5cc0ec35e19c0884b4b2606a0e18e71253e6fcadd6",
+  "area": "src-database",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The data folder is not created automatically.",
+      "The raw SQL helper likely fails as written.",
+      "The address is printed in full.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Database",
+      "meaning": "An organized store of data that the app can save to and read from."
+    },
+    {
+      "term": "Engine",
+      "meaning": "The part of the database library that manages the connection to the database."
+    },
+    {
+      "term": "Session",
+      "meaning": "A short working period with the database in which changes are collected and then saved together."
+    },
+    {
+      "term": "Commit and rollback",
+      "meaning": "Commit saves collected changes; rollback undoes them after an error."
+    }
+  ],
+  "depends_on": [
+    "sqlalchemy",
+    "src/database/models.py"
+  ],
+  "used_by": [
+    "main.py",
+    "src/processing/entity_resolver.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "bab437c1e7ec79b9",
+      "title": "Imports and base table setup",
+      "what": "Brings in the connection engine, session tools, and the shared base table definition from the models file.",
+      "why": "Likely reason: the base definition is needed so the tables can be created from the models.",
+      "watch_out": "Table definitions come from the models file, so changes there change what init creates."
+    },
+    {
+      "start": 15,
+      "end": 59,
+      "kind": "class",
+      "name": "DatabaseManager (part 1)",
+      "id": "s2",
+      "hash": "7294d4452cc84406",
+      "title": "Building the database connection manager",
+      "what": "Reads the database address from settings or uses the default SQLite file, creates the engine with settings suited to SQLite or PostgreSQL, and sets up the session factory. It also offers actions to create all tables and to drop all tables.",
+      "why": "Likely reason: SQLite needs a special threading setting and PostgreSQL uses a connection pool, so they are handled separately.",
+      "watch_out": "The drop-tables action erases all stored data, so running it by mistake destroys the database."
+    },
+    {
+      "start": 60,
+      "end": 89,
+      "kind": "method",
+      "name": "DatabaseManager: get_session",
+      "id": "s3",
+      "hash": "39157d0c0aebb846",
+      "title": "Opening and closing sessions",
+      "what": "Provides a safe way to use a session: it saves changes when the block finishes, undoes them if an error happens, and always closes the session.",
+      "why": "Likely reason: keeps half-finished saves from being left behind after an error.",
+      "watch_out": "Nothing is saved until the block finishes, so a long block that fails loses all its work together."
+    },
+    {
+      "start": 90,
+      "end": 97,
+      "kind": "function",
+      "name": "get_db_manager",
+      "id": "s4",
+      "hash": "fbfd289ea183bfae",
+      "title": "Getting the shared manager",
+      "what": "Returns the one shared manager, creating it on first use, and ignores any new address passed in after that.",
+      "why": "Likely reason: one engine serves the whole program.",
+      "watch_out": "An address passed in on later calls is silently ignored once the manager exists."
+    },
+    {
+      "start": 98,
+      "end": 102,
+      "kind": "function",
+      "name": "init_db",
+      "id": "s5",
+      "hash": "cd14037a866d0ce7",
+      "title": "Creating the tables",
+      "what": "Creates any missing tables in the database and prints the database address being used.",
+      "why": "Likely reason: this is the step the init command runs first.",
+      "watch_out": "The printed address includes the full text, so a PostgreSQL password would appear in the terminal output."
+    }
+  ],
+  "explained_at": "2026-11-11T22:42:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Sets up the connection to the database, creates working sessions, and creates the tables.",
+  "purpose": "Gives every other part of the app one shared way to reach the database.",
+  "why": "Likely reason: connection details and session handling are kept in one place, so other code does not repeat them.",
+  "how": "Reads the database address, builds a connection engine suited to SQLite or PostgreSQL, sets up a session factory, and returns one shared manager. Each session saves on success, undoes changes on error, and always closes.",
+  "inputs": "The DATABASE_URL setting, or the default SQLite file in the data folder.",
+  "outputs": "Sessions for reading and writing, created tables, and a printed message showing the database address.",
+  "risks": "A relative SQLite path needs the data folder to exist already, and the code does not create it. The init message prints the full database address, which can reveal a PostgreSQL password. The raw SQL helper passes plain text to the database, which the pinned SQLAlchemy 2.0 version will likely reject.",
+  "debug": "If the wrong database is used, check the DATABASE_URL setting and the message printed by init. If you see an error about opening the database file, check that the data folder exists. If a change does not save, check that the session block finished without an error.",
+  "summary_hash": "sha256:03207a07af57318ce7dd6f5cc0ec35e19c0884b4b2606a0e18e71253e6fcadd6"
+}

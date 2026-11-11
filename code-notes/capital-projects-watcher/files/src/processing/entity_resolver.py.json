@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "path": "src/processing/entity_resolver.py",
+  "language": "Python",
+  "lines": 290,
+  "hash": "sha256:71ae32d6347012237851dea97fe5c051203adcd0ec99851e71e253c4c0ba0810",
+  "area": "src-processing",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "The project search uses a PostgreSQL-only function while the default database is SQLite.",
+      "Per-event errors are logged but not summarized as failures for the owner.",
+      "The generate_event_hash helper is not called in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Entity resolution",
+      "meaning": "Deciding which records refer to the same real-world thing, such as one project."
+    },
+    {
+      "term": "Deduplication",
+      "meaning": "Removing copies of the same record so each one is stored once."
+    },
+    {
+      "term": "Database session",
+      "meaning": "A short working period with the database in which changes are collected and then saved together."
+    },
+    {
+      "term": "Pydantic model",
+      "meaning": "A data shape that checks values such as types and allowed choices when data is created."
+    }
+  ],
+  "depends_on": [
+    "src/database/connection.py",
+    "src/database/operations.py",
+    "src/models/schemas.py",
+    "src/utils/config.py",
+    "src/utils/helpers.py",
+    "src/utils/logger.py"
+  ],
+  "used_by": [
+    "Not visible in the files in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 28,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c764c03f65ccc3d1",
+      "title": "Imports and shared building blocks",
+      "what": "Brings in the database connection and query helpers, the data shapes for projects, events, locations, sources, and stakeholders, the settings, the currency and text similarity helpers, and the logger.",
+      "why": "Likely reason: the matching and saving steps need all of these pieces.",
+      "watch_out": ""
+    },
+    {
+      "start": 29,
+      "end": 67,
+      "kind": "class",
+      "name": "EntityResolver (part 1)",
+      "id": "s2",
+      "hash": "99e7a2a9731893e0",
+      "title": "Setting up the resolver and its fingerprint",
+      "what": "When created, the resolver takes the shared database manager and reads two limits from settings: how close projects must be in kilometres and how many days apart events can be and still count as the same story. It also has a helper that builds a short fingerprint from name, sector, date, country, and first capacity figure.",
+      "why": "Likely reason: keeps matching limits in the settings file so they can be tuned without code changes.",
+      "watch_out": "The fingerprint helper is not used anywhere in this file, so it has no effect on saving."
+    },
+    {
+      "start": 68,
+      "end": 125,
+      "kind": "method",
+      "name": "EntityResolver: resolve_or_create_project",
+      "id": "s3",
+      "hash": "ec40576342640777",
+      "title": "Finding or creating the project",
+      "what": "Looks for a project with a similar name in the same sector and near the event location. If one is found, it reuses that project; otherwise it creates a new project marked as announced.",
+      "why": "Likely reason: groups news about one project under one entry on the dashboard.",
+      "watch_out": "The first match is used without scoring, and when there is no location only name and sector are compared, which can merge unrelated projects."
+    },
+    {
+      "start": 126,
+      "end": 174,
+      "kind": "method",
+      "name": "EntityResolver: normalize_event_data",
+      "id": "s4",
+      "hash": "30c5ea2bf9173efb",
+      "title": "Converting raw data to standard shapes",
+      "what": "Turns the raw dictionary from the language model into checked data objects for money, capacity, locations, sources, and stakeholders. When a dollar figure is missing, it converts the original amount to US dollars.",
+      "why": "Likely reason: the rest of the app works only with checked shapes, so bad data is caught here.",
+      "watch_out": "A stakeholder that fails to parse is logged and dropped, while the same problem in the main event fields stops the event."
+    },
+    {
+      "start": 175,
+      "end": 224,
+      "kind": "class",
+      "name": "EntityResolver (part 4)",
+      "id": "s5",
+      "hash": "a1c6866d842f81c8",
+      "title": "Building the event and checking for duplicates",
+      "what": "Builds the event record with title, summary, stage, date, scores, sources, and notes, and gives it a newly generated ID rather than the one the model supplied. It then checks for events with similar dates, and skips the event if one has a title at least 85 percent similar.",
+      "why": "Likely reason: stops the same story from being stored again when several feeds carry it.",
+      "watch_out": "The 85 percent threshold comes from settings with a built-in fallback, and a low threshold could merge different events with nearly identical headlines."
+    },
+    {
+      "start": 225,
+      "end": 278,
+      "kind": "method",
+      "name": "EntityResolver: save_event",
+      "id": "s6",
+      "hash": "ddf440e4cd60ad54",
+      "title": "Saving one event and saving a batch",
+      "what": "Saves one event inside a single database session: checks for a duplicate, finds or creates the project, links the event, and saves it. A batch version calls this for each event, logs errors without stopping, and reports how many were saved.",
+      "why": "Likely reason: one session per event means a failed event is rolled back alone, and the rest still save.",
+      "watch_out": "Skipped duplicates are logged as information and not counted as saved, so the saved count can look low without any warning."
+    },
+    {
+      "start": 279,
+      "end": 290,
+      "kind": "function",
+      "name": "save_events_to_db",
+      "id": "s7",
+      "hash": "24e52722c2f57d11",
+      "title": "Simple function for saving events",
+      "what": "Creates a resolver and saves a list of events in one call, returning the number saved.",
+      "why": "Likely reason: gives other parts of the app a one-line way to save events.",
+      "watch_out": "Each call creates a new resolver, so the caller should not expect any state to carry over between calls."
+    }
+  ],
+  "explained_at": "2026-11-11T22:42:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Decides whether each news-based event belongs to an existing capital project or a new one, skips events that are already stored, and saves the results to the database.",
+  "purpose": "Keeps the database free of repeated stories and groups related news under one project.",
+  "why": "Several articles about the same project should appear as one project on the dashboard.",
+  "how": "For each event, it converts the raw data into standard shapes, checks for a near-identical recent event, finds or creates the project by name, sector, and nearby location, saves the event, and counts the saves. Events that fail are logged and skipped.",
+  "inputs": "Event dictionaries from the language model stages, with project name, sector, locations, capex, capacities, sources, stakeholders, dates, and scores.",
+  "outputs": "New or updated project and event rows, a count of saved events, and log messages.",
+  "risks": "Matching is loose, so unrelated projects with similar names may merge. The project search uses a PostgreSQL-only function, so on the default SQLite database project matching may fail. An event with an unknown stage name or sector fails and is only logged. The first matching project is used even if a better one exists.",
+  "debug": "Search the log for 'Skipping duplicate' to see removed duplicates and 'Error saving event' for failures. Check that each event's stage and sector values match the allowed values. If nothing is saved, check whether the database is SQLite or PostgreSQL and look for function errors.",
+  "summary_hash": "sha256:71ae32d6347012237851dea97fe5c051203adcd0ec99851e71e253c4c0ba0810"
+}
