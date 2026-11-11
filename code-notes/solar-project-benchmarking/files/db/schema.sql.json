@@ -1,0 +1,553 @@
+{
+  "schema_version": 1,
+  "path": "db/schema.sql",
+  "language": "SQL",
+  "lines": 782,
+  "hash": "sha256:0bf1a4ae6a9349f3f1b0de0e5b8f8329f62600bb8d468510a784f22396a219dd",
+  "area": "db",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only 5 of 40 parts of the file are visible, so the rest cannot be judged.",
+      "The file targets PostgreSQL, while the default app setup uses SQLite."
+    ]
+  },
+  "terms": [
+    {
+      "term": "PostgreSQL",
+      "meaning": "A full database server commonly used for shared or larger deployments."
+    },
+    {
+      "term": "UUID",
+      "meaning": "A long unique identifier, used here as the primary key for records."
+    },
+    {
+      "term": "Extension",
+      "meaning": "An add-on that gives PostgreSQL extra features."
+    },
+    {
+      "term": "Index",
+      "meaning": "A lookup structure that makes searching a column faster."
+    },
+    {
+      "term": "JSONB",
+      "meaning": "A PostgreSQL column type that stores flexible structured data."
+    },
+    {
+      "term": "GIN index",
+      "meaning": "An index type built for searching inside structured data such as JSON."
+    },
+    {
+      "term": "Foreign key",
+      "meaning": "A link that requires a value to match an existing record in another table."
+    },
+    {
+      "term": "CHECK constraint",
+      "meaning": "A rule that limits which values a column may hold."
+    }
+  ],
+  "depends_on": [
+    "PostgreSQL 15 or newer",
+    "uuid-ossp extension",
+    "pgcrypto extension",
+    "btree_gin extension"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "06741d5c5a8bab12",
+      "title": "Required extensions and header note",
+      "what": "Turns on two PostgreSQL add-ons used for generating unique IDs and encryption helpers. The header says PostgreSQL 15 or newer is required and that the schema matches the Python models.",
+      "why": "Unique IDs created by the database need these add-ons.",
+      "watch_out": "The header says this must match the Python models, so any column change here needs a matching change in the models."
+    },
+    {
+      "start": 8,
+      "end": 13,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s2",
+      "hash": "ccfc2e8f758851bf",
+      "title": "Extra index extension",
+      "what": "Adds a PostgreSQL extension that lets ordinary columns be used inside GIN indexes.",
+      "why": "Likely reason: a later index may combine ordinary and structured columns. The code does not state the reason.",
+      "watch_out": "This extension exists only in PostgreSQL, so this file cannot run on SQLite."
+    },
+    {
+      "start": 14,
+      "end": 29,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s3",
+      "hash": "9269e6d3dddaea0e",
+      "title": "Users table",
+      "what": "Defines the table of people who can sign in, with email, a hashed password field, full name, role, an active flag, and timestamps.",
+      "why": "Sign-in and role checks need a stored user record, and the role rule limits roles to three names.",
+      "watch_out": "Roles are limited to Consultant, Reviewer and Admin here, so adding a role requires changing this table as well as the app."
+    },
+    {
+      "start": 30,
+      "end": 45,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s4",
+      "hash": "00ef963013fc61d8",
+      "title": "Projects table",
+      "what": "Defines the table of benchmarking projects. Each project has a name, asset type (solar, wind or storage), location, owner, status, and a flexible metadata field.",
+      "why": "Projects are the top-level record that the other data belongs to.",
+      "watch_out": "Each project must point to an existing user, so that user cannot be deleted while the project exists."
+    },
+    {
+      "start": 46,
+      "end": 51,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s5",
+      "hash": "dcfd4d4c0a925511",
+      "title": "Fast search index on project metadata",
+      "what": "Creates an index so that searches inside the flexible metadata field stay quick.",
+      "why": "Likely reason: metadata is searched often. The code does not state the reason.",
+      "watch_out": "The index slows writes slightly and only helps when queries search inside that metadata."
+    },
+    {
+      "start": 52,
+      "end": 82,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s6",
+      "hash": "57112321be457b4d",
+      "title": "Storing web sources and their scores",
+      "what": "Defines the table that keeps each web page, PDF, or filing the app collects for research, along with its address, publisher type, date, and credibility scores. It also stores a fingerprint of the content and the robots.txt decision, so a source can be traced back later.",
+      "why": "Likely reason: the app needs a record of where each number came from so that results can be checked and trusted. Each source is unique per project and URL.",
+      "watch_out": "The credibility score is limited to whole numbers from 0 to 100, so any code that writes to it must respect that limit or the save will fail."
+    },
+    {
+      "start": 83,
+      "end": 102,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s7",
+      "hash": "59bd417199c27ae2",
+      "title": "Storing individual extracted data points",
+      "what": "Defines the table that holds each single value pulled out of a source, such as a capital cost or a megawatt figure, with the quote it came from and the unit and currency. It links every value back to its source.",
+      "why": "Likely reason: each number in a benchmark needs its exact wording and location kept so a reviewer can verify it.",
+      "watch_out": "The quote length check counts characters, not words, even though the comment says about 25 words, so long quotes are rejected at around 250 characters."
+    },
+    {
+      "start": 103,
+      "end": 108,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s8",
+      "hash": "5ae9dc722866c75a",
+      "title": "Indexing extracted data for context lookup",
+      "what": "Adds a search index on the extra context stored with each extracted value, so the database can find values by their notes quickly.",
+      "why": "Likely reason: the context field holds flexible data, and the index speeds up searches on it.",
+      "watch_out": "Indexes speed up reads but slow down writes slightly, so adding many more indexes will make large imports slower."
+    },
+    {
+      "start": 109,
+      "end": 164,
+      "kind": "statement",
+      "name": "CREATE (part 1)",
+      "id": "s9",
+      "hash": "a5427e793ba4cf40",
+      "title": "Storing comparable solar projects",
+      "what": "Defines the main table of comparable projects used as a reference group. It stores each project's location, size, technology, dates, interconnection details, and cost breakdown by part, plus notes on what was included or excluded.",
+      "why": "Likely reason: the reference group is the basis for benchmarking, so every comparison needs the same set of descriptive fields.",
+      "watch_out": "Costs are stored in the currency the source reported, so mixing currencies in one comparison requires the normalized columns instead."
+    },
+    {
+      "start": 165,
+      "end": 204,
+      "kind": "statement",
+      "name": "CREATE (part 2)",
+      "id": "s10",
+      "hash": "7d59578bc7b14624",
+      "title": "Normalized costs and quality labels",
+      "what": "Completes the comparable projects table with normalized costs (adjusted for time, currency, and location), a confidence label and score, counts of sources, flags that decide if a project is included, and site details such as soil and terrain. It also adds the timestamps and a free-text notes field.",
+      "why": "Likely reason: raw costs from different years and places cannot be compared directly, so adjusted versions are stored beside them.",
+      "watch_out": "The confidence label only accepts four fixed values, so any new label must be added to the database rule first."
+    },
+    {
+      "start": 205,
+      "end": 210,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s11",
+      "hash": "e2fa9ac1612e85fa",
+      "title": "Indexing normalization factors",
+      "what": "Adds a search index on the stored adjustment factors of each comparable project.",
+      "why": "Likely reason: the adjustment factors are stored as flexible data, and the index speeds up searches on them.",
+      "watch_out": "Reason not stated in the code beyond the index itself."
+    },
+    {
+      "start": 211,
+      "end": 228,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s12",
+      "hash": "2efd3fa882513f96",
+      "title": "Storing price and cost index series",
+      "what": "Defines the table that holds time-series price indices such as copper or electrical equipment prices. Each series has a unique ID and stores its monthly values as one flexible block.",
+      "why": "Likely reason: the app adjusts old costs using these indices, so it needs a single place to keep them.",
+      "watch_out": "Values are stored as one block keyed by date text, so a typo in a date key will quietly create a separate, wrong entry rather than an error."
+    },
+    {
+      "start": 229,
+      "end": 245,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s13",
+      "hash": "965b9cddb74cf959",
+      "title": "Storing location cost multipliers",
+      "what": "Defines the table that holds location adjustment factors such as wage, productivity, and material cost multipliers, one set per place and effective date.",
+      "why": "Likely reason: labor and material costs differ by place, so each location needs its own multipliers.",
+      "watch_out": "The uniqueness rule on place and date does not stop duplicate rows when the effective date is left empty, because empty dates are treated as different from each other in PostgreSQL."
+    },
+    {
+      "start": 246,
+      "end": 251,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s14",
+      "hash": "5df1341daae8c5df",
+      "title": "Indexing location factors by country",
+      "what": "Adds a search index so location factors can be looked up by country.",
+      "why": "Likely reason: country is a common way to find location factors, so the index speeds up that lookup.",
+      "watch_out": "Reason not stated in the code beyond the index itself."
+    },
+    {
+      "start": 252,
+      "end": 303,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s15",
+      "hash": "93f7366771668230",
+      "title": "Storing the project being benchmarked",
+      "what": "Defines the table for the project under study. It has the same descriptive fields as the comparable projects, plus optional user-entered cost estimates, site details, and a flexible block filled in automatically from research.",
+      "why": "Likely reason: the subject project is kept apart from the comparable group so that it can be measured against that group.",
+      "watch_out": "Each project can have only one row here, enforced by a uniqueness rule on the project ID, so a second save for the same project will be rejected."
+    },
+    {
+      "start": 304,
+      "end": 309,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s16",
+      "hash": "12f97cc2cde030a4",
+      "title": "Indexing auto-filled project profile",
+      "what": "Adds a search index on the automatically filled profile of the subject project.",
+      "why": "Likely reason: the auto-filled profile is flexible data, and the index speeds up searches on it.",
+      "watch_out": "Reason not stated in the code beyond the index itself."
+    },
+    {
+      "start": 310,
+      "end": 344,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s17",
+      "hash": "c4361963baf1afab",
+      "title": "Storing cost model fits",
+      "what": "Defines the table that records each run of the cost model, including which features and comparable projects were used, the fitted coefficients, accuracy scores, residuals, and checks for influential points and collinearity.",
+      "why": "Likely reason: a saved record of each model run lets the app show how a prediction was produced and rerun or compare it later.",
+      "watch_out": "Fit results are stored as flexible blocks, so the database will not check that the coefficient names match the features list."
+    },
+    {
+      "start": 345,
+      "end": 372,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s18",
+      "hash": "159319d02c3ff154",
+      "title": "Storing cost variance breakdowns",
+      "what": "Defines the table that holds the step-by-step breakdown of why the subject project costs differ from the baseline, such as DC to AC ratio, tracking, soil, and region effects, plus any leftover unexplained amount.",
+      "why": "Likely reason: a waterfall of cost differences helps the user see which factors drive the gap.",
+      "watch_out": "The individual step columns are stored separately from the full waterfall block, and nothing in the database checks that they add up to the total."
+    },
+    {
+      "start": 373,
+      "end": 400,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s19",
+      "hash": "d7d6845d5edaa360",
+      "title": "Storing cost reduction ideas",
+      "what": "Defines the table that lists possible cost savings for a project, each with a name, category, dollar and percent impact, schedule effect, feasibility, risk level, and priority rank.",
+      "why": "Likely reason: the app recommends changes, and each recommendation needs its size, risk, and rank saved together.",
+      "watch_out": "Feasibility and risk accept only the fixed values high, medium, and low, so other wording will be rejected by the database."
+    },
+    {
+      "start": 401,
+      "end": 406,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s20",
+      "hash": "16f1999aedb22f97",
+      "title": "Indexing reduction ideas by priority",
+      "what": "Adds a search index on the priority rank of cost reduction ideas so the top ones can be listed quickly.",
+      "why": "Likely reason: the app usually shows the highest priority ideas first, so ordering by rank needs to be fast.",
+      "watch_out": "Reason not stated in the code beyond the index itself."
+    },
+    {
+      "start": 407,
+      "end": 429,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s21",
+      "hash": "cc629f2b1116dd16",
+      "title": "Storing schedule projects",
+      "what": "Defines the table for each construction schedule, recording its name, how it was made (imported, generated, or a mix), the file format, work calendars, and its baseline start, finish, and duration.",
+      "why": "Likely reason: each schedule must be stored as one unit so its tasks and analysis can be linked back to it.",
+      "watch_out": "The schedule type accepts only imported, generated, or hybrid, and the file format is free text, so formats are not checked against a fixed list."
+    },
+    {
+      "start": 430,
+      "end": 487,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s22",
+      "hash": "1953ce9983ff648c",
+      "title": "Storing individual schedule tasks",
+      "what": "Defines the table for each task in a schedule. It keeps the task ID, name, duration, early and late dates, float (slack), critical path flags, links to other tasks, resources, constraints, solar work category, and progress.",
+      "why": "Likely reason: the schedule analysis works task by task, so every task's timing and links must be stored.",
+      "watch_out": "The near-critical flag comment says float of 5 days or less, but the threshold is also stored per analysis, so the two can disagree if the threshold is changed."
+    },
+    {
+      "start": 488,
+      "end": 518,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s23",
+      "hash": "961c70aedb3f5705",
+      "title": "Storing critical path results",
+      "what": "Defines the table that holds the results of the critical path analysis for a schedule. It stores the overall duration, the critical paths, the fragility index, and solar productivity measures such as piles per day and trackers per day.",
+      "why": "Likely reason: the critical path analysis is run separately from the tasks, so its summary numbers are stored in their own record.",
+      "watch_out": "The fragility index is described as a percentage, and its meaning depends on the float threshold stored beside it, so both must be read together."
+    },
+    {
+      "start": 519,
+      "end": 551,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s24",
+      "hash": "4f465aecedf566f2",
+      "title": "Storing schedule risk simulation runs",
+      "what": "Defines the table that records each Monte Carlo simulation run for a schedule. It stores the settings, the weather assumptions, the probability dates for finishing at 50, 80, and 90 percent, and the histograms of results.",
+      "why": "Likely reason: a random simulation can give different answers, so the seed, trial count, and results are saved together to make each run reproducible.",
+      "watch_out": "The default number of trials here matches a setting in the system configuration table, but changing that setting will not change this default."
+    },
+    {
+      "start": 552,
+      "end": 585,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s25",
+      "hash": "facf8abde9d6aab9",
+      "title": "Storing optimized schedule scenarios",
+      "what": "Defines the table that records alternative schedules produced by the scheduling optimizer. It stores each scenario's rank, the method and rule used, the resulting duration, the change from the baseline, the cost effect, the task moves, the resource use, and an explanation.",
+      "why": "Likely reason: the optimizer produces several candidate schedules, and each needs its results and reasons kept to compare them.",
+      "watch_out": "The change from baseline is stored as a number, so if the baseline changes later the saved change will no longer match."
+    },
+    {
+      "start": 586,
+      "end": 591,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s26",
+      "hash": "a12125d611aaa6b6",
+      "title": "Indexing scenarios by rank",
+      "what": "Adds a search index on scenario rank so the best scenarios can be listed quickly.",
+      "why": "Likely reason: the app shows the top ranked scenarios first, so ranking must be fast.",
+      "watch_out": "Reason not stated in the code beyond the index itself."
+    },
+    {
+      "start": 592,
+      "end": 618,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s27",
+      "hash": "8ada50e56069cf36",
+      "title": "Recording exported files",
+      "what": "Defines the table that logs each exported report, such as a slide deck, spreadsheet, or PDF. It stores the type, the run IDs used to build it, the file name and location, its size, and how many citations it includes.",
+      "why": "Likely reason: each exported file should be traceable to the data and model runs that produced it.",
+      "watch_out": "The file path is stored as text, so if the file is moved or deleted on disk, the database record will still exist and point to nothing."
+    },
+    {
+      "start": 619,
+      "end": 636,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s28",
+      "hash": "5cf28434dbc99b34",
+      "title": "Storing reasoning chains",
+      "what": "Defines the table that stores the step-by-step explanation behind a result, such as a comparable project or a model prediction, along with the sources and extracts it relied on. This supports the View Reasoning feature.",
+      "why": "Likely reason: users need to see why the app reached a number, so the steps and their sources are saved.",
+      "watch_out": "The steps field is required, so a reasoning record cannot be saved without at least a step block."
+    },
+    {
+      "start": 637,
+      "end": 642,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s29",
+      "hash": "3812ab610a9046ba",
+      "title": "Indexing reasoning chains by target",
+      "what": "Adds a search index that finds reasoning chains by the type and ID of the item they explain.",
+      "why": "Likely reason: the View Reasoning feature starts from a specific result, so the lookup needs to be fast.",
+      "watch_out": "Reason not stated in the code beyond the index itself."
+    },
+    {
+      "start": 643,
+      "end": 660,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s30",
+      "hash": "ea8a417af71e7e89",
+      "title": "Audit log of app actions",
+      "what": "Defines the table that records who did what in the app, such as creating a project or running research, with the target, the details, the network address, the browser, and the time.",
+      "why": "The table comment says it should be immutable, which suggests it is meant as a trustworthy record of activity.",
+      "watch_out": "The table comment says immutable, but nothing in this file blocks updates or deletes, so the rule is only a promise unless added later."
+    },
+    {
+      "start": 661,
+      "end": 671,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s31",
+      "hash": "7cc072ce6d13c09f",
+      "title": "Field level access rules by role",
+      "what": "Defines the table that says, for each role, which table fields can be read and which can be changed. Each role and field pair appears only once.",
+      "why": "Likely reason: different users should see and edit different parts of the data, so the rules are kept in the database.",
+      "watch_out": "The rules are only stored here, so the app must actually check them for them to have any effect."
+    },
+    {
+      "start": 672,
+      "end": 677,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s32",
+      "hash": "1ebdd225494cf8db",
+      "title": "Indexing access rules by role",
+      "what": "Adds a search index so access rules can be found quickly for a given role.",
+      "why": "Likely reason: the app checks access rules for every role, so the lookup needs to be fast.",
+      "watch_out": "Reason not stated in the code beyond the index itself."
+    },
+    {
+      "start": 678,
+      "end": 687,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s33",
+      "hash": "c9c7183491d64128",
+      "title": "Storing system settings table",
+      "what": "Defines the table that stores app-wide settings as named key and value pairs, with a description and the user who last changed each one.",
+      "why": "Likely reason: settings such as the base currency or domain allowlist should be changeable without editing code.",
+      "watch_out": "Values are stored as flexible blocks, so a setting saved in the wrong format will be accepted and may only fail later when the app reads it."
+    },
+    {
+      "start": 688,
+      "end": 704,
+      "kind": "statement",
+      "name": "INSERT",
+      "id": "s34",
+      "hash": "1c4d58b786f5e8f3",
+      "title": "Default settings loaded at setup",
+      "what": "Inserts the starting settings: base quarter and currency for cost adjustments, an empty domain allowlist that means all domains are allowed, the robots.txt rule, the price index series used, the credibility score weights, the default simulation trial count, and the float threshold in days.",
+      "why": "Likely reason: the app needs working values from its first run, so they are loaded when the database is created.",
+      "watch_out": "This insert has no protection against running twice, so rerunning the script on a database that already has these keys will fail with a duplicate key error."
+    },
+    {
+      "start": 705,
+      "end": 715,
+      "kind": "statement",
+      "name": "SELECT",
+      "id": "s35",
+      "hash": "dce8938dc8f4f77b",
+      "title": "View of comparables with source counts",
+      "what": "Creates a view that shows each comparable project with its full row, plus a count of sources and their average credibility score.",
+      "why": "Likely reason: the reference table page needs source counts and quality for each project without extra work in the app.",
+      "watch_out": "The join connects extracts to sources but not to the specific comparable project, so the source counts and averages likely cover all matching data rather than only that project."
+    },
+    {
+      "start": 716,
+      "end": 732,
+      "kind": "statement",
+      "name": "SELECT",
+      "id": "s36",
+      "hash": "d98c8b317989489c",
+      "title": "View of active project summaries",
+      "what": "Creates a view that lists active projects with counts of their included comparables and sources, plus the subject project's size and location.",
+      "why": "Likely reason: the dashboard needs one summary row per project without several separate queries.",
+      "watch_out": "Only projects with status active appear here, so inactive projects will be missing from any screen that uses this view."
+    },
+    {
+      "start": 733,
+      "end": 735,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s37",
+      "hash": "45258babf72448a4",
+      "title": "Starting the timestamp update function",
+      "what": "Begins the definition of a database function that sets the updated time on a row to the current time. This section shows only the first lines, and the body is in the next section.",
+      "why": "Likely reason: keeping the last changed time accurate without relying on each save in the app.",
+      "watch_out": "The function is incomplete in this section, so it only works when read together with the next section."
+    },
+    {
+      "start": 736,
+      "end": 748,
+      "kind": "statement",
+      "name": "BEGIN",
+      "id": "s38",
+      "hash": "94abd183c94d8d3f",
+      "title": "Automatic last updated timestamps",
+      "what": "Finishes the timestamp function and attaches it to the users, projects, comparables, project inputs, and schedule projects tables, so their updated time changes on every edit.",
+      "why": "Likely reason: last changed times are needed for audit and for knowing when data was last touched.",
+      "watch_out": "Tables such as indices and system settings also have an updated time column but have no trigger here, so their times will not change automatically."
+    },
+    {
+      "start": 749,
+      "end": 757,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s39",
+      "hash": "4f3c7c17c7f8a298",
+      "title": "Starting the credibility score function",
+      "what": "Begins the definition of a database function that combines the four source quality scores into one credibility score. This section shows only the header, and the calculation is in the next section.",
+      "why": "Likely reason: keeping the credibility formula in the database makes every saved score follow the same rule.",
+      "watch_out": "The function is incomplete in this section, so it only works when read together with the next section."
+    },
+    {
+      "start": 758,
+      "end": 782,
+      "kind": "statement",
+      "name": "BEGIN",
+      "id": "s40",
+      "hash": "7127ebaf00bb6bba",
+      "title": "Credibility score calculation and table notes",
+      "what": "Computes the credibility score as a weighted average of the four source quality scores, rounded and kept between 0 and 100. It is followed by short descriptions attached to each main table.",
+      "why": "Likely reason: a fixed formula in the database keeps every source's credibility score consistent.",
+      "watch_out": "The weights are written into the function, separately from the weights stored in the system settings, so changing the settings will not change the score."
+    }
+  ],
+  "explained_at": "2026-11-11T22:53:00+00:00",
+  "explained_by": "haiku",
+  "summary": "Describes the database tables for the platform in PostgreSQL form. Only the opening part of the file is visible here, covering the extensions, the users table and the projects table.",
+  "purpose": "Creates the tables that store users and projects, plus indexes that speed up common lookups.",
+  "why": "Likely reason: a readable reference for the database structure that is separate from the Python models. The header says the file must match the models, which also run on SQLite. Why both are supported is not fully stated.",
+  "how": "1. Enables two PostgreSQL extensions for unique IDs and encryption helpers. 2. Enables a third extension for index support. 3. Creates the users table and its indexes. 4. Creates the projects table, which links to users, and its indexes. 5. The rest of the file, which the packet says has 40 parts, is not visible here.",
+  "inputs": "Run against an empty PostgreSQL database, version 15 or newer according to the header. Relies on the table design in the Python models.",
+  "outputs": "Database tables and indexes.",
+  "risks": "The file is written for PostgreSQL, so the SQLite default in the app will not run it. The list of roles in the users table must match the roles used by the app. Most of the file was not reviewed.",
+  "debug": "If a CREATE statement fails, check that the extensions are installed on the server. Tables must be created in order because projects refers to users. If a column disagrees with the Python models, compare the two directly.",
+  "summary_hash": "sha256:0bf1a4ae6a9349f3f1b0de0e5b8f8329f62600bb8d468510a784f22396a219dd"
+}

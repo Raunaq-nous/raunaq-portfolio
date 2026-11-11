@@ -1,0 +1,299 @@
+{
+  "schema_version": 1,
+  "name": "Solar-Project-Benchmarking",
+  "commit": "2c32f6c",
+  "synced_at": "2026-11-11T22:53:43+00:00",
+  "summary": "Solar-Project-Benchmarking is a web platform for comparing the costs and schedules of solar projects. It stores projects, capital cost models, comparable past projects, research sources, schedules, exports and an audit trail in a database. A backend API offers ways to create projects, adjust comparable costs to a common basis, gather cost data from web pages, and run cost and schedule analyses. A single web page acts as the dashboard. Several of the cost, schedule and export features currently return fixed example numbers or are placeholders, so they are not yet real calculations.",
+  "who_its_for": "Likely for cost analysts, planners or developers who benchmark solar project costs and schedules against similar past projects. The summaries do not say exactly who the intended users are beyond the three user roles, which are not named here.",
+  "how_it_runs": "The backend starts from api/main.py, checks the database on startup and serves the endpoints, and the page in frontend/index.html talks to it. Settings come from an environment file copied from .env.example. How to launch it exactly (commands, hosting) is not stated in the summaries.",
+  "start_here": [
+    "api/main.py",
+    "api/database.py",
+    "api/models/project.py",
+    "api/routes/projects.py",
+    "api/services/normalization.py",
+    "api/services/research.py",
+    "frontend/index.html"
+  ],
+  "areas": [
+    {
+      "id": "api-models",
+      "name": "api/models",
+      "match": [
+        "api/models/*"
+      ],
+      "summary": "Defines the database tables for users, projects, costs, comparables, research sources, schedules, exports and audit records. The __init__ file gathers them all in one place.",
+      "why": "These tables describe what information the platform keeps and how it fits together.",
+      "debug_tips": "If data is missing or saved wrongly, check the matching table file here first. Compare it with db/schema.sql, since the two may differ."
+    },
+    {
+      "id": "api-routes",
+      "name": "api/routes",
+      "match": [
+        "api/routes/*"
+      ],
+      "summary": "Holds the web endpoints for projects, cost modeling, schedules, research, normalization and exports. Cost, schedule and export endpoints return fixed example numbers or are placeholders.",
+      "why": "This is the list of actions the frontend or other tools can ask the platform to perform.",
+      "debug_tips": "If numbers never change, that is likely because the endpoint is a placeholder. For project problems, look at api/routes/projects.py."
+    },
+    {
+      "id": "api",
+      "name": "api",
+      "match": [
+        "api/*"
+      ],
+      "summary": "Contains the app start-up file, the database connection file and the package list. It starts the app, checks the database, sets up error responses and provides health and root endpoints.",
+      "why": "Nothing else works unless this core part starts correctly.",
+      "debug_tips": "If the app will not start or reports database trouble, check api/main.py and api/database.py. Version problems point to api/requirements.txt."
+    },
+    {
+      "id": "api-services",
+      "name": "api/services",
+      "match": [
+        "api/services/*"
+      ],
+      "summary": "Contains the working logic behind normalization and research. Normalization adjusts comparable costs for year, currency, location and size and flags disagreeing sources, while research finds web sources, pulls cost figures from tables and scores trust.",
+      "why": "This is where the platform does real analysis rather than returning example values.",
+      "debug_tips": "For odd adjusted costs, look at api/services/normalization.py. For missing or poor web data, look at api/services/research.py."
+    },
+    {
+      "id": "root-files",
+      "name": "(root files)",
+      "match": [
+        "*"
+      ],
+      "summary": "Only .env.example is listed here. It is a template of the settings the platform can read.",
+      "why": "It shows what must be configured before the platform runs.",
+      "debug_tips": "If the app cannot connect or behaves differently on another machine, check that a real environment file was made from this template with correct values."
+    },
+    {
+      "id": "db",
+      "name": "db",
+      "match": [
+        "db/*"
+      ],
+      "summary": "Holds db/schema.sql, a PostgreSQL description of the tables. Only the opening part was visible, covering extensions and the users table.",
+      "why": "It is an alternative or reference way to set up the database structure.",
+      "debug_tips": "If tables are missing, note that api/database.py also creates missing tables on startup. It is unclear which method is the main one."
+    },
+    {
+      "id": "frontend",
+      "name": "frontend",
+      "match": [
+        "frontend/*"
+      ],
+      "summary": "A single web page with a dashboard, a project list with create and delete buttons, and a page of API links.",
+      "why": "It is the part a person actually looks at and clicks.",
+      "debug_tips": "If a button does nothing, check that the backend is running and that the page is pointing at the correct API address. Browser developer tools will show failed requests."
+    }
+  ],
+  "decisions": [],
+  "readiness": {
+    "overall": "not-ready",
+    "summary": "Top three fixes: add automated tests (none exist), add database migrations and a backup note, and add CI plus a written deploy and rollback guide. Then scan git history for secrets and pin and audit dependencies.",
+    "checked_at": "2026-11-11T22:53:59+00:00",
+    "checks": [
+      {
+        "id": "starts",
+        "question": "Does the app build and start with one documented command?",
+        "status": "partial",
+        "evidence": "`README.md` and `CORPORATE_SETUP.md` describe a clone, install and run flow with SQLite as the default. No `package.json` exists and no Python dependency manifest was detected beyond `api/requirements.txt`, and the README architecture lists a Next.js `ui/` that is not tracked, only `frontend/README.md`. One single documented command was not confirmed. Not checked: the build and start were not run.",
+        "next_step": "Add one start command (for example a Makefile target or script) to the top of `README.md` and confirm it works on a clean checkout."
+      },
+      {
+        "id": "tests",
+        "question": "Are there automated tests, and do they pass?",
+        "status": "fail",
+        "evidence": "0 test files were found in the tracked files. Not checked: tests were not run, but none exist to run.",
+        "next_step": "Add pytest tests for the CPM, Monte Carlo and normalization code and the main API routes."
+      },
+      {
+        "id": "errors",
+        "question": "When something goes wrong, does the app show a clear message instead of crashing or failing silently?",
+        "status": "unknown",
+        "evidence": "Not checked: error handling needs reading the code paths or running the app. Static scan found 0 swallowed-error patterns, which is a weak signal, and no evidence of user-facing error messages.",
+        "next_step": "Add FastAPI exception handlers that return clear JSON errors and show them in the frontend."
+      },
+      {
+        "id": "inputs",
+        "question": "Does it check what people type or upload before using it?",
+        "status": "partial",
+        "evidence": "Input validation patterns appear in 9 matches across 8 files, which suggests some validation (likely FastAPI/Pydantic models). Upload checks for schedule files (MSP XML/PMXML/CSV) were not confirmed.",
+        "next_step": "Validate file type, size and content for schedule uploads and add tests for bad inputs."
+      },
+      {
+        "id": "secrets",
+        "question": "Are passwords and API keys kept out of the code and out of git history?",
+        "status": "partial",
+        "evidence": "Only `.env.example` is tracked, `.gitignore` mentions `.env`, and no secret-looking strings were found in HEAD. Git history was not scanned.",
+        "next_step": "Run a history scan (for example gitleaks) and rotate any key found."
+      },
+      {
+        "id": "access",
+        "question": "Can only the right people see and change things (sign-in and permissions)?",
+        "status": "partial",
+        "evidence": "Auth, session or permission terms appear in 9 matches across 3 files, and the README claims RBAC and audit logs. Without reading the code it is not clear these are enforced on the routes.",
+        "next_step": "Confirm that every API route requires sign-in and a role check, and add tests for denied access."
+      },
+      {
+        "id": "data",
+        "question": "Is important data backed up, and are database changes made through migrations?",
+        "status": "fail",
+        "evidence": "No migrations folder was detected, although the README lists `db/migrations/`. No backup process is documented in the evidence.",
+        "next_step": "Add a migration tool (for example Alembic) with an initial migration and document how to back up the SQLite file."
+      },
+      {
+        "id": "dependencies",
+        "question": "Are third-party packages reasonably up to date and free of known security problems?",
+        "status": "unknown",
+        "evidence": "Not checked: the dependency audit was not run and no installs were done. `api/requirements.txt` is the only manifest and it is not a lockfile with pinned hashes.",
+        "next_step": "Pin versions in `api/requirements.txt` and run pip-audit; add a frontend manifest if a UI exists."
+      },
+      {
+        "id": "logs",
+        "question": "If it breaks while people use it, will logs or alerts show what happened?",
+        "status": "partial",
+        "evidence": "Logging appears in 31 matches across 4 files, so some logging exists. No alerting, error tracking or request logging setup was found.",
+        "next_step": "Configure structured logging with request IDs and add error tracking or alerts."
+      },
+      {
+        "id": "performance",
+        "question": "Does it stay fast with realistic amounts of data and users?",
+        "status": "unknown",
+        "evidence": "Not checked: performance needs running the app with realistic data. The README mentions 10k-trial Monte Carlo runs and web crawling, which could be slow if run inside a request, and no background job setup was seen.",
+        "next_step": "Run Monte Carlo and crawling as background jobs and benchmark with realistic project volumes."
+      },
+      {
+        "id": "deploy",
+        "question": "Is there a written, repeatable way to deploy it and to roll back a bad release?",
+        "status": "fail",
+        "evidence": "No CI or deploy files were found, and no written deployment or rollback steps appear in the docs list.",
+        "next_step": "Add a short `DEPLOY.md` with deploy and rollback steps, plus a basic CI workflow that runs tests."
+      },
+      {
+        "id": "docs",
+        "question": "Could someone new run it and understand it from the docs alone?",
+        "status": "partial",
+        "evidence": "Docs exist: `README.md`, `CORPORATE_SETUP.md`, `QUICKSTART.md`, `docs/ARCHITECTURE.md`, `docs/IMPLEMENTATION_GUIDE.md`, `frontend/README.md`. The README architecture does not match the tracked files (for example `ui/`), and `SYNC_INSTRUCTIONS.md` suggests leftover process notes.",
+        "next_step": "Align the README architecture with the actual folders and test the quickstart on a clean machine."
+      }
+    ],
+    "method": "Static evidence only; tests, build and audit were not run in this pass."
+  },
+  "debug_playbook": [
+    {
+      "symptom": "The app will not start or says the database is unreachable",
+      "likely_area": "api",
+      "where_to_look": [
+        "api/main.py",
+        "api/database.py",
+        ".env.example"
+      ],
+      "steps": [
+        "Check that a real environment file exists, based on .env.example.",
+        "Confirm the database address and login in it are correct.",
+        "Read the start-up error message, since the database check happens there."
+      ]
+    },
+    {
+      "imple_placeholder": "",
+      "symptom": "Cost or schedule results always show the same numbers",
+      "likely_area": "api-routes",
+      "where_to_look": [
+        "api/routes/capex.py",
+        "api/routes/schedule.py",
+        "api/routes/exports.py"
+      ],
+      "steps": [
+        "Open the route file and see whether it returns fixed example values.",
+        "If so, this is expected, because real calculations are not built yet.",
+        "Ask the team whether real logic is planned elsewhere."
+      ]
+    },
+    {
+      "symptom": "Adjusted comparable costs look wrong",
+      "likely_area": "api-services",
+      "where_to_look": [
+        "api/services/normalization.py",
+        "api/routes/normalization.py",
+        "api/models/comparator.py"
+      ],
+      "steps": [
+        "Check the input year, currency, location and size values for the project.",
+        "Check the price index and regional factor data that the adjustments use.",
+        "Look at how conflicts between sources are flagged."
+      ]
+    },
+    {
+      "symptom": "Web research returns little or untrustworthy data",
+      "likely_area": "api-services",
+      "where_to_look": [
+        "api/services/research.py",
+        "api/routes/research.py",
+        "api/models/research.py"
+      ],
+      "steps": [
+        "Check that the listed URLs are reachable and contain HTML tables.",
+        "Review how trust scores are given to each source.",
+        "Check that collected data points were saved in the research tables."
+      ]
+    },
+    {
+      "symptom": "Projects will not create, list or delete from the page",
+      "likely_area": "frontend",
+      "where_to_look": [
+        "frontend/index.html",
+        "api/routes/projects.py",
+        "api/models/project.py"
+      ],
+      "steps": [
+        "Confirm the backend is running and the page points to its address.",
+        "Open the browser developer tools and look for failed requests.",
+        "Check api/routes/projects.py, noting that deletes only hide records."
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "API",
+      "meaning": "The set of web addresses the backend offers so other programs, like the dashboard page, can ask it to do things."
+    },
+    {
+      "term": "Endpoint",
+      "meaning": "One specific web address in the API that performs one action."
+    },
+    {
+      "term": "Normalization",
+      "meaning": "Adjusting costs from different years, currencies, places and sizes so they can be compared fairly."
+    },
+    {
+      "term": "Comparator",
+      "meaning": "A comparable past project used as a benchmark."
+    },
+    {
+      "term": "CAPEX",
+      "meaning": "Capital expenditure, the up-front cost of building a project."
+    },
+    {
+      "term": "Critical path",
+      "meaning": "The chain of tasks that sets the shortest possible schedule."
+    },
+    {
+      "term": "Risk simulation",
+      "meaning": "Running many random trials to see how uncertainty could change schedule results."
+    },
+    {
+      "term": "Soft delete",
+      "meaning": "Hiding a record as deleted without actually erasing it."
+    },
+    {
+      "term": "Schema",
+      "meaning": "The plan describing which tables and fields a database holds."
+    },
+    {
+      "term": "Audit trail",
+      "meaning": "A record of who changed what and when."
+    }
+  ],
+  "skipped": []
+}

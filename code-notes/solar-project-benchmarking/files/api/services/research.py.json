@@ -1,0 +1,227 @@
+{
+  "schema_version": 1,
+  "path": "api/services/research.py",
+  "language": "Python",
+  "lines": 638,
+  "hash": "sha256:db32a0cacab01944c6327833b9fa97274d909c094c71620075aed9e543c0654d",
+  "area": "api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "Reading the code, a PDF or other non-HTML source would stop the run in the run_research loop, because a value used in scoring is only set for HTML pages. This was not run here.",
+      "Consistency is a fixed placeholder, so the credibility score does not reflect cross-source agreement.",
+      "Text extraction is an empty placeholder.",
+      "No test is visible for this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "CredScore",
+      "meaning": "A 0 to 100 credibility score that combines the four individual scores with weights."
+    },
+    {
+      "term": "robots.txt",
+      "meaning": "A file on a website that states which automated visitors may read which pages."
+    },
+    {
+      "term": "Allowlist",
+      "meaning": "A list of approved sites. Only matching sites are fetched when it is not empty."
+    },
+    {
+      "term": "User agent",
+      "meaning": "The name the crawler announces itself with when it requests a page."
+    },
+    {
+      "term": "Rate limit",
+      "meaning": "A cap on how often the crawler sends requests, so it does not overload a site."
+    },
+    {
+      "term": "Provenance",
+      "meaning": "Who published a source and how authoritative that publisher is."
+    },
+    {
+      "term": "Traceability",
+      "meaning": "How easy it is to check where a number came from, such as a date, author, or table."
+    },
+    {
+      "term": "Syndicated content",
+      "meaning": "Copies of the same article published on several sites, which do not count as independent evidence."
+    },
+    {
+      "term": "Fingerprint (SHA-256)",
+      "meaning": "A unique code computed from the page content, used to detect changes or duplicates."
+    }
+  ],
+  "depends_on": [
+    "models.research",
+    "models.project",
+    "httpx",
+    "beautifulsoup4",
+    "pdfplumber",
+    "sqlalchemy",
+    "structlog",
+    "settings from the environment file"
+  ],
+  "used_by": [
+    "api/routes research module (imported by api/main.py, not shown in this packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 31,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "54176d5881fbafa2",
+      "title": "Imports and module purpose",
+      "what": "Brings in web fetching, HTML and PDF reading, fingerprinting, and database tools. The header lists the module's five jobs.",
+      "why": "The header is a summary of what the module is meant to cover.",
+      "watch_out": "The header names method and scope extraction, which is not present in the code shown, so do not assume it is done."
+    },
+    {
+      "start": 32,
+      "end": 84,
+      "kind": "class",
+      "name": "ResearchService (part 1)",
+      "id": "s2",
+      "hash": "0dcb620336c5ee38",
+      "title": "Service setup and credibility weights",
+      "what": "Creates the service with settings for identity, request rate, timeouts, robots rules, the allowlist, and the four weights used for credibility scoring.",
+      "why": "Keeps crawling behavior and scoring adjustable without code changes.",
+      "watch_out": "The weights are not checked to add up to 1, and the final score is clamped to 0 to 100, which can hide a weight problem."
+    },
+    {
+      "start": 85,
+      "end": 144,
+      "kind": "class",
+      "name": "ResearchService (part 2)",
+      "id": "s3",
+      "hash": "0cf1413ee0df41ec",
+      "title": "Building the search query plan",
+      "what": "Builds a long list of search phrases for a project, including capacity variants, plus lists of target sites and terms to include or exclude.",
+      "why": "Likely reason: to search widely for cost, schedule, and filing evidence. No further reason is stated in the code.",
+      "watch_out": "The queries are built but never sent to a search service, so no searching actually happens yet."
+    },
+    {
+      "start": 145,
+      "end": 192,
+      "kind": "class",
+      "name": "ResearchService (part 3)",
+      "id": "s4",
+      "hash": "949b40e734ef6489",
+      "title": "Returning the plan and robots check",
+      "what": "Returns the query plan settings, then checks a website's robots.txt rules to see whether this crawler may read a page.",
+      "why": "Respecting site rules is a basic courtesy for automated visitors, and the module states this as a goal.",
+      "watch_out": "If the robots file cannot be read, the page is allowed by default, so the crawler goes ahead despite the uncertainty."
+    },
+    {
+      "start": 193,
+      "end": 251,
+      "kind": "method",
+      "name": "ResearchService: fetch_url",
+      "id": "s5",
+      "hash": "44430ed88e32c277",
+      "title": "Downloading one web page as a source",
+      "what": "Checks the allowlist and robots rules, downloads the page, and builds a source record with a fingerprint and document type. It returns nothing if the download fails.",
+      "why": "Creates the raw evidence record that every later step depends on.",
+      "watch_out": "The allowlist matches any allowed text that appears inside the domain, so a short entry can allow unexpected sites, and an empty allowlist permits every site."
+    },
+    {
+      "start": 252,
+      "end": 307,
+      "kind": "class",
+      "name": "ResearchService (part 5)",
+      "id": "s6",
+      "hash": "3347f3965428509c",
+      "title": "Saving sources and reading HTML tables",
+      "what": "Saves the new source, then reads cost fields such as total cost and module cost from table rows and returns them as extract records.",
+      "why": "Turns the numbers on a page into structured values that the normalization step can use.",
+      "watch_out": "Only the first two cells of each table row are read, so tables that put the value elsewhere are missed."
+    },
+    {
+      "start": 308,
+      "end": 367,
+      "kind": "class",
+      "name": "ResearchService (part 6)",
+      "id": "s7",
+      "hash": "e8c03b6ffb198e0a",
+      "title": "Finishing HTML reading and PDF reading",
+      "what": "Checks paragraphs in HTML for values, and reads cost rows from PDF tables and page text. Errors in PDF reading are logged and an empty list is returned.",
+      "why": "Covers the two document types the platform expects to see.",
+      "watch_out": "PDF reading needs a file on disk, but the main run never saves downloaded PDFs, so this step is not reached during a normal run."
+    },
+    {
+      "start": 368,
+      "end": 426,
+      "kind": "class",
+      "name": "ResearchService (part 7)",
+      "id": "s8",
+      "hash": "1394505a14dcf19c",
+      "title": "Matching cost labels and numbers",
+      "what": "Decides which cost field a table label belongs to, such as total cost or interconnection, and pulls out the number, currency and units from the value text.",
+      "why": "Turns free-form labels into named fields the rest of the platform can use.",
+      "watch_out": "Matching is done by partial text in an ordered list, so a label can match the wrong field, and only the first match is kept."
+    },
+    {
+      "start": 427,
+      "end": 481,
+      "kind": "method",
+      "name": "ResearchService: _parse_currency_symbol",
+      "id": "s9",
+      "hash": "84583c971c90ff35",
+      "title": "Currency symbol and multiplier reading",
+      "what": "Maps dollar, pound, euro and yen symbols to currency codes, and turns words such as million or billion into numeric multipliers.",
+      "why": "Lets numbers in different currencies be compared later.",
+      "watch_out": "An unknown currency symbol silently defaults to US dollars, which can mislabel a value."
+    },
+    {
+      "start": 482,
+      "end": 534,
+      "kind": "method",
+      "name": "ResearchService: score_provenance",
+      "id": "s10",
+      "hash": "5135903cd4dcb244",
+      "title": "Scoring provenance and traceability",
+      "what": "Gives a provenance score by type of organization, guessing the type from the web address when it is not set. This block also gives a traceability score that starts at 70 and rises when tables are present, and falls when a date or author is missing.",
+      "why": "Likely reason: official regulators and academic sources are treated as more reliable than blogs. No further reason is stated in the code.",
+      "watch_out": "The address guess is simple text matching, so a domain that contains a short word such as puc can be misclassified."
+    },
+    {
+      "start": 535,
+      "end": 590,
+      "kind": "method",
+      "name": "ResearchService: score_consistency",
+      "id": "s11",
+      "hash": "db0b20b583f80bcd",
+      "title": "Placeholder consistency and independence scores",
+      "what": "Gives a fixed consistency score of 70. Gives an independence score that starts at 70 and drops for press releases. This block also begins the main run method, which checks that the project exists.",
+      "why": "Consistency needs other sources to compare against, so it stays a placeholder until normalization is connected.",
+      "watch_out": "Consistency is hard-coded to 70 in two places, so the score does not yet reflect real agreement between sources."
+    },
+    {
+      "start": 591,
+      "end": 638,
+      "kind": "class",
+      "name": "ResearchService (part 11)",
+      "id": "s12",
+      "hash": "bcc8115cc2ae095f",
+      "title": "Main research run and summary",
+      "what": "Runs the full pass: fetches each URL, reads HTML tables, scores each source, saves progress, waits between requests, and returns counts and an average credibility score.",
+      "why": "Acts as the single entry point that ties the research steps together for one project.",
+      "watch_out": "A PDF or other non-HTML source causes an error here, because the traceability score uses a value that was only set for HTML pages."
+    }
+  ],
+  "explained_at": "2026-11-11T22:51:57+00:00",
+  "explained_by": "haiku",
+  "summary": "Finds and reads web sources for a project, pulls cost figures from HTML tables, and scores how trustworthy each source is.",
+  "purpose": "Gathers public evidence for benchmarking, follows site crawling rules, and records each source with a credibility score.",
+  "why": "Likely reason: the platform needs sourced numbers that can be checked later. Crawling rules are included to be respectful to websites. The header describes the module's five jobs.",
+  "how": "1. The run_research method loads the project and goes through each URL. 2. fetch_url checks the allowlist and robots.txt, then downloads the page. 3. It saves a source record with a fingerprint and document type. 4. HTML tables are read for cost fields. 5. Provenance, traceability, consistency and independence scores are calculated and combined into a credibility score. 6. Each source is saved and the service waits before the next request.",
+  "inputs": "A project ID and a list of URLs. Settings for user agent, rate limit, timeouts, robots checks, allowlist, score weights and provenance scores. The live web pages.",
+  "outputs": "Source records, extract records holding cost values, credibility scores saved to the database, and a summary with counts and an average score. The query plan is built during the run but its queries are not used.",
+  "risks": "The crawler contacts live websites, so the crawl rules matter. Consistency is a fixed placeholder. Text extraction does nothing. PDFs are downloaded but not read by the main run. The rate limit is applied to all requests rather than per domain. The allowlist uses partial text matching.",
+  "debug": "If no sources are saved, check the ALLOWLIST_DOMAINS setting and log lines url_blocked_by_allowlist and url_blocked_by_robots. If a fetch fails, look for http_error or fetch_failed. If a score looks odd, check the four individual scores on the source record. If a run fails on a PDF, look at how the extracts value is passed in the run_research loop.",
+  "summary_hash": "sha256:db32a0cacab01944c6327833b9fa97274d909c094c71620075aed9e543c0654d"
+}

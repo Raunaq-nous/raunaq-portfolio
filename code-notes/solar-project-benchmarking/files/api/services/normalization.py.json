@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "path": "api/services/normalization.py",
+  "language": "Python",
+  "lines": 398,
+  "hash": "sha256:4b667aaecf390f10acd0ce52ab052bdab80b91e293d9b46447358686e34efa09",
+  "area": "api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "Reading the code, the multiplication of a float per-MWac value by the Decimal combined factor looks like it raises a TypeError, so normalization would stop before saving. This was not run here.",
+      "No test is visible for this file.",
+      "Hard-coded exchange rates and silent 1.0 fallbacks can produce plausible but wrong numbers.",
+      "detect_conflicts may divide by zero when the median is zero."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Comparator",
+      "meaning": "One benchmark project record whose costs are being compared."
+    },
+    {
+      "term": "Base quarter",
+      "meaning": "The reference time period that all costs are adjusted to."
+    },
+    {
+      "term": "PPI",
+      "meaning": "Producer Price Index, a published series that tracks how prices of goods change over time."
+    },
+    {
+      "term": "FX rate",
+      "meaning": "An exchange rate that converts one currency into another."
+    },
+    {
+      "term": "MWac and MWdc",
+      "meaning": "Two ways to measure solar capacity: AC output and DC panel rating. The ratio between them is the DC/AC ratio."
+    },
+    {
+      "term": "Decimal",
+      "meaning": "A number type for exact decimal math. It cannot be mixed with ordinary floats without an explicit conversion."
+    },
+    {
+      "term": "Median",
+      "meaning": "The middle value when numbers are sorted, less affected by extreme values than an average."
+    },
+    {
+      "term": "MAD",
+      "meaning": "Median absolute deviation, a measure of spread that resists outliers."
+    },
+    {
+      "term": "Z-score here",
+      "meaning": "How many spread units a source's value sits from the median."
+    }
+  ],
+  "depends_on": [
+    "models.comparator",
+    "models.research",
+    "pandas",
+    "sqlalchemy",
+    "structlog"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "36a17e1f963dbd31",
+      "title": "Imports and list of adjustments",
+      "what": "Brings in math, data and database tools and the record types for comparators and sources. The header describes the five kinds of adjustment.",
+      "why": "The header works as a map of what this file is meant to do.",
+      "watch_out": "The header promises a scope maturity adjustment, which is not present in the code shown, so do not assume it is applied."
+    },
+    {
+      "start": 26,
+      "end": 79,
+      "kind": "class",
+      "name": "NormalizationService (part 1)",
+      "id": "s2",
+      "hash": "70a2b83d30a36dd4",
+      "title": "Service setup and start of the main method",
+      "what": "Creates the service with the database session and the base quarter and currency from settings. Starts the main method that builds the time, currency and location factors for one comparator.",
+      "why": "Shared settings mean every comparator is adjusted to the same base.",
+      "watch_out": "The base quarter and currency fall back to defaults if the settings are missing, which can quietly change every result."
+    },
+    {
+      "start": 80,
+      "end": 132,
+      "kind": "class",
+      "name": "NormalizationService (part 2)",
+      "id": "s3",
+      "hash": "46fd07598489db43",
+      "title": "Applying factors and saving results",
+      "what": "Multiplies the combined factor into each cost field after converting it to per-MWac, writes the results onto the comparator, saves them, and returns them.",
+      "why": "Stores adjusted costs so later pages can read them without recalculating.",
+      "watch_out": "The multiplication that combines a float value with a Decimal factor looks like it raises an error, so this step may fail before anything is saved."
+    },
+    {
+      "start": 133,
+      "end": 170,
+      "kind": "method",
+      "name": "NormalizationService: _normalize_time",
+      "id": "s4",
+      "hash": "9fa1840b9d9b7fbe",
+      "title": "Time adjustment from price indices",
+      "what": "Works out how much costs changed between two quarters using a weighted mix of three price series. It returns a multiplier, such as 1.15 for a 15 percent rise.",
+      "why": "Costs from older quarters need to be moved forward to the base quarter before they can be compared.",
+      "watch_out": "If an index value is zero, the code logs a warning and silently uses 1.0, which hides the missing adjustment."
+    },
+    {
+      "start": 171,
+      "end": 206,
+      "kind": "method",
+      "name": "NormalizationService: _get_composite_index",
+      "id": "s5",
+      "hash": "8c5c4e0a2158ef26",
+      "title": "Weighted price index for one quarter",
+      "what": "Computes a blended price index for a quarter from the available series. It uses the middle date of the quarter and the nearest stored date when that date is missing.",
+      "why": "Blending several series gives one number that reflects the mix of costs in a solar project.",
+      "watch_out": "If none of the series are present, the function returns a default base of 100, which can look like real data."
+    },
+    {
+      "start": 207,
+      "end": 257,
+      "kind": "method",
+      "name": "NormalizationService: _normalize_currency",
+      "id": "s6",
+      "hash": "f23c6bc8484bfc88",
+      "title": "Currency conversion rate",
+      "what": "Returns the multiplier that converts a cost from one currency to the base currency. It uses a rate table and returns 1.0 when no matching rate is found.",
+      "why": "Lets costs in euros, pounds or yen be compared with dollar costs.",
+      "watch_out": "Rates are hard-coded for now, so they will go stale, and a missing currency pair silently becomes 1.0."
+    },
+    {
+      "start": 258,
+      "end": 299,
+      "kind": "method",
+      "name": "NormalizationService: _normalize_capacity_to_ac",
+      "id": "s7",
+      "hash": "0af5dd2c2114af0b",
+      "title": "Converting capacity to AC basis",
+      "what": "Returns the AC megawatt value. It uses the AC figure if present, otherwise converts from DC using the DC/AC ratio, or assumes 1.25 when no ratio is given. This block also holds three loaders for indices, exchange rates and location factors.",
+      "why": "Costs are compared per AC megawatt, so the size must be on the same basis.",
+      "watch_out": "If both sizes are missing, no capacity is returned, and the caller then sets per-MWac values to zero, which looks like a real result."
+    },
+    {
+      "start": 300,
+      "end": 348,
+      "kind": "method",
+      "name": "NormalizationService: detect_conflicts",
+      "id": "s8",
+      "hash": "78d8905312a714fd",
+      "title": "Checking sources for disagreement",
+      "what": "Compares values from different sources for the same field, computes the median and spread, flags sources far from the median, and begins choosing a confidence label.",
+      "why": "Helps reviewers decide which numbers to trust when sources disagree.",
+      "watch_out": "The agreement check divides by the median, so a median of zero can cause a division error when there are two or more sources."
+    },
+    {
+      "start": 349,
+      "end": 398,
+      "kind": "class",
+      "name": "NormalizationService (part 8)",
+      "id": "s9",
+      "hash": "4882862386d99114",
+      "title": "Flagging outliers and final label",
+      "what": "Works out each source's distance from the median in spread units, flags those above the threshold, and sets the final confidence label and recommendation text.",
+      "why": "Turns raw numbers into a readable decision the reviewer can act on.",
+      "watch_out": "The threshold comes from a setting that defaults to 2.0, so changing it quietly changes which sources are flagged."
+    }
+  ],
+  "explained_at": "2026-11-11T22:51:57+00:00",
+  "explained_by": "haiku",
+  "summary": "Adjusts each comparator cost figure so projects from different years, currencies, locations and sizes can be compared fairly, and flags sources that disagree.",
+  "purpose": "Puts cost data onto one base quarter, one base currency and one size basis, then saves the adjusted figures. It also checks several sources for the same value and reports conflicts.",
+  "why": "Comparisons across projects are only fair when they share one basis. The file header lists the adjustments involved.",
+  "how": "1. The normalize_comparator method finds a time factor from price indices, a currency factor, and a location factor. 2. It converts each cost field to a per-MWac value. 3. It multiplies by the combined factor and writes the results to the comparator. 4. It saves the change to the database. 5. Separately, detect_conflicts groups values by source, computes the median and spread, and flags sources far from the median.",
+  "inputs": "A comparator record with vintage, currency, location, capacity and cost fields. Price index, exchange rate and location factor data from the database or passed in directly. Extract records for conflict checks. Environment settings BASE_QUARTER, BASE_CCY and CONFLICT_THRESHOLD_Z_SCORE.",
+  "outputs": "Normalized cost fields and a norm_factors record saved on the comparator. A dictionary of normalized values. A conflict report with a confidence label and recommendation.",
+  "risks": "Exchange rates are hard-coded, not live. Missing data often becomes a factor of 1.0 without an error. The main method appears to mix float and Decimal numbers, which Python rejects. The header promises a scope maturity adjustment that is not in the code shown.",
+  "debug": "If a normalized figure looks wrong, read the norm_factors record on the comparator to see each factor. Check that the price index table contains the needed quarter dates. If normalize_comparator raises a TypeError, look at the multiplication that combines per-MWac values with the combined factor. Check BASE_QUARTER, BASE_CCY and the conflict threshold setting.",
+  "summary_hash": "sha256:4b667aaecf390f10acd0ce52ab052bdab80b91e293d9b46447358686e34efa09"
+}

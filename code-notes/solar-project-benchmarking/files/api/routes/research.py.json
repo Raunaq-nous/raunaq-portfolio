@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "path": "api/routes/research.py",
+  "language": "Python",
+  "lines": 79,
+  "hash": "sha256:5fb5d6565f3cdea3d2056300ff7c290cf7a868d0f9ac491ca9e489340ae00a79",
+  "area": "api-routes",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The service code is not in this packet.",
+      "The background option is not used, so long runs block the caller.",
+      "URLs are not checked as web addresses.",
+      "No tests are shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Background task",
+      "meaning": "work that runs after the reply is sent, so the caller does not wait"
+    },
+    {
+      "term": "Heuristic",
+      "meaning": "a rule of thumb used to guide a search"
+    },
+    {
+      "term": "Query plan",
+      "meaning": "a list of search phrases and sites to look at"
+    }
+  ],
+  "depends_on": [
+    "fastapi",
+    "pydantic",
+    "sqlalchemy",
+    "database (local module)",
+    "services/research.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "729590513b1c5078",
+      "title": "Imports and router setup",
+      "what": "Brings in the router, list and optional types, the background task tool, request checking, the database session and the research service.",
+      "why": "Likely reason: the endpoints below need these tools.",
+      "watch_out": "The strict web address type is imported but never used, so URLs are not validated."
+    },
+    {
+      "start": 14,
+      "end": 20,
+      "kind": "class",
+      "name": "ResearchPlanRequest",
+      "id": "s2",
+      "hash": "0a0fcec4b890dee0",
+      "title": "Plan request shape",
+      "what": "Describes a plan request: project ID, project name, optional location and optional capacity in megawatts.",
+      "why": "Likely reason: gives the planner enough context to write targeted searches.",
+      "watch_out": "Capacity is an optional decimal, so zero or negative values are accepted."
+    },
+    {
+      "start": 21,
+      "end": 26,
+      "kind": "class",
+      "name": "ResearchRunRequest",
+      "id": "s3",
+      "hash": "b0929e8707376cc7",
+      "title": "Run request shape",
+      "what": "Describes a run request: project ID, optional list of URLs and an option to add automatic queries.",
+      "why": "Likely reason: lets a user give specific pages or let the system search.",
+      "watch_out": "URLs are accepted as plain text with no check, so bad addresses reach the crawler."
+    },
+    {
+      "start": 27,
+      "end": 34,
+      "kind": "class",
+      "name": "ResearchPlanResponse",
+      "id": "s4",
+      "hash": "2c53bee76fcf2875",
+      "title": "Research plan reply shape",
+      "what": "Describes the plan reply: queries, target sites, must-include and exclude terms, and heuristics.",
+      "why": "Likely reason: sets what the research planner must return.",
+      "watch_out": "Heuristics are untyped, so their contents depend entirely on the service."
+    },
+    {
+      "start": 35,
+      "end": 40,
+      "kind": "class",
+      "name": "ResearchRunResponse",
+      "id": "s5",
+      "hash": "bcd74cf0660d3576",
+      "title": "Research run reply shape",
+      "what": "Describes the run reply: number of sources, number of extracts and average credibility score.",
+      "why": "Likely reason: a short summary of what the run produced.",
+      "watch_out": "If an empty run returns no average, this reply fails validation."
+    },
+    {
+      "start": 41,
+      "end": 60,
+      "kind": "function",
+      "name": "plan_research",
+      "id": "s6",
+      "hash": "cfb39c7af08b75de",
+      "title": "Plan research endpoint",
+      "what": "Asks the research service for a query plan from the project details and returns that plan.",
+      "why": "Likely reason: a thin wrapper that hands the work to the service.",
+      "watch_out": "The plan fields must match the reply shape exactly, or the reply fails."
+    },
+    {
+      "start": 61,
+      "end": 79,
+      "kind": "function",
+      "name": "run_research",
+      "id": "s7",
+      "hash": "dc42ab2441105df5",
+      "title": "Run research endpoint",
+      "what": "Runs collection and extraction on the given or automatically chosen sources, then returns counts and average credibility.",
+      "why": "Likely reason: the main research step. The docstring suggests it could move to the background.",
+      "watch_out": "The caller waits for the whole run, so large runs may time out. The background option in the signature is not used."
+    }
+  ],
+  "explained_at": "2026-11-11T22:49:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Exposes endpoints to plan web research queries for a project and to run that research on a list of URLs.",
+  "purpose": "Lets a caller get suggested search queries, then run collection and extraction for a project.",
+  "why": "Likely reason: research is the first step that gathers the evidence used in the benchmark.",
+  "how": "1) Plan takes the project name, location and capacity and asks the research service for queries and target sites. 2) Run takes the project ID, an optional URL list and an automatic query option, asks the service to collect, extract and score, and returns counts and an average score.",
+  "inputs": "Project details, optional URL list, and the automatic query flag.",
+  "outputs": "A search plan with queries, domains, terms and heuristics. Or counts of sources and extracts with an average credibility score.",
+  "risks": "The run endpoint is described as long-running and suitable for background work, but it waits for the work to finish, so the caller is held until done. The background task object is accepted but never used.",
+  "debug": "If run requests hang, the work is happening inline. If results are empty, check the URLs and the automatic query option. If plan fields are missing, check the service's output keys.",
+  "summary_hash": "sha256:5fb5d6565f3cdea3d2056300ff7c290cf7a868d0f9ac491ca9e489340ae00a79"
+}

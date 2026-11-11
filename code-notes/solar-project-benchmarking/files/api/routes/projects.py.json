@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "path": "api/routes/projects.py",
+  "language": "Python",
+  "lines": 202,
+  "hash": "sha256:a8e73152c97fe04bec6ecff7e08ddbc6bafc5b0dda79b615ee789ff709451f98",
+  "area": "api-routes",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "A development admin with a placeholder password is created automatically.",
+      "There is no authentication, so every request acts as the first user.",
+      "List shows deleted projects by default.",
+      "No tests are shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Soft delete",
+      "meaning": "marking a record as removed while keeping its data"
+    },
+    {
+      "term": "404",
+      "meaning": "a web reply meaning the item was not found"
+    },
+    {
+      "term": "Authentication",
+      "meaning": "checking who a caller is before allowing access"
+    },
+    {
+      "term": "Session",
+      "meaning": "an open connection to the database used for a set of reads and writes"
+    }
+  ],
+  "depends_on": [
+    "fastapi",
+    "pydantic",
+    "sqlalchemy",
+    "database (local module)",
+    "api/models/project.py",
+    "api/models/user.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "bbea7aa18ad18c35",
+      "title": "Imports and router setup",
+      "what": "Brings in the router, optional and list types, request checking, errors, the database session, and the project and user models.",
+      "why": "Likely reason: every endpoint in this file needs these.",
+      "watch_out": "Removing the user import would break project creation, since it looks up the first user."
+    },
+    {
+      "start": 17,
+      "end": 24,
+      "kind": "class",
+      "name": "ProjectCreate",
+      "id": "s2",
+      "hash": "7d2aa541c5d6f876",
+      "title": "Create project request shape",
+      "what": "Describes what a caller sends to create a project: name, asset type defaulting to solar PV, and optional location and metadata.",
+      "why": "Likely reason: checks input before a project is saved.",
+      "watch_out": "Asset type is free text and is not checked against the supported list, so an invalid type is saved."
+    },
+    {
+      "start": 25,
+      "end": 37,
+      "kind": "class",
+      "name": "ProjectResponse",
+      "id": "s3",
+      "hash": "0e6f5fd2f2577f3c",
+      "title": "Single project reply shape",
+      "what": "Describes a project as returned by create and get: ID, name, type, location, status and timestamps.",
+      "why": "Likely reason: sets one consistent reply shape for single projects.",
+      "watch_out": "Timestamps are sent as text, so their format is whatever the code produces."
+    },
+    {
+      "start": 38,
+      "end": 52,
+      "kind": "class",
+      "name": "ProjectSummary",
+      "id": "s4",
+      "hash": "b16f1f7d6f19337c",
+      "title": "Project list item shape",
+      "what": "Describes a project in the list, with the same details plus counts of comparables and sources.",
+      "why": "Likely reason: lets the list page show counts without a separate call.",
+      "watch_out": "The counts default to zero, so a failed count looks the same as no items."
+    },
+    {
+      "start": 53,
+      "end": 106,
+      "kind": "function",
+      "name": "create_project",
+      "id": "s5",
+      "hash": "d52ab99ce336bdcc",
+      "title": "Create project endpoint",
+      "what": "Creates a project owned by the first user in the system, and first creates a development admin if the system has no users.",
+      "why": "Likely reason: a stand-in for real sign in, marked TODO in the code.",
+      "watch_out": "Every project belongs to whoever is first in the table, and the admin has a placeholder password, so this must not reach real use."
+    },
+    {
+      "start": 107,
+      "end": 149,
+      "kind": "function",
+      "name": "list_projects",
+      "id": "s6",
+      "hash": "ffe22030b11a74c5",
+      "title": "List projects endpoint",
+      "what": "Returns all projects, optionally filtered by status or asset type, each with a count of included comparables and a count of sources.",
+      "why": "Likely reason: feeds the project list page.",
+      "watch_out": "Deleted projects appear unless a status filter is passed, and each project's related rows may cause extra database queries."
+    },
+    {
+      "start": 150,
+      "end": 179,
+      "kind": "function",
+      "name": "get_project",
+      "id": "s7",
+      "hash": "b63c5f371e5bb343",
+      "title": "Get one project endpoint",
+      "what": "Returns one project by ID, or a not-found error if it does not exist.",
+      "why": "Likely reason: the standard lookup for a project detail page.",
+      "watch_out": "Deleted projects can still be opened by their ID."
+    },
+    {
+      "start": 180,
+      "end": 202,
+      "kind": "function",
+      "name": "delete_project",
+      "id": "s8",
+      "hash": "5dfad921038e432c",
+      "title": "Delete project endpoint",
+      "what": "Marks a project as deleted but keeps its data, and returns no content on success.",
+      "why": "Likely reason: keeps data for audit and recovery. The docstring calls it a soft delete.",
+      "watch_out": "The data still exists and still shows in lists unless filtered, so a true removal request needs a separate step."
+    }
+  ],
+  "explained_at": "2026-11-11T22:49:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Exposes endpoints to create, list, fetch and soft-delete projects, and creates a development admin user when none exists.",
+  "purpose": "The project management API used to create and browse benchmarking projects.",
+  "why": "Likely reason: core project management. The TODO shows that sign in was planned but not added yet.",
+  "how": "1) Create checks for any user, creates a development admin if none exists, then saves the project under that user. 2) List reads projects with optional status and type filters and counts comparables and sources. 3) Get returns one project or a 404 error. 4) Delete sets the status to deleted instead of removing the row.",
+  "inputs": "Project name, asset type, location and metadata. Optional filters. Project ID.",
+  "outputs": "Project records as replies, a 404 error when missing, and an empty reply on delete.",
+  "risks": "There is no sign in, so every request acts as the first user in the table. A development admin with a placeholder password is created automatically. List shows deleted projects unless a status filter is given.",
+  "debug": "If a project does not appear, check its status and any filter used. If create fails, check the users table and the database connection.",
+  "summary_hash": "sha256:a8e73152c97fe04bec6ecff7e08ddbc6bafc5b0dda79b615ee789ff709451f98"
+}

@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "path": "api/models/schedule.py",
+  "language": "Python",
+  "lines": 217,
+  "hash": "sha256:96d63675f44be2754237372f20f85d282ddab5db1229903b827f1c585483e82e",
+  "area": "api-models",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are shown.",
+      "The analysis results are filled by placeholder routes in this codebase."
+    ]
+  },
+  "terms": [
+    {
+      "term": "CPM",
+      "meaning": "critical path method, finds the longest chain of tasks that sets the finish date"
+    },
+    {
+      "term": "Float",
+      "meaning": "how far a task can slip without moving the finish date"
+    },
+    {
+      "term": "Monte Carlo simulation",
+      "meaning": "running the schedule many times with random durations to get a range of finish dates"
+    },
+    {
+      "term": "P50, P80, P90",
+      "meaning": "the dates by which 50, 80 or 90 percent of simulated runs finish"
+    },
+    {
+      "term": "RCPSP",
+      "meaning": "resource-constrained project scheduling, reorders tasks when crews or equipment are limited"
+    }
+  ],
+  "depends_on": [
+    "sqlalchemy",
+    "database (local module)",
+    "projects table from api/models/project.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "91a456b0d03f47c2",
+      "title": "Imports and setup",
+      "what": "Brings in column types, date types, the JSON type, the link to the shared base and the portable UUID type.",
+      "why": "Likely reason: the schedule table classes need these tools.",
+      "watch_out": "Date types hold no time of day, so schedule times are lost."
+    },
+    {
+      "start": 11,
+      "end": 44,
+      "kind": "class",
+      "name": "ScheduleProject",
+      "id": "s2",
+      "hash": "471de1a7cb195973",
+      "title": "Schedule container record",
+      "what": "Defines the schedule container with name, origin file, calendars, baseline dates and duration, linked to a project.",
+      "why": "Likely reason: groups one schedule with everything computed from it.",
+      "watch_out": "Calendars are free-form JSON, so a wrong working-day rule silently changes every duration."
+    },
+    {
+      "start": 45,
+      "end": 102,
+      "kind": "class",
+      "name": "ScheduleActivity",
+      "id": "s3",
+      "hash": "3e6551b43bc6dd3c",
+      "title": "Single schedule task",
+      "what": "Defines one task with its ID, duration, early and late dates, float, critical flags, links, resources, constraints, phase and progress.",
+      "why": "Likely reason: the task is the unit every calculation works on.",
+      "watch_out": "No uniqueness rule is set on activity_id, so duplicate task IDs are accepted."
+    },
+    {
+      "start": 103,
+      "end": 139,
+      "kind": "class",
+      "name": "CPMAnalysis",
+      "id": "s4",
+      "hash": "3f783b18d21e93dd",
+      "title": "Critical path results record",
+      "what": "Defines the stored result of one critical path run: overall duration, critical task counts, critical path lists, fragility and solar pace figures.",
+      "why": "Likely reason: keeps the outcome so reports can show it without rerunning.",
+      "watch_out": "fragility_index is described as a percentage, but the type allows any number, so check units before reporting."
+    },
+    {
+      "start": 140,
+      "end": 178,
+      "kind": "class",
+      "name": "MonteCarloRun",
+      "id": "s5",
+      "hash": "4d1eb75230e06a93",
+      "title": "Risk simulation run record",
+      "what": "Defines one risk simulation run with its settings, percentile finish dates, mean and spread, and histograms.",
+      "why": "Likely reason: a run is expensive, so its outputs are stored.",
+      "watch_out": "The trial count and seed determine the result, so changing the seed changes the percentiles."
+    },
+    {
+      "start": 179,
+      "end": 217,
+      "kind": "class",
+      "name": "RCPSPScenario",
+      "id": "s6",
+      "hash": "c3b213de4ad1c5d8",
+      "title": "Alternative schedule plan record",
+      "what": "Defines one alternative plan with its rank, duration change, indirect cost change, moved tasks, resource use and explanation.",
+      "why": "Likely reason: lets users compare several plans against the baseline.",
+      "watch_out": "Savings are measured against the baseline, so they are only meaningful if the baseline is current."
+    }
+  ],
+  "explained_at": "2026-11-11T22:49:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines six tables for project schedules and their analyses: the schedule container, its tasks, critical path results, risk simulation runs, and resource-constrained scenarios.",
+  "purpose": "Stores imported or generated construction schedules and the results of three analysis methods run on them.",
+  "why": "Likely reason: schedules and their results must be kept so they can be compared and reported.",
+  "how": "1) The schedule container holds the file origin and calendars. 2) Activities hold each task with dates, float, links, resources and progress. 3) CPM results hold the critical path and solar pace figures. 4) Monte Carlo runs hold completion date percentiles. 5) RCPSP scenarios hold alternative plans and their savings.",
+  "inputs": "Imported schedule files and the outputs of analysis runs.",
+  "outputs": "Rows in the schedule_projects, schedule_activities, cpm_analyses, monte_carlo_runs and rcpsp_scenarios tables.",
+  "risks": "Predecessors and successors are stored as JSON lists, so they can drift apart. Float values and critical flags are stored, not recalculated, so they can be stale after edits.",
+  "debug": "If critical path numbers look stale, rerun the analysis. If a task link is missing, check the predecessors value on that activity.",
+  "summary_hash": "sha256:96d63675f44be2754237372f20f85d282ddab5db1229903b827f1c585483e82e"
+}

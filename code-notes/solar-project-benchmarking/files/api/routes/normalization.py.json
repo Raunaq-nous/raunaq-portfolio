@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "path": "api/routes/normalization.py",
+  "language": "Python",
+  "lines": 107,
+  "hash": "sha256:2f721ab18253a4de711f034b51ffca24d7ae1e26aee1bd437c4a4e36e3eec793",
+  "area": "api-routes",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Depends on service files not provided here.",
+      "A silent zero fallback can hide failed normalization.",
+      "No tests are shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Normalization",
+      "meaning": "adjusting costs so they can be compared on the same basis"
+    },
+    {
+      "term": "Base quarter",
+      "meaning": "the reference date that all costs are adjusted to"
+    },
+    {
+      "term": "MAD",
+      "meaning": "median absolute deviation, a spread measure that is not thrown off by outliers"
+    },
+    {
+      "term": "Outlier",
+      "meaning": "a value far away from the rest"
+    },
+    {
+      "term": "Service",
+      "meaning": "a helper class that holds the real calculation logic"
+    }
+  ],
+  "depends_on": [
+    "fastapi",
+    "pydantic",
+    "sqlalchemy",
+    "database (local module)",
+    "api/models/comparator.py",
+    "services/normalization.py",
+    "api/models/research.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "12bf1765dd35bfe1",
+      "title": "Imports and router setup",
+      "what": "Brings in the router, list type, request checking, errors, the database session, the comparator model and the normalization service.",
+      "why": "Likely reason: the two endpoints below need these tools.",
+      "watch_out": "The research model is imported inside one function with a different path style, which may fail if the app runs from another folder."
+    },
+    {
+      "start": 15,
+      "end": 21,
+      "kind": "class",
+      "name": "NormalizeRequest",
+      "id": "s2",
+      "hash": "77a35edb5a1d1256",
+      "title": "Normalize request shape",
+      "what": "Describes the normalize request: project ID, base quarter defaulting to 2024-Q2, base currency defaulting to USD, and optional comparator IDs.",
+      "why": "Likely reason: sets a common reference date and currency.",
+      "watch_out": "Defaults are fixed, so a caller who omits them silently gets 2024-Q2 and USD."
+    },
+    {
+      "start": 22,
+      "end": 27,
+      "kind": "class",
+      "name": "NormalizedComparator",
+      "id": "s3",
+      "hash": "70bdd3b3fd12a59f",
+      "title": "One normalized result shape",
+      "what": "Describes one normalized result: comparable ID, normalized cost per MW and the factors used.",
+      "why": "Likely reason: lets the caller see how each figure was adjusted.",
+      "watch_out": "The factors are untyped, so the caller must know their keys."
+    },
+    {
+      "start": 28,
+      "end": 32,
+      "kind": "class",
+      "name": "NormalizeResponse",
+      "id": "s4",
+      "hash": "6cecf0334a976da6",
+      "title": "Normalize reply shape",
+      "what": "Describes the reply: a count and the list of normalized results.",
+      "why": "Likely reason: a standard reply wrapper.",
+      "watch_out": "The count is the number processed, which is the same as the list length."
+    },
+    {
+      "start": 33,
+      "end": 37,
+      "kind": "class",
+      "name": "ConflictDetectionRequest",
+      "id": "s5",
+      "hash": "67fec1a9f1d6cb8c",
+      "title": "Conflict request shape",
+      "what": "Describes a conflict request with a project ID and the field name to check.",
+      "why": "Likely reason: conflicts are checked one field at a time.",
+      "watch_out": "The field name is free text, so a misspelled field returns no data rather than an error."
+    },
+    {
+      "start": 38,
+      "end": 47,
+      "kind": "class",
+      "name": "ConflictDetectionResponse",
+      "id": "s6",
+      "hash": "75380d37cc199706",
+      "title": "Conflict reply shape",
+      "what": "Describes the conflict reply with source count, median, spread, conflict list, recommendation and confidence label.",
+      "why": "Likely reason: gives enough to judge whether sources agree.",
+      "watch_out": "Conflicts are untyped dictionaries, so the reply does not check their contents."
+    },
+    {
+      "start": 48,
+      "end": 84,
+      "kind": "function",
+      "name": "normalize_comparators",
+      "id": "s7",
+      "hash": "ac92892326e6bfb0",
+      "title": "Normalize comparables endpoint",
+      "what": "Loads the project's comparables, optionally narrows them to chosen IDs, runs each through the normalization service and returns each result.",
+      "why": "Likely reason: keeps the adjustment logic in the service and this route as a thin wrapper.",
+      "watch_out": "A comparable with no normalized total is reported as zero per MW, which looks like a real value."
+    },
+    {
+      "start": 85,
+      "end": 107,
+      "kind": "function",
+      "name": "detect_conflicts",
+      "id": "s8",
+      "hash": "b700d47fc3596213",
+      "title": "Source conflict check endpoint",
+      "what": "Gathers extracted values for one field from the project's sources and asks the service to flag values far from the median and suggest an action.",
+      "why": "Likely reason: a sanity check on sourced numbers before they are used.",
+      "watch_out": "The service result is passed straight into the reply, so any key the reply does not expect makes the request fail."
+    }
+  ],
+  "explained_at": "2026-11-11T22:49:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Exposes endpoints that adjust comparable project costs to a common basis and flag conflicting values from different sources.",
+  "purpose": "Lets a caller normalize selected comparables and check whether a field's sources agree.",
+  "why": "Likely reason: comparable costs must share the same date, currency and location before they can be compared, and conflicting sources must be spotted.",
+  "how": "1) The normalize endpoint sets the base quarter and currency, selects the project's comparables, runs each through the normalization service and returns the results. 2) The conflicts endpoint gathers values for one field from the project's sources and asks the service to flag outliers and recommend an action.",
+  "inputs": "Project ID, base quarter, base currency and optional comparator IDs. Or a project ID and a field name.",
+  "outputs": "A count and each comparable's normalized cost per MW with its factors. Or a conflict summary with median, spread, conflicts, recommendation and confidence label.",
+  "risks": "The service logic is not in this packet, so the numbers cannot be verified here. A missing total becomes zero without warning. A missing factor key causes an error.",
+  "debug": "If normalized values show zero, check what the service returns for that comparable. If conflicts come back empty, check that the project has extracts for that field.",
+  "summary_hash": "sha256:2f721ab18253a4de711f034b51ffca24d7ae1e26aee1bd437c4a4e36e3eec793"
+}

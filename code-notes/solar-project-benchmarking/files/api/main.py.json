@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "path": "api/main.py",
+  "language": "Python",
+  "lines": 155,
+  "hash": "sha256:d146d051701a7a61055b8c24c9ee04e5bd24e7edb7de0508ce6bce77a982828f",
+  "area": "api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are caught and logged in a consistent way.",
+      "No test is visible for these endpoints or the startup behavior.",
+      "Cross-origin access is open to all origins.",
+      "Auto-reload is on by default, which is a development setting."
+    ]
+  },
+  "terms": [
+    {
+      "term": "FastAPI",
+      "meaning": "A Python framework for building web services that other programs or pages call."
+    },
+    {
+      "term": "Endpoint",
+      "meaning": "A web address the app answers, such as /health."
+    },
+    {
+      "term": "Router",
+      "meaning": "A group of related endpoints that is attached to the app under a shared path."
+    },
+    {
+      "term": "Lifespan",
+      "meaning": "Code that runs once when the app starts and once when it stops."
+    },
+    {
+      "term": "CORS",
+      "meaning": "A browser rule about which web pages may call this server. Allowing all origins makes it open to any site."
+    },
+    {
+      "term": "Health check",
+      "meaning": "A simple endpoint that reports whether the service is working, for monitoring tools or people."
+    },
+    {
+      "term": "Uvicorn",
+      "meaning": "The server program that actually listens for web requests and runs the app."
+    },
+    {
+      "term": "Structured logging",
+      "meaning": "Log lines written as machine-readable data, usually JSON, so they can be searched."
+    }
+  ],
+  "depends_on": [
+    "api/database.py",
+    "routes package (projects, research, normalization, capex, schedule, exports)",
+    "fastapi",
+    "structlog",
+    "uvicorn"
+  ],
+  "used_by": [
+    "Started by uvicorn with the target main:app",
+    "Run directly as a script for development"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 29,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "bb671ae226b7f31f",
+      "title": "Imports and logging setup",
+      "what": "Loads the web framework, database helpers, and route modules, then sets logs to a JSON line format.",
+      "why": "Logs in one machine-readable format make them easier to search later.",
+      "watch_out": "Route modules are imported here, so a broken import in any one of them stops the whole app from starting."
+    },
+    {
+      "start": 30,
+      "end": 81,
+      "kind": "function",
+      "name": "lifespan (part 1)",
+      "id": "s2",
+      "hash": "2fafa27517cca0fb",
+      "title": "Startup and shutdown steps",
+      "what": "On startup, checks the database, builds missing tables, and stops with an error if the database cannot be reached. On shutdown, writes a log line.",
+      "why": "Prevents the app from serving requests with no working database, and prepares tables before the first request.",
+      "watch_out": "A failing database stops startup, so check database settings before debugging the app itself."
+    },
+    {
+      "start": 82,
+      "end": 92,
+      "kind": "function",
+      "name": "lifespan (part 2)",
+      "id": "s3",
+      "hash": "32a8a3af060cee7a",
+      "title": "Cross-origin access setting",
+      "what": "Lets web pages from any address call this API from a browser, including pages opened as local files.",
+      "why": "The code comment says this is for local development so a frontend can open from file paths.",
+      "watch_out": "Allowing every origin is risky on a shared or production server, because any website can call the API from a visitor's browser."
+    },
+    {
+      "start": 93,
+      "end": 102,
+      "kind": "function",
+      "name": "value_error_handler",
+      "id": "s4",
+      "hash": "0329070382aac06d",
+      "title": "Turns bad input errors into 400 responses",
+      "what": "When code raises a ValueError, the caller receives a 400 Bad Request response with the error message, instead of a crash.",
+      "why": "Likely reason: gives callers a clear reply when they send bad input. No further reason is stated in the code.",
+      "watch_out": "The error message is sent back to the caller, so avoid putting private details into ValueError messages."
+    },
+    {
+      "start": 103,
+      "end": 111,
+      "kind": "function",
+      "name": "general_exception_handler",
+      "id": "s5",
+      "hash": "69c0309d8f079300",
+      "title": "Catches all other errors safely",
+      "what": "For any other unhandled error, logs the full details and returns a generic 500 message, so internal details are not shown to callers.",
+      "why": "Likely reason: keeps crash details out of responses while still recording them for the team.",
+      "watch_out": "Callers only see a generic message, so someone must read the logs to find the cause of a 500 error."
+    },
+    {
+      "start": 112,
+      "end": 133,
+      "kind": "function",
+      "name": "health_check",
+      "id": "s6",
+      "hash": "d6f7b3ae0a7a71d9",
+      "title": "Health check endpoint",
+      "what": "Answers at /health with whether the database is reachable, the database type, and the version number. This block also attaches six route groups under /api/v1.",
+      "why": "Lets monitoring tools or people check status without logging in. The router attachment is grouped here in the file.",
+      "watch_out": "Each health call runs a database test, so frequent polling adds load."
+    },
+    {
+      "start": 134,
+      "end": 146,
+      "kind": "function",
+      "name": "root",
+      "id": "s7",
+      "hash": "089f70c83898a21f",
+      "title": "Root information endpoint",
+      "what": "Answers at / with the app name, version, a short description, and links to the docs and health endpoints.",
+      "why": "Gives a simple landing response so a visitor can find the documentation.",
+      "watch_out": "The version 1.0.0 is written in several places in this file, so update every copy when releasing."
+    },
+    {
+      "start": 147,
+      "end": 155,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s8",
+      "hash": "6ae08a129e800ce5",
+      "title": "Direct start of the server",
+      "what": "When the file is run directly, starts the web server on the host and port from settings, with auto-reload on by default.",
+      "why": "Lets a developer start the app with one command without typing server options.",
+      "watch_out": "Auto-reload is on by default, which suits development but should be turned off on a shared server."
+    }
+  ],
+  "explained_at": "2026-11-11T22:51:57+00:00",
+  "explained_by": "haiku",
+  "summary": "Starts the web application, checks the database on startup, sets up error responses, and provides the health and root endpoints.",
+  "purpose": "The entry point for the whole platform. It attaches the route groups for projects, research, normalization, capex, schedule, and exports under their own web paths.",
+  "why": "Likely reason: one place that builds the app and connects its parts. The reason for open cross-origin access is not fully stated, though a comment says it is for local development.",
+  "how": "1. Configures structured JSON logging. 2. Creates the FastAPI app with a title and description. 3. On startup, the lifespan function tests the database, builds missing tables, and refuses to start if the connection fails. 4. Allows cross-origin requests from any site. 5. Registers handlers for ValueError and for any other error. 6. Adds the health and root endpoints. 7. Attaches six route groups under /api/v1 paths. 8. If the file is run directly, starts the server with host, port and reload settings.",
+  "inputs": "Environment settings API_HOST, API_PORT and RELOAD. Functions and flags from the database module. Route modules. Incoming web requests.",
+  "outputs": "A running web server. JSON responses for health, root and errors. Structured log lines. Interactive API documentation at /docs and /redoc.",
+  "risks": "Open cross-origin access lets any website call the API from a browser. Auto-reload is on by default. If the database is down, the app will not start. No login check is visible in this file, so protection must live elsewhere.",
+  "debug": "If the app will not start, read database_connection_failed or database_connection_test log lines first. If a request returns a 500 error, search logs for unhandled_exception, which includes the full trace. Visit /health to see whether the database is reachable. If a route is missing, check its import in the routes package.",
+  "summary_hash": "sha256:d146d051701a7a61055b8c24c9ee04e5bd24e7edb7de0508ce6bce77a982828f"
+}

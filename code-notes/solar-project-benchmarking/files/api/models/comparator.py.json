@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "path": "api/models/comparator.py",
+  "language": "Python",
+  "lines": 211,
+  "hash": "sha256:ad03ff230dbf61e07ea01c6ebca71c9a335f07854278a8db3c021420dc5f9fde",
+  "area": "api-models",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are shown.",
+      "Fields are duplicated between Comparator and ProjectInput.",
+      "How normalization fills the columns is not visible here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Reference class",
+      "meaning": "a group of similar past projects used to judge a new one"
+    },
+    {
+      "term": "Normalization",
+      "meaning": "adjusting old or foreign costs so they can be compared fairly"
+    },
+    {
+      "term": "PPI, CPI, FX",
+      "meaning": "price index, consumer price index, and exchange rate series used for adjustment"
+    },
+    {
+      "term": "AACE class",
+      "meaning": "a standard industry scale for how firm a cost estimate is"
+    },
+    {
+      "term": "PDRI",
+      "meaning": "project definition rating index, a score for how well a project is defined"
+    },
+    {
+      "term": "Numeric",
+      "meaning": "a decimal number type with fixed precision"
+    }
+  ],
+  "depends_on": [
+    "sqlalchemy",
+    "database (local module)",
+    "projects table from api/models/project.py"
+  ],
+  "used_by": [
+    "api/routes/normalization.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6caaab7c88978293",
+      "title": "Imports and setup",
+      "what": "Brings in column types, date handling and the shared base.",
+      "why": "Likely reason: the table classes below need these tools.",
+      "watch_out": "Both date and datetime types are used, so removing either breaks the file."
+    },
+    {
+      "start": 10,
+      "end": 64,
+      "kind": "class",
+      "name": "Comparator (part 1)",
+      "id": "s2",
+      "hash": "2c00bbebe315f67c",
+      "title": "Reference project facts",
+      "what": "Defines the comparator table's identity, location, size, technology, schedule and reported cost fields for one comparable project.",
+      "why": "Likely reason: keeps the facts about each reference project as they were reported.",
+      "watch_out": "Costs are in reported currency, so comparing rows without the currency and date fields gives wrong answers."
+    },
+    {
+      "start": 65,
+      "end": 110,
+      "kind": "class",
+      "name": "Comparator (part 2)",
+      "id": "s3",
+      "hash": "ae9de0badf618539",
+      "title": "Adjusted costs and trust flags",
+      "what": "Defines the normalized cost columns, confidence and source counts, inclusion flags, scope notes and site characteristics for each comparable.",
+      "why": "Likely reason: records how each comparable was adjusted and how far to trust it.",
+      "watch_out": "Whether a project is counted depends on is_included, so forgetting it skews results."
+    },
+    {
+      "start": 111,
+      "end": 132,
+      "kind": "class",
+      "name": "Index",
+      "id": "s4",
+      "hash": "27e459cfc584398b",
+      "title": "Price and exchange series table",
+      "what": "Defines a table of named price or exchange series, each holding dated values used to adjust costs over time.",
+      "why": "Likely reason: adjusts older costs to a common date.",
+      "watch_out": "Dates are stored as text keys in values_by_date, so a date written in a different format will not match."
+    },
+    {
+      "start": 133,
+      "end": 154,
+      "kind": "class",
+      "name": "LocationFactor",
+      "id": "s5",
+      "hash": "3fbd72dc893dfc8f",
+      "title": "Regional cost multiplier table",
+      "what": "Defines a table of regional multipliers for wages, purchasing power, productivity and materials.",
+      "why": "Likely reason: adjusts costs for where a project is built.",
+      "watch_out": "Multipliers default to 1.0, so a missing region silently means no adjustment."
+    },
+    {
+      "start": 155,
+      "end": 211,
+      "kind": "class",
+      "name": "ProjectInput",
+      "id": "s6",
+      "hash": "e64429125ec99a53",
+      "title": "Subject project inputs table",
+      "what": "Defines the table for the project being benchmarked, with its details, cost estimates, site traits and an auto-filled profile.",
+      "why": "Likely reason: keeps the project under review separate from the reference set.",
+      "watch_out": "The project id must be unique, so a project has one input row, and a second save must update the existing row."
+    }
+  ],
+  "explained_at": "2026-11-11T22:49:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines tables for comparable past projects, price and exchange indices, regional cost factors, and the subject project's own inputs.",
+  "purpose": "Stores the reference set used to benchmark a project: many similar projects with costs and traits, the indices used to adjust them, and the subject project's estimates.",
+  "why": "Likely reason: benchmarking needs projects compared on the same basis, so raw and adjusted figures are kept side by side.",
+  "how": "1) Comparator rows hold reported facts and costs. 2) Normalization columns hold adjusted costs and the factors used. 3) Confidence and source counts record how well each row is supported. 4) Index rows hold dated price series. 5) Location factor rows hold regional multipliers. 6) Project input rows hold the subject project's estimates, one per project.",
+  "inputs": "Comparator and project data from research or users. Index values from imports.",
+  "outputs": "Rows in the comparators, indices, location_factors and project_inputs tables.",
+  "risks": "Comparator and ProjectInput repeat many fields, so an update to one may not reach the other. Normalized values depend on the index values being right. Excluded comparators stay in the table unless filtered by is_included.",
+  "debug": "If a normalized value looks off, check norm_factors on that comparator, then the index values it used. If a comparator is missing from results, check is_included and exclusion_reason.",
+  "summary_hash": "sha256:ad03ff230dbf61e07ea01c6ebca71c9a335f07854278a8db3c021420dc5f9fde"
+}

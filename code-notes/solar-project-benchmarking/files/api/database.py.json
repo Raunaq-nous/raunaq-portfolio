@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "path": "api/database.py",
+  "language": "Python",
+  "lines": 179,
+  "hash": "sha256:3aef4ea8cc1400bdd7a26ed48ecda400769aef85938092398487d36e2bd81d46",
+  "area": "api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Connection errors are caught and logged, which is good.",
+      "No test is visible for this file.",
+      "Table creation checks only one table, so a damaged database may not be repaired.",
+      "Two separate connection listeners do overlapping work on each new connection.",
+      "The declarative_base import comes from an older SQLAlchemy path that may warn or change."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Database engine",
+      "meaning": "The object that knows how to reach the database and send it commands."
+    },
+    {
+      "term": "Session",
+      "meaning": "A short working space for reading and saving data, which must be committed to keep changes."
+    },
+    {
+      "term": "SQLite",
+      "meaning": "A database stored as one ordinary file, requiring no separate server."
+    },
+    {
+      "term": "PostgreSQL",
+      "meaning": "A full database server used for larger or shared deployments."
+    },
+    {
+      "term": "ORM",
+      "meaning": "A tool that lets Python classes stand for database tables, so code does not write raw database commands."
+    },
+    {
+      "term": "WAL mode",
+      "meaning": "A SQLite setting that writes changes to a side log first, which lets reads and writes overlap more smoothly."
+    },
+    {
+      "term": "Dependency",
+      "meaning": "A helper that FastAPI runs before a route, here used to hand each route its session."
+    },
+    {
+      "term": "Commit",
+      "meaning": "The step that makes saved session changes permanent in the database."
+    }
+  ],
+  "depends_on": [
+    "models (package of table definitions)",
+    "sqlalchemy",
+    "structlog",
+    "os (Python standard library)"
+  ],
+  "used_by": [
+    "api/main.py",
+    "Route modules that use get_db (not shown in this packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 59,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "79050361f6d60a82",
+      "title": "Settings and database connection setup",
+      "what": "Chooses where data is stored and builds the connection the app uses. By default it is one file in the project folder, so nothing needs to be installed.",
+      "why": "Lets the same code run on a laptop with SQLite and on a server with PostgreSQL, chosen by one setting.",
+      "watch_out": "Pointing DATABASE_URL at PostgreSQL switches several behaviors at once, including pool sizes, so check the related settings together."
+    },
+    {
+      "start": 60,
+      "end": 63,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "93a38806b24fb366",
+      "title": "Base class for table definitions",
+      "what": "Creates the parent class that every table definition must inherit from, so the app can find all tables when it builds them.",
+      "why": "Likely reason: SQLAlchemy needs one shared base that tracks every table. No further reason is stated in the code.",
+      "watch_out": "A model that does not inherit from this base will never be created by the table-building step."
+    },
+    {
+      "start": 64,
+      "end": 79,
+      "kind": "function",
+      "name": "get_db",
+      "id": "s3",
+      "hash": "5f4ba8fc49feabb9",
+      "title": "Per-request database session",
+      "what": "Gives each web request its own database session and closes it when the request finishes, even if an error happened.",
+      "why": "Keeps requests from sharing one working space and makes sure connections are not left open.",
+      "watch_out": "Autocommit is off, so changes made in a route are lost unless the route calls commit."
+    },
+    {
+      "start": 80,
+      "end": 97,
+      "kind": "function",
+      "name": "init_db",
+      "id": "s4",
+      "hash": "a69a851f0e18c80a",
+      "title": "Create all tables",
+      "what": "Creates every table defined in the models if it does not exist yet. It loads the full model list first so none are missed.",
+      "why": "The docstring says to use Alembic migrations in production, so this is a shortcut for development and setup.",
+      "watch_out": "A new model must be added to the import list here, or its table will be silently skipped."
+    },
+    {
+      "start": 98,
+      "end": 129,
+      "kind": "function",
+      "name": "check_and_init_db",
+      "id": "s5",
+      "hash": "cf88a809fe8c1eb5",
+      "title": "Startup check that builds missing tables",
+      "what": "On startup, looks for the projects table and builds all tables if it is missing. If the check itself fails, it tries the full build instead.",
+      "why": "Makes the database ready without a special development flag, as the docstring says.",
+      "watch_out": "Only the projects table is checked, so a database that has projects but lacks other tables will not be repaired."
+    },
+    {
+      "start": 130,
+      "end": 169,
+      "kind": "function",
+      "name": "test_connection",
+      "id": "s6",
+      "hash": "6e2225a61b8a092d",
+      "title": "Connection test used at startup and by health check",
+      "what": "Runs a trivial query to confirm the database answers, logs the result, and returns true or false. The health check endpoint also depends on it.",
+      "why": "Lets the app stop early at startup if the database is unreachable, and lets the health endpoint report status on demand.",
+      "watch_out": "Because the health endpoint calls this on every request, frequent polling runs a query and writes a log line each time."
+    },
+    {
+      "start": 170,
+      "end": 176,
+      "kind": "function",
+      "name": "receive_connect",
+      "id": "s7",
+      "hash": "e363eb6f261d68dc",
+      "title": "Logs each new connection",
+      "what": "Writes a log entry each time a new database connection opens, noting which database type is in use.",
+      "why": "Likely reason: helps trace connection activity when debugging. No further reason is stated in the code.",
+      "watch_out": "This is a second listener on the same connection event as the SQLite settings, so both run on every new connection and may add log noise."
+    },
+    {
+      "start": 177,
+      "end": 179,
+      "kind": "function",
+      "name": "receive_close",
+      "id": "s8",
+      "hash": "3dcb77a625867385",
+      "title": "Logs each closed connection",
+      "what": "Writes a log entry when a database connection closes.",
+      "why": "Likely reason: the same debugging purpose as the open log.",
+      "watch_out": "No log level filter is set in the visible code, so these entries may appear in normal logs."
+    }
+  ],
+  "explained_at": "2026-11-11T22:51:57+00:00",
+  "explained_by": "haiku",
+  "summary": "Connects the app to its database, creates missing tables on startup, and gives each web request its own database session.",
+  "purpose": "Gives the rest of the app one shared place to connect to the database. It uses a single SQLite file by default and switches to PostgreSQL when a DATABASE_URL setting is given.",
+  "why": "Likely reason: keeps database setup in one file so other parts of the app do not each configure it. The SQLite default lets the app run on locked-down computers without installing a database server, as the file header states.",
+  "how": "1. Reads the DATABASE_URL setting, or builds a default SQLite file path in the project root. 2. Creates the connection engine with settings that differ for SQLite and PostgreSQL. 3. Registers SQLite safety settings that run each time a connection opens. 4. On startup, the test_connection and check_and_init_db functions confirm the database answers and create missing tables. 5. The get_db function gives each request a session and closes it when the request ends.",
+  "inputs": "Environment settings DATABASE_URL, DB_ECHO, DB_POOL_SIZE and DB_MAX_OVERFLOW. Table definitions from the models package.",
+  "outputs": "A database engine, a session factory, a base class for table definitions, and the get_db function. Writes the solar_benchmarking.db file when SQLite is used. Writes log lines about connections and table creation.",
+  "risks": "Table creation only checks whether a table named projects exists, so a partly built database can be skipped. Setting DB_ECHO to true floods logs with every SQL statement. The health check runs a connection test on every call. Any model not listed in the import list will not get a table.",
+  "debug": "If the app will not start, look for database_connection_test or database_connection_failed in the logs, then confirm DATABASE_URL and that the folder holding the database file is writable. If a table is missing, check that its model appears in the import list inside init_db. If you see extra files named with -wal or -shm next to the database, that is normal for SQLite WAL mode.",
+  "summary_hash": "sha256:3aef4ea8cc1400bdd7a26ed48ecda400769aef85938092398487d36e2bd81d46"
+}
