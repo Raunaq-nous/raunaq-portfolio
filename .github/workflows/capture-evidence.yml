@@ -1,0 +1,54 @@
+name: Capture research evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Recapture every source, not just new or changed ones'
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - 'public/notebooks/*/evidence/manifest.json'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: capture-evidence
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright and PDF tools
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y poppler-utils
+      - name: Capture every notebook
+        env:
+          FORCE: ${{ inputs.force && '1' || '0' }}
+        run: |
+          for d in public/notebooks/*/evidence; do
+            if [ -f "$d/manifest.json" ]; then
+              echo "== $d"
+              EVIDENCE_DIR="$d" node scripts/capture-evidence.mjs || echo "capture failed for $d"
+            fi
+          done
+      - name: Commit captures
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add public/notebooks/*/evidence
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "chore: capture research evidence"
+          git pull --rebase
+          git push
