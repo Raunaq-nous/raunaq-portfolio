@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "path": "src/server/anchor-service.ts",
+  "language": "TypeScript",
+  "lines": 162,
+  "hash": "sha256:c20b0acc1f07b2356987b588d5e16150f866483efb7207239bcd67b83a69ee0c",
+  "area": "src-server",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Two requests at the same time could create duplicate anchors.",
+      "Anchors made in the same millisecond can be chained in the wrong order.",
+      "Verification does not check the chain link between anchors.",
+      "Anchors of types other than verification results always show a mismatch.",
+      "No uniqueness rule or transaction is visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "hash",
+      "meaning": "a short fixed-length code computed from data, so any change in the data changes the code"
+    },
+    {
+      "term": "SHA-256",
+      "meaning": "a standard hashing method that always produces a 64-character code"
+    },
+    {
+      "term": "fingerprint",
+      "meaning": "another word used in this explanation for a hash of the data"
+    },
+    {
+      "term": "canonical serialization",
+      "meaning": "turning data into text in one fixed order so the same data always gives the same text"
+    },
+    {
+      "term": "hash chain",
+      "meaning": "a list where each entry stores the previous entry's hash, so changes to earlier entries show up"
+    },
+    {
+      "term": "anchor",
+      "meaning": "a permanent record that stores a hash of a verification result, plus who signed it and when"
+    },
+    {
+      "term": "idempotent",
+      "meaning": "safe to repeat, because repeating it gives the same result without duplicates"
+    },
+    {
+      "term": "payload",
+      "meaning": "the data inside a record"
+    }
+  ],
+  "depends_on": [
+    "@/server/database",
+    "@/types/anchor",
+    "node:crypto"
+  ],
+  "used_by": [
+    "src/server/anchor-service.test.ts",
+    "Anchor API routes, not in the packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup, AnchorNotFoundError, VerificationResultNotFoundError",
+      "id": "s1",
+      "hash": "a1d8dce5b366029e",
+      "title": "Imports and error types",
+      "what": "Brings in hashing, ID creation, the database and the anchor types, and defines two error types for a missing anchor and a missing verification result.",
+      "why": "Reason not stated in the code, though the error types let callers tell these cases apart.",
+      "watch_out": ""
+    },
+    {
+      "start": 8,
+      "end": 26,
+      "kind": "function",
+      "name": "canonicalSerialize",
+      "id": "s2",
+      "hash": "f16fc2e4a0ea1180",
+      "title": "Stable text form of data",
+      "what": "Turns any JSON-style data into text with object keys sorted alphabetically, so the same content always gives the same text.",
+      "why": "Likely reason: the hash must not change just because keys were written in a different order.",
+      "watch_out": "Keys with no value are dropped, and an array item with no value can produce malformed text."
+    },
+    {
+      "start": 27,
+      "end": 34,
+      "kind": "function",
+      "name": "computePayloadHash",
+      "id": "s3",
+      "hash": "69e1d21203a91b80",
+      "title": "Fingerprint of data",
+      "what": "Computes a 64-character SHA-256 code from the stable text, so any change to the data changes the code.",
+      "why": "Likely reason: this is the tamper check the whole feature depends on.",
+      "watch_out": "Changing how stored data is shaped changes every fingerprint, so older anchors will report mismatches."
+    },
+    {
+      "start": 35,
+      "end": 92,
+      "kind": "class",
+      "name": "AnchorService, anchorService (part 1)",
+      "id": "s4",
+      "hash": "7097e5f4360707af",
+      "title": "Creating an anchor: lookup and chaining",
+      "what": "Returns the existing anchor if one exists. Otherwise it finds the verification result, computes its fingerprint, and finds the most recent anchor in the same case to link to.",
+      "why": "Likely reason: prevents duplicate anchors and links each anchor to the one before it.",
+      "watch_out": "The previous anchor is chosen by time and then by a random ID, so anchors saved in the same millisecond can be linked in the wrong order."
+    },
+    {
+      "start": 93,
+      "end": 137,
+      "kind": "class",
+      "name": "AnchorService, anchorService (part 2)",
+      "id": "s5",
+      "hash": "c10e5e311e7332b5",
+      "title": "Saving anchors, listing and reading them, and starting verification",
+      "what": "Writes the new anchor row. Lists all anchors for a case in time order, fetches one anchor by its ID, and starts verification by loading that anchor.",
+      "why": "Likely reason: the anchor log is only written to, never edited, so saving is the only write step.",
+      "watch_out": "The existence check and the save are separate, so two simultaneous requests could both create an anchor."
+    },
+    {
+      "start": 138,
+      "end": 162,
+      "kind": "method",
+      "name": "AnchorService, anchorService: if",
+      "id": "s6",
+      "hash": "24292297817cb295",
+      "title": "Recomputing and comparing fingerprints",
+      "what": "Recomputes the fingerprint from the current verification result, compares it with the stored one, and returns a public summary with the match flag, hashes, signer, time and case reference.",
+      "why": "Likely reason: the comparison proves whether the data changed after signing.",
+      "watch_out": "Only verification result anchors are recomputed, so other anchor types always report a mismatch, and a deleted record shows as a mismatch."
+    }
+  ],
+  "explained_at": "2026-11-11T21:30:38+00:00",
+  "explained_by": "haiku",
+  "summary": "Creates tamper-evident anchor records for verification results, and later checks whether the stored data still matches its fingerprint.",
+  "purpose": "Gives the app a way to show that a verification result has not changed since it was signed.",
+  "why": "Likely reason: an append-only log with fingerprints makes later changes detectable. Other reasons are not stated in the code.",
+  "how": "Creating an anchor: if one already exists, return it. Otherwise read the result, compute its fingerprint, find the previous anchor in the same case, create an ID and time, and save the row. Verifying an anchor: load the anchor, recompute the fingerprint from the current data, compare it with the stored one, and return a summary with no personal data.",
+  "inputs": "Case ID, result ID, an optional signer name, and an anchor ID.",
+  "outputs": "Anchor records, lists of anchors, and verification summaries with a match flag and both hashes.",
+  "risks": "The check for an existing anchor and the save are separate steps, so two simultaneous requests could both create one. Anchors made in the same millisecond can chain in the wrong order. Verification compares the data but does not check the chain link. Anchors of other types always report a mismatch.",
+  "debug": "If matches is false unexpectedly, compare the stored and recomputed hashes, then check the verification result row for recent edits. If chain order looks wrong, check the signed time values. If duplicates appear, check for a uniqueness rule in the database, which is not in the packet.",
+  "summary_hash": "sha256:c20b0acc1f07b2356987b588d5e16150f866483efb7207239bcd67b83a69ee0c"
+}

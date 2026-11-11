@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "path": "supabase/schema.sql",
+  "language": "SQL",
+  "lines": 38,
+  "hash": "sha256:74e4159697f40959147efee99e93d7abe3419e11954a5fa31554407b617eae66",
+  "area": "other",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No migration history is visible.",
+      "Text payloads are not checked by the database.",
+      "Links between tables are not enforced."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Table",
+      "meaning": "a grid of rows that stores one kind of record"
+    },
+    {
+      "term": "Index",
+      "meaning": "a lookup aid that speeds up searches"
+    },
+    {
+      "term": "Trigger",
+      "meaning": "an action the database runs automatically when a change happens"
+    },
+    {
+      "term": "Append-only",
+      "meaning": "records can be added but not changed or removed"
+    },
+    {
+      "term": "Supabase",
+      "meaning": "a hosted Postgres database service"
+    },
+    {
+      "term": "Foreign key",
+      "meaning": "a link that requires a matching record in another table"
+    }
+  ],
+  "depends_on": [
+    "Postgres database (Supabase)"
+  ],
+  "used_by": [
+    "Not visible in this file. The app's database code is expected to read these tables."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 22,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s1",
+      "hash": "005bd7369e972500",
+      "title": "Creates data tables and indexes",
+      "what": "Creates a table for each kind of record, such as cases, documents, parcels, verification results and anchor events. Most tables store their details as one text payload tied to a case ID. The anchor events table stores fingerprints and the signer, and allows only one anchor per subject. Indexes speed up lookups by case. The end of this section starts a rule function that the next section finishes.",
+      "why": "Likely reason: each table is created only if missing, so the script can be run again safely.",
+      "watch_out": "Because most details are stored as text, the database cannot check their contents, so bad data will not be caught here."
+    },
+    {
+      "start": 23,
+      "end": 32,
+      "kind": "statement",
+      "name": "BEGIN",
+      "id": "s2",
+      "hash": "cfd5c4913de06d19",
+      "title": "Rule that blocks changes to anchors",
+      "what": "Finishes a database function that raises an error with the message that anchor events are append-only, meaning they can be added but not changed or removed.",
+      "why": "Likely reason: anchored fingerprints are meant to be a permanent record, so the database itself refuses edits.",
+      "watch_out": "Only ordinary changes are blocked. A database administrator who disables the trigger can still edit anchors, and a wrong anchor cannot be corrected by normal means."
+    },
+    {
+      "start": 33,
+      "end": 38,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s3",
+      "hash": "8a0d6754bb8301c7",
+      "title": "Attaches the rule to anchor events",
+      "what": "Adds a trigger to the anchor events table so every update or delete calls the rule. It is added only if a trigger with that name does not already exist.",
+      "why": "Likely reason: prevents the trigger from being added twice when the script is run again.",
+      "watch_out": "The check looks only at the trigger name, so if someone changes the trigger by hand, running the script again will not restore it."
+    }
+  ],
+  "explained_at": "2026-11-11T22:07:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Database setup script that creates the data tables and makes anchor records permanent.",
+  "purpose": "Creates the tables the app uses and locks anchor events against changes.",
+  "why": "Likely reason: anchor records act as proof, so they must not be altered after they are saved.",
+  "how": "First, the script creates each table and its indexes only if they are missing. Then it defines a rule that rejects any update or delete. Last, it attaches that rule to the anchor events table, but only if it is not already attached.",
+  "inputs": "Run in the Supabase SQL editor. It takes no inputs.",
+  "outputs": "Database tables, indexes, a rule function and a trigger.",
+  "risks": "The trigger protects only anchor events. Most tables store details as unchecked text. No foreign keys link records to cases, so related rows are not enforced.",
+  "debug": "If an edit to anchor events fails, that is the intended rule. If an anchor must be corrected, an administrator has to handle the trigger. If a table is missing, run the script again.",
+  "summary_hash": "sha256:74e4159697f40959147efee99e93d7abe3419e11954a5fa31554407b617eae66"
+}

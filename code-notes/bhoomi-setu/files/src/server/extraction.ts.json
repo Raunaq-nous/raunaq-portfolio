@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "path": "src/server/extraction.ts",
+  "language": "TypeScript",
+  "lines": 77,
+  "hash": "sha256:f0dd0e01cdddd2e17eb1699d09d1f10e9ccb9c8dec43dba54a792149beb537f6",
+  "area": "src-server",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Has tests for accepted and rejected facts and for provider failures.",
+      "Provider behavior is tested with fakes rather than live services."
+    ]
+  },
+  "terms": [
+    {
+      "term": "zod",
+      "meaning": "a library that checks that data has the expected shape before the app uses it"
+    },
+    {
+      "term": "schema",
+      "meaning": "the written rules describing the required shape of data"
+    },
+    {
+      "term": "provider",
+      "meaning": "an AI service the app asks to read the document"
+    },
+    {
+      "term": "repository",
+      "meaning": "the part of the code that saves and loads records"
+    },
+    {
+      "term": "offset",
+      "meaning": "the position of a quote counted from the start of the text, starting at zero"
+    }
+  ],
+  "depends_on": [
+    "src/server/database.ts",
+    "@google/genai",
+    "openai",
+    "zod",
+    "src/server/extraction-prompt.ts",
+    "src/server/metrics.ts",
+    "src/types/case.ts"
+  ],
+  "used_by": [
+    "src/server/extraction.test.ts",
+    "src/server/document-application-service.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup, PreparedDocument, factKeys, extractedDocumentSchema, extractionJsonSchema",
+      "id": "s1",
+      "hash": "361cb73ad971aa96",
+      "title": "Types, limits and the output shape",
+      "what": "Defines the document shape sent for extraction, the allowed fact types (document type, person name, relationship, identifiers, area, unit, location, survey reference, and record date), the output rules the AI must follow, the two error types, the provider interface, and the provider names.",
+      "why": "Gives the rest of the file one agreed vocabulary and a single list of allowed fact types.",
+      "watch_out": "Adding a fact type requires updating this list, the schema, and the checking rules together."
+    },
+    {
+      "start": 20,
+      "end": 30,
+      "kind": "class",
+      "name": "OpenAIExtractionProvider",
+      "id": "s2",
+      "hash": "41475f3d52dfafd4",
+      "title": "OpenAI provider",
+      "what": "Sends the document and rules to an OpenAI model with a strict output shape and returns the parsed answer. It requires a key when created and defaults to a small OpenAI model unless a model setting is given.",
+      "why": "Gives the app an option to use OpenAI for extraction.",
+      "watch_out": "The default model name is written in code, so it may need updating when OpenAI retires that model."
+    },
+    {
+      "start": 31,
+      "end": 41,
+      "kind": "class",
+      "name": "GeminiExtractionProvider, parseExtractionProvider, resolveExtractionProvider",
+      "id": "s3",
+      "hash": "5df91be0fa3e0a1a",
+      "title": "Gemini provider and provider choice",
+      "what": "Sends the document and rules to a Gemini model asking for JSON, and returns the parsed answer. Choosing the provider only accepts exactly gemini or openai from the setting, otherwise it raises a configuration error.",
+      "why": "Lets the team pick a provider explicitly and keeps an unknown choice from silently running.",
+      "watch_out": "There is no default provider, so a missing setting stops extraction rather than choosing one."
+    },
+    {
+      "start": 42,
+      "end": 53,
+      "kind": "function",
+      "name": "validateExtraction, normalizeIdentifier, normalizeText, normalizeAreaUnit, labelledValue",
+      "id": "s4",
+      "hash": "82332b639bb9dc09",
+      "title": "Output checking and text helpers",
+      "what": "First checks the answer's shape, then checks every fact: its quote must match the source at the stated positions and must contain the value. Small helpers normalize identifiers, text and area units, pull the value after a label such as a field name followed by a colon, and read a number and unit from an area phrase.",
+      "why": "This is the main gate that keeps unproven AI facts out of the stored record.",
+      "watch_out": "This is the most important safety code in the file. Any loosening here lets unverified facts through."
+    },
+    {
+      "start": 54,
+      "end": 68,
+      "kind": "function",
+      "name": "isFactGrounded, ExtractionRepository",
+      "id": "s5",
+      "hash": "39d5c90d4cb7469f",
+      "title": "Per-type grounding rules and repository contract",
+      "what": "For each fact type, decides whether the value agrees with its quote: identifiers must match exactly after normalizing, the area must equal the number in the quote, the unit must match, and names, types, references, locations and dates must match the text after their label. Other types must match the whole quote. Also defines what a storage repository must offer: save and fetch the latest record for a document.",
+      "why": "Different kinds of facts need different comparisons, and this keeps them separate.",
+      "watch_out": "The label lists are fixed, so a source document that uses a different label will not be recognized and its facts will be rejected."
+    },
+    {
+      "start": 69,
+      "end": 73,
+      "kind": "class",
+      "name": "SqliteExtractionRepository",
+      "id": "s6",
+      "hash": "b3c1f5bb91ea2af9",
+      "title": "SQLite-backed extraction storage",
+      "what": "Saves each extraction record as text in the document extraction table and reads back the newest one for a document.",
+      "why": "Keeps a history of extraction attempts and their results.",
+      "watch_out": "The class name says SQLite, but it uses the shared database, which may be Postgres. The name can mislead."
+    },
+    {
+      "start": 74,
+      "end": 77,
+      "kind": "class",
+      "name": "ExtractionService",
+      "id": "s7",
+      "hash": "fee7ca5ae1f7d6d5",
+      "title": "Extraction service",
+      "what": "Runs one document through the chosen provider, checks the answer, builds a record with an identifier and timestamp, saves it, and records timing. If anything fails, it saves a failed record with an error code and does not throw.",
+      "why": "Gives the rest of the app one safe call to extract facts.",
+      "watch_out": "Failed attempts are saved too, so the stored history can contain many failures if the provider is down."
+    }
+  ],
+  "explained_at": "2026-11-11T21:35:48+00:00",
+  "explained_by": "haiku",
+  "summary": "Sends a land document to an AI provider, checks every returned fact against its quote in the source text, and saves the result or the failure.",
+  "purpose": "Turns document text into reviewed-looking structured facts without trusting the AI's output.",
+  "why": "Likely reason: AI output can be wrong, so every fact must be proven by a quote before it is stored. The separate providers exist so the team can choose between Gemini and OpenAI.",
+  "how": "The chosen provider receives the document text with the rules and a fixed output shape. The answer is checked against the schema, then each fact's quote is checked at its stated position and against the rule for its type. Valid results are saved with an identifier and timestamp. Errors are caught and saved as failed attempts with a code. Timing and counts are recorded.",
+  "inputs": "A prepared document with its text and identifiers, and environment settings for the provider and its key.",
+  "outputs": "A stored extraction record marked completed or failed, and a fact list when it succeeds.",
+  "risks": "Nothing is extracted if no provider is configured. Each fact check is strict, so a small wording change in the source can cause a rejection. The default repository writes to the shared database.",
+  "debug": "If every extraction fails, check the provider environment setting and key, then the error code saved on the failed record. If facts are rejected, compare the quote and its positions with the source text and the rule for that fact type.",
+  "summary_hash": "sha256:f0dd0e01cdddd2e17eb1699d09d1f10e9ccb9c8dec43dba54a792149beb537f6"
+}

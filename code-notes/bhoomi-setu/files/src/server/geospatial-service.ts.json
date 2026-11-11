@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "path": "src/server/geospatial-service.ts",
+  "language": "TypeScript",
+  "lines": 52,
+  "hash": "sha256:291c658f1d9c3fed7f8737605f710c82b4cce051834998d9be333a9d5d426cb2",
+  "area": "src-server",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Does not check for self-crossing outlines, which can give misleading areas.",
+      "The size limit name says bytes but the check measures characters."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Turf",
+      "meaning": "a JavaScript library that performs geographic calculations such as area"
+    },
+    {
+      "term": "longitude and latitude",
+      "meaning": "east-west and north-south map positions; longitude is always given first"
+    },
+    {
+      "term": "square metre",
+      "meaning": "a unit of area equal to a square one metre wide"
+    },
+    {
+      "term": "hectare",
+      "meaning": "10,000 square metres"
+    },
+    {
+      "term": "acre",
+      "meaning": "a traditional unit of land area, here 4046.86 square metres"
+    }
+  ],
+  "depends_on": [
+    "@turf/area",
+    "src/types/geospatial.ts"
+  ],
+  "used_by": [
+    "src/server/geospatial-service.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup, GeometryValidationError, isPosition, equalPosition",
+      "id": "s1",
+      "hash": "19b6a4a88f6540b2",
+      "title": "Imports, size limit and basic helpers",
+      "what": "Brings in the area library and shape types, sets the size limit at 100,000, defines the validation error type, and provides helpers that check a position is two finite numbers and that two positions are equal.",
+      "why": "Gives the validators their building blocks and a fixed limit.",
+      "watch_out": "The limit is a fixed value and is not configurable from outside."
+    },
+    {
+      "start": 10,
+      "end": 22,
+      "kind": "function",
+      "name": "validateRing",
+      "id": "s2",
+      "hash": "faeb22ff3a84e9e2",
+      "title": "Ring check",
+      "what": "Checks that a ring has at least four points, that each point is a valid longitude and latitude within range, and that the first and last points are the same.",
+      "why": "Makes sure each outline is a closed, mappable shape before it is used.",
+      "watch_out": "It does not check whether the outline crosses itself, so a bow-tie shape would pass."
+    },
+    {
+      "start": 23,
+      "end": 27,
+      "kind": "function",
+      "name": "validatePolygon",
+      "id": "s3",
+      "hash": "80185155f2e2af60",
+      "title": "Polygon check",
+      "what": "Checks that a polygon has at least one ring and checks each ring.",
+      "why": "A polygon is only valid when all its rings are valid.",
+      "watch_out": ""
+    },
+    {
+      "start": 28,
+      "end": 41,
+      "kind": "function",
+      "name": "validateParcelGeoJson",
+      "id": "s4",
+      "hash": "38d25dcf3589caac",
+      "title": "Overall shape check",
+      "what": "Checks the size of the serialized input, that it is an object, and that its type is Polygon or MultiPolygon. Returns a clean copy with only the type and coordinates, dropping any other fields.",
+      "why": "Single entry point that makes sure stored shapes are clean and of allowed types.",
+      "watch_out": "Extra fields such as names are silently removed, so they never reach storage through this path."
+    },
+    {
+      "start": 42,
+      "end": 52,
+      "kind": "class",
+      "name": "GeospatialService, geospatialService",
+      "id": "s5",
+      "hash": "8649cea80c98dd24",
+      "title": "Geospatial service and area calculation",
+      "what": "Provides a validation method and an area calculation that validates the shape, measures its square metres with Turf, rejects zero or invalid areas, and returns hectares and acres from the same figure.",
+      "why": "Gives the rest of the app one trusted source for land area.",
+      "watch_out": "The acre conversion uses a fixed constant, so areas match the international acre only."
+    }
+  ],
+  "explained_at": "2026-11-11T21:35:48+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that land shape data is a valid, closed, bounded GeoJSON polygon or multi-polygon, and calculates its area in square metres, hectares and acres.",
+  "purpose": "Makes sure only usable shapes are stored and that area figures come from the stored shape rather than typed-in numbers.",
+  "why": "Likely reason: area figures are shown to users, so they must come from validated geometry. Reason for the size limit is not stated in the code.",
+  "how": "It first checks the size of the serialized shape, then checks it is an object of a supported type, then checks each ring's points and closure. It rebuilds a clean copy with only type and coordinates. For area, it validates the shape, measures it with the Turf library, rejects zero areas, and converts to hectares and acres.",
+  "inputs": "A parcel shape as a plain object in GeoJSON form.",
+  "outputs": "A cleaned shape, or an error explaining what is wrong, and an area result with its source marked as calculated from geometry.",
+  "risks": "The size limit counts characters of the text rather than bytes, despite the name. The ring check does not detect self-crossing outlines. Extra fields in the input are silently dropped.",
+  "debug": "If a shape is rejected, read the error message, which states the failed rule. If areas look wrong, check that coordinates are longitude then latitude and that the shape is closed.",
+  "summary_hash": "sha256:291c658f1d9c3fed7f8737605f710c82b4cce051834998d9be333a9d5d426cb2"
+}

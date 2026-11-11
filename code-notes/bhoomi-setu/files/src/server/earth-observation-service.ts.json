@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "path": "src/server/earth-observation-service.ts",
+  "language": "TypeScript",
+  "lines": 70,
+  "hash": "sha256:78316ef75cadcd283a7d7d82c556f4e7ffc42341b101ba409415c58a8c3bf3e8",
+  "area": "src-server",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Has tests for stable, changed, and insufficient outcomes.",
+      "Only the first parcel is handled, which the tests do not cover."
+    ]
+  },
+  "terms": [
+    {
+      "term": "imagery",
+      "meaning": "pictures of land taken from above, here synthetic demo pictures"
+    },
+    {
+      "term": "snapshot",
+      "meaning": "one reading of the land at one point in time"
+    },
+    {
+      "term": "built-up area",
+      "meaning": "land covered by buildings and paved surfaces"
+    },
+    {
+      "term": "provider",
+      "meaning": "the part of the code that supplies the imagery readings"
+    }
+  ],
+  "depends_on": [
+    "src/server/case-application-service.ts",
+    "src/server/imagery-provider.ts",
+    "src/types/earth-observation.ts"
+  ],
+  "used_by": [
+    "src/server/earth-observation-service.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 4,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6493ef29ed0e2fd3",
+      "title": "Imports",
+      "what": "Brings in the case lookup, the imagery provider, and the result types.",
+      "why": "Needed by the service below.",
+      "watch_out": ""
+    },
+    {
+      "start": 5,
+      "end": 9,
+      "kind": "value",
+      "name": "indicators",
+      "id": "s2",
+      "hash": "ac5a168863d93799",
+      "title": "Indicator list",
+      "what": "Lists the two measures tracked: vegetation change and built-up change, each with a fixed explanation key.",
+      "why": "Keeps the set of measures in one place.",
+      "watch_out": "Adding a measure here also requires matching explanation text elsewhere."
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "kind": "value",
+      "name": "earthObservationPolicy",
+      "id": "s3",
+      "hash": "f1b792b615ad7fad",
+      "title": "Threshold policy",
+      "what": "Holds the policy identifier and the two cut-off values in percentage points: four for stable and ten for noticeable.",
+      "why": "Fixes the rules so results are repeatable and can be shown in the output.",
+      "watch_out": "The values are shown to users through the policy object, so changing them changes what the results mean."
+    },
+    {
+      "start": 16,
+      "end": 23,
+      "kind": "function",
+      "name": "classifySyntheticContextChange",
+      "id": "s4",
+      "hash": "ce3599d9d8d2e93c",
+      "title": "Change label rule",
+      "what": "Turns a size of change into one of three labels: stable, small change, or noticeable change. A missing value gives insufficient evidence.",
+      "why": "Gives a simple, repeatable answer to how big a change is.",
+      "watch_out": "It uses the size of the change without its direction, so a drop and a rise of the same size get the same label. Boundary values are included in the lower label."
+    },
+    {
+      "start": 24,
+      "end": 37,
+      "kind": "function",
+      "name": "insufficient",
+      "id": "s5",
+      "hash": "d346c18e5af8bf43",
+      "title": "Insufficient result builder",
+      "what": "Builds a complete result with every measure marked insufficient evidence and no snapshots, marked as having no synthetic sample.",
+      "why": "Gives a clear answer instead of an error when a case has no comparison available.",
+      "watch_out": "Results from this path carry no numbers, so callers must not treat them as a zero change."
+    },
+    {
+      "start": 38,
+      "end": 47,
+      "kind": "function",
+      "name": "buildIndicators",
+      "id": "s6",
+      "hash": "190584ef4c093561",
+      "title": "Measure comparison",
+      "what": "Takes the earlier and later snapshots and, for each measure, subtracts the earlier value from the later value, labels the change, and marks the quality as demonstration only when both snapshots are demonstration quality.",
+      "why": "This is the core comparison that produces the indicator values.",
+      "watch_out": "If either value is missing, the change is set to unknown, not zero, so a missing reading cannot look like no change."
+    },
+    {
+      "start": 48,
+      "end": 54,
+      "kind": "function",
+      "name": "overall",
+      "id": "s7",
+      "hash": "314986143d71e5db",
+      "title": "Overall label",
+      "what": "Chooses the most serious label across all measures, with insufficient evidence first, then noticeable change, small change, and stable.",
+      "why": "Gives one summary label for the whole case.",
+      "watch_out": "One unknown measure makes the overall result insufficient, even if the other measure is clear."
+    },
+    {
+      "start": 55,
+      "end": 70,
+      "kind": "class",
+      "name": "EarthObservationService, earthObservationService",
+      "id": "s8",
+      "hash": "67d6a2eb4bc20d79",
+      "title": "Earth observation service",
+      "what": "Provides the service that gets the insight for a case, using the provider given at construction and defaulting to the synthetic provider, and exports one shared instance.",
+      "why": "Gives the rest of the app one call to get land-change context.",
+      "watch_out": "Only the first land parcel from the case detail is used, so other parcels are ignored."
+    }
+  ],
+  "explained_at": "2026-11-11T21:35:48+00:00",
+  "explained_by": "haiku",
+  "summary": "Compares two synthetic land-imagery readings for a case, classifies how much vegetation and built-up area changed, and reports a clear insufficient-evidence result when comparison is not possible.",
+  "purpose": "Gives the app a simple, labelled view of land change for demo cases, clearly marked as not legal evidence.",
+  "why": "Likely reason: the app wants to show possible context changes without claiming ownership or legal facts. The safety flags in the output make that intent explicit.",
+  "how": "It finds the case and its first land parcel, asks the imagery provider for snapshots, and needs at least two. It measures the change for vegetation and built-up area, labels each change against fixed thresholds, then gives the worst label as the overall result.",
+  "inputs": "A case identifier, the case detail, and imagery snapshots from the provider.",
+  "outputs": "An insight object with the parcel identity, the snapshots, one indicator per measure, an overall label, the policy, and safety flags saying it is synthetic and not authoritative.",
+  "risks": "Only the first land parcel is used, so a case with several parcels would be reported incorrectly. A missing value makes the whole result insufficient rather than partly useful.",
+  "debug": "If the label looks wrong, check the two snapshot values and the threshold policy. If the result is insufficient, check that the provider returned at least two snapshots and that the case has a parcel.",
+  "summary_hash": "sha256:78316ef75cadcd283a7d7d82c556f4e7ffc42341b101ba409415c58a8c3bf3e8"
+}

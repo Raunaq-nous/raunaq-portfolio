@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "path": "scripts/demo-tamper.ts",
+  "language": "TypeScript",
+  "lines": 121,
+  "hash": "sha256:589fa16c91ab5dd513b8e1a7fbd075439e16de253e64a99fe13ff5ac772d245d",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "It deliberately changes stored data.",
+      "It assumes a detail field exists.",
+      "The verifier address is hardcoded to localhost."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SQLite",
+      "meaning": "a small database stored in a single file"
+    },
+    {
+      "term": "Hash",
+      "meaning": "a fixed-length fingerprint computed from data, so any change gives a different fingerprint"
+    },
+    {
+      "term": "SHA-256",
+      "meaning": "a standard hashing method that produces the fingerprint"
+    },
+    {
+      "term": "Anchor",
+      "meaning": "a saved fingerprint record kept in the anchor events table"
+    },
+    {
+      "term": "Canonical",
+      "meaning": "put into one standard form so the same data always produces the same text"
+    },
+    {
+      "term": "Tamper",
+      "meaning": "change data without permission"
+    }
+  ],
+  "depends_on": [
+    "node:sqlite",
+    "node:path",
+    "node:fs",
+    "node:crypto",
+    "data/bhoomi-check.sqlite"
+  ],
+  "used_by": [
+    "Not visible in this file. The printed text suggests it is run through a project demo command."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "9e4aedf77f46b14a",
+      "title": "Stops if the database is missing",
+      "what": "Loads the database library, path helpers and the hashing tool, works out the path to the local database file, and exits with a helpful message if the file is not there.",
+      "why": "Likely reason: the demo edits a local file, so it should fail clearly if that file has not been created yet.",
+      "watch_out": "The database path is built from the folder the command is run from, so running it from another folder looks in the wrong place."
+    },
+    {
+      "start": 14,
+      "end": 28,
+      "kind": "function",
+      "name": "canonicalSerialize",
+      "id": "s2",
+      "hash": "6697bbc19b739910",
+      "title": "Builds a stable text form of the data",
+      "what": "Turns stored data into text with keys in alphabetical order and empty values left out, so the same data always gives the same text.",
+      "why": "Likely reason: a fingerprint only detects changes reliably if the same data always produces the same text.",
+      "watch_out": "Any change to how this text is built changes every stored fingerprint, making existing anchors appear to mismatch."
+    },
+    {
+      "start": 29,
+      "end": 41,
+      "kind": "function",
+      "name": "computePayloadHash, db",
+      "id": "s3",
+      "hash": "f2f63350e69c688a",
+      "title": "Reads command options and opens the database",
+      "what": "Reads the restore switch and the case and result options, using a demo case and result by default, then opens the local database. A small helper computes a SHA-256 fingerprint of the standard text form.",
+      "why": "Likely reason: one script serves both the tamper step and the restore step, for any case or result.",
+      "watch_out": "Options are read by simple position matching, so a misspelled option is ignored and the defaults are used without warning."
+    },
+    {
+      "start": 42,
+      "end": 45,
+      "kind": "type",
+      "name": "RowPayload",
+      "id": "s4",
+      "hash": "23cc6a4fc7970cce",
+      "title": "Shape of a stored payload row",
+      "what": "Describes one row from the verification results table as holding a text payload. It only documents what the script expects and does not run anything.",
+      "why": "Likely reason: makes clear what the database query returns.",
+      "watch_out": "This shape is not checked at runtime, so a renamed column fails later with an unclear error."
+    },
+    {
+      "start": 46,
+      "end": 80,
+      "kind": "type",
+      "name": "AnchorRow (part 1)",
+      "id": "s5",
+      "hash": "8e6f8989ee59881b",
+      "title": "Loads the result and anchor, restores if asked",
+      "what": "Looks up the stored verification result and its matching anchor record, computes the current fingerprint, and stops if the result is missing. When restore is requested, it removes the demo marker text and the tamper flag, saves the record, and prints the new fingerprint.",
+      "why": "Likely reason: restore lets the demo be repeated by returning the record to a clean state.",
+      "watch_out": "Restore removes the marker text rather than putting back a saved original, so it only undoes this demo change, not other edits to the same record."
+    },
+    {
+      "start": 81,
+      "end": 121,
+      "kind": "method",
+      "name": "AnchorRow: if",
+      "id": "s6",
+      "hash": "df7e3fd365464a80",
+      "title": "Prints restore result or injects the tamper",
+      "what": "When restore is used, it prints whether the restored fingerprint matches the anchor and gives the verifier link. Otherwise it adds a demo marker and a tamper flag to the stored result, saves directly to the database, and prints the old and new fingerprints and whether they match the anchor.",
+      "why": "Likely reason: shows that a direct edit is detectable because its fingerprint no longer matches the earlier anchor.",
+      "watch_out": "The tamper step writes straight to the database and assumes the detail field exists, so a missing field crashes it. Running it without restore changes data, so use it only on a local demo database."
+    }
+  ],
+  "explained_at": "2026-11-11T22:07:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Demo script that edits one stored verification record directly in the local database, shows the fingerprint mismatch, and can undo the edit.",
+  "purpose": "Shows that a changed verification result no longer matches the fingerprint saved earlier in the anchor record.",
+  "why": "Likely reason: a deliberate, reversible change lets the public verifier page be shown detecting tampering.",
+  "how": "First, the script checks that the database file exists. Then it reads the command options and loads the chosen result and its anchor. It computes the current fingerprint. If restore is requested, it removes the demo marker and flag, saves, and prints the match result. Otherwise it adds the marker and a flag, saves directly to the database, and prints the old and new fingerprints and whether they match the anchor.",
+  "inputs": "The local SQLite database file, optional case and result IDs, and an optional restore switch.",
+  "outputs": "A change to one row in the verification results table, plus printed reports with fingerprints and a verifier link.",
+  "risks": "Writes straight to the database, bypassing app rules. Crashes if the detail field is missing. Restore only removes the marker text. The verifier link assumes localhost port 3000. Should only be run on local demo data.",
+  "debug": "If it says the database was not found, run the app or tests first from the project folder. If it says the result was not found, check the case and result IDs. If restore still shows a mismatch, check whether the anchor was made before the tamper. If it crashes on detail, the stored record may lack that field.",
+  "summary_hash": "sha256:589fa16c91ab5dd513b8e1a7fbd075439e16de253e64a99fe13ff5ac772d245d"
+}

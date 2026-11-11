@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "path": "src/server/parcel-geometry-service.ts",
+  "language": "TypeScript",
+  "lines": 59,
+  "hash": "sha256:c19c61b23da879bbda1e5c54bc6ffbd3e4c1f935756e3be294294540365efdae",
+  "area": "src-server",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test in this file is visible in the packet.",
+      "Behaviour is exercised indirectly through the official record tests.",
+      "Reset and the update paths are not verified directly."
+    ]
+  },
+  "terms": [
+    {
+      "term": "GeoJSON",
+      "meaning": "a standard text format for describing map shapes"
+    },
+    {
+      "term": "polygon",
+      "meaning": "a closed shape made of connected points"
+    },
+    {
+      "term": "transaction",
+      "meaning": "a set of database changes that either all succeed or all fail"
+    },
+    {
+      "term": "EPSG:4326",
+      "meaning": "a standard coordinate system that uses latitude and longitude"
+    },
+    {
+      "term": "parcel",
+      "meaning": "one piece of land"
+    }
+  ],
+  "depends_on": [
+    "@/server/database",
+    "@/server/geospatial-service",
+    "@/types/geospatial"
+  ],
+  "used_by": [
+    "src/server/parcel-intelligence-service.ts",
+    "src/server/official-record-service.test.ts",
+    "src/server/official-record-integration.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup, GeometryRow",
+      "id": "s1",
+      "hash": "dd04cbdcc63c72d2",
+      "title": "Imports and the stored row shape",
+      "what": "Brings in database access, the map data checker and the type definitions, and describes how one geometry row is stored.",
+      "why": "Likely reason: keeps the database row format explicit.",
+      "watch_out": ""
+    },
+    {
+      "start": 7,
+      "end": 16,
+      "kind": "function",
+      "name": "syntheticGeometry, oldHeroGeometry, correctedHeroGeometry, oldControlGeometry, correctedControlGeometry",
+      "id": "s2",
+      "hash": "6a83bde197ba8ac0",
+      "title": "Seed shapes and their builder",
+      "what": "Builds a seed shape for a parcel and holds the corrected and older versions of the hero and control boundary polygons. Each seed is marked synthetic and uses a fixed timestamp.",
+      "why": "Likely reason: the older versions let the update step recognise and replace only the seeded data.",
+      "watch_out": "The timestamp is fixed, so every seed appears to have been created at the same moment."
+    },
+    {
+      "start": 17,
+      "end": 21,
+      "kind": "value",
+      "name": "seedGeometries",
+      "id": "s3",
+      "hash": "6fdc28f43f11de2f",
+      "title": "Seed list for hero and control",
+      "what": "Lists the two seed parcel shapes, the hero and the control, using the corrected versions.",
+      "why": "Likely reason: this list is what gets loaded into storage.",
+      "watch_out": "Only the hero and control cases are seeded, so any other case gets no shape."
+    },
+    {
+      "start": 22,
+      "end": 26,
+      "kind": "function",
+      "name": "fromRow",
+      "id": "s4",
+      "hash": "ac36a21442b5aaca",
+      "title": "Turns a stored row into a shape",
+      "what": "Reads one database row, checks the stored map data and rebuilds the full geometry object with its coordinate system and synthetic labels.",
+      "why": "Likely reason: data read back from storage is checked before the app uses it.",
+      "watch_out": "Corrupted stored text makes this step fail, so a bad row can stop a parcel from loading."
+    },
+    {
+      "start": 27,
+      "end": 59,
+      "kind": "class",
+      "name": "ParcelGeometryService, parcelGeometryService",
+      "id": "s5",
+      "hash": "faecb7f867119c6a",
+      "title": "Geometry storage service",
+      "what": "Makes sure seed rows exist, reads the shape for one case and parcel with its khata and khesra numbers, and resets one case to its seed in a single transaction.",
+      "why": "Likely reason: keeps seeding, reading and resetting in one place so the demo starts in a known state.",
+      "watch_out": "The update step only changes rows whose stored shape still matches the older version, so manually edited rows are left alone."
+    }
+  ],
+  "explained_at": "2026-11-11T21:39:18+00:00",
+  "explained_by": "haiku",
+  "summary": "Stores and returns the mapped boundary shape for each demo parcel, and updates older seeded shapes to the corrected version.",
+  "purpose": "Gives the parcel view a calculated boundary to compare against the recorded areas.",
+  "why": "Likely reason: the corrected demo shapes are written into storage so the same result shows each time, and only rows still holding the old shape are changed.",
+  "how": "Holds fixed seed shapes for the hero and control parcels, in corrected form and in the older form used for the update check. The ensureSeedGeometries method runs before reads: it inserts missing seed rows and rewrites hero or control rows that still match the old shape. The getForParcel method reads the row for one case and parcel, parses its stored shape and adds the khata and khesra numbers. The resetSeedGeometry method replaces all rows for one case with its seed in a single transaction.",
+  "inputs": "A case identifier, a parcel identifier, a khata number and an optional khesra number.",
+  "outputs": "A parcel geometry object, or nothing if no row exists.",
+  "risks": "Reading the geometry can change stored rows automatically. Reset deletes every geometry row for the case before reinserting the seed.",
+  "debug": "If an area looks wrong, check the stored geometry row for that case and compare it with the seed shapes. If nothing returns, check the parcel identifier matches. After a reset, the row is recreated from the seed.",
+  "summary_hash": "sha256:c19c61b23da879bbda1e5c54bc6ffbd3e4c1f935756e3be294294540365efdae"
+}

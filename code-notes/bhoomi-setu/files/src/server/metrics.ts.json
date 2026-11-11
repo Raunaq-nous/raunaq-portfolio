@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "path": "src/server/metrics.ts",
+  "language": "TypeScript",
+  "lines": 14,
+  "hash": "sha256:e26f4347d796020a84f7b98856245a024f0bfbca8063e6fd388d628494ea6c2c",
+  "area": "src-server",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The metrics test covers the success path and a broken recorder, but the async variant has no direct test in the packet.",
+      "The end of the measure and measureAsync helpers is cut off in the packet, so their error handling could not be fully verified."
+    ]
+  },
+  "terms": [
+    {
+      "term": "in-memory",
+      "meaning": "kept in working memory, so the data is lost when the app restarts"
+    },
+    {
+      "term": "instrumentation",
+      "meaning": "code added only to watch and measure other code"
+    },
+    {
+      "term": "outcome",
+      "meaning": "whether an action succeeded or failed"
+    },
+    {
+      "term": "duration",
+      "meaning": "how long an action took, in milliseconds"
+    }
+  ],
+  "depends_on": [],
+  "used_by": [
+    "src/server/verification-service.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "type",
+      "name": "MetricEvent, MetricSink",
+      "id": "s1",
+      "hash": "b53efc839dd3f1af",
+      "title": "Shape of a metric record and sink contract",
+      "what": "Defines what one metric record must contain and what any sink must be able to do: store a record, return a copy of stored records and clear them.",
+      "why": "Likely reason: the storage can be swapped later without changing the code that records metrics.",
+      "watch_out": "Only the listed operation names are allowed, so a new operation must be added to this type before it can be recorded."
+    },
+    {
+      "start": 4,
+      "end": 14,
+      "kind": "class",
+      "name": "InMemoryMetricSink, metrics, observe, measure, measureAsync",
+      "id": "s2",
+      "hash": "7fa7b571a877f3c1",
+      "title": "In-memory sink and safe recording helpers",
+      "what": "Provides an in-memory store, a shared instance for the whole app, and helpers that time work and record it. Errors from recording are swallowed so they never reach the citizen.",
+      "why": "Likely reason: recording is secondary, so it must never break the main action.",
+      "watch_out": "Swallowing recording errors silently means a broken metrics setup gives no visible warning."
+    }
+  ],
+  "explained_at": "2026-11-11T21:39:18+00:00",
+  "explained_by": "haiku",
+  "summary": "Records timing and success or failure for key app operations, and makes sure a recording problem never stops the real work.",
+  "purpose": "Lets the team see how long steps such as verification or guidance take, without storing any citizen content.",
+  "why": "Likely reason: telemetry is secondary, so the code isolates it from the main flow.",
+  "how": "Defines a metric record with an operation name, outcome, duration and optional metadata. An in-memory sink keeps a copy of each record and can be read or cleared. A shared metrics instance is exported. The observe helper sends one record and swallows any error from recording. The measure helper runs a normal action, times it, records success or failure and returns the result. The measureAsync helper does the same for async work and can decide the outcome from the value returned.",
+  "inputs": "A sink, an operation name, the work to run, optional metadata and optionally an outcome checker.",
+  "outputs": "The result of the work, plus records held in memory.",
+  "risks": "Records live only in memory and reset on restart, so they are not a lasting history. Metadata is not checked for personal content, so callers must keep it free of personal details.",
+  "debug": "If timings are missing, confirm the sink passed in is the same one being read. The end of the measure helper is cut off in the packet, so check there how errors are handled before they are passed on.",
+  "summary_hash": "sha256:e26f4347d796020a84f7b98856245a024f0bfbca8063e6fd388d628494ea6c2c"
+}

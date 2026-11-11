@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "path": "src/server/verification-service.ts",
+  "language": "TypeScript",
+  "lines": 75,
+  "hash": "sha256:f43e6a02735b85ee6df0802902de327718daeb4e060f7559d186b9aff06c8812",
+  "area": "src-server",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Tests cover hero, control, malformed input, name tidying, repeatability and storage.",
+      "Part of the detail text is cut off in the packet, so its wording could not be fully checked here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "deterministic",
+      "meaning": "the same input always gives the same output"
+    },
+    {
+      "term": "outcome",
+      "meaning": "the verdict category for one check"
+    },
+    {
+      "term": "evidence",
+      "meaning": "documents or data used to support a result"
+    },
+    {
+      "term": "holder",
+      "meaning": "the person recorded as owning the land"
+    },
+    {
+      "term": "transaction",
+      "meaning": "a set of database changes that either all succeed or all fail"
+    }
+  ],
+  "depends_on": [
+    "@/server/document-application-service",
+    "@/server/database",
+    "@/server/metrics",
+    "@/types/case"
+  ],
+  "used_by": [
+    "src/server/parcel-intelligence-service.ts",
+    "src/server/review-packet-service.ts",
+    "src/server/guidance-service.test.ts",
+    "src/server/judge-journey.test.ts",
+    "src/server/verification-service.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup, normalizeName, labelledValues, ParsedArea",
+      "id": "s1",
+      "hash": "ea0330f82ac20266",
+      "title": "Imports, name cleaning and label reader",
+      "what": "Brings in the document service, database, types and metrics, and defines a name cleaner and a reader that finds lines such as Area or Recorded holder.",
+      "why": "Likely reason: shared small helpers keep matching rules identical across every check.",
+      "watch_out": "The label reader only matches whole lines that start with the label, so a label written differently is not found."
+    },
+    {
+      "start": 10,
+      "end": 18,
+      "kind": "function",
+      "name": "parseSupportedArea",
+      "id": "s2",
+      "hash": "182bb74ab4567003",
+      "title": "Supported area reader",
+      "what": "Reads an area value from text, but only when there is exactly one labelled line with a number followed by acre or acres. Otherwise it returns nothing.",
+      "why": "Likely reason: a wrong guess about a land area would create a false mismatch, so unclear text is refused.",
+      "watch_out": "Only acres are accepted here, so area written in hectares is treated as missing."
+    },
+    {
+      "start": 19,
+      "end": 23,
+      "kind": "function",
+      "name": "surveyHolder",
+      "id": "s3",
+      "hash": "858e22c59e9008af",
+      "title": "Holder name reader",
+      "what": "Reads the recorded holder name from survey text when there is exactly one such line.",
+      "why": "Likely reason: a single clear name avoids comparing against the wrong person.",
+      "watch_out": "Two holder lines make the check unable to run rather than picking one."
+    },
+    {
+      "start": 24,
+      "end": 31,
+      "kind": "function",
+      "name": "familyMemberUnderReview, insufficientArea, insufficientFamily",
+      "id": "s4",
+      "hash": "01b8ccdacde6e79b",
+      "title": "Family member reader and not-enough-evidence results",
+      "what": "Reads the single family member under review line, and creates the standard insufficient-evidence results for the area and family checks, listing the documents involved.",
+      "why": "Likely reason: a missing piece is reported in plain words rather than treated as a failure.",
+      "watch_out": "The wording of these results is shown to citizens, so edits here change what they read."
+    },
+    {
+      "start": 32,
+      "end": 75,
+      "kind": "class",
+      "name": "VerificationService, verificationService",
+      "id": "s5",
+      "hash": "09d8bce861bbe7bf",
+      "title": "Verification service and rule checks",
+      "what": "Runs the area and family checks on a case's documents, returns the results, stores them and lists them later. The area check gives pass or potential issue, and the family check compares cleaned names.",
+      "why": "Likely reason: one service applies the same fixed rules every time and saves the result for the rest of the app.",
+      "watch_out": "Results are deleted and rewritten on every run, so anything that points at an older result identifier can go stale."
+    }
+  ],
+  "explained_at": "2026-11-11T21:39:18+00:00",
+  "explained_by": "haiku",
+  "summary": "Compares the historical area, survey area and holder name in the demo documents, produces a list of verification results and stores them.",
+  "purpose": "Turns the demo's document facts into checkable results: area consistent or not, family holder consistent or not, or not enough evidence.",
+  "why": "Likely reason: the app uses fixed rules rather than a judgement by an AI, so the same documents always give the same answers. The wording says potential because the app does not decide what is true.",
+  "how": "Name cleaning removes spaces and punctuation and lowercases. The labelled value reader finds lines that begin with a given label. The area reader accepts exactly one area line with a number and an acre unit. The holder and family member readers each need exactly one matching line. The insufficient-evidence helpers create the not-enough-evidence results. The run method times the work, then runDeterministic loads or seeds documents, evaluates them, replaces the stored results and returns them. The evaluateDocuments method picks the historical, survey and genealogy documents, compares area values and compares cleaned names, and returns one or two results. The list method reads stored results.",
+  "inputs": "A case identifier and its documents.",
+  "outputs": "A list of verification results with outcome, title, detail and source document identifiers, saved to storage.",
+  "risks": "Area values are compared as parsed numbers, so no rounding is applied. Stored results are replaced on each run, so earlier results are lost. Missing documents or unusual text give not-enough-evidence, which is correct but can look like a failure to a citizen.",
+  "debug": "If an area is not found, check the line begins with Area and uses acre. If a family result is insufficient, check there is exactly one family member line and one holder line. If stored results look stale, run verification again since it rewrites them. Part of the detail text is cut off in the packet.",
+  "summary_hash": "sha256:f43e6a02735b85ee6df0802902de327718daeb4e060f7559d186b9aff06c8812"
+}

@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "path": "src/evaluation/benchmark.ts",
+  "language": "TypeScript",
+  "lines": 69,
+  "hash": "sha256:62269b912d2248255fe83b290cc77413862466920f6d8f82ec9ea1c66ef5dd27",
+  "area": "src-evaluation",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Missing rule results are quietly treated as insufficient evidence, which can hide errors.",
+      "The packet cuts off the bodies of the scoring and summary functions, so they cannot be fully checked here.",
+      "No run results are shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ground truth",
+      "meaning": "the answer that is known to be correct for a test case"
+    },
+    {
+      "term": "verification service",
+      "meaning": "the server code that compares records and returns pass, warning or insufficient-evidence results"
+    },
+    {
+      "term": "insufficient evidence",
+      "meaning": "a result meaning there is not enough information to decide"
+    },
+    {
+      "term": "confusion metrics",
+      "meaning": "counts of right answers, wrong alarms and missed alarms"
+    }
+  ],
+  "depends_on": [
+    "src/server/verification-service.ts",
+    "src/types/case.ts"
+  ],
+  "used_by": [
+    "src/evaluation/benchmark.test.ts",
+    "npm run eval"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "49f177fd5b411673",
+      "title": "Imports for the benchmark",
+      "what": "Brings in the verification service and the document type names used to build test documents.",
+      "why": "The benchmark must run the real verification service, not a copy, so its results match the app.",
+      "watch_out": "If the verification service moves, this import breaks and every benchmark fails at once."
+    },
+    {
+      "start": 4,
+      "end": 16,
+      "kind": "type",
+      "name": "BenchmarkCase",
+      "id": "s2",
+      "hash": "91af85959305a07a",
+      "title": "Shape of one benchmark case",
+      "what": "Describes one case: its id, optional historical area, survey area, family member name and recorded holder, and the expected outcome for area and family checks plus the facts that should be found.",
+      "why": "Making every field optional lets a case leave out a document, so tests can check for missing evidence.",
+      "watch_out": "Leaving out a field changes what the check sees, so cases with missing data are intentional and should not be edited casually."
+    },
+    {
+      "start": 17,
+      "end": 33,
+      "kind": "value",
+      "name": "benchmarkCases, document",
+      "id": "s3",
+      "hash": "b802d92d5381bd55",
+      "title": "The twelve benchmark cases",
+      "what": "Lists twelve made-up cases covering clean matches, format differences, area mismatches, family name mismatches, a case that is wrong in both ways, missing records, punctuation differences, and a control case. Each case says what the right answer is.",
+      "why": "A spread of easy, tricky and missing-data cases tests the checks more fully than one kind of case alone.",
+      "watch_out": "The expected answers are the ground truth. If someone changes an answer to match the output, the benchmark stops measuring anything."
+    },
+    {
+      "start": 34,
+      "end": 41,
+      "kind": "function",
+      "name": "documentsForBenchmark",
+      "id": "s4",
+      "hash": "18da2277e0aeca42",
+      "title": "Turning a case into documents",
+      "what": "Builds the list of documents for a case: a historical record with its area, a survey record with its area and holder, and a family note with the member's name. Only the parts that are present are created.",
+      "why": "The verification service works on documents, so each case is turned into the same kind of input the app would receive.",
+      "watch_out": "Documents are created only when a field is present, so a missing field means a missing document, not an empty one."
+    },
+    {
+      "start": 42,
+      "end": 50,
+      "kind": "function",
+      "name": "evaluateBenchmarkCase, RuleOutcome",
+      "id": "s5",
+      "hash": "d8e9e394bb723e1f",
+      "title": "Running the checks on one case",
+      "what": "Runs the verification service on a case's documents, then picks out the area result and the family result. If either result is missing, it reports insufficient evidence for it. It also defines the shape of a single rule comparison.",
+      "why": "Picking each rule by name keeps the comparison clear, and a missing result is reported rather than skipped.",
+      "watch_out": "Missing results are reported as insufficient evidence, which can hide a broken rule. A missing result should probably be flagged as an error."
+    },
+    {
+      "start": 51,
+      "end": 62,
+      "kind": "function",
+      "name": "scoreVerificationOutcomes, scoreExpectedFacts, prohibitedClaimCount",
+      "id": "s6",
+      "hash": "71367f5bc460bcce",
+      "title": "Scoring helpers",
+      "what": "Scores rule results by counting right answers, wrong alarms and missed alarms, and calculates accuracy. Scores extracted facts by counting how many expected facts were found and how many extra facts appeared. Counts prohibited wording in text. The test file shows the expected numbers for these scores. The code body is not in the packet, so this note is based on the tests.",
+      "why": "Separating the scores lets the team see whether a problem is in the area check, the family check, the fact extraction or the wording rules.",
+      "watch_out": "The accuracy calculation depends on counting every mismatch correctly, so a change to the counting rules changes the reported accuracy."
+    },
+    {
+      "start": 63,
+      "end": 69,
+      "kind": "function",
+      "name": "benchmarkSummary",
+      "id": "s7",
+      "hash": "29d97f4443c7e57f",
+      "title": "Benchmark summary",
+      "what": "Runs every benchmark case, scores the area and family rules against expected results, and returns the dataset size, verification score, the hero and control case results, and all outcomes.",
+      "why": "Gives one place to see how the checks perform across the whole case list.",
+      "watch_out": "It looks up the hero-both-005 and control-012 cases by ID with a non-null assertion, so removing either case will break it."
+    }
+  ],
+  "explained_at": "2026-11-11T22:06:11+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds a fixed set of twelve synthetic land cases and the helpers that run the checks on them and score the results.",
+  "purpose": "Lets the team measure how often the verification checks give the right answer, using made-up data with known correct answers.",
+  "why": "Known answers let accuracy be measured honestly. Likely reason: the app claims to be careful, so the claim needs evidence. Reason not stated in the code.",
+  "how": "The file defines the cases with their expected results. It turns each case into synthetic documents, runs the production verification service on them, and compares the outcome to the expected one. Separate helpers count matches, missing facts and prohibited wording, and a summary adds them up.",
+  "inputs": "The fixed benchmark cases, and the verification service from the server code.",
+  "outputs": "The outcome for each rule, scores such as accuracy and error counts, and a summary across all cases.",
+  "risks": "If a rule has no result, the code silently counts it as insufficient evidence, which can hide a broken check. The document helper name also shadows the browser word document inside this file.",
+  "debug": "If accuracy drops, compare the actual and expected outcomes per case. If a case looks wrong, check how its documents are built from its fields.",
+  "summary_hash": "sha256:62269b912d2248255fe83b290cc77413862466920f6d8f82ec9ea1c66ef5dd27"
+}

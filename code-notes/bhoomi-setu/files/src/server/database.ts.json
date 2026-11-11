@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "path": "src/server/database.ts",
+  "language": "TypeScript",
+  "lines": 213,
+  "hash": "sha256:d0758e36c1d143794e322ae3afeac1437bab3b79159c6ad68bf508a8b64a86aa",
+  "area": "src-server",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Silently uses temporary storage on Vercel when no hosted database is set, outside the test mode.",
+      "Fallback to local storage after a connection failure can hide an outage from users.",
+      "Has tests for backend choice but no test for the Postgres fallback path."
+    ]
+  },
+  "terms": [
+    {
+      "term": "adapter",
+      "meaning": "a piece of code that translates the app's standard database calls into calls for one specific database"
+    },
+    {
+      "term": "trigger",
+      "meaning": "a rule the database runs automatically when a change happens, here used to block edits to audit records"
+    },
+    {
+      "term": "fallback",
+      "meaning": "a backup choice used when the main one cannot be reached"
+    },
+    {
+      "term": "connection pool",
+      "meaning": "a set of reusable connections to a database server; here it is kept at one connection"
+    },
+    {
+      "term": "placeholder",
+      "meaning": "a marker in a query replaced by a real value when the query runs"
+    },
+    {
+      "term": "append-only",
+      "meaning": "records can be added but never changed or deleted"
+    },
+    {
+      "term": "schema",
+      "meaning": "the list of tables and their columns that the database must have"
+    }
+  ],
+  "depends_on": [
+    "postgres",
+    "node:sqlite",
+    "node:fs",
+    "node:path"
+  ],
+  "used_by": [
+    "src/server/document-application-service.ts",
+    "src/server/extraction.ts",
+    "src/server/database.test.ts",
+    "src/server/database.postgres.test.ts",
+    "src/server/geospatial-service.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup, SqlValue, SqlStatement, DatabaseConfigurationError",
+      "id": "s1",
+      "hash": "86be371cf2e05b54",
+      "title": "Shared data types and configuration error",
+      "what": "Defines which plain values can be stored, the shape of one query with its values, and a specific error for missing hosted settings.",
+      "why": "Gives every other part of the database code the same vocabulary.",
+      "watch_out": ""
+    },
+    {
+      "start": 7,
+      "end": 15,
+      "kind": "type",
+      "name": "DatabaseAdapter",
+      "id": "s2",
+      "hash": "b80be31a5f84b79c",
+      "title": "Database backend contract",
+      "what": "Lists what every backend must provide: startup setup, reads, writes, grouped all-or-nothing changes, and a reachability check.",
+      "why": "Lets the app swap between local and hosted storage without changing other code.",
+      "watch_out": "Any new backend must implement every listed operation or it will not compile."
+    },
+    {
+      "start": 16,
+      "end": 19,
+      "kind": "type",
+      "name": "PostgresQueryClient",
+      "id": "s3",
+      "hash": "6e0c6c07c79ac352",
+      "title": "Postgres query client shape",
+      "what": "Describes the minimal ability needed to run a raw query with values on Postgres.",
+      "why": "Keeps the Postgres code independent of one specific Postgres library, which also makes testing easier.",
+      "watch_out": ""
+    },
+    {
+      "start": 20,
+      "end": 23,
+      "kind": "type",
+      "name": "PostgresClient",
+      "id": "s4",
+      "hash": "6457a326ad41fb35",
+      "title": "Postgres client with transactions",
+      "what": "Extends the query client with the ability to run a group of queries as one unit.",
+      "why": "Needed for changes that must succeed or fail together.",
+      "watch_out": ""
+    },
+    {
+      "start": 24,
+      "end": 47,
+      "kind": "value",
+      "name": "schema",
+      "id": "s5",
+      "hash": "f4e4153c5b511503",
+      "title": "Table definitions",
+      "what": "Lists the table creation statements for cases, people, family links, land parcels, geometry, documents, survey records, verification results, actions, timeline, review packets, official records, document extractions and audit anchor events, plus the indexes that speed up lookups by case.",
+      "why": "Creates the storage layout on first use. The 'if not exists' wording makes repeated startup safe.",
+      "watch_out": "Changing a table here does not update tables that already exist, so new columns need a separate change to existing databases."
+    },
+    {
+      "start": 48,
+      "end": 52,
+      "kind": "value",
+      "name": "sqliteTriggers",
+      "id": "s6",
+      "hash": "1bbca492e7354616",
+      "title": "Local protection rules",
+      "what": "Two SQLite rules that stop any update or delete on audit anchor records and show a fixed error message.",
+      "why": "Likely reason: anchor events are meant to be a permanent record, so the database itself refuses edits.",
+      "watch_out": "These rules protect only what goes through this database file. Someone with direct file access could still change the file."
+    },
+    {
+      "start": 53,
+      "end": 70,
+      "kind": "value",
+      "name": "postgresTriggers",
+      "id": "s7",
+      "hash": "e18513bd3366fcec",
+      "title": "Postgres protection rules",
+      "what": "Creates a Postgres function that raises the same error, then attaches it to audit anchor records for updates and deletes, only if the rule does not already exist.",
+      "why": "Gives Postgres the same protection as the local backend.",
+      "watch_out": "The existence check looks only at the rule name, so renaming the rule would cause a duplicate to be created on the next startup."
+    },
+    {
+      "start": 71,
+      "end": 75,
+      "kind": "function",
+      "name": "postgresSql",
+      "id": "s8",
+      "hash": "55080a36f2fa004a",
+      "title": "Placeholder conversion for Postgres",
+      "what": "Turns each question mark in a query into a numbered Postgres placeholder, counting from one.",
+      "why": "The app writes queries in the SQLite style, and Postgres needs numbered placeholders.",
+      "watch_out": "Every question mark is replaced, including any that appear inside quoted text, so a literal question mark in a stored string inside a query would be corrupted."
+    },
+    {
+      "start": 76,
+      "end": 100,
+      "kind": "class",
+      "name": "LocalSqliteAdapter",
+      "id": "s9",
+      "hash": "c6e2ab61619738a8",
+      "title": "Local SQLite backend",
+      "what": "Creates a local database file (or uses a given path), sets up the tables and rules once, and runs reads, writes, grouped changes and a check query. It converts true and false to 1 and 0 because SQLite has no true/false type.",
+      "why": "Gives local development and the fallback a database that needs no server.",
+      "watch_out": "On Vercel the file goes to the temporary folder, which is not kept long term."
+    },
+    {
+      "start": 101,
+      "end": 107,
+      "kind": "function",
+      "name": "isConnectionError",
+      "id": "s10",
+      "hash": "1c321e0ffade2833",
+      "title": "Connection failure detection",
+      "what": "Decides whether an error means the Postgres server could not be reached, based on the error code or the message text.",
+      "why": "Lets the app tell an unreachable server apart from a bad query, so only the first triggers a fallback.",
+      "watch_out": "It matches message text, so a new wording from the provider would not be recognized."
+    },
+    {
+      "start": 108,
+      "end": 165,
+      "kind": "class",
+      "name": "SupabasePostgresAdapter (part 1)",
+      "id": "s11",
+      "hash": "7c30358293800f26",
+      "title": "Postgres backend: setup, reads and writes",
+      "what": "Creates the Postgres connection on first use from the database address, with one connection and short timeouts. Startup creates the tables and rules. Reads and writes run on Postgres, and if the server cannot be reached and no client was supplied, they switch to the local file.",
+      "why": "Likely reason: a single small connection suits a hosted database with a limited connection count, and the local fallback keeps the app usable when the server is down.",
+      "watch_out": "After a switch to the local file, it never switches back during the same run, so later data stays local."
+    },
+    {
+      "start": 166,
+      "end": 195,
+      "kind": "method",
+      "name": "SupabasePostgresAdapter: transaction",
+      "id": "s12",
+      "hash": "fdb5679863235e7c",
+      "title": "Postgres grouped changes and health check",
+      "what": "Runs a group of statements inside one Postgres transaction so they all apply or none do. The health check starts the database, runs a simple query, and falls back if the server is unreachable.",
+      "why": "Protects related changes from being half-saved.",
+      "watch_out": "The fallback is used only when no client was supplied, so tests that supply one never exercise it."
+    },
+    {
+      "start": 196,
+      "end": 213,
+      "kind": "function",
+      "name": "getDatabase, resetDatabaseForTests, setDatabaseForTests",
+      "id": "s13",
+      "hash": "1686a3d0cb0740d4",
+      "title": "Choosing and resetting the backend",
+      "what": "Picks the backend from the database address: a Postgres address gives Postgres, a file or sqlite address gives a local file at that path, and otherwise a default local file. On Vercel in test mode without hosted settings it raises the configuration error. The choice is remembered until reset. Two helpers let tests reset or replace the choice.",
+      "why": "Gives the whole app one place to decide where data lives.",
+      "watch_out": "The choice is remembered, so changing the database address at runtime has no effect until the reset helper runs. Outside tests, Vercel without a hosted address silently uses temporary storage."
+    }
+  ],
+  "explained_at": "2026-11-11T21:35:48+00:00",
+  "explained_by": "haiku",
+  "summary": "The central switchboard for the app's storage: it defines what every database backend must offer, sets up tables and protection rules, and chooses between hosted Postgres and a local SQLite file.",
+  "purpose": "Lets the rest of the app read and write records without caring which database is behind them, and keeps audit records from being edited.",
+  "why": "Likely reason: the app must run locally on a single file and also on a hosted Postgres service, so one shared interface is used for both.",
+  "how": "At startup the chosen backend creates any missing tables and protection rules. Other parts of the app then ask the chosen backend to read, write, run grouped changes, or check that it is reachable. The Postgres backend falls back to a local SQLite file when the server cannot be reached and no client was supplied.",
+  "inputs": "The database address setting, the Vercel flag, and the statements other services send.",
+  "outputs": "Query results, confirmation of writes, and a stored local database file when the local backend is used.",
+  "risks": "Outside tests, Vercel without a database address uses temporary storage that does not last. Once the fallback is active it stays active, so data goes to the local file even if Postgres returns. Schema statements only create missing tables; they do not change existing ones.",
+  "debug": "If data disappears, check whether the fallback warning appeared in the logs and whether the database address is set. If startup fails, check the schema statements and the protection rules. If the wrong backend is used, reset the chosen backend and check the environment values.",
+  "summary_hash": "sha256:d0758e36c1d143794e322ae3afeac1437bab3b79159c6ad68bf508a8b64a86aa"
+}

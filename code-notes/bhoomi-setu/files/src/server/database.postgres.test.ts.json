@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "path": "src/server/database.postgres.test.ts",
+  "language": "TypeScript",
+  "lines": 121,
+  "hash": "sha256:27844a64301511c29fbba0a4f26d7a6ac1aa1dc7351faad205baf614e6248a48",
+  "area": "src-server",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "It checks a fake, not a real Postgres server, so real database behavior is not proven here.",
+      "Several checks depend on exact query wording, so harmless SQL edits can break them."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Postgres",
+      "meaning": "a widely used database program that stores the app's records in tables"
+    },
+    {
+      "term": "mock",
+      "meaning": "a stand-in object that pretends to be a real dependency so tests can run without it"
+    },
+    {
+      "term": "placeholder",
+      "meaning": "a marker in a query that is replaced by a real value when the query runs"
+    },
+    {
+      "term": "transaction",
+      "meaning": "a group of database changes that either all succeed or all get undone"
+    },
+    {
+      "term": "seed",
+      "meaning": "demo data the app writes into the database at first use"
+    }
+  ],
+  "depends_on": [
+    "src/server/database.ts",
+    "src/server/case-application-service.ts",
+    "src/server/document-application-service.ts",
+    "src/server/review-packet-service.ts",
+    "src/server/verification-service.ts",
+    "src/server/parcel-geometry-service.ts",
+    "vitest"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup, StoredRow",
+      "id": "s1",
+      "hash": "da70142ff40656cb",
+      "title": "Test file setup and stored row type",
+      "what": "Brings in the test tools and the services under test, and defines the shape of one stored database row as a simple key and value map.",
+      "why": "Gives the rest of the file the test functions and the exact database helpers it needs.",
+      "watch_out": ""
+    },
+    {
+      "start": 11,
+      "end": 47,
+      "kind": "class",
+      "name": "MockPostgresClient",
+      "id": "s2",
+      "hash": "f8dfe82e554f5456",
+      "title": "Fake Postgres client",
+      "what": "Acts as a small in-memory stand-in for Postgres. It records each query, understands the few query shapes the app uses, and refuses to change or delete audit records. Any unknown query causes an error so gaps are noticed.",
+      "why": "Likely reason: to let the Postgres code run in tests without a live database and to catch unexpected SQL.",
+      "watch_out": "Every new query shape the app adds must also be added here, or tests will fail with an unhandled query error."
+    },
+    {
+      "start": 48,
+      "end": 106,
+      "kind": "test group",
+      "name": "SupabasePostgresAdapter (part 1)",
+      "id": "s3",
+      "hash": "a12b84cf0e470979",
+      "title": "Placeholder and schema checks",
+      "what": "Checks that question-mark placeholders become numbered Postgres placeholders, that the schema and protection rules are created at startup, and that queries and transactions are passed through with their values.",
+      "why": "Confirms that the Postgres adapter translates and sends queries correctly before any real data moves.",
+      "watch_out": "These checks look for exact query text, so rewording a schema statement will break them even when behavior is unchanged."
+    },
+    {
+      "start": 107,
+      "end": 121,
+      "kind": "test group",
+      "name": "SupabasePostgresAdapter (part 2)",
+      "id": "s4",
+      "hash": "3456025130fff6af",
+      "title": "Audit record protection and full data flow",
+      "what": "Confirms that updating or deleting audit records is refused. Then runs the main flow: reading demo cases, reading and correcting demo land geometry, loading demo documents, running verification, creating a new case, and reading a review packet.",
+      "why": "Protects the rule that audit records cannot be altered and checks that a full user path works on the Postgres backend.",
+      "watch_out": "The geometry part changes stored data directly in the fake, so it depends on the internal shape of that data."
+    }
+  ],
+  "explained_at": "2026-11-11T21:35:48+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the Postgres version of the data layer using a fake Postgres client, checking that the schema, placeholders, protected audit records and the main case, document and packet flows all work.",
+  "purpose": "Proves that the Postgres backend behaves the same way the app expects, without needing a real Postgres server during the test run.",
+  "why": "Likely reason: the team wanted Postgres behavior checked on every test run, which a real hosted database would make slow and fragile. Reason for the specific checks is not stated in the code beyond their names.",
+  "how": "A fake client records every query it receives and answers a small set of known query shapes from in-memory tables. The tests then run real service code against that fake, check the queries that were sent, and check the data that came back. After each test the shared database is reset.",
+  "inputs": "No external input. It uses demo case identifiers and synthetic records that the app seeds itself.",
+  "outputs": "Pass or fail results from the test runner. No files or data are written outside the test's fake storage.",
+  "risks": "The fake client only understands the exact query text it was written for. A passing test does not prove that a real Postgres server accepts the same queries. The protection on audit records is checked only by the fake's error messages, not by Postgres itself.",
+  "debug": "If a test fails with an unhandled mock query message, the app now sends a query shape the fake does not recognize; update the fake or the query. If placeholder tests fail, look at the placeholder conversion in the database module. If seed tests fail, check the demo data and the expected area values.",
+  "summary_hash": "sha256:27844a64301511c29fbba0a4f26d7a6ac1aa1dc7351faad205baf614e6248a48"
+}
