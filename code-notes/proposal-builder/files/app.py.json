@@ -1,0 +1,341 @@
+{
+  "schema_version": 1,
+  "path": "app.py",
+  "language": "Python",
+  "lines": 753,
+  "hash": "sha256:777fc6d3414c8691592a7e4e105a070fe612ce716ea85286d4828b1a4fb914d4",
+  "area": "root-files",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated tests are visible for this page.",
+      "Fails when a proposal has no workstreams, because the end week is read from an empty list.",
+      "Uploaded file names are not checked, so overwrites are silent.",
+      "Activity edits are not applied to the output file.",
+      "Several imports (time, ProjectStructure, RFPMatcher, TemplateSelector) are not used in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Streamlit",
+      "meaning": "a Python library that turns a script into a web page; the script reruns from top to bottom on every click"
+    },
+    {
+      "term": "session state",
+      "meaning": "memory that Streamlit keeps for one browser visit between clicks"
+    },
+    {
+      "term": "RAG",
+      "meaning": "retrieval augmented generation: the app looks up relevant text from past proposals and gives it to the AI before asking it to write"
+    },
+    {
+      "term": "vector database",
+      "meaning": "a store that holds indexed document text so it can be searched by meaning; here it is ChromaDB in data/chroma_db"
+    },
+    {
+      "term": "API key",
+      "meaning": "a secret code that lets this app use the OpenAI service"
+    },
+    {
+      "term": ".env file",
+      "meaning": "a plain text settings file where secrets such as the API key are kept outside the code"
+    },
+    {
+      "term": "LLM",
+      "meaning": "large language model, the AI that writes the text"
+    },
+    {
+      "term": "RFP",
+      "meaning": "request for proposal, the client document that asks for a bid"
+    },
+    {
+      "term": "PPTX",
+      "meaning": "the PowerPoint file format"
+    },
+    {
+      "term": "template",
+      "meaning": "a sample PowerPoint whose layout and styling are copied into the new deck"
+    },
+    {
+      "term": "workstream",
+      "meaning": "a major area of work in the project plan"
+    },
+    {
+      "term": "module",
+      "meaning": "a smaller unit of work inside a workstream"
+    },
+    {
+      "term": "governance",
+      "meaning": "the meeting plan, such as steering committee and weekly meetings"
+    }
+  ],
+  "depends_on": [
+    "src folder modules rag_engine, rfp_parser, content_generator, slide_cloner and governance_calculator (imported through the path set at the top of this file)",
+    "src folder modules rfp_matcher, template_selector and data_models (imported but not used in this file)",
+    "streamlit",
+    "python-dotenv",
+    "langchain_openai",
+    "data/chroma_db",
+    "data/rfps",
+    "data/proposals",
+    ".env"
+  ],
+  "used_by": [
+    "run_app.sh (starts this file with streamlit)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 48,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "e030ded2be5b6a4c",
+      "title": "Page setup and imports",
+      "what": "Loads the libraries and the module set, reads the .env settings file for secrets, and sets the browser tab title and wide layout. Users see the 'Proposal Builder' tab title and a wide page.",
+      "why": "Likely reason: imports must come first and the page settings must be the first Streamlit call on the page.",
+      "watch_out": "The src modules are found through a path based on the folder the app is started from, so start it from the project folder."
+    },
+    {
+      "start": 49,
+      "end": 101,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "2e031bb34cf0be24",
+      "title": "Page styling",
+      "what": "Defines colors and box styles for headers and status messages. Users see a bold blue title and colored message boxes.",
+      "why": "Likely reason: to make the page look more polished than Streamlit's default.",
+      "watch_out": "Only the main-header and section-header styles are used in this file, so renaming those classes would silently remove the styling."
+    },
+    {
+      "start": 102,
+      "end": 125,
+      "kind": "function",
+      "name": "initialize_system",
+      "id": "s3",
+      "hash": "21ce5cc25e078758",
+      "title": "Starting the search engine and model",
+      "what": "Checks the OpenAI key and the database folder, then opens the search engine and a gpt-4o-mini language model. A missing key stops the page with an error; a missing database returns nothing.",
+      "why": "Likely reason: a missing key blocks everything, while a missing database is a warning that the user can fix by indexing.",
+      "watch_out": "When the database is missing, the caller gets nothing back and raises a generic error later, so the user sees a vague message."
+    },
+    {
+      "start": 126,
+      "end": 134,
+      "kind": "function",
+      "name": "get_available_rfps",
+      "id": "s4",
+      "hash": "b0d3206dd9b5eee3",
+      "title": "Listing available RFP files",
+      "what": "Finds every PDF in data/rfps for the existing-RFP dropdown. Users see their earlier uploads as choices.",
+      "why": "Likely reason: lets users reuse RFPs that were already uploaded or saved.",
+      "watch_out": "The search only matches lowercase .pdf on Linux, so a file ending in .PDF will not appear in the list."
+    },
+    {
+      "start": 135,
+      "end": 143,
+      "kind": "function",
+      "name": "get_available_templates",
+      "id": "s5",
+      "hash": "1f54264d6f9119b2",
+      "title": "Listing available templates",
+      "what": "Finds every PowerPoint file in data/proposals for the template dropdown.",
+      "why": "Likely reason: the template choice decides the look of the final deck, so the page offers the files that are on disk.",
+      "watch_out": "Only .pptx files are listed, so older .ppt templates are invisible to the page."
+    },
+    {
+      "start": 144,
+      "end": 155,
+      "kind": "function",
+      "name": "save_uploaded_file",
+      "id": "s6",
+      "hash": "b98a19032b590061",
+      "title": "Saving an uploaded RFP",
+      "what": "Writes the uploaded PDF into data/rfps and returns the saved location. Users see the file appear in the existing-RFP list next time.",
+      "why": "Likely reason: the generation steps read files from disk, so uploads must be saved first.",
+      "watch_out": "The file is saved under the name it was uploaded with, so a same-named file already in the folder is overwritten without warning."
+    },
+    {
+      "start": 156,
+      "end": 212,
+      "kind": "function",
+      "name": "generate_content_only",
+      "id": "s7",
+      "hash": "9f5343b24db3011d",
+      "title": "Generating content for preview",
+      "what": "Runs the content step: reads the RFP text and project name, asks the content generator for workstreams and modules, and calculates the meeting governance. Users see progress messages until the preview is ready.",
+      "why": "Likely reason: the code comments say it is for preview and editing, so content is created before any PowerPoint is built.",
+      "watch_out": "If no duration is found, the code silently assumes 12 weeks for governance."
+    },
+    {
+      "start": 213,
+      "end": 242,
+      "kind": "function",
+      "name": "generate_ppt_from_content",
+      "id": "s8",
+      "hash": "44add15b5fb71ad3",
+      "title": "Building the PowerPoint file",
+      "what": "Copies the chosen template's slides and fills them with the content, then saves a timestamped .pptx in the output folder.",
+      "why": "Likely reason: building is a separate step so that edits made in the preview are included.",
+      "watch_out": "The file name is built directly from the project name, so a name containing a slash or unusual characters can make the save fail."
+    },
+    {
+      "start": 243,
+      "end": 300,
+      "kind": "function",
+      "name": "render_slide_editor (part 1)",
+      "id": "s9",
+      "hash": "8e27b3eaf1686ffe",
+      "title": "Editor: project fields",
+      "what": "Shows the first editor tab with project name, total duration and a summary sentence. Users can change these before the file is built.",
+      "why": "Likely reason: lets the user correct the headline facts of the proposal.",
+      "watch_out": "Edits are stored in session memory and never cleared when new content is generated, so changes for one proposal can carry over into the next."
+    },
+    {
+      "start": 301,
+      "end": 359,
+      "kind": "function",
+      "name": "render_slide_editor (part 2)",
+      "id": "s10",
+      "hash": "71d6d9ee86d7efe0",
+      "title": "Editor: workstream fields",
+      "what": "Shows one expandable box per workstream with its name, description, start week, duration and end week. Users can adjust the timing for each workstream.",
+      "why": "Likely reason: workstreams are the main content of the proposal, so each one gets its own editable box.",
+      "watch_out": "Start week, duration and end week are three separate boxes, and the app does not check that they agree with each other."
+    },
+    {
+      "start": 360,
+      "end": 418,
+      "kind": "function",
+      "name": "render_slide_editor (part 3)",
+      "id": "s11",
+      "hash": "1fbee6ac06d2006f",
+      "title": "Editor: module fields",
+      "what": "Shows each module with its name, description and an activity list with one bullet per line. Users can rewrite module text here.",
+      "why": "Likely reason: modules hold the detailed wording that appears on the slides.",
+      "watch_out": "Activity text can be typed and kept on screen, but it is never read back into the content, so activity edits do not reach the final file."
+    },
+    {
+      "start": 419,
+      "end": 434,
+      "kind": "function",
+      "name": "render_slide_editor (part 4)",
+      "id": "s12",
+      "hash": "ccbe8f0b10edd853",
+      "title": "Editor: timeline and governance fields",
+      "what": "Shows the fourth tab with steering committee totals, meeting frequency and weekly meeting totals, plus a note that timeline charts are created automatically.",
+      "why": "Likely reason: the governance numbers are calculated, so users may want to adjust them before the file is built.",
+      "watch_out": "The note promises timeline charts, but this file creates none, and whether the template step does is not visible here."
+    },
+    {
+      "start": 435,
+      "end": 476,
+      "kind": "function",
+      "name": "apply_edits_to_structure",
+      "id": "s13",
+      "hash": "8cb1a98263c01483",
+      "title": "Applying edits back to the content",
+      "what": "Copies the typed values onto the stored content before the PowerPoint is built. It covers project name, duration, workstream timing and text, module names and descriptions, and meeting counts, but not activities.",
+      "why": "Likely reason: keeps the stored content in step with what the user sees in the editor.",
+      "watch_out": "The duration edit goes into the optimized duration field, but governance is not recalculated after the edit, so meeting counts may not match the new length."
+    },
+    {
+      "start": 477,
+      "end": 532,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s14",
+      "hash": "525740723876be80",
+      "title": "Page header, sidebar and status",
+      "what": "Shows the page title and a sidebar listing the requirements and live status for the API key and the database. Users see green or red status lines.",
+      "why": "Likely reason: lets users see what is missing before they start.",
+      "watch_out": "The status check only confirms that the key is set and the folder exists, not that the key actually works."
+    },
+    {
+      "start": 533,
+      "end": 590,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s15",
+      "hash": "f705f0c4b68f77f2",
+      "title": "Steps 1 and 2: choose RFP and template",
+      "what": "Lets the user upload or pick an RFP and pick a template from a dropdown. Users see confirmation messages after each choice.",
+      "why": "Likely reason: the RFP and template are the two inputs everything else depends on.",
+      "watch_out": "If no template files exist, the page stops at this point, so nothing below it appears and the user sees only the error message."
+    },
+    {
+      "start": 591,
+      "end": 647,
+      "kind": "function",
+      "name": "main (part 3)",
+      "id": "s16",
+      "hash": "4eed0dcfb318a9c6",
+      "title": "Step 3: Generate Content button",
+      "what": "Shows the Generate Content button only when both an RFP and a template are chosen. Clicking it shows progress, stores the result and reloads the page.",
+      "why": "Likely reason: prevents generation from starting without the required inputs.",
+      "watch_out": "The template used is the one stored at generation time, so changing the dropdown afterwards does not change the template for the current preview."
+    },
+    {
+      "start": 648,
+      "end": 688,
+      "kind": "function",
+      "name": "main (part 4)",
+      "id": "s17",
+      "hash": "a74111a5250eb962",
+      "title": "Content summary and PowerPoint button",
+      "what": "After generation, shows three numbers (workstreams, modules, duration), the editor, and the Generate PowerPoint button. Users see the headline counts above the editor.",
+      "why": "Likely reason: gives a quick check that the generated structure looks reasonable before editing.",
+      "watch_out": "The duration count takes the largest end week from the workstreams and fails if the list is empty."
+    },
+    {
+      "start": 689,
+      "end": 748,
+      "kind": "method",
+      "name": "main: update_progress",
+      "id": "s18",
+      "hash": "fb61e7ea7b628f66",
+      "title": "Building the PowerPoint on click",
+      "what": "When the button is clicked, applies the edits, builds the PowerPoint, saves its path and reloads the page. Users see a progress bar and then a success message.",
+      "why": "Likely reason: the final build happens only on demand, after the user has finished editing.",
+      "watch_out": "The file name uses the project name from generation time, so renaming the project in the editor does not change the saved file name."
+    },
+    {
+      "start": 749,
+      "end": 751,
+      "kind": "function",
+      "name": "main (part 6)",
+      "id": "s19",
+      "hash": "fa98b7692290130c",
+      "title": "Download button for the file",
+      "what": "Reads the built PowerPoint from disk and offers a download button plus the saved location. Users can save the deck to their own computer.",
+      "why": "Likely reason: the browser cannot reach the file on the server, so the app sends it to the user.",
+      "watch_out": "If the output file has been deleted, this section fails with an error whenever the page reloads."
+    },
+    {
+      "start": 752,
+      "end": 753,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s20",
+      "hash": "b60851f8e384a572",
+      "title": "Starting the page",
+      "what": "Runs the main page function when the file is started directly. Users normally start it through run_app.sh.",
+      "why": "Likely reason: standard Python pattern for a file that can be run as a program.",
+      "watch_out": "Streamlit reruns the whole file on every click, so anything slow placed outside a function will run again each time."
+    }
+  ],
+  "explained_at": "2026-11-11T23:52:41+00:00",
+  "explained_by": "haiku",
+  "summary": "A browser page where a user picks an RFP and a template, reviews and edits AI-written proposal content, and downloads a PowerPoint file.",
+  "purpose": "Gives a non-programmer one screen to produce a proposal deck, without running each step from a terminal.",
+  "why": "Likely reason: it is the friendly front end over the same proposal engine that main_workflow.py runs from the terminal, with a review step added before the file is built.",
+  "how": "On each page load it checks the OpenAI key and the search database, then shows an upload-or-pick step for the RFP and a dropdown for the template. Clicking Generate Content parses the RFP, has the content generator build workstreams and modules, and calculates meeting governance. The editor then shows the results in four tabs. Clicking Generate PowerPoint applies the edits, builds the file from the template, and offers a download. Streamlit reruns the whole file on every click, so the results are kept in session memory.",
+  "inputs": "An RFP PDF, either uploaded or chosen from data/rfps; a template PowerPoint from data/proposals; the OPENAI_API_KEY setting in the .env file; the search database in data/chroma_db; and any edits typed into the editor.",
+  "outputs": "A timestamped PowerPoint file in the output folder; uploaded PDFs copied into data/rfps; a download button and a message showing the saved path.",
+  "risks": "Uploads are saved under their original names, so a same-named file is overwritten without warning. Every generation sends text to the OpenAI service and costs money. Edits are not cleared when new content is generated. The page fails if a generated proposal has no workstreams. Activity edits are shown but never saved into the file.",
+  "debug": "First read the System Status box in the sidebar. If it says database not indexed, run index_database.py. If generation fails, read the error details under the red message and the terminal running streamlit for the full trace. If old names or edits appear in a new proposal, the session edits were not cleared. If the download fails, confirm the chosen template exists in data/proposals and opens in PowerPoint.",
+  "summary_hash": "sha256:777fc6d3414c8691592a7e4e105a070fe612ce716ea85286d4828b1a4fb914d4"
+}

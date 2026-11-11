@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "path": "src/exports.py",
+  "language": "Python",
+  "lines": 634,
+  "hash": "sha256:9d127565ae196da8eaedd4deedf87bb0c21004668eeb3d0a180ce9834710a3aa",
+  "area": "src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "Read by reading only, not run: the Excel timeline sheet appears to fail because range needs whole numbers but durations are decimal numbers, and the export stops before saving.",
+      "The output folder argument is accepted but never used.",
+      "End week values are one higher than the data model's own end week.",
+      "Unused imports such as pandas must still be installed or the file will not load."
+    ]
+  },
+  "terms": [
+    {
+      "term": "openpyxl",
+      "meaning": "a library that creates and styles Excel files"
+    },
+    {
+      "term": "pandas",
+      "meaning": "a library for working with tables of data, imported here but not used in the visible code"
+    },
+    {
+      "term": "range",
+      "meaning": "a Python instruction that counts through whole numbers from a start to an end"
+    },
+    {
+      "term": "workbook",
+      "meaning": "an Excel file that holds one or more sheets"
+    },
+    {
+      "term": "template",
+      "meaning": "a saved record of a past proposal's look, such as colors, fonts and sizes"
+    }
+  ],
+  "depends_on": [
+    "pandas",
+    "openpyxl",
+    "python-pptx",
+    "src/data_models.py",
+    "src/template_extractor.py"
+  ],
+  "used_by": [
+    "Not visible in the files provided"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 32,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7c0b1a6be9d88823",
+      "title": "Imports and file purpose",
+      "what": "Brings in the Excel and PowerPoint libraries, the project data types and the template reader. The header says the file creates professional Excel and PowerPoint exports.",
+      "why": "Needed so the file can build both kinds of output.",
+      "watch_out": "Several imports, such as pandas and the chart tools, are not used in the visible code, but the file will not load if they are missing."
+    },
+    {
+      "start": 33,
+      "end": 72,
+      "kind": "class",
+      "name": "ExcelExporter (part 1)",
+      "id": "s2",
+      "hash": "78f398b5c48b7758",
+      "title": "Excel exporter setup and styling helpers",
+      "what": "Creates an empty workbook and removes its default sheet. Also provides two helpers: one that colors header rows dark blue with white bold text, and one that adds thin borders around a block of cells.",
+      "why": "Keeps every sheet looking the same without repeating the styling code.",
+      "watch_out": "The helpers assume the cell range is correct, so a wrong range puts borders or colors in the wrong place."
+    },
+    {
+      "start": 73,
+      "end": 132,
+      "kind": "method",
+      "name": "ExcelExporter: create_summary_sheet",
+      "id": "s3",
+      "hash": "0201001501a45d2a",
+      "title": "Executive summary sheet",
+      "what": "Creates the first sheet with the project name, counts of workstreams, modules and activities, the total duration, the export time, and a table of workstreams with their start, duration, counts and end week.",
+      "why": "Gives a one-page overview a reader can check before opening the detailed sheets.",
+      "watch_out": "The end week is the start plus the duration, which is one week more than the last active week. The total duration also fails if the project has no workstreams."
+    },
+    {
+      "start": 133,
+      "end": 185,
+      "kind": "class",
+      "name": "ExcelExporter (part 3)",
+      "id": "s4",
+      "hash": "ccc2c9fd11f00a03",
+      "title": "Workstreams sheet",
+      "what": "Creates a sheet with one row per workstream: its ID, name, start week, duration, end week, and the names of the workstreams it depends on or runs in parallel with.",
+      "why": "Gives a flat list that is easy to filter or sort in Excel.",
+      "watch_out": "The end week uses the same start plus duration rule and can be one week too long."
+    },
+    {
+      "start": 186,
+      "end": 225,
+      "kind": "method",
+      "name": "ExcelExporter: create_modules_sheet",
+      "id": "s5",
+      "hash": "3ed1e8cebf53719e",
+      "title": "Modules sheet",
+      "what": "Creates a sheet with one row per module: its workstream, ID, name, start week, duration, end week and activity count.",
+      "why": "Lets a reader scan all modules across workstreams in one table.",
+      "watch_out": "The end week has the same one-week-too-long issue, and the sheet is blank when no modules exist."
+    },
+    {
+      "start": 226,
+      "end": 279,
+      "kind": "method",
+      "name": "ExcelExporter: create_activities_sheet",
+      "id": "s6",
+      "hash": "e56df0fd48f13499",
+      "title": "Activities sheet",
+      "what": "Creates a sheet with one row per activity: workstream, module, ID, name, duration, risk level, the first three outputs, and dependency IDs.",
+      "why": "Gives the most detailed view of the plan for delivery teams.",
+      "watch_out": "Dependencies show raw IDs rather than activity names, which is hard for a non-programmer to read."
+    },
+    {
+      "start": 280,
+      "end": 326,
+      "kind": "method",
+      "name": "ExcelExporter: create_timeline_sheet",
+      "id": "s7",
+      "hash": "f42af19d0af815c3",
+      "title": "Timeline sheet",
+      "what": "Creates a text timeline with one row per workstream and one column per week. Active weeks are filled with a solid block and a blue background.",
+      "why": "Gives a visual Gantt view that works without any chart tools.",
+      "watch_out": "It appears to crash: the week counts come from decimal durations, but the week loop needs whole numbers. Because export calls this step before saving, no Excel file is produced. Also, column letters past Z are wrong."
+    },
+    {
+      "start": 327,
+      "end": 360,
+      "kind": "method",
+      "name": "ExcelExporter: export",
+      "id": "s8",
+      "hash": "cc53eb4b685783b1",
+      "title": "Building and saving the Excel file",
+      "what": "Creates all five sheets in order, names the file from the project name with unsafe characters removed, saves it to output/exports and returns the path.",
+      "why": "Puts the sheets together into the single file the user receives.",
+      "watch_out": "The output folder is fixed, so the file always goes to output/exports, and any failure in an earlier sheet stops the save."
+    },
+    {
+      "start": 361,
+      "end": 397,
+      "kind": "class",
+      "name": "PowerPointExporter (part 1)",
+      "id": "s9",
+      "hash": "93e5d2784653e92e",
+      "title": "PowerPoint exporter setup",
+      "what": "Creates an empty deck, then gets its style either from a template passed in or by reading the template from the proposals folder. It sets the slide size and stores the colors and fonts for later use.",
+      "why": "Makes the deck match real proposals rather than a generic look.",
+      "watch_out": "If the proposal template is missing or lacks the expected keys, this step fails before any slide is made."
+    },
+    {
+      "start": 398,
+      "end": 454,
+      "kind": "method",
+      "name": "PowerPointExporter: _add_title_slide",
+      "id": "s10",
+      "hash": "36382f2ef01933d8",
+      "title": "Title slide and bullet slide helper",
+      "what": "Adds the title slide with the project name, a Proposal Structure subtitle and today's date. Also defines a helper that adds a titled slide with a bulleted list of items.",
+      "why": "Gives every deck a consistent title, and the helper avoids repeating the bullet code.",
+      "watch_out": "The bullet helper uses a layout with a built-in content area that is left empty, which may show an empty placeholder in PowerPoint's edit view."
+    },
+    {
+      "start": 455,
+      "end": 494,
+      "kind": "method",
+      "name": "PowerPointExporter: _add_summary_slide",
+      "id": "s11",
+      "hash": "91f4f2ee6535e503",
+      "title": "Summary and workstream slides",
+      "what": "Adds an executive summary slide with four key counts and duration. Also builds the workstream overview slide and one detail slide per workstream that has modules, listing duration, start week and each module with its activity count.",
+      "why": "Walks the reader from the overall picture to the details.",
+      "watch_out": "Long module lists have no size control, so they can run past the bottom of the slide."
+    },
+    {
+      "start": 495,
+      "end": 549,
+      "kind": "method",
+      "name": "PowerPointExporter: _add_timeline_slide",
+      "id": "s12",
+      "hash": "1e4862c870fe28c2",
+      "title": "Timeline slide drawing",
+      "what": "Adds a slide titled Project Timeline with one labeled colored bar per workstream, placed by start week and sized by duration. Colors cycle through the template's chart colors.",
+      "why": "Gives a quick visual of when each workstream runs.",
+      "watch_out": "The code comment says the slide uses a blank layout, but layout number 5 is commonly a title layout, which may leave an empty title box. Bar positions use decimal values that have not been tested in PowerPoint."
+    },
+    {
+      "start": 550,
+      "end": 603,
+      "kind": "class",
+      "name": "PowerPointExporter (part 5)",
+      "id": "s13",
+      "hash": "a59efe724f88f6f3",
+      "title": "Timeline bar labels and file saving",
+      "what": "Writes each bar's duration label in white, such as 4w. Then the export step builds all slides in order, names the deck from the project name, saves it to output/exports and returns the path.",
+      "why": "Labels make each bar readable at a glance.",
+      "watch_out": "Calling export twice on the same object adds the slides twice, so create a new exporter for each file."
+    },
+    {
+      "start": 604,
+      "end": 634,
+      "kind": "function",
+      "name": "export_project",
+      "id": "s14",
+      "hash": "800055ec3548714e",
+      "title": "One-step export function",
+      "what": "Runs the Excel and PowerPoint exports for a project, prints each saved path, and returns a dictionary of the two file paths.",
+      "why": "Gives the user a single call to produce both files.",
+      "watch_out": "The output folder argument is accepted but never passed on, so the files always go to the fixed default folder."
+    }
+  ],
+  "explained_at": "2026-11-11T23:44:23+00:00",
+  "explained_by": "haiku",
+  "summary": "Writes the finished project to an Excel workbook and a PowerPoint deck, with summary tables, a text timeline and bar timelines.",
+  "purpose": "Lets the user take the generated plan out of the app and into files they can share or edit.",
+  "why": "Likely reason: proposals are normally delivered as Excel and PowerPoint files, so the app produces both.",
+  "how": "Builds a workbook with five sheets: summary, workstreams, modules, activities and timeline. Builds a deck with a title, summary, workstream list, one slide per workstream and a timeline. Each file is saved under output/exports.",
+  "inputs": "A ProjectStructure with workstreams, modules and activities. An optional template for the PowerPoint look, which is otherwise read from the proposals folder.",
+  "outputs": "An Excel file and a PowerPoint file in output/exports, with the paths printed and returned.",
+  "risks": "The Excel timeline sheet appears to crash because it uses decimal durations where whole numbers are required. The output folder setting is ignored. Several end week values are one week too long.",
+  "debug": "If Excel export fails, look at the timeline sheet first. If the file lands in the wrong folder, look at export_project and the fixed output paths. If the deck looks wrong, check the template that was read from the proposals folder.",
+  "summary_hash": "sha256:9d127565ae196da8eaedd4deedf87bb0c21004668eeb3d0a180ce9834710a3aa"
+}

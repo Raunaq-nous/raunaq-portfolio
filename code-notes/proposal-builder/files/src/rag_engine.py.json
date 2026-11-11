@@ -1,0 +1,236 @@
+{
+  "schema_version": 1,
+  "path": "src/rag_engine.py",
+  "language": "Python",
+  "lines": 650,
+  "hash": "sha256:8cbc67255f2e81f7200e487a2c4ac502e1d8d8b706fdc42ad1c2111b99fe5946",
+  "area": "src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "Re-indexing duplicates chunks.",
+      "Relies on private database library attributes.",
+      "Most failures are printed and turned into empty results."
+    ]
+  },
+  "terms": [
+    {
+      "term": "RAG",
+      "meaning": "retrieval augmented generation, a method that looks up stored text before a language model answers"
+    },
+    {
+      "term": "Embedding",
+      "meaning": "a list of numbers that represents the meaning of a piece of text"
+    },
+    {
+      "term": "Vector database",
+      "meaning": "a store that finds the stored items whose embeddings are closest to a query"
+    },
+    {
+      "term": "Chunk",
+      "meaning": "a piece of a document, small enough to store and search on its own"
+    },
+    {
+      "term": "Chroma",
+      "meaning": "the vector database library used here"
+    },
+    {
+      "term": "Chunk overlap",
+      "meaning": "text repeated at the edge of neighboring chunks so context is not lost at a cut"
+    },
+    {
+      "term": "pdfplumber",
+      "meaning": "a library that reads text from PDF files"
+    },
+    {
+      "term": "python-pptx",
+      "meaning": "a library that reads and writes PowerPoint files"
+    }
+  ],
+  "depends_on": [
+    "pdfplumber",
+    "python-pptx",
+    "langchain-openai",
+    "langchain-text-splitters",
+    "langchain-chroma or langchain-community",
+    "src/data_models.py"
+  ],
+  "used_by": [
+    "src/rfp_matcher.py",
+    "src/semantic_approach_detector.py",
+    "src/governance_calculator.py",
+    "src/human_in_loop.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 26,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "5940eb607ef6d03d",
+      "title": "Imports and fallback database library",
+      "what": "Loads the PDF and PowerPoint readers, the embedding and text-splitting tools, and the vector database. If the newer database package is missing, it falls back to the older one.",
+      "why": "The fallback lets the program run with either version of the database package.",
+      "watch_out": "If neither package is installed, the program stops when this file loads."
+    },
+    {
+      "start": 27,
+      "end": 62,
+      "kind": "class",
+      "name": "RAGEngine (part 1)",
+      "id": "s2",
+      "hash": "edc2fd8f183386f8",
+      "title": "Creating the engine",
+      "what": "Creates the database folder, sets the embedding model, chunk size and overlap, and opens the collection that holds RFPs and proposals.",
+      "why": "Chunk settings control how much text each search result contains.",
+      "watch_out": "Changing the embedding model later makes stored vectors incompatible with new ones, so the database must be rebuilt."
+    },
+    {
+      "start": 63,
+      "end": 116,
+      "kind": "method",
+      "name": "RAGEngine: extract_pdf_text",
+      "id": "s3",
+      "hash": "8e8386dbd201f667",
+      "title": "Reading PDF and slide text",
+      "what": "Pulls text out of each page of a PDF, labeling each page and skipping pages that fail. It also collects the text from each PowerPoint slide, labeling each slide so later results can cite slide numbers. A file that cannot be read returns empty text.",
+      "why": "Likely reason: one bad page should not lose the whole RFP.",
+      "watch_out": "Image-only pages produce no text, and shapes without a text attribute, such as many tables and groups, may be skipped."
+    },
+    {
+      "start": 117,
+      "end": 171,
+      "kind": "method",
+      "name": "RAGEngine: extract_approach_section",
+      "id": "s4",
+      "hash": "4748d8e1c55f185f",
+      "title": "Approach-only slide extraction",
+      "what": "Keeps only slides that mention approach-related words such as timeline, governance, module or Gantt, and labels them as approach slides.",
+      "why": "Likely reason: those slides are the most useful pattern source, so they are indexed again with extra weight.",
+      "watch_out": "A keyword anywhere on a slide counts, so a slide with an unrelated use of schedule can be included."
+    },
+    {
+      "start": 172,
+      "end": 217,
+      "kind": "method",
+      "name": "RAGEngine: chunk_document",
+      "id": "s5",
+      "hash": "42fbbacb5a980abc",
+      "title": "Splitting text into chunks",
+      "what": "Splits proposal text slide by slide, and splits large slides by paragraph. It splits RFP text into overlapping pieces. Each piece is tagged with its source and type.",
+      "why": "Likely reason: proposals keep slides whole for context, and RFPs use overlap so context is not cut at a boundary.",
+      "watch_out": "Chunk sizes count characters, not meaning, so a chunk can end mid-thought."
+    },
+    {
+      "start": 218,
+      "end": 275,
+      "kind": "class",
+      "name": "RAGEngine (part 5)",
+      "id": "s6",
+      "hash": "b28fb9db2f84c2f6",
+      "title": "Chunk splitting, continued",
+      "what": "Finishes the paragraph split for large slides and keeps small slides whole. For RFP pieces it checks the first three lines for words such as scope or deliverable, and stores the first matching line as a section label.",
+      "why": "Likely reason: the section label lets results show which part of the RFP they came from.",
+      "watch_out": "Only the first three lines are checked, so a piece without those words gets an empty label."
+    },
+    {
+      "start": 276,
+      "end": 332,
+      "kind": "method",
+      "name": "RAGEngine: index_documents",
+      "id": "s7",
+      "hash": "9cca5fac2f0ee75a",
+      "title": "Indexing RFP files",
+      "what": "Goes through every RFP PDF in the RFP folder, extracts and splits its text, and stores the pieces. It then moves on to the proposal files.",
+      "why": "Keeps RFPs and proposals as separate kinds so searches can target one kind.",
+      "watch_out": "Nothing checks whether a file is already stored, so running this again adds duplicate pieces."
+    },
+    {
+      "start": 333,
+      "end": 389,
+      "kind": "class",
+      "name": "RAGEngine (part 7)",
+      "id": "s8",
+      "hash": "0bf1ed9a32fe2a4e",
+      "title": "Indexing proposal files",
+      "what": "Goes through every proposal file, stores its full text, and stores a second weighted copy of its approach slides. It records how many pieces each file produced.",
+      "why": "Likely reason: approach pieces are marked high priority so retrieval can favor them.",
+      "watch_out": "A proposal that fails is recorded as an error and skipped, while the rest still index."
+    },
+    {
+      "start": 390,
+      "end": 439,
+      "kind": "class",
+      "name": "RAGEngine (part 8)",
+      "id": "s9",
+      "hash": "697c6dc803e9a336",
+      "title": "Indexing summary log",
+      "what": "Records the indexing result (total pieces, counts by kind, errors, time taken) in a log, prints a summary when verbose, and finishes the indexing run.",
+      "why": "Gives a record to check after a run to see what was indexed.",
+      "watch_out": "The log is kept in memory only and is lost when the program stops."
+    },
+    {
+      "start": 440,
+      "end": 498,
+      "kind": "class",
+      "name": "RAGEngine (part 9)",
+      "id": "s10",
+      "hash": "52938af65bf872bf",
+      "title": "Running a search",
+      "what": "Runs a similarity search for the query, optionally limited to some document kinds. It turns the results into evidence records sorted with the closest first, and logs the search.",
+      "why": "Likely reason: if the filter is not supported, it searches a wider set and filters the results by hand.",
+      "watch_out": "Sorting is ascending because a lower score means a closer match."
+    },
+    {
+      "start": 499,
+      "end": 556,
+      "kind": "class",
+      "name": "RAGEngine (part 10)",
+      "id": "s11",
+      "hash": "0e0fbb1f5d1369b3",
+      "title": "Search results and error handling",
+      "what": "Returns the ranked results, or an empty list if the search fails. It also starts the approach-focused search by building its query.",
+      "why": "Likely reason: failures return empty results instead of stopping the run.",
+      "watch_out": "An empty result looks the same whether nothing matched or the search failed, so errors show only in printed output."
+    },
+    {
+      "start": 557,
+      "end": 601,
+      "kind": "class",
+      "name": "RAGEngine (part 11)",
+      "id": "s12",
+      "hash": "59e54babdb4ff850",
+      "title": "Approach-focused search ranking",
+      "what": "Ranks approach-section results ahead of general ones by lowering their score by 30 percent, then returns approach results only or a 70 to 30 mix.",
+      "why": "Likely reason: pattern learning should mostly use approach-section material.",
+      "watch_out": "Because the boost changes the score, a weaker raw match can rank above a stronger one."
+    },
+    {
+      "start": 602,
+      "end": 650,
+      "kind": "method",
+      "name": "RAGEngine: get_collection_stats",
+      "id": "s13",
+      "hash": "31775511bdc62cd5",
+      "title": "Database statistics and reset",
+      "what": "Reports how many pieces and sources are stored, split into RFP and proposal counts. It can also delete and recreate the collection to clear it.",
+      "why": "Lets the owner check the database and wipe it before a clean re-index.",
+      "watch_out": "The reset uses private parts of the database library, which may break after an upgrade, and its failures are only printed."
+    }
+  ],
+  "explained_at": "2026-11-11T23:48:18+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads RFP PDFs and proposal PowerPoint files, splits them into pieces, stores them in a searchable vector database, and returns the pieces most similar to a question.",
+  "purpose": "Give the other agents a searchable memory of past RFPs and proposals, with a log of what was found.",
+  "why": "Likely reason: similarity search finds related past work by meaning rather than exact words. The module docstring states it provides visibility into retrieval.",
+  "how": "Extract text from PDFs and slides, optionally extract approach slides with extra weight, split the text into chunks, store the chunks with embeddings, then answer searches with ranked results and logs.",
+  "inputs": "An API key for the embedding service, the database folder, the RFP and proposal folders, chunk size and overlap settings, and for searches the query text, optional document types and the number of results wanted.",
+  "outputs": "Indexing summaries and logs, lists of Evidence records (source file, type, content, score), and collection statistics.",
+  "risks": "Indexing the same files again adds duplicate chunks because nothing checks for existing ones. A lower score means a closer match, which is easy to misread. The clear and stats methods use private parts of the database library that can change between versions. Embedding calls use the paid API.",
+  "debug": "Read the indexing summary for errors. If searches return nothing, check the collection stats and whether indexing ran. For duplicate results, clear the collection and index again. If searches fail, check the API key.",
+  "summary_hash": "sha256:8cbc67255f2e81f7200e487a2c4ac502e1d8d8b706fdc42ad1c2111b99fe5946"
+}

@@ -1,0 +1,344 @@
+{
+  "schema_version": 1,
+  "path": "src/agents.py",
+  "language": "Python",
+  "lines": 1038,
+  "hash": "sha256:ab097b04f7bacac11d4c034245cf8f0154679bccf04e25779ecd001c795fdb9a",
+  "area": "src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "When the model returns bad JSON, the failure becomes an empty result instead of a clear error.",
+      "No test is visible for any agent.",
+      "Some model-supplied IDs and values are used without checking, for example the optimized start weeks.",
+      "The optimizer depends on an end week value that this file cannot confirm exists in data_models.py."
+    ]
+  },
+  "terms": [
+    {
+      "term": "LLM",
+      "meaning": "large language model, the AI system that reads a prompt and writes a reply"
+    },
+    {
+      "term": "prompt",
+      "meaning": "the instructions and context text sent to the AI"
+    },
+    {
+      "term": "JSON",
+      "meaning": "a structured text format made of named fields, which code can read easily"
+    },
+    {
+      "term": "RAG",
+      "meaning": "retrieval augmented generation, a method that searches stored documents and gives the matches to the AI"
+    },
+    {
+      "term": "evidence",
+      "meaning": "text passages from past proposals that the search step returns for the AI to learn from"
+    },
+    {
+      "term": "MECE",
+      "meaning": "mutually exclusive and collectively exhaustive, a rule that items should not overlap and should cover the whole scope"
+    },
+    {
+      "term": "dependency graph",
+      "meaning": "a map of which workstreams must wait for others to finish"
+    },
+    {
+      "term": "critical path",
+      "meaning": "the chain of linked tasks that sets the minimum total project length"
+    },
+    {
+      "term": "API key",
+      "meaning": "a secret code that proves to the model provider that this program is allowed to use its service"
+    }
+  ],
+  "depends_on": [
+    "langchain_openai",
+    "src/data_models.py",
+    "src/rag_engine.py",
+    "json and time from the Python standard library"
+  ],
+  "used_by": [
+    "src/__init__.py re-exports these classes.",
+    "Other callers are not visible in the packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 20,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a51b5a828b705b34",
+      "title": "Imports and file setup",
+      "what": "Brings in the JSON and time tools, the type helpers, the OpenAI chat connection, the shared data shapes and the RAG engine.",
+      "why": "Every class below needs these tools and data shapes.",
+      "watch_out": "If any name in data_models.py is renamed, this file will fail to load."
+    },
+    {
+      "start": 21,
+      "end": 45,
+      "kind": "function",
+      "name": "parse_json_response",
+      "id": "s2",
+      "hash": "cbaa4f766a189fe9",
+      "title": "Reading AI replies as JSON",
+      "what": "Takes the text an AI model returns, removes code fence markers, and tries to turn it into a dictionary. If it cannot, it returns an empty dictionary instead of crashing.",
+      "why": "AI models often add extra words or markdown around the JSON, so this helper tries to recover it.",
+      "watch_out": "Returning an empty result hides failures, so a bad AI reply can look like a normal empty answer."
+    },
+    {
+      "start": 46,
+      "end": 95,
+      "kind": "class",
+      "name": "BaseAgent",
+      "id": "s3",
+      "hash": "4b4dfedddd6355cf",
+      "title": "Shared base for all agents",
+      "what": "Stores the API key, model name and temperature setting, and creates two model connections: one for normal text and one that must return JSON. It also builds the reasoning log entry.",
+      "why": "Likely reason: keeps the model setup in one place so all agents share it.",
+      "watch_out": "The default model name is set here, so changing it here changes every agent at once."
+    },
+    {
+      "start": 96,
+      "end": 155,
+      "kind": "class",
+      "name": "WorkstreamAgent (part 1)",
+      "id": "s4",
+      "hash": "041d4f12e0c40a1c",
+      "title": "Explicit workstream extraction, start",
+      "what": "Sends the first part of the RFP to the model and asks for any workstream names, phases or tracks that are written in it, along with the project duration.",
+      "why": "Likely reason: names the client wrote are the strongest evidence, so they are kept separate from ideas the program proposes.",
+      "watch_out": "Only the first 4000 characters of the RFP are read, so mentions further in are missed."
+    },
+    {
+      "start": 156,
+      "end": 215,
+      "kind": "class",
+      "name": "WorkstreamAgent (part 2)",
+      "id": "s5",
+      "hash": "d9b2e12d8e47ef99",
+      "title": "Explicit extraction results and repository learning start",
+      "what": "Prints the explicit extraction summary and returns it. Then it starts the repository method by collecting evidence from two searches of past proposals.",
+      "why": "Two searches are used so one covers the type of project and the other covers the typical structure.",
+      "watch_out": "Searches only include the document types listed in the code, so proposals tagged differently are never found."
+    },
+    {
+      "start": 216,
+      "end": 255,
+      "kind": "class",
+      "name": "WorkstreamAgent (part 3)",
+      "id": "s6",
+      "hash": "c01ec1b7473f1263",
+      "title": "Evidence cleanup and selection",
+      "what": "Removes repeated evidence passages, keeps the twelve with the lowest similarity score, and labels the top few as high, medium or low relevance for the prompt.",
+      "why": "Keeps the prompt short and stops the same passage from appearing twice.",
+      "watch_out": "The labels assume that a lower score means a closer match. This should be checked against the search engine's documentation."
+    },
+    {
+      "start": 256,
+      "end": 309,
+      "kind": "class",
+      "name": "WorkstreamAgent (part 4)",
+      "id": "s7",
+      "hash": "4cb7478061526318",
+      "title": "Workstream generation prompt",
+      "what": "Sends the RFP context and the chosen evidence to the model and asks for four to six workstreams, each with a duration, rationale, evidence sources, parallel flag and governance rhythm.",
+      "why": "Requiring evidence sources lets the owner check each suggestion against the past proposal.",
+      "watch_out": "The prompt asks for four to six workstreams, but the code does not enforce that count."
+    },
+    {
+      "start": 310,
+      "end": 352,
+      "kind": "class",
+      "name": "WorkstreamAgent (part 5)",
+      "id": "s8",
+      "hash": "e5d5ed069a620ee7",
+      "title": "Building workstream objects",
+      "what": "Turns each workstream in the model reply into a workstream object. It maps governance text to a fixed set of meeting frequencies and calculates an average confidence.",
+      "why": "Converts loose model text into the strict types the rest of the program expects.",
+      "watch_out": "Unrecognized governance text quietly becomes monthly, which hides the model's actual answer."
+    },
+    {
+      "start": 353,
+      "end": 410,
+      "kind": "class",
+      "name": "DependencyAgent (part 1)",
+      "id": "s9",
+      "hash": "55d542a8d2eed3b4",
+      "title": "Dependency analysis setup",
+      "what": "Collects dependency-related evidence and lists each workstream with its name, duration, rationale and parallel flag. Then it builds the prompt that asks about prerequisites and risk.",
+      "why": "The model needs the workstream list and the project context to reason about the order of work.",
+      "watch_out": "The project context is cut to 1500 characters, so detail beyond that is not considered."
+    },
+    {
+      "start": 411,
+      "end": 468,
+      "kind": "class",
+      "name": "DependencyAgent (part 2)",
+      "id": "s10",
+      "hash": "ea885739d3d1ce15",
+      "title": "Dependency prompt and reply",
+      "what": "Adds the expected JSON structure and the rules for the answer, such as IDs must match real workstreams. Then it sends the prompt and parses the reply.",
+      "why": "Strict output rules make the reply easier for code to check.",
+      "watch_out": "The model may still invent IDs, and the code only checks some of them."
+    },
+    {
+      "start": 469,
+      "end": 519,
+      "kind": "class",
+      "name": "DependencyAgent (part 3)",
+      "id": "s11",
+      "hash": "d513c6fa46e06fdc",
+      "title": "Building the dependency graph",
+      "what": "Turns the model's reply into a dependency graph. It keeps links only when both IDs match real workstreams, then prints a summary of the graph.",
+      "why": "Filters out invented workstream IDs before they reach the rest of the program.",
+      "watch_out": "The raw dependency list is copied onto the graph afterward, which skips the ID check and can let invalid IDs through."
+    },
+    {
+      "start": 520,
+      "end": 532,
+      "kind": "class",
+      "name": "DependencyAgent (part 4)",
+      "id": "s12",
+      "hash": "37f8a5331acff3d0",
+      "title": "Dependency reasoning record",
+      "what": "Calculates the time taken and the confidence, then packages the graph, evidence and reasoning steps into a log record that is returned.",
+      "why": "Every agent returns a reasoning record so the owner can see how the result was reached.",
+      "watch_out": "The confidence value comes from the model's own word, such as high or low, not from a measured check."
+    },
+    {
+      "start": 533,
+      "end": 590,
+      "kind": "class",
+      "name": "ModuleAgent (part 1)",
+      "id": "s13",
+      "hash": "42830494e3658f2d",
+      "title": "Module agent setup and evidence",
+      "what": "Collects every module name already used in any workstream so the new modules can avoid repeats. Then it searches the past proposals for module structure evidence.",
+      "why": "Stops two workstreams from getting the same module name.",
+      "watch_out": "The repeat check only knows the names that exist at the moment of the call."
+    },
+    {
+      "start": 591,
+      "end": 626,
+      "kind": "class",
+      "name": "ModuleAgent (part 2)",
+      "id": "s14",
+      "hash": "ebf26dfac5a5e160",
+      "title": "Module prompt",
+      "what": "Builds the long module prompt. It first tells the model to learn naming, count, governance and risk patterns from the evidence, then gives the rules, including the list of names to avoid.",
+      "why": "Likely reason: asks the model to base its answer on past proposals instead of guessing.",
+      "watch_out": "Only twenty existing names are shown to the model, so repeats beyond that list are not prevented by the prompt."
+    },
+    {
+      "start": 627,
+      "end": 686,
+      "kind": "class",
+      "name": "ModuleAgent (part 3)",
+      "id": "s15",
+      "hash": "56e61f8ce16295c0",
+      "title": "Module reply structure",
+      "what": "Defines the JSON shape the model must return. It covers governance, modules, activities, evidence citations, MECE checks and reasoning steps.",
+      "why": "A fixed shape lets the code read the answer reliably.",
+      "watch_out": "This is a request, not a guarantee. The model may leave out fields, and the code fills them with defaults."
+    },
+    {
+      "start": 687,
+      "end": 746,
+      "kind": "class",
+      "name": "ModuleAgent (part 4)",
+      "id": "s16",
+      "hash": "cdb22bff4f48dfff",
+      "title": "Building modules and activities",
+      "what": "Sends the module prompt, parses the reply, and builds module and activity objects. It also works out each module's start week, moving forward week by week unless a module is marked as parallel.",
+      "why": "Sequential modules are placed one after another, while parallel ones share a start week.",
+      "watch_out": "Sequential start weeks follow the order the model lists the modules, so a bad order gives a bad timeline."
+    },
+    {
+      "start": 747,
+      "end": 806,
+      "kind": "class",
+      "name": "ModuleAgent (part 5)",
+      "id": "s17",
+      "hash": "909b954807cbae10",
+      "title": "Duplicate check and confidence",
+      "what": "Compares new module names with the existing ones, lowers the confidence when repeats appear, and prints the governance, citations and module details. It also reads the module end week to print it.",
+      "why": "Repeated names are a known failure, so the code flags them.",
+      "watch_out": "A duplicate only lowers confidence and a warning is printed. The duplicate module is still returned. The module end week is read here, and this file cannot confirm that data_models.py defines it."
+    },
+    {
+      "start": 807,
+      "end": 828,
+      "kind": "class",
+      "name": "ModuleAgent (part 6)",
+      "id": "s18",
+      "hash": "5eba343af152d25c",
+      "title": "Module warnings and log record",
+      "what": "Prints any duplicate warnings and the confidence, then records the module results as a reasoning log entry and returns the modules.",
+      "why": "Gives the owner a final record of what the module agent produced.",
+      "watch_out": "The log entry counts activities across all modules, so the number shown is a total, not per module."
+    },
+    {
+      "start": 829,
+      "end": 888,
+      "kind": "class",
+      "name": "TimelineOptimizer (part 1)",
+      "id": "s19",
+      "hash": "f8013d7f5ec4b5fa",
+      "title": "Timeline optimizer setup",
+      "what": "Finds the current total project length from the latest workstream end, collects timeline evidence from past proposals, and prepares each workstream with its timing and dependencies.",
+      "why": "The model needs the current length to judge how many weeks can be saved.",
+      "watch_out": "An empty workstream list is handled by using zero weeks, which hides the missing input."
+    },
+    {
+      "start": 889,
+      "end": 942,
+      "kind": "class",
+      "name": "TimelineOptimizer (part 2)",
+      "id": "s20",
+      "hash": "8a3fe4e21cb694dd",
+      "title": "Timeline optimizer prompt",
+      "what": "Builds the optimizer prompt with the workstreams, dependencies, parallel groups, constraints and evidence, and describes the JSON reply expected back.",
+      "why": "Gives the model all the current facts before it proposes changes.",
+      "watch_out": "Constraints are inserted as raw JSON with no check on their content."
+    },
+    {
+      "start": 943,
+      "end": 1002,
+      "kind": "class",
+      "name": "TimelineOptimizer (part 3)",
+      "id": "s21",
+      "hash": "1af2d44260cd7899",
+      "title": "Applying the optimized timing",
+      "what": "Copies each workstream and sets its new start week from the model's reply. It corrects the weeks saved if it does not match the actual difference, then builds the optimization result.",
+      "why": "Copies keep the original workstreams unchanged, and recalculating weeks saved avoids trusting the model's arithmetic.",
+      "watch_out": "The new start weeks are not checked against the dependency rules, so a model mistake can pass through unnoticed."
+    },
+    {
+      "start": 1003,
+      "end": 1038,
+      "kind": "class",
+      "name": "TimelineOptimizer (part 4)",
+      "id": "s22",
+      "hash": "1312348c846e8ac8",
+      "title": "Optimizer summary and return",
+      "what": "Prints the results, the parallel blocks and up to three risks. Then it records the result in the reasoning log and returns the optimization result, the updated workstreams and the log entry.",
+      "why": "This is the last step, so the owner gets a readable summary and the returned data.",
+      "watch_out": "The rationale falls back to a generic sentence, because the prompt never asks for a top level rationale field."
+    }
+  ],
+  "explained_at": "2026-11-11T23:42:22+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the AI team of the program: four working agents that read the RFP and past proposals, then propose workstreams, dependencies, modules and a faster timeline.",
+  "purpose": "Turns the RFP text and the search results from past proposals into structured project planning data, and keeps a log of how each answer was reached.",
+  "why": "Likely reason: each agent has its own prompt and its own checks, so each step can be reviewed separately. The reasoning log lets the owner see why an answer was given. The reason for the split is not stated in the code.",
+  "how": "The shared base class connects to the language model twice, once for free text and once for forced JSON. The workstream agent finds names written in the RFP and proposes new ones from evidence. The dependency agent builds a graph of which work must come first. The module agent creates modules and activities and checks for repeated names. The timeline optimizer proposes new start weeks and calculates the weeks saved.",
+  "inputs": "RFP text, existing workstream objects, a dependency graph, a RAG engine for searching past proposals, an API key, a model name, and optional constraints for the optimizer.",
+  "outputs": "Lists of workstreams, a dependency graph, modules with activities, an optimization result, and one reasoning record per step. When verbose mode is on, it also prints a running log.",
+  "risks": "If the model returns bad JSON, the parser returns an empty result and the agent can quietly produce nothing. Some IDs from the model are not checked. Each run costs model usage. The default model is set to gpt-4 in the base class.",
+  "debug": "Start with the printed reasoning log. If results are empty, check the raw model reply and the API key. Check that the RAG engine returns evidence. For repeated module names, look at the duplicate warnings in the module log.",
+  "summary_hash": "sha256:ab097b04f7bacac11d4c034245cf8f0154679bccf04e25779ecd001c795fdb9a"
+}

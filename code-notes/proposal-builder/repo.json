@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "name": "Proposal-Builder",
+  "commit": "70e67af",
+  "synced_at": "2026-11-11T23:53:31+00:00",
+  "summary": "Proposal-Builder is a tool that helps write consulting-style proposals in response to an RFP (a client's request for proposals). It reads a new RFP PDF, finds the most similar past RFP in a searchable database, and uses that past proposal as a template. A team of AI agents then drafts the project plan: workstreams, dependencies, modules, a faster timeline, and the number of governance meetings. The result can be reviewed and edited by a person, then exported as a PowerPoint deck and an Excel workbook, with charts of the timeline. Which AI service powers the agents is not stated in the summaries.",
+  "who_its_for": "People on a proposal or consulting team who answer RFPs and want a faster first draft built from their own past proposals. Some setup in a terminal is needed, so a technical helper may be required at first.",
+  "how_it_runs": "Run setup.sh once, fill in the settings file, then run index_database.py once to load past RFPs and proposals. After that, either start the web page with run_app.sh or run main_workflow.py from the command line, which can pause for human review.",
+  "start_here": [
+    "app.py",
+    "main_workflow.py",
+    "src/agents.py",
+    "src/content_generator.py",
+    "src/rag_engine.py",
+    "src/exports.py",
+    "setup.sh"
+  ],
+  "areas": [
+    {
+      "id": "src",
+      "name": "src",
+      "match": [
+        "src/*"
+      ],
+      "summary": "The core engine. It reads RFPs, searches past proposals, matches a template, runs the AI agents, calculates meetings, copies slide designs, and exports the final files and charts.",
+      "why": "Almost all of the real work of building a proposal happens here.",
+      "debug_tips": "Match the problem to the step: a wrong template points to rfp_matcher.py or template_selector.py, odd content to agents.py or content_generator.py, and bad slide looks to the slide and template files."
+    },
+    {
+      "id": "root-files",
+      "name": "(root files)",
+      "match": [
+        "*"
+      ],
+      "summary": "The entry points and setup files: the web page (app.py), the command-line workflow (main_workflow.py), the one-time indexing script, setup and launch scripts, the library list, and a sample settings file.",
+      "why": "These are how a person installs, configures and starts the tool.",
+      "debug_tips": "If nothing starts, check that setup.sh was run and that the settings file was created from .env.example with real values. If searches return nothing, the indexing script may not have been run."
+    },
+    {
+      "id": "notebooks",
+      "name": "notebooks",
+      "match": [
+        "notebooks/*"
+      ],
+      "summary": "One helper file that downloads the latest project code from GitHub and reloads it inside a running notebook. The notebooks themselves are not described in the summaries.",
+      "why": "It lets people using a notebook pick up code updates without restarting.",
+      "debug_tips": "If a notebook seems to use old code, rerun this helper. Whether it needs network or GitHub access is not clear from the summaries."
+    }
+  ],
+  "decisions": [],
+  "readiness": {
+    "overall": "not-ready",
+    "summary": "The top three fixes are to add automated tests with CI, to add logging and clear error handling around uploads and LLM calls, and to pin dependencies and run an audit. After that, document backup, deployment and rollback steps, and add sign-in if the app will be shared.",
+    "checked_at": "2026-11-11T23:53:47+00:00",
+    "checks": [
+      {
+        "id": "starts",
+        "question": "Does the app build and start with one documented command?",
+        "status": "partial",
+        "evidence": "`README.md` has a Quick Start and links to `QUICK_START.md` and `LOCAL_SETUP_GUIDE.md`, and `requirements.txt` exists with Streamlit listed. The single start command is not visible in the evidence shown, and the build was not run.",
+        "next_step": "State one command (for example `streamlit run app.py`) at the top of `README.md`."
+      },
+      {
+        "id": "tests",
+        "question": "Are there automated tests, and do they pass?",
+        "status": "fail",
+        "evidence": "0 test files found and no CI files. Nothing runs automatically, so nothing can be shown to pass.",
+        "next_step": "Add a few pytest tests for the RFP parsing and timeline logic, plus a CI workflow that runs them."
+      },
+      {
+        "id": "errors",
+        "question": "When something goes wrong, does the app show a clear message instead of crashing or failing silently?",
+        "status": "unknown",
+        "evidence": "Not checked: the static scan found 0 swallowed errors and no logging, but error handling in the UI code was not inspected, so clear user messages cannot be confirmed.",
+        "next_step": "Review the upload and LLM call paths, and show friendly messages for API failures and bad files."
+      },
+      {
+        "id": "inputs",
+        "question": "Does it check what people type or upload before using it?",
+        "status": "partial",
+        "evidence": "The scan found only 1 input validation match in 1 file. Uploads of RFP PDFs, PPTX and XLSX files appear to have little checking of type, size or content.",
+        "next_step": "Validate file type and size on upload, and wrap parsing in error handling."
+      },
+      {
+        "id": "secrets",
+        "question": "Are passwords and API keys kept out of the code and out of git history?",
+        "status": "partial",
+        "evidence": "Only `.env.example` is tracked, `.gitignore` mentions `.env`, and no secret-looking strings were found at HEAD. Git history was not scanned.",
+        "next_step": "Scan history with gitleaks or trufflehog before sharing the repo."
+      },
+      {
+        "id": "access",
+        "question": "Can only the right people see and change things (sign-in and permissions)?",
+        "status": "fail",
+        "evidence": "0 auth, session or permission matches. The Streamlit app appears to have no sign-in. The README says it runs 100% locally, so this may be acceptable for single-user use only.",
+        "next_step": "If it will be shared or hosted, add authentication in front of it. Otherwise document it as local single-user only."
+      },
+      {
+        "id": "data",
+        "question": "Is important data backed up, and are database changes made through migrations?",
+        "status": "fail",
+        "evidence": "No migrations folder. The Chroma vector store and the proposal repository have no documented backup or rebuild process.",
+        "next_step": "Document how to back up the Chroma directory and how to rebuild the index from the source documents."
+      },
+      {
+        "id": "dependencies",
+        "question": "Are third-party packages reasonably up to date and free of known security problems?",
+        "status": "unknown",
+        "evidence": "Not checked: the dependency audit was not run. `requirements.txt` uses only lower bounds (`>=`) with no lockfile with pinned versions, so installs are not reproducible.",
+        "next_step": "Pin versions with a lock file, then run pip-audit."
+      },
+      {
+        "id": "logs",
+        "question": "If it breaks while people use it, will logs or alerts show what happened?",
+        "status": "fail",
+        "evidence": "0 logging matches in the code. Failures in production would leave no trace beyond the console.",
+        "next_step": "Add Python `logging` with a file handler, and log each agent step and LLM error."
+      },
+      {
+        "id": "performance",
+        "question": "Does it stay fast with realistic amounts of data and users?",
+        "status": "unknown",
+        "evidence": "Not checked: performance cannot be judged from static evidence, and no load or size limits are visible. Each LLM call may be slow and costly, and the README gives no scale guidance.",
+        "next_step": "Time a run with a large RFP and a large repository, and add caching or progress indicators if needed."
+      },
+      {
+        "id": "deploy",
+        "question": "Is there a written, repeatable way to deploy it and to roll back a bad release?",
+        "status": "fail",
+        "evidence": "No CI or deploy files, no Dockerfile, and no rollback notes. Setup is described only for local desktop use.",
+        "next_step": "Add a short `DEPLOY.md` covering the run command, environment variables and how to return to a previous version, or a Dockerfile."
+      },
+      {
+        "id": "docs",
+        "question": "Could someone new run it and understand it from the docs alone?",
+        "status": "partial",
+        "evidence": "There are many docs (`README.md`, `LOCAL_SETUP_GUIDE.md`, `QUICK_START.md`, `RFP_WORKFLOW_GUIDE.md`, and others) and they cover a lot. Several are planning or status notes (`REBUILD_PLAN.md`, `IMPLEMENTATION_STATUS.md`, `SOLUTION_PLAN.md`) that may be out of date, and the README links to docs not shown in the file list (`SYNC_INSTRUCTIONS.md`).",
+        "next_step": "Merge the setup docs into one, move the planning notes to a `docs/` folder, and fix the broken links."
+      }
+    ],
+    "method": "Static evidence only; tests, build and audit were not run in this pass."
+  },
+  "debug_playbook": [
+    {
+      "symptom": "The app or script will not start",
+      "likely_area": "root-files",
+      "where_to_look": [
+        "setup.sh",
+        "run_app.sh",
+        ".env.example",
+        "requirements.txt"
+      ],
+      "steps": [
+        "Confirm setup.sh finished without errors.",
+        "Check that the settings file exists and has real values in place of the placeholders.",
+        "Reinstall the libraries listed in requirements.txt if an import error appears."
+      ]
+    },
+    {
+      "symptom": "No matching RFP or template is found, or the match is wrong",
+      "likely_area": "src",
+      "where_to_look": [
+        "index_database.py",
+        "src/rfp_matcher.py",
+        "src/template_selector.py",
+        "src/rag_engine.py"
+      ],
+      "steps": [
+        "Make sure index_database.py was run and the past files were loaded.",
+        "Check that the template file name resembles the matched RFP, since selection is by file name.",
+        "Use the human review prompts to override the match."
+      ]
+    },
+    {
+      "symptom": "The generated content looks poor or is missing",
+      "likely_area": "src",
+      "where_to_look": [
+        "src/agents.py",
+        "src/content_generator.py",
+        "src/rfp_parser.py"
+      ],
+      "steps": [
+        "Check that the RFP text was read correctly from the PDF.",
+        "Confirm the AI service key in the settings file is valid.",
+        "Review the content at the pause step and edit it before export."
+      ]
+    },
+    {
+      "symptom": "The PowerPoint looks different from the template or slides are wrong",
+      "likely_area": "src",
+      "where_to_look": [
+        "src/slide_cloner.py",
+        "src/approach_replicator.py",
+        "src/approach_analyzer.py",
+        "src/template_extractor.py",
+        "src/semantic_approach_detector.py"
+      ],
+      "steps": [
+        "Check whether the right approach slides were detected in the template.",
+        "Check that the template file opens and has the expected slides.",
+        "Compare the output deck with the template to see which slide type failed."
+      ]
+    },
+    {
+      "symptom": "A notebook runs old code",
+      "likely_area": "notebooks",
+      "where_to_look": [
+        "notebooks/AUTO_UPDATE_CELL.py"
+      ],
+      "steps": [
+        "Rerun the update helper at the top of the notebook.",
+        "If it fails, check internet access and the GitHub address it uses.",
+        "Restart the notebook if the old code still runs."
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "RFP",
+      "meaning": "Request for Proposal, a document where a client describes a project and asks firms to bid."
+    },
+    {
+      "term": "RAG",
+      "meaning": "A way of letting the AI look up relevant pieces of past documents before writing, so answers are based on real examples."
+    },
+    {
+      "term": "Vector database",
+      "meaning": "A searchable store that finds text pieces by meaning rather than exact words."
+    },
+    {
+      "term": "Agent",
+      "meaning": "A single AI step with one job, such as proposing workstreams or dependencies."
+    },
+    {
+      "term": "Workstream",
+      "meaning": "A major strand of work within a project."
+    },
+    {
+      "term": "Module",
+      "meaning": "A block of related activities inside the project plan."
+    },
+    {
+      "term": "SteerCo",
+      "meaning": "Steering Committee, a senior group that meets to oversee the project."
+    },
+    {
+      "term": "Human in the loop",
+      "meaning": "Points where a person can review and override the automatic choices."
+    },
+    {
+      "term": "Template",
+      "meaning": "A past proposal deck whose layout and styling are copied for the new one."
+    },
+    {
+      "term": "Indexing",
+      "meaning": "Reading the RFP and proposal files once and storing their text so they can be searched."
+    }
+  ],
+  "skipped": []
+}

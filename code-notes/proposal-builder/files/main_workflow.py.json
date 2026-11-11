@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "path": "main_workflow.py",
+  "language": "Python",
+  "lines": 403,
+  "hash": "sha256:bd69b074c69d079f5ed20f7b0bef10873bc2ac6b7a7ec650c93f23ed61cf23fa",
+  "area": "root-files",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated tests are visible.",
+      "The verbose flag cannot be turned off.",
+      "The first RFP chosen depends on the order the folder listing returns files.",
+      "The default layout relies on the replicator handling missing template parts, which this file does not show."
+    ]
+  },
+  "terms": [
+    {
+      "term": "agent",
+      "meaning": "one focused step in the pipeline, each doing one job such as matching an RFP or building slides"
+    },
+    {
+      "term": "human-in-the-loop",
+      "meaning": "a design where a person can check and override the AI's decisions at set points"
+    },
+    {
+      "term": "template blueprint",
+      "meaning": "a saved description of a template's layout that the replicator uses to copy its look"
+    },
+    {
+      "term": "governance",
+      "meaning": "the meeting plan, such as steering committee and weekly meetings"
+    },
+    {
+      "term": "workstream",
+      "meaning": "a major area of work in the project plan"
+    }
+  ],
+  "depends_on": [
+    "src modules rfp_matcher, template_selector, content_generator, template_extractor, approach_replicator, governance_calculator, human_in_loop, rfp_parser and rag_engine",
+    "langchain_openai",
+    "python-pptx",
+    "python-dotenv",
+    ".env",
+    "data/chroma_db",
+    "data/rfps",
+    "data/proposals"
+  ],
+  "used_by": [
+    "run by the user from a terminal"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 44,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "86615765312e1f2a",
+      "title": "Setup and imports",
+      "what": "Loads settings and brings in the eight agent components plus the governance and human-review helpers. Users see nothing directly; the header describes the two parallel tracks.",
+      "why": "Likely reason: the header documents the design so a reader can follow the two tracks.",
+      "watch_out": "The agent module names must match the files in src, or the whole workflow fails before it starts."
+    },
+    {
+      "start": 45,
+      "end": 103,
+      "kind": "function",
+      "name": "generate_proposal (part 1)",
+      "id": "s2",
+      "hash": "f04152e3d1f0eb06",
+      "title": "Setup of the search engine and model",
+      "what": "Reads the API key, stops with an error if it is missing, opens the search engine on data/chroma_db, prints counts when verbose, and creates the gpt-4o-mini model with low randomness. It also creates the review helper, which only pauses for questions in interactive mode.",
+      "why": "Likely reason: a low temperature setting keeps the writing steady and repeatable.",
+      "watch_out": "The model name is fixed in the code, so switching models means editing this file."
+    },
+    {
+      "start": 104,
+      "end": 163,
+      "kind": "function",
+      "name": "generate_proposal (part 2)",
+      "id": "s3",
+      "hash": "56425c46196a6dd2",
+      "title": "Finding a similar RFP and template",
+      "what": "Reads the RFP text, finds the most similar past RFP, asks for confirmation in interactive mode, then picks a matching template file. If no similar RFP is found, it prints a warning and continues without a template.",
+      "why": "The docstring states that the format comes from one matched proposal, so the template follows the closest past RFP.",
+      "watch_out": "When no similar RFP exists, the template stays empty and the final file uses the plain default layout without asking."
+    },
+    {
+      "start": 164,
+      "end": 221,
+      "kind": "function",
+      "name": "generate_proposal (part 3)",
+      "id": "s4",
+      "hash": "7cea7faf7d1c53a2",
+      "title": "Generating content and governance",
+      "what": "Has the content generator build workstreams and modules from the RFP, calculates meeting governance from past data, and offers the user the calculated plan or a basic default. The default is a steering committee every two weeks and weekly meetings.",
+      "why": "Likely reason: the fallback lets the user continue when the calculated numbers look wrong.",
+      "watch_out": "Total duration adds all workstream durations, which overstates the length when workstreams run at the same time; app.py measures duration differently."
+    },
+    {
+      "start": 222,
+      "end": 281,
+      "kind": "function",
+      "name": "generate_proposal (part 4)",
+      "id": "s5",
+      "hash": "56a3e87971620849",
+      "title": "Review, template extraction and building the file",
+      "what": "Shows the content for review (the user can abort), extracts the layout from the chosen template or the default, builds the PowerPoint with the replicator, saves it, and prints a summary of workstreams and modules.",
+      "why": "Likely reason: the review happens before the expensive building step, so an abort wastes no time on the file.",
+      "watch_out": "Aborting at review returns nothing instead of a path, so any caller must handle an empty result."
+    },
+    {
+      "start": 282,
+      "end": 284,
+      "kind": "function",
+      "name": "generate_proposal (part 5)",
+      "id": "s6",
+      "hash": "ef2391b1ec32a3fa",
+      "title": "Returning the output path",
+      "what": "Returns the path of the saved file so the caller can report it to the user.",
+      "why": "Likely reason: the command-line entry point uses this path to print the success message.",
+      "watch_out": ""
+    },
+    {
+      "start": 285,
+      "end": 303,
+      "kind": "function",
+      "name": "_default_template",
+      "id": "s7",
+      "hash": "34e9de73f258ac2a",
+      "title": "Default layout when no template matches",
+      "what": "Builds a basic widescreen layout at 10 by 5.625 inches with no template parts, used when no similar proposal was found.",
+      "why": "Likely reason: lets the workflow still produce a file when there is no template to copy.",
+      "watch_out": "All template parts here are empty, so the replicator must handle missing parts or this path will fail; this file does not show whether it does."
+    },
+    {
+      "start": 304,
+      "end": 362,
+      "kind": "entry point",
+      "name": "entry point (part 1)",
+      "id": "s8",
+      "hash": "ec5b1e6fedab2025",
+      "title": "Command-line options",
+      "what": "Defines the options a user can type: an optional RFP path, an optional output path, an interactive flag, and a verbose flag, with built-in help and examples.",
+      "why": "Likely reason: lets the same program run automatically or with human checks, chosen at the terminal.",
+      "watch_out": "The verbose flag is on by default and has no way to turn it off, so progress messages always print."
+    },
+    {
+      "start": 363,
+      "end": 403,
+      "kind": "entry point",
+      "name": "entry point (part 2)",
+      "id": "s9",
+      "hash": "483e850a8306219f",
+      "title": "Choosing inputs and running the workflow",
+      "what": "If no RFP path is given, uses the first PDF in data/rfps. If no output path is given, names the file after the RFP. Runs the workflow and reports success, an abort, or an error with a full trace.",
+      "why": "Likely reason: lets the user run the program with no arguments for the most common case.",
+      "watch_out": "The first RFP depends on the order the folder listing returns files, which is not guaranteed to be alphabetical."
+    }
+  ],
+  "explained_at": "2026-11-11T23:52:41+00:00",
+  "explained_by": "haiku",
+  "summary": "A command-line program that turns one RFP into a PowerPoint proposal by running eight agents in order, with optional pauses for human review.",
+  "purpose": "Produces a complete proposal file from a terminal without using the web page.",
+  "why": "The docstring states the design: content is learned from every past proposal, while the look comes from one matched proposal, and a person can check key decisions.",
+  "how": "Loads the search engine and model, parses the RFP, finds the most similar past RFP and its template (with optional confirmation), generates content and governance, optionally reviews the content, extracts the template layout, builds and saves the PowerPoint, and returns its path.",
+  "inputs": "An RFP PDF given on the command line or the first one in data/rfps; an optional output path; the interactive flag; OPENAI_API_KEY in .env; the database in data/chroma_db; the past RFPs and proposals.",
+  "outputs": "A PowerPoint file, by default in the output folder named after the RFP; progress messages and a summary in the terminal.",
+  "risks": "Calls the OpenAI service, which costs money. Governance totals can be overstated because they add workstream durations. Aborting at the review step returns nothing.",
+  "debug": "Read the console to find the step that failed; the final error prints a full trace. If no template is found, the output uses the plain default layout. Confirm the database exists first. If the output looks wrong, check which template was chosen during the confirmation step.",
+  "summary_hash": "sha256:bd69b074c69d079f5ed20f7b0bef10873bc2ac6b7a7ec650c93f23ed61cf23fa"
+}
