@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "path": "backend/api/routes.py",
+  "language": "Python",
+  "lines": 273,
+  "hash": "sha256:d1f5429c877706c9f622c0332560fa9912ab0bcbab5588c44b2b0270414382b9",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "Deleting a collection uses the name as given, without the cleaning step, so a name with path pieces could delete folders outside the vector store.",
+      "Indexing and deletion have no login or permission check."
+    ]
+  },
+  "terms": [
+    {
+      "term": "HTTP 500",
+      "meaning": "A standard code meaning the server failed while handling the request."
+    },
+    {
+      "term": "Async",
+      "meaning": "Code that can pause while waiting for slow work, so other requests can run."
+    },
+    {
+      "term": "Event loop",
+      "meaning": "The single loop that switches between waiting requests."
+    },
+    {
+      "term": "In-memory cache",
+      "meaning": "A stored copy kept in the program's memory for reuse."
+    },
+    {
+      "term": "Path traversal",
+      "meaning": "A trick where a name containing ../ steers file actions to other folders."
+    }
+  ],
+  "depends_on": [
+    "backend/api/models.py",
+    "backend/agents/rag_agent.py",
+    "backend/sharepoint/client.py",
+    "backend/config.py",
+    "backend/utils/logger.py",
+    "backend/utils/excel_export.py",
+    "fastapi"
+  ],
+  "used_by": [
+    "backend/main.py",
+    "frontend/lib/api.ts (calls these routes over the network)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 31,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a588594274c63b6c",
+      "title": "Imports and shared stores",
+      "what": "Loads the request models, agent, SharePoint client, settings, logger, and Excel tools, and creates the router and two in-memory dictionaries.",
+      "why": "Likely reason: the dictionaries keep agents across requests so they are not rebuilt each time.",
+      "watch_out": "The indexer dictionary is never used in the code shown, so it may be a leftover."
+    },
+    {
+      "start": 32,
+      "end": 61,
+      "kind": "function",
+      "name": "sanitize_collection_name",
+      "id": "s2",
+      "hash": "d068d22eee708f59",
+      "title": "Collection name cleaning",
+      "what": "Turns a collection name into a form the vector store accepts: only letters, digits, dots, underscores, and dashes, starting and ending with a letter or digit, at least three characters.",
+      "why": "Likely reason: the vector store rejects some names, and the docstring lists its rules.",
+      "watch_out": "Different original names can map to the same cleaned name, so two collections could end up merged."
+    },
+    {
+      "start": 62,
+      "end": 72,
+      "kind": "function",
+      "name": "get_agent",
+      "id": "s3",
+      "hash": "1e5c378b7de1257f",
+      "title": "Agent lookup by collection",
+      "what": "Returns the saved agent for a collection, or creates one if none exists. It uses the cleaned collection name.",
+      "why": "Likely reason: avoids reloading the model and index on every request.",
+      "watch_out": "The cache is never cleared except by the delete route, so a change on disk is not seen until restart."
+    },
+    {
+      "start": 73,
+      "end": 102,
+      "kind": "function",
+      "name": "health_check",
+      "id": "s4",
+      "hash": "035d5bb8298a5ac0",
+      "title": "Health check route",
+      "what": "Checks whether SharePoint connects and whether an AI key is set, then reports the status of each service.",
+      "why": "Likely reason: lets the frontend show problems without a full query.",
+      "watch_out": "The SharePoint check hides the real reason on failure, and configured only means a key is present, not that it works."
+    },
+    {
+      "start": 103,
+      "end": 120,
+      "kind": "function",
+      "name": "list_folders",
+      "id": "s5",
+      "hash": "18243c1a3cb7ab25",
+      "title": "List SharePoint folders route",
+      "what": "Asks the SharePoint client for the folders under a path and returns them with a count.",
+      "why": "Likely reason: lets the user choose a folder before indexing.",
+      "watch_out": "A new SharePoint client is created on every request, which adds a connection each time."
+    },
+    {
+      "start": 121,
+      "end": 138,
+      "kind": "function",
+      "name": "list_files",
+      "id": "s6",
+      "hash": "f9659264194d5d02",
+      "title": "List SharePoint files route",
+      "what": "Asks the SharePoint client for the files in a folder, optionally including subfolders, and returns them with a count.",
+      "why": "Likely reason: lets the user preview what will be indexed.",
+      "watch_out": "Like the folder route, a new SharePoint client is created on every request."
+    },
+    {
+      "start": 139,
+      "end": 163,
+      "kind": "function",
+      "name": "index_folder",
+      "id": "s7",
+      "hash": "d9cfc6076abed7ac",
+      "title": "Index folder route",
+      "what": "Gets the collection's agent and asks its indexer to index the folder. Returns the statistics and a count of processed files.",
+      "why": "Reason not stated in the code for the background tasks parameter, which is not used.",
+      "watch_out": "The slow indexing work runs inside an async function, which can hold up other requests while it runs."
+    },
+    {
+      "start": 164,
+      "end": 186,
+      "kind": "function",
+      "name": "query",
+      "id": "s8",
+      "hash": "26ca1b326b2f63f8",
+      "title": "Question route",
+      "what": "Gets the collection's agent, passes the question and filters to it, and returns the answer.",
+      "why": "Likely reason: the route is a thin layer so the agent does the work.",
+      "watch_out": "Any failure is sent to the screen as raw error text."
+    },
+    {
+      "start": 187,
+      "end": 219,
+      "kind": "function",
+      "name": "list_collections",
+      "id": "s9",
+      "hash": "d0cd317a8274c357",
+      "title": "List collections route",
+      "what": "Looks at each folder in the vector store path, tries to read its statistics, and returns the list.",
+      "why": "Likely reason: lets the user see which collections exist and how big they are.",
+      "watch_out": "Any folder that fails to read is quietly marked unknown, and every folder creates an agent, which can be slow."
+    },
+    {
+      "start": 220,
+      "end": 244,
+      "kind": "function",
+      "name": "delete_collection",
+      "id": "s10",
+      "hash": "f03503c4dd370f62",
+      "title": "Delete collection route",
+      "what": "Removes the cached agent for a collection and deletes its folder on disk, including all its stored data.",
+      "why": "Likely reason: removing the cached agent stops old data from being served after a delete.",
+      "watch_out": "The name is used without the cleaning step, so a name with path pieces could point outside the vector store, and the deletion is permanent."
+    },
+    {
+      "start": 245,
+      "end": 260,
+      "kind": "function",
+      "name": "get_conversation_history",
+      "id": "s11",
+      "hash": "ec23be080ce1c996",
+      "title": "Get conversation history route",
+      "what": "Returns the in-memory question and answer history for a collection.",
+      "why": "Likely reason: lets the screen show earlier questions in a session.",
+      "watch_out": "The history lives only in memory, so it is lost on restart."
+    },
+    {
+      "start": 261,
+      "end": 273,
+      "kind": "function",
+      "name": "clear_conversation_history",
+      "id": "s12",
+      "hash": "0f78a90259bcc8b5",
+      "title": "Clear conversation history route",
+      "what": "Clears the in-memory history for a collection and reports success.",
+      "why": "Likely reason: lets the user start a fresh session.",
+      "watch_out": "Clearing history does not affect any stored documents, only the in-memory record."
+    }
+  ],
+  "explained_at": "2026-11-11T23:04:31+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the backend's web addresses for health, SharePoint browsing, indexing, asking questions, managing collections, and conversation history.",
+  "purpose": "Connects what the frontend asks for with the agent and the SharePoint code.",
+  "why": "Likely reason: keeps request handling in one module.",
+  "how": "Each route checks its input, calls the agent or the SharePoint client, returns the reply, and turns any failure into an HTTP 500 error that carries the error message. Agents are created on first use per collection and then kept in memory.",
+  "inputs": "JSON request bodies, and a collection name in the address for the history routes.",
+  "outputs": "JSON replies, or error replies with the failure message.",
+  "risks": "Deleting a collection can remove folders outside the vector store when the name contains path pieces. Indexing runs slow work inside an async function, which can hold up other requests. Error messages reach the caller as raw text. Agents are cached and never reloaded from disk.",
+  "debug": "Look for the Using sanitized collection name log line to see how a name was changed. Check the detail field of any 500 reply for the real error. If the health check says disconnected, check the SharePoint settings. Restarting the backend clears the agent cache and conversation history.",
+  "summary_hash": "sha256:d1f5429c877706c9f622c0332560fa9912ab0bcbab5588c44b2b0270414382b9"
+}

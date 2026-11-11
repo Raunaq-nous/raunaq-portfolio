@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "path": "backend/rag/vector_store.py",
+  "language": "Python",
+  "lines": 215,
+  "hash": "sha256:fe39b66a2be8f71e111b8bbd3f63917b44ab8ddd2e576c76b256dd64bd813ab9",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "FAISS mode can overwrite saved data and does not reload it on restart.",
+      "Metadata filter for folder search is unverified.",
+      "The persist call may not match newer ChromaDB versions.",
+      "No tests are visible for this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Vector store",
+      "meaning": "a database that stores text as lists of numbers so that similar meaning can be found quickly"
+    },
+    {
+      "term": "Chunk",
+      "meaning": "a small piece of a document, cut to a set size so it fits the model"
+    },
+    {
+      "term": "Embedding",
+      "meaning": "the numeric form of a piece of text that captures its meaning"
+    },
+    {
+      "term": "ChromaDB",
+      "meaning": "a vector store that keeps its data in a folder on disk"
+    },
+    {
+      "term": "FAISS",
+      "meaning": "a fast search library for vectors, here used as an alternative store"
+    },
+    {
+      "term": "Metadata",
+      "meaning": "extra labels stored with each chunk, such as file name or page number"
+    },
+    {
+      "term": "Overlap",
+      "meaning": "the amount of text repeated between neighbouring chunks so context is not cut off"
+    }
+  ],
+  "depends_on": [
+    "backend/config.py",
+    "backend/parsers/base.py",
+    "backend/rag/embeddings.py",
+    "backend/utils/logger.py",
+    "langchain-community",
+    "langchain-text-splitters",
+    "langchain-core",
+    "chromadb",
+    "faiss-cpu"
+  ],
+  "used_by": [
+    "backend/rag/indexer.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4fe78999a52235f8",
+      "title": "Imports and logger setup",
+      "what": "Loads the libraries, settings and helper classes this file uses, and sets up a logger for it.",
+      "why": "Brings in the tools for splitting text, storing vectors and reading settings.",
+      "watch_out": ""
+    },
+    {
+      "start": 16,
+      "end": 58,
+      "kind": "class",
+      "name": "VectorStoreManager (part 1)",
+      "id": "s2",
+      "hash": "6a62df578a7e836d",
+      "title": "Setting up the store and text splitter",
+      "what": "Prepares a manager for one named collection and a splitter that cuts text into pieces of set size with overlap. It then opens or creates the store: ChromaDB opens a folder on disk, while FAISS is only marked empty until documents are added.",
+      "why": "Chunks keep each piece small enough for the embedding model, and overlap keeps context across cuts.",
+      "watch_out": "The FAISS branch never loads a previously saved index, so after a restart searches can return nothing until documents are added again."
+    },
+    {
+      "start": 59,
+      "end": 118,
+      "kind": "method",
+      "name": "VectorStoreManager: add_documents",
+      "id": "s3",
+      "hash": "92f978b947b2ea4d",
+      "title": "Splitting text and saving chunks",
+      "what": "Cuts each parsed document into chunks, attaches details such as file name, type, page, slide, sheet and chunk position, and writes them into the store. ChromaDB saves right away; FAISS writes its index file to disk. Returns how many chunks were added.",
+      "why": "Chunk-level details let answers point to the exact location in a source.",
+      "watch_out": "Every call adds new entries with no duplicate check, so adding the same document twice duplicates its chunks."
+    },
+    {
+      "start": 119,
+      "end": 174,
+      "kind": "class",
+      "name": "VectorStoreManager (part 3)",
+      "id": "s4",
+      "hash": "e7b326bb7375412c",
+      "title": "Finding the closest matching chunks",
+      "what": "Asks the store for the most similar chunks to a question, with an optional metadata filter and optional minimum score, and returns each one with its content, metadata and score. Returns an empty list if no store is loaded.",
+      "why": "The store finds relevant text by meaning rather than exact words.",
+      "watch_out": "Scores are empty unless a threshold is given, and score scales can differ between stores, so one threshold may not suit both."
+    },
+    {
+      "start": 175,
+      "end": 215,
+      "kind": "method",
+      "name": "VectorStoreManager: delete_collection",
+      "id": "s5",
+      "hash": "3617ea44fdd5bcff",
+      "title": "Deleting a collection and reporting stats",
+      "what": "Deletes the saved folder for this collection and clears the in-memory store. A second method reports how many chunks ChromaDB holds, or only the store type for FAISS.",
+      "why": "Likely reason: lets a user start a collection over and check how much it holds.",
+      "watch_out": "Deletion is permanent, with no backup or confirmation step."
+    }
+  ],
+  "explained_at": "2026-11-11T23:06:54+00:00",
+  "explained_by": "haiku",
+  "summary": "Manages the store that holds document pieces as numbers so the app can find text by meaning, and it cuts documents into chunks before storing them.",
+  "purpose": "Turns parsed documents into searchable chunks, saves them to ChromaDB or FAISS, and returns the closest matches for a question.",
+  "why": "Likely reason: semantic search needs chunks small enough for the embedding model, and a store that persists between runs.",
+  "how": "The manager is created for one collection and prepares a text splitter. create_vector_store opens or creates the store. add_documents splits each document, attaches metadata, and writes the chunks, saving to disk. search finds the closest chunks with an optional filter and minimum score. delete_collection removes the saved folder. get_stats reports the count.",
+  "inputs": "Parsed documents from the parser layer, a question and result count for search, optional metadata filter and score threshold, and settings for chunk size, overlap, store type and storage path.",
+  "outputs": "A count of chunks added, a list of matches each with content, metadata and score, a stats dictionary, and files written under the storage path.",
+  "risks": "The FAISS branch never reloads a saved index, and adding documents when none is loaded creates a fresh index that overwrites the saved one, so a second indexing run may erase earlier content. The persist call may not exist in newer ChromaDB versions. delete_collection and force_new delete data permanently. The folder filter may not be supported by the store's metadata filter.",
+  "debug": "If search returns nothing, check the logs for vector store not initialized and confirm the store type in settings. If FAISS results disappear after a restart or a second run, check for the overwrite risk. If add_documents fails on a chromadb version error, check the persist call. Verify the storage folder under the configured vector store path.",
+  "summary_hash": "sha256:fe39b66a2be8f71e111b8bbd3f63917b44ab8ddd2e576c76b256dd64bd813ab9"
+}

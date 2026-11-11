@@ -1,0 +1,348 @@
+{
+  "schema_version": 1,
+  "name": "Universal-RAG",
+  "commit": "165e98d",
+  "synced_at": "2026-11-11T23:07:53+00:00",
+  "summary": "Universal RAG lets people ask questions about their own documents and get written answers that point back to the source text. The backend reads files such as PDFs, Word, Excel, PowerPoint and Outlook emails, pulls them from SharePoint, and stores them so they can be searched by meaning. When a question comes in, an AI agent finds the matching passages and writes an answer using only that text. A web page lets users index a folder and then ask questions, and results can be exported to Excel or sent by Outlook email. It can also be packaged as a Windows program for teammates.",
+  "who_its_for": "Teams who keep their knowledge in SharePoint folders, email archives and office files and want to search and question it in plain language. Teammates without technical skills can use the packaged Windows version.",
+  "how_it_runs": "The backend (Python) runs on port 8000 and the frontend (Next.js web page) on port 3000, started together by the dev script, by Docker, or by the Windows launcher. Settings come from a .env file copied from the provided template.",
+  "start_here": [
+    "backend/main.py",
+    "backend/api/routes.py",
+    "backend/agents/rag_agent.py",
+    "backend/rag/vector_store.py",
+    "backend/parsers/parser_manager.py",
+    "frontend/app/page.tsx",
+    "backend/config.py"
+  ],
+  "areas": [
+    {
+      "id": "backend-parsers",
+      "name": "backend/parsers",
+      "match": [
+        "backend/parsers/*"
+      ],
+      "summary": "Turns each supported file type (PDF, Word, Excel, PowerPoint, email, PST archives) into searchable text records. A manager picks the right parser for each file.",
+      "why": "Documents must be converted to text before they can be searched.",
+      "debug_tips": "If a file is missing from answers, check that its type is supported in parser_manager.py and test that file's parser alone."
+    },
+    {
+      "id": "root-files",
+      "name": "(root files)",
+      "match": [
+        "*"
+      ],
+      "summary": "Top-level helpers: the Windows launcher window, build scripts for packaging, the Docker compose file, setup and config checkers, and a simple standalone HTML search page.",
+      "why": "They cover installing, starting and packaging the app for non-developers.",
+      "debug_tips": "Run verify_setup.py first to find missing packages, settings, the OCR tool or a busy port 8000. build_exe.py is described as older, so prefer build_standalone.py."
+    },
+    {
+      "id": "frontend",
+      "name": "frontend",
+      "match": [
+        "frontend/*"
+      ],
+      "summary": "The configuration for the web page: package list, Docker recipe, TypeScript, Tailwind styling and the backend address setting. It also holds small shared helpers in lib, including the connection to the backend.",
+      "why": "It decides how the web page is built and where it finds the server.",
+      "debug_tips": "If the page loads but nothing works, check the backend address in frontend/.env.example and next.config.js."
+    },
+    {
+      "id": "backend",
+      "name": "backend",
+      "match": [
+        "backend/*"
+      ],
+      "summary": "The core of the server: the startup file, the settings reader, the Dockerfile, the package list and the .env template.",
+      "why": "Everything else depends on these starting up with the right settings.",
+      "debug_tips": "If the server will not start, check the .env values against .env.example and read the startup messages from main.py."
+    },
+    {
+      "id": "backend-rag",
+      "name": "backend/rag",
+      "match": [
+        "backend/rag/*"
+      ],
+      "summary": "Handles the search side: turning text into numbers, storing chunks of documents, and remembering which files were already indexed. The indexer's logic could not be seen, though it appears to handle SharePoint folders.",
+      "why": "This is what lets the app find passages by meaning rather than exact words.",
+      "debug_tips": "If changed files are not picked up, look at index_state.py, since unchanged files are skipped. If search results seem poor, look at how documents are cut into chunks in vector_store.py."
+    },
+    {
+      "id": "frontend-components",
+      "name": "frontend/components",
+      "match": [
+        "frontend/components/*"
+      ],
+      "summary": "The visible pieces of the web page: header, the index form, the question form, the answer card and the evidence list.",
+      "why": "This is everything the user sees and clicks.",
+      "debug_tips": "If an answer looks wrong on screen but is right in the server reply, check AnswerDisplay.tsx and EvidenceDisplay.tsx. For form problems, check IndexSection.tsx or QuerySection.tsx."
+    },
+    {
+      "id": "backend-api",
+      "name": "backend/api",
+      "match": [
+        "backend/api/*"
+      ],
+      "summary": "Defines the server's web addresses and the shape of requests and replies, covering health, SharePoint browsing, indexing, questions, collections, history, Excel export and Outlook email.",
+      "why": "It is the doorway between the web page and the backend logic.",
+      "debug_tips": "For errors on a particular action, find its address in routes.py or export_routes.py. A rejected request may come from the data rules in models.py."
+    },
+    {
+      "id": "backend-utils",
+      "name": "backend/utils",
+      "match": [
+        "backend/utils/*"
+      ],
+      "summary": "Support tools for sending answers by Outlook email (Windows only), writing results to Excel, and logging to the screen and daily files.",
+      "why": "They provide the export and record-keeping features.",
+      "debug_tips": "Email only works on Windows with Outlook installed. For any problem, read the daily log files written by logger.py."
+    },
+    {
+      "id": "frontend-app",
+      "name": "frontend/app",
+      "match": [
+        "frontend/app/*"
+      ],
+      "summary": "The Next.js page shell: global styling, the outer layout, and the main page with the Index Documents and Ask Questions tabs.",
+      "why": "It is the entry point of the web page.",
+      "debug_tips": "For layout or colour problems look at globals.css and layout.tsx. For tab behaviour look at page.tsx."
+    },
+    {
+      "id": "scripts",
+      "name": "scripts",
+      "match": [
+        "scripts/*"
+      ],
+      "summary": "Shell scripts for first-time setup, starting both servers for development, and running the Excel test runner.",
+      "why": "They save manual steps when setting up or testing.",
+      "debug_tips": "If setup fails, read which tool check failed in setup.sh. If one server does not start in start-dev.sh, run it on its own to see its error."
+    },
+    {
+      "id": "backend-agents",
+      "name": "backend/agents",
+      "match": [
+        "backend/agents/*"
+      ],
+      "summary": "Holds the question-answering agent, which reads the question, searches the indexed documents, and writes an answer from only the matching text.",
+      "why": "It is the step that actually produces answers.",
+      "debug_tips": "If answers are off-topic or empty, check whether the collection was indexed and what passages the search returned."
+    },
+    {
+      "id": "other",
+      "name": "Everything else",
+      "match": [],
+      "summary": "Includes the tests folder, whose Excel runner asks questions from a spreadsheet and scores answers against expected files and keywords. Other contents of this group are unclear from the summaries.",
+      "why": "It gives a repeatable way to check answer quality.",
+      "debug_tips": "Run the Excel test runner and look at which questions miss their expected files or keywords."
+    }
+  ],
+  "decisions": [],
+  "readiness": {
+    "overall": "not-ready",
+    "summary": "Top fixes: add real access control, since SharePoint content needs per-user permissions; add logging, backups and a documented restore path for the index; and run tests, a dependency audit and a git history secret scan, then set up CI. Also consolidate the 10 overlapping docs into one clear start path.",
+    "checked_at": "2026-11-11T23:08:09+00:00",
+    "checks": [
+      {
+        "id": "starts",
+        "question": "Does the app build and start with one documented command?",
+        "status": "partial",
+        "evidence": "README advertises a 3-step quick start and a one-click batch startup, and `docker-compose.yml` plus `backend/Dockerfile` and `frontend/Dockerfile` exist. But the README says no Docker is needed, there is no `package.json`, and there are 10 overlapping guides (`QUICK_START.md`, `RUNNING_GUIDE.md`, `SETUP_INSTRUCTIONS.md`, etc.), so the single documented command is unclear. Build was not run.",
+        "next_step": "Pick one start path, state it at the top of `README.md`, and delete or merge the other guides."
+      },
+      {
+        "id": "tests",
+        "question": "Are there automated tests, and do they pass?",
+        "status": "unknown",
+        "evidence": "Not checked: tests were not run in this pass. Static evidence shows 4 test files (`test_config.py`, `tests/test_excel_runner.py`, `tests/__init__.py`, `tests/test_cases_template.xlsx`), which looks thin, and no CI config was found.",
+        "next_step": "Run the tests locally, add a CI workflow that runs them on each push."
+      },
+      {
+        "id": "errors",
+        "question": "When something goes wrong, does the app show a clear message instead of crashing or failing silently?",
+        "status": "unknown",
+        "evidence": "Not checked: error handling could not be judged from the summary evidence. The scan found 0 swallowed-error patterns, which is mildly encouraging but does not show that users see clear messages.",
+        "next_step": "Review the API and indexing code paths for user-facing error responses, especially failed file parsing and failed API calls."
+      },
+      {
+        "id": "inputs",
+        "question": "Does it check what people type or upload before using it?",
+        "status": "partial",
+        "evidence": "Input validation patterns appear in 4 matches across 4 files, so some checking exists. The app accepts uploaded PowerPoint, Excel, Word, PDF and email files, and no evidence shows file type, size or content limits.",
+        "next_step": "Add explicit upload checks (allowed types, max size) and validate query inputs on the backend."
+      },
+      {
+        "id": "secrets",
+        "question": "Are passwords and API keys kept out of the code and out of git history?",
+        "status": "partial",
+        "evidence": "`.gitignore` mentions `.env`, only template files (`.env.template`, `backend/.env.example`, `frontend/.env.example`) are tracked, and 0 secret-looking strings were found in HEAD. Git history was not scanned.",
+        "next_step": "Run a history scan (for example gitleaks) and rotate any key that ever appeared in a commit."
+      },
+      {
+        "id": "access",
+        "question": "Can only the right people see and change things (sign-in and permissions)?",
+        "status": "partial",
+        "evidence": "Only 2 auth/session/permission matches in 1 file, so access control looks minimal. The README targets SharePoint documents, which raises the risk that users could retrieve content they should not see.",
+        "next_step": "Add sign-in to the API and filter search results by the user's SharePoint permissions."
+      },
+      {
+        "id": "data",
+        "question": "Is important data backed up, and are database changes made through migrations?",
+        "status": "fail",
+        "evidence": "No migrations folder was found and no backup process is documented in the evidence. The app indexes documents into a store, and nothing shows how that data is backed up or rebuilt.",
+        "next_step": "Document how to back up and restore the index, and add migrations if a relational database is used."
+      },
+      {
+        "id": "dependencies",
+        "question": "Are third-party packages reasonably up to date and free of known security problems?",
+        "status": "unknown",
+        "evidence": "Not checked: the dependency audit was not run. Only `backend/requirements.txt` is present, with no lockfile pinning shown and no `package.json` despite a `frontend/Dockerfile`.",
+        "next_step": "Run `pip-audit` on `backend/requirements.txt`, pin versions, and add a frontend manifest and lockfile if a frontend exists."
+      },
+      {
+        "id": "logs",
+        "question": "If it breaks while people use it, will logs or alerts show what happened?",
+        "status": "fail",
+        "evidence": "Logging patterns found in only 1 file, and there is no sign of monitoring, alerting or error tracking.",
+        "next_step": "Use structured logging across the backend and add error alerting."
+      },
+      {
+        "id": "performance",
+        "question": "Does it stay fast with realistic amounts of data and users?",
+        "status": "unknown",
+        "evidence": "Not checked: no load or scale testing evidence was available. The README claims 95-99% accuracy, but the evidence shows no benchmark behind it, and no performance tests were seen.",
+        "next_step": "Index a realistic document set, measure query latency and indexing time, and record the results."
+      },
+      {
+        "id": "deploy",
+        "question": "Is there a written, repeatable way to deploy it and to roll back a bad release?",
+        "status": "partial",
+        "evidence": "`DEPLOYMENT_GUIDE.md` and `TEAM_DEPLOYMENT.md` exist, along with Dockerfiles and `docker-compose.yml`. The main team approach is sharing a folder without Git, which is not repeatable, and no rollback steps or CI/CD were found.",
+        "next_step": "Write one deploy procedure with versioned releases and a rollback step, and automate it in CI."
+      },
+      {
+        "id": "docs",
+        "question": "Could someone new run it and understand it from the docs alone?",
+        "status": "partial",
+        "evidence": "There is extensive documentation (10 markdown files including `README.md`, `HOW_IT_WORKS.md`, `SETUP_INSTRUCTIONS.md`), but it overlaps and may contradict itself, for example Docker is both advertised as unnecessary and present.",
+        "next_step": "Consolidate into a README plus a few focused docs, and test the setup steps on a clean machine."
+      }
+    ],
+    "method": "Static evidence only; tests, build and audit were not run in this pass."
+  },
+  "debug_playbook": [
+    {
+      "symptom": "The app will not start or the page cannot reach the server",
+      "likely_area": "backend",
+      "where_to_look": [
+        "backend/config.py",
+        "backend/.env.example",
+        "frontend/.env.example",
+        "verify_setup.py"
+      ],
+      "steps": [
+        "Run verify_setup.py and fix whatever it flags.",
+        "Confirm the .env file exists and has real values.",
+        "Check the backend is on port 8000 and the frontend address points to it."
+      ]
+    },
+    {
+      "id": "",
+      "symptom": "A document is not found in answers",
+      "likely_area": "backend-parsers",
+      "where_to_look": [
+        "backend/parsers/parser_manager.py",
+        "backend/rag/index_state.py",
+        "backend/rag/vector_store.py"
+      ],
+      "steps": [
+        "Check the file type is supported.",
+        "Re-index the folder, noting unchanged files are skipped.",
+        "Confirm you chose the right collection when asking."
+      ]
+    },
+    {
+      "symptom": "Indexing a SharePoint folder fails",
+      "likely_area": "backend-api",
+      "where_to_look": [
+        "backend/sharepoint/client.py",
+        "backend/api/routes.py",
+        "backend/.env.example"
+      ],
+      "steps": [
+        "Check the SharePoint credentials in the .env file.",
+        "Check the folder path entered in the index form.",
+        "Read the server log for the exact error."
+      ]
+    },
+    {
+      "symptom": "Answers are wrong, empty or off-topic",
+      "likely_area": "backend-agents",
+      "where_to_look": [
+        "backend/agents/rag_agent.py",
+        "backend/rag/vector_store.py",
+        "tests/test_excel_runner.py"
+      ],
+      "steps": [
+        "Look at the evidence passages shown under the answer.",
+        "Try a more specific question or tighter filters.",
+        "Run the Excel test runner to see if the problem is general."
+      ]
+    },
+    {
+      "symptom": "Excel export or Outlook email does not work",
+      "likely_area": "backend-utils",
+      "where_to_look": [
+        "backend/utils/email_sender.py",
+        "backend/utils/excel_export.py",
+        "backend/api/export_routes.py"
+      ],
+      "steps": [
+        "Confirm you are on Windows with Outlook installed for email.",
+        "Check the log files for the error.",
+        "Try the Excel download first to see if the export itself works."
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "RAG",
+      "meaning": "Retrieval-augmented generation: find relevant text first, then have the AI write an answer from it."
+    },
+    {
+      "term": "Collection",
+      "meaning": "A named set of indexed documents that you choose when asking a question."
+    },
+    {
+      "term": "Indexing",
+      "meaning": "Reading documents and storing them so they can be searched."
+    },
+    {
+      "term": "Embeddings",
+      "meaning": "Lists of numbers that represent the meaning of text so similar passages can be found."
+    },
+    {
+      "term": "Vector store",
+      "meaning": "The database holding those numbers and the document pieces."
+    },
+    {
+      "term": "Chunk",
+      "meaning": "A small piece of a document cut out for storing and searching."
+    },
+    {
+      "term": "SharePoint",
+      "meaning": "Microsoft's document storage site, where the app reads files from."
+    },
+    {
+      "term": "OCR",
+      "meaning": "Technology that reads text out of images, used for text inside pictures and scanned pages."
+    },
+    {
+      "term": "Parser",
+      "meaning": "Code that reads one kind of file and extracts its text."
+    },
+    {
+      "term": ".env file",
+      "meaning": "A settings file holding the app's options and credentials."
+    }
+  ],
+  "skipped": []
+}

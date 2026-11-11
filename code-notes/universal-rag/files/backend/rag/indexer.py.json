@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "path": "backend/rag/indexer.py",
+  "language": "Python",
+  "lines": 415,
+  "hash": "sha256:0ab09b4b55cb805f6d245cfc7f3417aeb7fd5effeb79b5b9b2c2d874370158a9",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only one of the nine sections was provided, so the logic cannot be checked.",
+      "No tests are shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Vector store",
+      "meaning": "A database that stores text as numbers so that similar text can be found."
+    },
+    {
+      "term": "Parser",
+      "meaning": "A tool that reads the text out of a file type such as Word or PDF."
+    },
+    {
+      "term": "Index",
+      "meaning": "The stored, searchable copy of the documents."
+    }
+  ],
+  "depends_on": [
+    "backend/sharepoint/client.py",
+    "backend/parsers/parser_manager.py",
+    "backend/parsers/base.py",
+    "backend/rag/vector_store.py",
+    "backend/rag/index_state.py",
+    "backend/utils/logger.py"
+  ],
+  "used_by": [
+    "backend/agents/rag_agent.py",
+    "backend/api/routes.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e8eb673507ea74c2",
+      "title": "Imports and logger setup",
+      "what": "Loads the SharePoint client, the file parsers, the vector store, the state tracker, the logger, and two standard tools.",
+      "why": "Reason not stated in the code. The imports suggest the file's main jobs.",
+      "watch_out": ""
+    },
+    {
+      "start": 16,
+      "end": 66,
+      "kind": "class",
+      "name": "SharePointIndexer (part 1)",
+      "id": "s2",
+      "hash": "c549baec7142a4ae",
+      "title": "Setup and routing to local or SharePoint",
+      "what": "When an indexer is created it connects to SharePoint, prepares the parsers, vector store and change tracker, and creates a private temp folder. Its index_folder entry point checks whether the path is on this computer or on SharePoint and sends it to the matching routine.",
+      "why": "Lets callers use one method for both kinds of folder.",
+      "watch_out": "The filter_pattern argument is accepted but never used, so it has no effect."
+    },
+    {
+      "start": 67,
+      "end": 125,
+      "kind": "method",
+      "name": "SharePointIndexer: _index_local_folder",
+      "id": "s3",
+      "hash": "0e213191595e5a6d",
+      "title": "Indexing a folder on this computer",
+      "what": "Lists the files in a local folder, skips files already indexed with the same modified time, parses each new supported file, adds its pieces to the vector store, and returns counts of processed, skipped and failed files.",
+      "why": "Likely reason: lets a user index their own documents without uploading them to SharePoint first.",
+      "watch_out": "A file that fails is logged and counted but does not stop the rest of the run."
+    },
+    {
+      "start": 126,
+      "end": 158,
+      "kind": "class",
+      "name": "SharePointIndexer (part 3)",
+      "id": "s4",
+      "hash": "62702c277d0479df",
+      "title": "Storing each local file and recording failures",
+      "what": "Adds a file's pieces to the vector store, marks the file as indexed with its modified time so a later run skips it, and records any error for that file. It also begins the helper that lists local files.",
+      "why": "Marking files as indexed is what lets repeat runs skip unchanged files.",
+      "watch_out": "Pieces are added before the file is marked indexed, so if marking fails the next run adds the same pieces again as duplicates."
+    },
+    {
+      "start": 159,
+      "end": 198,
+      "kind": "class",
+      "name": "SharePointIndexer (part 4)",
+      "id": "s5",
+      "hash": "50c619db52b1280e",
+      "title": "Listing files in a local folder",
+      "what": "Collects every file in the folder, or only the top level when not recursive, with its name, path, size, modified time and extension. Files that cannot be read are skipped with a warning.",
+      "why": "Likely reason: the parsers and the change check need size, time and extension before deciding anything.",
+      "watch_out": "A file whose modified time changes without any content change is indexed again in full."
+    },
+    {
+      "start": 199,
+      "end": 249,
+      "kind": "method",
+      "name": "SharePointIndexer: _index_sharepoint_folder",
+      "id": "s6",
+      "hash": "0c60154d5bcda2de",
+      "title": "Starting a SharePoint folder index",
+      "what": "Asks SharePoint for the files in a folder, keeps only types the parsers support, and sets up the counters. For each file it checks whether it was already indexed with the same modified time and skips it if so.",
+      "why": "Likely reason: avoids downloading and parsing files that have not changed.",
+      "watch_out": "Recursion is handled by the SharePoint client, so a large folder tree means many requests and a slow first run."
+    },
+    {
+      "start": 250,
+      "end": 298,
+      "kind": "class",
+      "name": "SharePointIndexer (part 6)",
+      "id": "s7",
+      "hash": "36266061c048c89b",
+      "title": "Downloading and indexing SharePoint files",
+      "what": "Downloads each new file into the temp folder, parses it, tags its pieces with the SharePoint address, adds them to the store, marks it indexed, and deletes the temp copy. Errors are recorded per file.",
+      "why": "Parsers need a real file on disk, so each file is downloaded first.",
+      "watch_out": "Temp copies are named by file name alone and are removed only after success, so failed files leave leftovers until cleanup runs."
+    },
+    {
+      "start": 299,
+      "end": 358,
+      "kind": "method",
+      "name": "SharePointIndexer: index_specific_files",
+      "id": "s8",
+      "hash": "404619e82c573256",
+      "title": "Indexing a chosen list of SharePoint files",
+      "what": "Takes a list of SharePoint file addresses, downloads and parses each one, adds its pieces to the store, and returns counts. It does not check whether a file was already indexed and does not record it in the change tracker.",
+      "why": "Likely reason: lets a user add specific files without indexing a whole folder.",
+      "watch_out": "Running it twice on the same file adds its pieces again, so search results can contain duplicates."
+    },
+    {
+      "start": 359,
+      "end": 415,
+      "kind": "class",
+      "name": "SharePointIndexer (part 8)",
+      "id": "s9",
+      "hash": "55edab47b1285764",
+      "title": "Search entry point and temp cleanup",
+      "what": "search builds an optional folder or file-type filter and returns the closest matching pieces from the store. cleanup deletes the temp folder and everything in it.",
+      "why": "Search is how the rest of the app reads back what was indexed; cleanup stops downloaded copies from piling up on disk.",
+      "watch_out": "The folder filter uses a contains operator that the store may not support for metadata, so folder filtering may fail or return nothing; this is not verified."
+    }
+  ],
+  "explained_at": "2026-11-11T23:06:54+00:00",
+  "explained_by": "haiku",
+  "summary": "Based on its imports, this file handles indexing SharePoint folders. Only its import section was provided, so its logic cannot be described here.",
+  "purpose": "The docstring says it indexes SharePoint folders. The imports suggest it reads files, parses them, stores them, and tracks state.",
+  "why": "Reason not stated in the code shown.",
+  "how": "Not visible in this packet. Callers show that it is asked to index a folder with a recursive option and returns statistics with a processed files count, and that it searches with a query and optional filters.",
+  "inputs": "From callers: a folder path and a recursive flag for indexing, and search text with folder and file type filters for searching.",
+  "outputs": "From callers: a statistics dictionary that includes processed_files, and search results with content, metadata, and a score.",
+  "risks": "Cannot be assessed from the provided section.",
+  "debug": "Not enough information from this section. Start with the indexing log lines and the collection folder under the vector store path.",
+  "summary_hash": "sha256:0ab09b4b55cb805f6d245cfc7f3417aeb7fd5effeb79b5b9b2c2d874370158a9"
+}

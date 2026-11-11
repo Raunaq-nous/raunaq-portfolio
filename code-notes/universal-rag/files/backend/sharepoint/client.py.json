@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "path": "backend/sharepoint/client.py",
+  "language": "Python",
+  "lines": 211,
+  "hash": "sha256:5afff19bdf7df6579293a77cf6be237a77e30c742808ccafe21692c07e8a95b5",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible for this file.",
+      "Raw-content method is unverified against the pinned library.",
+      "The authenticator's use is unclear."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SharePoint",
+      "meaning": "a Microsoft service for storing and sharing company files"
+    },
+    {
+      "term": "Client credentials",
+      "meaning": "an app ID and secret used to log in as the app itself, not as a person"
+    },
+    {
+      "term": "Server-relative URL",
+      "meaning": "a file or folder address that starts from the SharePoint site root"
+    },
+    {
+      "term": "Microsoft Graph",
+      "meaning": "Microsoft's general interface for reading its cloud services"
+    },
+    {
+      "term": "MSAL",
+      "meaning": "Microsoft's login library that gets access tokens"
+    },
+    {
+      "term": "Access token",
+      "meaning": "a short-lived pass that proves the app is allowed to read data"
+    },
+    {
+      "term": "Tenant",
+      "meaning": "one organisation's own space inside Microsoft's cloud"
+    }
+  ],
+  "depends_on": [
+    "office365-REST-Python-Client",
+    "msal",
+    "backend/config.py",
+    "backend/utils/logger.py"
+  ],
+  "used_by": [
+    "backend/rag/indexer.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "dda26bcf316e0d20",
+      "title": "Imports and logger setup",
+      "what": "Loads the SharePoint library, its login helpers, the file path helper, the app's settings and logger.",
+      "why": "Brings in the tools the client needs.",
+      "watch_out": ""
+    },
+    {
+      "start": 15,
+      "end": 56,
+      "kind": "class",
+      "name": "SharePointClient (part 1)",
+      "id": "s2",
+      "hash": "7897e9d2533d1051",
+      "title": "Creating and connecting the client",
+      "what": "Stores the site address and login details, using app settings when none are passed in. Connecting logs in with the app's credentials and checks the site responds by reading its title. A property connects automatically the first time it is used.",
+      "why": "Likely reason: delays logging in until SharePoint is actually needed.",
+      "watch_out": "Login errors appear at first use rather than at startup, so a bad secret can fail later than expected."
+    },
+    {
+      "start": 57,
+      "end": 113,
+      "kind": "method",
+      "name": "SharePointClient: list_folders",
+      "id": "s3",
+      "hash": "bf922a08ce53bda4",
+      "title": "Listing subfolders and files",
+      "what": "Returns the subfolders directly inside a SharePoint folder, skipping names that start with a dot. Also returns the files in a folder with name, address, size, dates and type, and when asked goes into each subfolder too.",
+      "why": "Indexing needs both a list of files and a way to walk into subfolders.",
+      "watch_out": "Recursion has no depth limit and each subfolder costs a separate request, so large trees are slow."
+    },
+    {
+      "start": 114,
+      "end": 153,
+      "kind": "class",
+      "name": "SharePointClient (part 3)",
+      "id": "s4",
+      "hash": "f2f29ec1ddbec274",
+      "title": "Downloading files and reading content",
+      "what": "Finishes the file listing, downloads one SharePoint file to a local path (creating the folder first), and can return a file's raw bytes without saving it.",
+      "why": "Parsers need a file on disk, so downloading is a separate step.",
+      "watch_out": "The raw-bytes method calls a library function whose presence in the pinned version is not verified."
+    },
+    {
+      "start": 154,
+      "end": 181,
+      "kind": "method",
+      "name": "SharePointClient: get_folder_structure",
+      "id": "s5",
+      "hash": "3d5cbc877ff35b23",
+      "title": "Building a folder tree summary",
+      "what": "Builds a nested summary of a SharePoint folder: its files, then for each subfolder the same summary, all the way down.",
+      "why": "Likely reason: lets someone see the layout of a site before choosing folders to index.",
+      "watch_out": "It walks every level with no limit, so a large site can take a long time and make many requests."
+    },
+    {
+      "start": 182,
+      "end": 211,
+      "kind": "class",
+      "name": "SharePointAuthenticator",
+      "id": "s6",
+      "hash": "0b1237307ea8f9f0",
+      "title": "Getting a Microsoft login token",
+      "what": "Asks Microsoft for an access token for Microsoft Graph using a client ID and secret, and returns it. If Microsoft refuses, it raises an error with Microsoft's reason.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Nothing in this file calls it, and the main client logs in a different way, so it may not be used at all."
+    }
+  ],
+  "explained_at": "2026-11-11T23:06:54+00:00",
+  "explained_by": "haiku",
+  "summary": "Connects to a SharePoint site with app credentials and lists, downloads and reads its folders and files.",
+  "purpose": "Gives the indexer a way to see what is in SharePoint and to fetch file copies.",
+  "why": "Likely reason: keeps all SharePoint calls in one place so the rest of the app does not need to know the details.",
+  "how": "The client stores the site address and credentials from settings. The ctx property connects the first time it is needed. list_folders and list_files read the folder contents, with recursion into subfolders. download_file saves one file to disk. get_file_content returns raw bytes. get_folder_structure builds a nested summary. A separate authenticator class requests a Microsoft Graph token.",
+  "inputs": "Site address, client ID, client secret and tenant ID, from arguments or settings; SharePoint folder paths or file addresses; a local path for downloads.",
+  "outputs": "Lists of folder and file records with names, addresses, sizes, dates and types; downloaded files on disk; raw bytes; a nested folder summary; an access token string.",
+  "risks": "Login errors appear at first use, not at startup. Recursive listing has no depth limit and makes one request per subfolder. The raw-content method relies on a library call whose presence in the pinned version is not verified. The authenticator is not used within this file and uses a different login approach.",
+  "debug": "If connecting fails, check the site address and credentials in settings and read the error from the connect log entry. If a folder shows no files, confirm the folder path is a server-relative path. If large folders are slow, check how many subfolders exist.",
+  "summary_hash": "sha256:5afff19bdf7df6579293a77cf6be237a77e30c742808ccafe21692c07e8a95b5"
+}

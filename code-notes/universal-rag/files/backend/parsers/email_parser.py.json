@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "path": "backend/parsers/email_parser.py",
+  "language": "Python",
+  "lines": 126,
+  "hash": "sha256:90d2ecd4c08b32f77516c11dad37c6cf9331ecf0c4452c8a4a249528fbfa9d7f",
+  "area": "backend-parsers",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible for this file.",
+      "HTML-only .eml bodies come out empty.",
+      "A failing .msg file can leave its file open."
+    ]
+  },
+  "terms": [
+    {
+      "term": ".msg",
+      "meaning": "the file format Outlook uses to save a single email"
+    },
+    {
+      "term": ".eml",
+      "meaning": "a standard email file format that many mail programs can save"
+    },
+    {
+      "term": "multipart email",
+      "meaning": "an email with several versions of its content, such as plain text and HTML"
+    },
+    {
+      "term": "attachment",
+      "meaning": "a file sent along with an email"
+    }
+  ],
+  "depends_on": [
+    "extract_msg package",
+    "Python standard library email tools",
+    "backend/parsers/base.py",
+    "backend/utils/logger.py"
+  ],
+  "used_by": [
+    "backend/parsers/parser_manager.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d412684fd113fedb",
+      "title": "Imports and logger setup",
+      "what": "Brings in the email readers and the shared logger, which records progress and errors in the app's log.",
+      "why": "Reason not stated beyond the usual use of a shared logger.",
+      "watch_out": ""
+    },
+    {
+      "start": 12,
+      "end": 59,
+      "kind": "class",
+      "name": "EmailParser (part 1)",
+      "id": "s2",
+      "hash": "bf4de3640613758c",
+      "title": "Routing and start of Outlook reading",
+      "what": "Declares the email parser and checks whether a file ends in an email type it accepts. It then sends .msg and .eml files to the right reader and starts gathering the Outlook fields.",
+      "why": "Likely reason: one entry point picks the right reader, so callers do not need to know the format. Reason not stated.",
+      "watch_out": "A file with any other ending gets no result, because the method ends without returning anything, so callers must check the file type first."
+    },
+    {
+      "start": 60,
+      "end": 108,
+      "kind": "class",
+      "name": "EmailParser (part 2)",
+      "id": "s3",
+      "hash": "a346b61187ba9bba",
+      "title": "Outlook record and file close",
+      "what": "Packs the gathered Outlook fields into one record with the sender, recipients, subject, date and attachment count, then closes the file and returns the record.",
+      "why": "Likely reason: the file is closed only after its contents are copied out. Reason not stated.",
+      "watch_out": "The file is closed only when reading succeeds, so an error before that step leaves it open."
+    },
+    {
+      "start": 109,
+      "end": 126,
+      "kind": "class",
+      "name": "EmailParser (part 3)",
+      "id": "s4",
+      "hash": "afb3499631444cc2",
+      "title": "Standard email reader",
+      "what": "Reads a standard .eml file, lists its sender, recipients, copy list, subject and date, takes the plain-text body, and returns one record.",
+      "why": "Likely reason: Python's built-in email tools read this format, so no extra package is needed. Reason not stated.",
+      "watch_out": "HTML-only emails come out with an empty body, and attachment names are not listed."
+    }
+  ],
+  "explained_at": "2026-11-11T22:57:10+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads Outlook .msg and standard .eml email files and turns each email into one searchable text record.",
+  "purpose": "Lets the app search an email's sender, recipients, subject, date, body and attachment names.",
+  "why": "Likely reason: email files are not plain text, so they need dedicated readers. Reason not stated for the choice of these two libraries.",
+  "how": "The parse method checks the file ending and sends the file to the matching reader. For .msg files, an outside library gathers the sender, recipients, copy list, subject, date, body and attachment names. For .eml files, Python's built-in email tools open the file and take the first plain-text part of the body. Each reader builds one text block and one record, with key details kept in metadata. Any error is logged and passed back to the caller.",
+  "inputs": "A file path ending in .msg or .eml.",
+  "outputs": "A list holding one parsed record. Its text contains the email fields and body. Its file type is email, and its metadata holds the sender, recipients, subject, date and, for .msg files, the attachment count.",
+  "risks": "HTML-only emails in .eml files come out with an empty body. The .msg reader does not close the file if an error happens before the close step. Attachments are listed by name only, not read. Email content is stored in the search index, so private messages become searchable.",
+  "debug": "Find the log line that names the failing file. If the body is empty, check whether the email has only an HTML part. If .msg files fail, confirm the extract_msg library is installed and the file is not damaged or protected.",
+  "summary_hash": "sha256:90d2ecd4c08b32f77516c11dad37c6cf9331ecf0c4452c8a4a249528fbfa9d7f"
+}

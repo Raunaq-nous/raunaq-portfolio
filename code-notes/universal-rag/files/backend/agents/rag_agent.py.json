@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/rag_agent.py",
+  "language": "Python",
+  "lines": 332,
+  "hash": "sha256:4cf2ad4ff67b820b7d96b5f1a20c865b40705cc910375c03575ac3f56f9650fe",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The history timestamp field stores the wrong value.",
+      "Model output is used without checks.",
+      "No tests are shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "LLM",
+      "meaning": "Large language model, the AI that reads and writes text."
+    },
+    {
+      "term": "RAG",
+      "meaning": "Retrieval-augmented generation: find relevant text first, then have an AI write an answer from it."
+    },
+    {
+      "term": "Indexer",
+      "meaning": "The part that splits documents into pieces and stores them for search."
+    },
+    {
+      "term": "Evidence",
+      "meaning": "The matching text pieces found for a question, with where each came from."
+    },
+    {
+      "term": "Confidence label",
+      "meaning": "A rough word such as high or medium, based on how many results were found."
+    },
+    {
+      "term": "In-memory",
+      "meaning": "Held in the running program's memory and lost when it stops."
+    }
+  ],
+  "depends_on": [
+    "backend/config.py",
+    "backend/rag/indexer.py",
+    "backend/utils/logger.py",
+    "langchain_openai",
+    "langchain_core"
+  ],
+  "used_by": [
+    "backend/api/routes.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "60be357d0d9afccf",
+      "title": "Imports and logger setup",
+      "what": "Loads the AI model connectors, the settings, the document indexer, and a logger that records progress and errors.",
+      "why": "Likely reason: the file needs these parts to talk to the AI model, read settings, and search.",
+      "watch_out": "Several imported names, such as the tool and prompt template types, are not used in the code shown, so they may be leftovers."
+    },
+    {
+      "start": 14,
+      "end": 46,
+      "kind": "class",
+      "name": "AgenticRAG (part 1)",
+      "id": "s2",
+      "hash": "f8869830e4504e0b",
+      "title": "Setup and language model choice",
+      "what": "Creates the agent for one collection with its own indexer and an empty history. It picks Azure OpenAI or standard OpenAI based on the settings.",
+      "why": "Likely reason: one place decides which AI service is used.",
+      "watch_out": "The model is created when the agent is built, so a bad model setting may only appear on the first request for that collection."
+    },
+    {
+      "start": 47,
+      "end": 101,
+      "kind": "method",
+      "name": "AgenticRAG: analyze_query",
+      "id": "s3",
+      "hash": "bb2b0575deaafeba",
+      "title": "Question analysis step",
+      "what": "Asks the AI to split the question into an intent, any folder or file type hints, and a cleaner search phrase, then reads the answer as JSON. If the reply is not valid JSON or the call fails, it uses a plain default.",
+      "why": "Likely reason: lets the search use hints from everyday wording, and keeps the app working when the AI reply is messy.",
+      "watch_out": "A folder hint from the AI is used as a real filter when the user sets none, so an invented folder name can hide every result."
+    },
+    {
+      "start": 102,
+      "end": 159,
+      "kind": "method",
+      "name": "AgenticRAG: search_with_evidence",
+      "id": "s4",
+      "hash": "66692a6215d74f01",
+      "title": "Search and evidence list",
+      "what": "Runs the analysis, fills in filters the user did not set, searches the indexer, and turns each hit into a numbered evidence item with its text, score, and origin.",
+      "why": "Likely reason: gives the answer step and the screen one common shape for results.",
+      "watch_out": "Only the first folder and first file type from the AI are used, and missing metadata quietly becomes empty values."
+    },
+    {
+      "start": 160,
+      "end": 214,
+      "kind": "class",
+      "name": "AgenticRAG (part 4)",
+      "id": "s5",
+      "hash": "838e14b24ae156c3",
+      "title": "No-results reply and context building",
+      "what": "If nothing was found, returns a fixed message saying so. Otherwise, labels the top five pieces with their file name and page, slide, or sheet, and joins them into the context for the AI.",
+      "why": "Likely reason: keeps the prompt short and gives the AI clear source labels to cite.",
+      "watch_out": "The no-results message comes back with no sources, and anything ranked below the top five never reaches the AI."
+    },
+    {
+      "start": 215,
+      "end": 257,
+      "kind": "class",
+      "name": "AgenticRAG (part 5)",
+      "id": "s6",
+      "hash": "0b1cde71d95909f2",
+      "title": "Source list and answer prompt",
+      "what": "Builds a source entry for each of the top five results, then sends the context and question to the AI with rules to answer only from the documents and to cite them. Returns the answer, the sources, and a confidence label.",
+      "why": "Likely reason: the rules are meant to reduce made-up answers. The confidence label is a simple count, not a measure of accuracy.",
+      "watch_out": "The answer-only-from-context rule is a request to the AI and is not checked by the code. A high label only means three or more results were found."
+    },
+    {
+      "start": 258,
+      "end": 317,
+      "kind": "method",
+      "name": "AgenticRAG: query",
+      "id": "s7",
+      "hash": "3a1a912a70207095",
+      "title": "Main question method",
+      "what": "The main entry point. It runs the search, writes the answer, joins everything into one response, and saves the question and answer to history.",
+      "why": "Likely reason: the API calls this one method for every question.",
+      "watch_out": "The history timestamp field stores the text of a logger object instead of a time, so history cannot be sorted by time."
+    },
+    {
+      "start": 318,
+      "end": 332,
+      "kind": "class",
+      "name": "AgenticRAG (part 7)",
+      "id": "s8",
+      "hash": "bfbbd58fe6c1a396",
+      "title": "Completion, error handling and history helpers",
+      "what": "Logs success and returns the response. On error, it logs the problem and raises it again so the API can report it. It also offers ways to read or clear the in-memory history.",
+      "why": "Likely reason: raising the error again lets the API send a proper error to the screen.",
+      "watch_out": "History exists only in memory, is lost on restart, and is never sent to the AI, so follow-up questions get no earlier context."
+    }
+  ],
+  "explained_at": "2026-11-11T23:04:31+00:00",
+  "explained_by": "haiku",
+  "summary": "Answers a question in three steps: the AI reads the question, the indexed documents are searched, then the AI writes an answer using only the matching text.",
+  "purpose": "Is the question-answering core of the backend. It joins the document search with the AI model.",
+  "why": "Likely reason: an AI model does not know the company's documents, so matching text is fetched and given to it. Reason for the fallback defaults is not stated in the code beyond being safe values.",
+  "how": "On creation, it builds a search indexer and a language model for one collection. For each question, it asks the model for an intent, folder and file type hints, and a refined search phrase. It searches the indexer with those hints, turns the hits into evidence items, sends the top five to the model, then returns the answer, sources, and a confidence label and saves the exchange to history.",
+  "inputs": "The question text, how many results to fetch, optional folder and file type filters, and the collection name chosen when the agent was created.",
+  "outputs": "A dictionary with the query, answer, sources, evidence list, analysis, confidence label, and metadata. It also keeps an in-memory conversation history.",
+  "risks": "The model's analysis is trusted as written, so an invented folder name can hide all results. The history timestamp holds the wrong value. History grows without limit in memory and is never sent back to the model. The confidence label only counts results.",
+  "debug": "Look for the Analyzing query and Query analysis log lines to see what the model returned. If answers are empty, check the evidence count in the metadata. If startup shows Error creating LLM, check the API key and model settings. Follow-up questions get no earlier context, because history is not used.",
+  "summary_hash": "sha256:4cf2ad4ff67b820b7d96b5f1a20c865b40705cc910375c03575ac3f56f9650fe"
+}

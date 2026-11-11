@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "path": "backend/utils/email_sender.py",
+  "language": "Python",
+  "lines": 295,
+  "hash": "sha256:130578bb3630365d0f34ac6bbbdbec3b9050e5f90361842f21889d5211a1ce23",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Windows-only import.",
+      "HTML body is not escaped, which can alter the email.",
+      "The name create_html_email does not match its behaviour of sending.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Outlook",
+      "meaning": "Microsoft's desktop email program"
+    },
+    {
+      "term": "Automation",
+      "meaning": "letting one program control another, here Outlook, through Windows"
+    },
+    {
+      "term": "HTML",
+      "meaning": "the markup language web pages and rich emails are written in"
+    },
+    {
+      "term": "Escaping",
+      "meaning": "changing special characters so they show as text instead of being read as markup"
+    },
+    {
+      "term": "Relevance",
+      "meaning": "how closely a source matched the question, as a percentage"
+    }
+  ],
+  "depends_on": [
+    "pywin32",
+    "backend/utils/logger.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6ff1cbdc8ac3297b",
+      "title": "Imports and logger setup",
+      "what": "Loads the Windows Outlook automation library, typing helpers and the logger.",
+      "why": "Outlook control comes from a Windows-only library.",
+      "watch_out": "This import fails on Linux and macOS, which stops any module that imports this file."
+    },
+    {
+      "start": 9,
+      "end": 63,
+      "kind": "class",
+      "name": "OutlookEmailer (part 1)",
+      "id": "s2",
+      "hash": "d5794930e8c8a1cf",
+      "title": "Starting a plain-text Outlook email",
+      "what": "Opens Outlook, creates a new message, sets the recipient and subject (a default built from the first 50 characters of the question if none is given), and starts a plain-text body with a header and the question.",
+      "why": "Likely reason: lets people share answers by email.",
+      "watch_out": "Any failure returns False instead of raising an error, so the caller may not learn why the email was not sent."
+    },
+    {
+      "start": 64,
+      "end": 119,
+      "kind": "class",
+      "name": "OutlookEmailer (part 2)",
+      "id": "s3",
+      "hash": "ec51737eb94b23d1",
+      "title": "Building the plain-text answer and sources",
+      "what": "Adds the answer, then a numbered list of sources with file name, page, slide or sheet, SharePoint link and relevance percentage, then a footer, and sends the message.",
+      "why": "Gives the reader the answer together with the evidence to check it.",
+      "watch_out": "Relevance is shown only when it is non-zero, so a true score of zero is hidden."
+    },
+    {
+      "start": 120,
+      "end": 155,
+      "kind": "method",
+      "name": "OutlookEmailer: create_html_email",
+      "id": "s4",
+      "hash": "bba5fed237581d26",
+      "title": "Starting the formatted HTML email",
+      "what": "Sets the recipient and subject the same way as the plain version and starts an HTML body. Despite its name, this method also sends the email.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The name suggests it only builds a message, but it calls the send step, so calling it sends real email."
+    },
+    {
+      "start": 156,
+      "end": 215,
+      "kind": "class",
+      "name": "OutlookEmailer (part 4)",
+      "id": "s5",
+      "hash": "9ebb01937c156c2c",
+      "title": "Styling the HTML email",
+      "what": "Defines the look of the HTML email: fonts, colours, the header band, boxed sections and source cards. These rules are embedded in the message itself.",
+      "why": "Likely reason: makes the email readable without an outside stylesheet.",
+      "watch_out": "A stray brace or quote in this style text can break the layout of the whole email."
+    },
+    {
+      "start": 216,
+      "end": 275,
+      "kind": "class",
+      "name": "OutlookEmailer (part 5)",
+      "id": "s6",
+      "hash": "ff46232fe0132d3c",
+      "title": "Writing the question, answer and sources in HTML",
+      "what": "Adds the header, the question, the answer with line breaks turned into HTML breaks, and a card for each source with its location, an Open in SharePoint link and relevance percentage.",
+      "why": "Gives a readable, clickable version of the answer and its evidence.",
+      "watch_out": "The question, answer, file names and links are inserted into the HTML without escaping, so text containing markup could alter the email."
+    },
+    {
+      "start": 276,
+      "end": 295,
+      "kind": "class",
+      "name": "OutlookEmailer (part 6)",
+      "id": "s7",
+      "hash": "84f901b6acf5cfac",
+      "title": "Closing the HTML email and sending",
+      "what": "Adds the footer, closes the HTML, places it in the message, sends it, and returns True on success or False after logging an error.",
+      "why": "Finishes the message the same way as the plain version.",
+      "watch_out": "Failures return False without raising, so a silent failure is easy to miss unless the logs are checked."
+    }
+  ],
+  "explained_at": "2026-11-11T23:06:54+00:00",
+  "explained_by": "haiku",
+  "summary": "Sends a formatted answer and its sources to a person through the Outlook program on Windows.",
+  "purpose": "Lets a user email a query result, as plain text or as a styled HTML page, to a recipient.",
+  "why": "Likely reason: lets people share answers with colleagues without copying them by hand.",
+  "how": "Each function opens Outlook, creates a new message, sets the recipient and subject, builds the body from the question, answer and sources, and sends it. Any failure is logged and the function returns False.",
+  "inputs": "A recipient email address, the question, the answer, a list of source records with file name, page, slide, sheet, SharePoint link and relevance, and an optional subject.",
+  "outputs": "A True or False result, and an email sent from the user's Outlook account.",
+  "risks": "Imports a Windows-only library at the top, so the module fails on other systems. The HTML body inserts the question, answer and links without escaping, so tags in them can change the email. The function named create_html_email actually sends the email. Failures return False without an error, so they are easy to miss.",
+  "debug": "If nothing is sent, check the log for Error sending email and confirm Outlook is installed and signed in. If the import fails, the code is running on a non-Windows system. If the layout looks broken, look for a stray brace or quote in the style block.",
+  "summary_hash": "sha256:130578bb3630365d0f34ac6bbbdbec3b9050e5f90361842f21889d5211a1ce23"
+}

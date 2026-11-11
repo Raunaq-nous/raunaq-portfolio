@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "path": "frontend/lib/api.ts",
+  "language": "TypeScript",
+  "lines": 121,
+  "hash": "sha256:5a1914320e50300b89725ef92d2b3e03480c0c4a44c5c93ec711bfe4c5e05adf",
+  "area": "frontend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Data shapes are not checked when the app runs.",
+      "Most functions are not in this packet, so their error handling is unknown.",
+      "No tests exist in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "axios",
+      "meaning": "a library that sends web requests to the server"
+    },
+    {
+      "term": "type",
+      "meaning": "a written description of what a piece of data must look like"
+    },
+    {
+      "term": "interface",
+      "meaning": "a named description of an object's fields, used in TypeScript"
+    },
+    {
+      "term": "compile time",
+      "meaning": "the checks made before the app runs"
+    },
+    {
+      "term": "API path",
+      "meaning": "the prefix in a web address that identifies the server's feature set"
+    }
+  ],
+  "depends_on": [
+    "axios",
+    "NEXT_PUBLIC_API_URL setting (frontend/.env.example)",
+    "the backend server on port 8000"
+  ],
+  "used_by": [
+    "frontend/components/IndexSection.tsx",
+    "frontend/components/QuerySection.tsx",
+    "frontend/components/AnswerDisplay.tsx",
+    "frontend/components/EvidenceDisplay.tsx"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c6eb4538a991a381",
+      "title": "Server address and HTTP client",
+      "what": "Reads the server address from a setting, falls back to the local port 8000 address, and creates a shared client that adds the API path and JSON header to every request.",
+      "why": "Likely reason: one shared client means every call to the server is set up the same way.",
+      "watch_out": "If the setting is missing, the app quietly uses the local address, so a wrong production address shows up only as connection errors."
+    },
+    {
+      "start": 12,
+      "end": 17,
+      "kind": "type",
+      "name": "IndexFolderRequest",
+      "id": "s2",
+      "hash": "b13efa2dde7c1dba",
+      "title": "Shape of an indexing request",
+      "what": "Describes the data sent to start indexing: the folder path, whether to include subfolders, and the collection name.",
+      "why": "Likely reason: naming the fields keeps the form and the server in agreement.",
+      "watch_out": "This is only a compile-time description, so a server that changes its fields will not be caught here."
+    },
+    {
+      "start": 18,
+      "end": 30,
+      "kind": "type",
+      "name": "IndexFolderResponse",
+      "id": "s3",
+      "hash": "33b00ed64a6d4e93",
+      "title": "Shape of an indexing reply",
+      "what": "Describes the indexing reply: a success flag, a message, file and chunk counts, and a list of errors.",
+      "why": "Likely reason: the results panel depends on these exact fields.",
+      "watch_out": "Missing fields in the real reply are not caught here, so the results panel can break when the app runs."
+    },
+    {
+      "start": 31,
+      "end": 38,
+      "kind": "type",
+      "name": "QueryRequest",
+      "id": "s4",
+      "hash": "8fc411564e3eed1a",
+      "title": "Shape of a question request",
+      "what": "Describes the data sent with a question: the text, how many passages to use, optional folder and file type filters, and the collection.",
+      "why": "Likely reason: keeps the question form and the server in agreement.",
+      "watch_out": "The passage count is optional here, so a caller that leaves it out depends on the server's default."
+    },
+    {
+      "start": 39,
+      "end": 48,
+      "kind": "type",
+      "name": "Source",
+      "id": "s5",
+      "hash": "6122806c08d7a307",
+      "title": "Shape of one source reference",
+      "what": "Describes one source: file name and path, an optional SharePoint link, optional page, slide or sheet, and an optional relevance score.",
+      "why": "Likely reason: the source cards use these fields to show where text came from.",
+      "watch_out": "Optional fields may be missing, so display code must check for them before using them."
+    },
+    {
+      "start": 49,
+      "end": 63,
+      "kind": "type",
+      "name": "Evidence",
+      "id": "s6",
+      "hash": "16ecb4170e19140c",
+      "title": "Shape of one search result",
+      "what": "Describes the fields of one piece of evidence returned by a search, such as the text, file name, page or slide number, and rank.",
+      "why": "Likely reason: gives the editor a checklist of fields, so code that uses results is checked before it runs.",
+      "watch_out": "These checks happen only when the frontend is built. The backend can send different data and nothing stops it at run time."
+    },
+    {
+      "start": 64,
+      "end": 73,
+      "kind": "type",
+      "name": "QueryResponse",
+      "id": "s7",
+      "hash": "3f8d3c43942ccaea",
+      "title": "Shape of a query answer",
+      "what": "Describes the full reply to a question: the answer text, its sources, the evidence list, the analysis, a confidence label, and metadata.",
+      "why": "Mirrors the response the backend builds, so the screen knows which fields to read.",
+      "watch_out": "The analysis and metadata fields accept any data, so a misspelled field name is not caught."
+    },
+    {
+      "start": 74,
+      "end": 80,
+      "kind": "type",
+      "name": "FolderInfo",
+      "id": "s8",
+      "hash": "9682676b785f983f",
+      "title": "Shape of one folder",
+      "what": "Describes one SharePoint folder: its name, its address path, and when it was created and last changed.",
+      "why": "Matches the folder entries the backend returns.",
+      "watch_out": "The dates are plain text here, so a badly formatted date is not caught."
+    },
+    {
+      "start": 81,
+      "end": 86,
+      "kind": "type",
+      "name": "ListFoldersResponse",
+      "id": "s9",
+      "hash": "3116fcbe6017cf3c",
+      "title": "Shape of the folder list reply",
+      "what": "Describes the folder list reply: a success flag, the list of folders, and a count.",
+      "why": "Matches the reply from the folder listing route.",
+      "watch_out": "The count is taken from the backend as it is and is not checked against the list."
+    },
+    {
+      "start": 87,
+      "end": 91,
+      "kind": "function",
+      "name": "healthCheck",
+      "id": "s10",
+      "hash": "399a75258cadce2b",
+      "title": "Backend health check call",
+      "what": "Asks the backend whether it is running and returns its health details.",
+      "why": "Likely reason: lets the screen show whether the backend can be reached.",
+      "watch_out": "Likely: the paths in this file leave out the /api/v1 prefix the backend uses, so the base address set near the top of the file must include it."
+    },
+    {
+      "start": 92,
+      "end": 98,
+      "kind": "function",
+      "name": "listFolders",
+      "id": "s11",
+      "hash": "969bf350aae46c12",
+      "title": "Get SharePoint folders call",
+      "what": "Asks the backend for the folders under a SharePoint path. If no path is given, it uses Shared Documents.",
+      "why": "Likely reason: a default path lets the screen list the main library without knowing its exact name.",
+      "watch_out": "The default must match the library name in the user's SharePoint site, or the request fails or returns nothing useful."
+    },
+    {
+      "start": 99,
+      "end": 103,
+      "kind": "function",
+      "name": "indexFolder",
+      "id": "s12",
+      "hash": "ea6ee2e426ebed22",
+      "title": "Start indexing call",
+      "what": "Sends a folder and its options to the backend so the documents there can be read and stored. Returns the backend's reply.",
+      "why": "Likely reason: keeps the request details in one place so screens do not build web addresses themselves.",
+      "watch_out": "This function sets no timeout of its own, so the caller waits as long as the connection stays open during indexing."
+    },
+    {
+      "start": 104,
+      "end": 108,
+      "kind": "function",
+      "name": "query",
+      "id": "s13",
+      "hash": "1c92754e383d63d8",
+      "title": "Ask a question call",
+      "what": "Sends a question with optional filters to the backend and returns the answer.",
+      "why": "Likely reason: keeps the question request format in one place.",
+      "watch_out": "Answers can take many seconds, and this function sets no timeout of its own, so the screen must show progress."
+    },
+    {
+      "start": 109,
+      "end": 113,
+      "kind": "function",
+      "name": "listCollections",
+      "id": "s14",
+      "hash": "0458bb6e04b942b2",
+      "title": "List collections call",
+      "what": "Asks the backend for the list of saved document collections.",
+      "why": "Likely reason: lets a screen show which collections exist.",
+      "watch_out": "The result is used as it is, so a change in the reply shape can break the screen."
+    },
+    {
+      "start": 114,
+      "end": 121,
+      "kind": "function",
+      "name": "deleteCollection",
+      "id": "s15",
+      "hash": "922613f4b135ceac",
+      "title": "Delete collection call",
+      "what": "Asks the backend to delete a saved collection by its name.",
+      "why": "Likely reason: lets the screen remove a collection that is no longer needed.",
+      "watch_out": "The backend deletes the collection permanently, and this function does not ask for confirmation, so the calling screen must."
+    }
+  ],
+  "explained_at": "2026-11-11T23:04:31+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the shared connection to the backend server and the data shapes for indexing, questions, sources and folders. Only the first part of the file is visible in this packet.",
+  "purpose": "Gives the rest of the frontend one place to talk to the server and one agreed description of the data.",
+  "why": "Likely reason: keeping the calls and data shapes in one file means a server change needs only one edit.",
+  "how": "Reads the server address from a setting, or falls back to the local address on port 8000. Creates a shared client that adds the API path and JSON header. Declares the shapes of the requests and replies. Other named functions, which are not in this packet, wrap the calls: healthCheck, listFolders, indexFolder, query, listCollections and deleteCollection.",
+  "inputs": "The NEXT_PUBLIC_API_URL setting, and the data components pass in.",
+  "outputs": "The shared client, the data shapes, and the functions used by components.",
+  "risks": "The data shapes are checked only at compile time, so a change in the server reply can break a screen with no error here. A missing setting silently falls back to the local address.",
+  "debug": "If every request fails, check the address setting and that the server runs on that address. If a screen shows missing data, compare the reply with the matching shape.",
+  "summary_hash": "sha256:5a1914320e50300b89725ef92d2b3e03480c0c4a44c5c93ec711bfe4c5e05adf"
+}

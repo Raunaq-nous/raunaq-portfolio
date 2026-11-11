@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "path": "backend/rag/index_state.py",
+  "language": "Python",
+  "lines": 125,
+  "hash": "sha256:544d0c597da1d8298c0fde804622962f8d76e2a596934b0194bebb54b956336e",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "A damaged state file is replaced silently, which causes a full re-index.",
+      "The fingerprint can miss edits.",
+      "No tests are shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Fingerprint",
+      "meaning": "A short code that identifies one version of a file."
+    },
+    {
+      "term": "Hash",
+      "meaning": "A short fixed code computed from text, so that any change shows up."
+    },
+    {
+      "term": "MD5",
+      "meaning": "An older hashing method used here as a fingerprint, not for security."
+    },
+    {
+      "term": "JSON",
+      "meaning": "A plain text format for saving structured data."
+    }
+  ],
+  "depends_on": [
+    "backend/config.py",
+    "backend/utils/logger.py"
+  ],
+  "used_by": [
+    "backend/rag/indexer.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e576efbd9cc1c22d",
+      "title": "Imports and logger setup",
+      "what": "Loads the JSON, hashing, path, time, settings, and logger tools.",
+      "why": "Likely reason: needed to save state and build fingerprints.",
+      "watch_out": ""
+    },
+    {
+      "start": 13,
+      "end": 58,
+      "kind": "class",
+      "name": "IndexState (part 1)",
+      "id": "s2",
+      "hash": "79fafda85f54e0ac",
+      "title": "State loading, saving and fingerprint",
+      "what": "Creates a tracker for one collection, loads its state file or starts empty, saves the state, and builds a fingerprint from a file's path and modified time.",
+      "why": "Likely reason: one state file per collection keeps collections separate.",
+      "watch_out": "A damaged or unreadable state file is silently replaced by an empty one, so the next run processes every file again."
+    },
+    {
+      "start": 59,
+      "end": 115,
+      "kind": "method",
+      "name": "IndexState: is_indexed",
+      "id": "s3",
+      "hash": "e7c8c97a8e2af1e8",
+      "title": "Indexed file checks and updates",
+      "what": "Answers whether a file is already indexed with the same fingerprint, records newly indexed files, lists indexed files, returns a file's record, removes a file, and summarises the totals.",
+      "why": "Likely reason: the indexer uses these to decide what to skip and to report progress.",
+      "watch_out": "The fingerprint ignores file content, so a file changed without a new modified time is treated as unchanged."
+    },
+    {
+      "start": 116,
+      "end": 125,
+      "kind": "method",
+      "name": "IndexState: clear",
+      "id": "s4",
+      "hash": "aa0c5f03b390e0db",
+      "title": "Clear all state",
+      "what": "Resets the tracker to an empty record and saves that empty record to the file.",
+      "why": "Likely reason: used when a collection is rebuilt from scratch.",
+      "watch_out": "Clearing forgets every file, so the next run re-processes everything. It only resets the state file and does not remove stored vectors."
+    }
+  ],
+  "explained_at": "2026-11-11T23:04:31+00:00",
+  "explained_by": "haiku",
+  "summary": "Keeps a record of which documents were indexed and a fingerprint for each, so unchanged files are skipped on the next run.",
+  "purpose": "Saves time and cost by avoiding indexing files that have not changed.",
+  "why": "Likely reason: indexing is slow and costly, so repeating it for unchanged files is wasteful.",
+  "how": "Loads the collection's state file or starts empty. For each file, it makes a fingerprint from the path and last modified time. It stores the fingerprint when a file is indexed, checks it on later runs, and saves the file after each change.",
+  "inputs": "A file path, its last modified text, and the collection name.",
+  "outputs": "Yes or no answers, a list of indexed files, a summary of counts, and the state file on disk.",
+  "risks": "The fingerprint uses only the path and modified time, so an edit that keeps the same time is missed. A damaged state file is silently replaced by an empty one, which triggers a full re-index. Saving after every file slows large runs, and no lock is visible in this file.",
+  "debug": "Find index_state.json in the collection folder under the vector store path. Check logs for Error loading index state or already indexed lines. If everything re-indexes each run, check that the file exists and is valid JSON.",
+  "summary_hash": "sha256:544d0c597da1d8298c0fde804622962f8d76e2a596934b0194bebb54b956336e"
+}

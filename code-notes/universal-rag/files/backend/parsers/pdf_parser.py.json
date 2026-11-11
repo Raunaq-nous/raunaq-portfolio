@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "path": "backend/parsers/pdf_parser.py",
+  "language": "Python",
+  "lines": 101,
+  "hash": "sha256:cbaf13c52358126b6f11dcc6bc5921c7ddcaf92a37d5a46bb3428ee073a6beee",
+  "area": "backend-parsers",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible for this file.",
+      "Pages can be duplicated after a partial failure.",
+      "Scanned PDFs produce no text."
+    ]
+  },
+  "terms": [
+    {
+      "term": "pdfplumber",
+      "meaning": "a library that reads text and tables from PDF pages"
+    },
+    {
+      "term": "PyPDF2",
+      "meaning": "an older library used here as the backup PDF reader"
+    },
+    {
+      "term": "OCR",
+      "meaning": "reading text out of images, such as a scanned page"
+    }
+  ],
+  "depends_on": [
+    "pdfplumber package",
+    "PyPDF2 package",
+    "backend/parsers/base.py",
+    "backend/utils/logger.py"
+  ],
+  "used_by": [
+    "backend/parsers/parser_manager.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e791a444ded3cfc7",
+      "title": "Imports and logger setup",
+      "what": "Brings in the two PDF libraries, the parser base types and the shared logger.",
+      "why": "Reason not stated beyond the usual use of a shared logger.",
+      "watch_out": ""
+    },
+    {
+      "start": 11,
+      "end": 65,
+      "kind": "class",
+      "name": "PDFParser (part 1)",
+      "id": "s2",
+      "hash": "fad4889a4a2ff9f6",
+      "title": "Main page-by-page reader",
+      "what": "Declares the PDF parser and checks the file ending. It opens the PDF with the main reader, goes through each page, and builds one record for each page that has text or tables.",
+      "why": "The code comment says this reader handles tables better, so it is the first choice.",
+      "watch_out": "Pages are added to the list as they are read, so a failure partway through leaves the earlier pages in place."
+    },
+    {
+      "start": 66,
+      "end": 101,
+      "kind": "class",
+      "name": "PDFParser (part 2)",
+      "id": "s3",
+      "hash": "1bd4d822f9932cd1",
+      "title": "Backup reader and table formatting",
+      "what": "If the main reader fails, a backup reader collects page text instead. This section also turns table rows into lines with separators, and returns blank text if a table cannot be formatted.",
+      "why": "Likely reason: some PDFs work with one reader but not the other. Reason stated only by the comment calling it a fallback.",
+      "watch_out": "The backup reader adds pages to a list that may already hold pages from the failed attempt, so duplicates can appear."
+    }
+  ],
+  "explained_at": "2026-11-11T22:57:10+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads PDF files page by page, pulling out text and tables, with a backup reader if the main reader fails.",
+  "purpose": "Makes PDF pages searchable and keeps page numbers so answers can point to a page.",
+  "why": "The code comment says the main reader is better for complex PDFs with tables. The backup reader is there in case the main one fails.",
+  "how": "The file is opened with the main reader, which goes through each page. Text and any tables are read from each page. Tables are turned into lines with separators. Text and tables are combined into one record for that page, with its page number and the total page count. If the main reader fails, a warning is logged and the pages are read again with the backup reader, keeping only pages that have text. The page count is logged and the records are returned.",
+  "inputs": "A path to a .pdf file.",
+  "outputs": "A list of parsed records, one per page that has text or tables, each carrying its page number.",
+  "risks": "If the main reader fails partway through, the pages it already read stay in the list and the backup reader adds them again, so some pages appear twice. Scanned PDFs that are only images produce no records. The backup reader does not read tables. Pages with no text and no tables are skipped without a message.",
+  "debug": "Look for the warning that the main reader failed, which means the backup ran. If pages repeat, that is the duplicate problem described above. If a scanned PDF gives no results, it needs text recognition from images, which this parser does not do.",
+  "summary_hash": "sha256:cbaf13c52358126b6f11dcc6bc5921c7ddcaf92a37d5a46bb3428ee073a6beee"
+}

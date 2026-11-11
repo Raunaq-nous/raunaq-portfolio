@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "path": "backend/parsers/pst_parser.py",
+  "language": "Python",
+  "lines": 130,
+  "hash": "sha256:168c6b6ffb60131371e63acee33cff2cc7b77fd17215fe24d6c2c81163210d07",
+  "area": "backend-parsers",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible for this file.",
+      "HTML bodies are stored with their markup.",
+      "The file may stay open after an error."
+    ]
+  },
+  "terms": [
+    {
+      "term": "PST",
+      "meaning": "the Outlook archive file format that holds a whole mailbox"
+    },
+    {
+      "term": "pypff",
+      "meaning": "the library used to read PST files, which can be hard to install"
+    },
+    {
+      "term": "HTML",
+      "meaning": "the markup language used for web pages, with tags wrapped in angle brackets"
+    },
+    {
+      "term": "root folder",
+      "meaning": "the top folder of an archive, which holds all the others"
+    }
+  ],
+  "depends_on": [
+    "pypff package",
+    "backend/parsers/base.py",
+    "backend/utils/logger.py"
+  ],
+  "used_by": [
+    "backend/parsers/parser_manager.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "05831b7c698edf7e",
+      "title": "Imports and logger setup",
+      "what": "Brings in the PST library, path and date tools, the parser base types and the shared logger.",
+      "why": "Reason not stated beyond the usual use of a shared logger.",
+      "watch_out": ""
+    },
+    {
+      "start": 12,
+      "end": 63,
+      "kind": "class",
+      "name": "PSTParser (part 1)",
+      "id": "s2",
+      "hash": "f8e6f0ece796c499",
+      "title": "Archive file and folder walk",
+      "what": "Declares the PST parser, opens the archive, starts at the top folder, and walks every folder and subfolder. Each folder's emails are handed on to be turned into records.",
+      "why": "Likely reason: an archive is a folder tree, so walking it is the only way to reach every email. Reason not stated.",
+      "watch_out": "A failure inside one folder is logged and the walk continues, so the result can be partial with no clear signal."
+    },
+    {
+      "start": 64,
+      "end": 109,
+      "kind": "method",
+      "name": "PSTParser: _parse_email",
+      "id": "s3",
+      "hash": "849b0de944fb6fb0",
+      "title": "Email text builder",
+      "what": "Reads one email's fields and body. It prefers the plain-text body and falls back to HTML, adds the sent time and lists attachment names, then builds the text block.",
+      "why": "Likely reason: plain text is easier to search, so it is preferred. The code order shows this, and no comment states it.",
+      "watch_out": "The HTML fallback keeps raw markup, which adds noise to search results."
+    },
+    {
+      "start": 110,
+      "end": 130,
+      "kind": "class",
+      "name": "PSTParser (part 3)",
+      "id": "s4",
+      "hash": "db3e9aa167fb5bfe",
+      "title": "Email record output",
+      "what": "Packs the text and details into one record for the email and returns it. If anything fails, it logs a warning and returns nothing, which the caller then skips.",
+      "why": "Likely reason: one bad email should not stop the whole archive. The caller's skip logic supports this.",
+      "watch_out": "The method is typed as always returning a record, but it can return nothing, so callers must check."
+    }
+  ],
+  "explained_at": "2026-11-11T22:57:10+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads Outlook PST archive files and turns every email, in every folder, into one searchable text record.",
+  "purpose": "Lets users search a whole Outlook archive and see which folder each email came from.",
+  "why": "Likely reason: a PST file is a tree of folders holding many emails, so the reader walks that tree. Reason not stated for the choice of library. The code comment notes HTML bodies could be cleaned up.",
+  "how": "The PST file is opened with the pypff library and the reader starts at the top folder. For each folder, it builds a record for every email, holding the folder name, sender, recipients, copy list, subject, date, body and attachment names. It then moves into each subfolder and repeats. When the walk is finished, the file is closed and all records are returned. An email that fails is skipped with a warning.",
+  "inputs": "A path to a .pst file.",
+  "outputs": "A list of parsed records, one per email. Each has the file type pst_email and metadata for folder, sender, recipients, subject, date and attachment count.",
+  "risks": "HTML bodies are stored as raw HTML with tags, so the index contains markup. The file is closed only after a full run, so an error that stops the run leaves it open. Large archives can use a lot of memory. The library is hard to install, which is why it is optional.",
+  "debug": "If PST support is off, check whether pypff is installed. If emails are missing, look for the warning lines that name the folder. If results contain tags, the HTML body is the cause.",
+  "summary_hash": "sha256:168c6b6ffb60131371e63acee33cff2cc7b77fd17215fe24d6c2c81163210d07"
+}
