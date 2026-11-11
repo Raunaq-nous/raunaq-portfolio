@@ -1,4 +1,4 @@
-// Captures the evidence behind the research notebook (public/notebooks/ai-sport/evidence).
+// Captures the evidence behind a research notebook (EVIDENCE_DIR, default public/notebooks/ai-sport/evidence).
 // Runs on GitHub Actions (.github/workflows/capture-evidence.yml), where every source is reachable.
 // For each source: open the page, highlight the words that support the note, stamp a receipt banner,
 // and save a screenshot plus a thumbnail. PDFs are rendered at the page that contains the phrase.
@@ -68,8 +68,12 @@ async function capturePdf(it, base) {
   rmSync('/tmp/ev.pdf', { force: true });
   return { found, title: `PDF page ${pg} of ${pages}` };
 }
+const force = process.env.FORCE === '1';
+let skipped = 0;
 for (const it of manifest.items) {
   if (only.length && !only.includes(it.n)) continue;
+  const prev = items[it.n];
+  if (!force && !only.length && prev && prev.ok && prev.img && prev.url === it.url && JSON.stringify(prev.terms || []) === JSON.stringify(it.terms || []) && existsSync(`${dir}/${prev.img}`)) { skipped++; continue; }
   const base = `r${it.n}`, host = (() => { try { return new URL(it.url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
   const banner = `RECEIPT ${it.n} \u00b7 ${host} \u00b7 CAPTURED ${today.slice(0, 10)}`;
   try {
@@ -96,10 +100,10 @@ for (const it of manifest.items) {
         writeFileSync(`${dir}/img/${base}.jpg`, jpg); await thumb(jpg, `${dir}/img/${base}_t.jpg`);
       } finally { await page.close(); }
     }
-    items[it.n] = { ok: true, img: `img/${base}.jpg`, thumb: `img/${base}_t.jpg`, found, missing: it.terms.filter((t) => !found.includes(t)), title: (title || '').slice(0, 140), capturedAt: today };
+    items[it.n] = { ok: true, url: it.url, terms: it.terms, img: `img/${base}.jpg`, thumb: `img/${base}_t.jpg`, found, missing: it.terms.filter((t) => !found.includes(t)), title: (title || '').slice(0, 140), capturedAt: today };
     console.log(`#${it.n} ok  found ${found.length}/${it.terms.length}  ${host}`);
   } catch (e) {
-    const keep = items[it.n] && items[it.n].ok ? items[it.n] : {};
+    const keep = items[it.n] && items[it.n].ok && (!items[it.n].url || items[it.n].url === it.url) ? items[it.n] : {};
     items[it.n] = { ...keep, ok: !!keep.ok, lastError: String(e.message || e).slice(0, 160), lastTriedAt: today, ...(keep.ok ? {} : { error: String(e.message || e).slice(0, 160) }) };
     console.log(`#${it.n} FAIL ${host}: ${String(e.message || e).slice(0, 90)}`);
   }
@@ -107,4 +111,4 @@ for (const it of manifest.items) {
 await browser.close();
 writeFileSync(prevFile, JSON.stringify({ capturedAt: today, items }, null, 1));
 const ok = Object.values(items).filter((x) => x.ok).length;
-console.log(`captured ${ok} of ${manifest.items.length}`);
+console.log(`captured ${ok} of ${manifest.items.length} (${skipped} unchanged and skipped; set FORCE=1 to recapture all)`);
