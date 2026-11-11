@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "path": ".agents/skills/design/scripts/cip/generate.py",
+  "language": "Python",
+  "lines": 484,
+  "hash": "sha256:2745040c9b534cf4113d2f7f4d7a52bc96a9fbfa12204c4f8460be4e15449069",
+  "area": "agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated tests are in the packet.",
+      "Several failures print a message and return nothing, so a run can finish with fewer images than requested.",
+      "The rest of main is not visible, so the set and prompt-only options are unconfirmed.",
+      "Whether the logo is reproduced accurately depends on the model and is not checked."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Gemini",
+      "meaning": "Google's family of AI models, which includes this image generator"
+    },
+    {
+      "term": "Nano Banana",
+      "meaning": "the nickname this code uses for Gemini image generation models"
+    },
+    {
+      "term": "mockup",
+      "meaning": "a realistic preview picture of a product with the brand applied to it"
+    },
+    {
+      "term": "CIP",
+      "meaning": "Corporate Identity Program, a company's full set of brand look rules and items"
+    },
+    {
+      "term": "API key",
+      "meaning": "a secret code that lets this program use a paid online service"
+    },
+    {
+      "term": "environment variable",
+      "meaning": "a named setting stored in the computer that programs can read"
+    },
+    {
+      "term": ".env file",
+      "meaning": "a plain text file of named settings, read by this program when it starts"
+    },
+    {
+      "term": "prompt",
+      "meaning": "the written instructions sent to the AI model"
+    },
+    {
+      "term": "aspect ratio",
+      "meaning": "the shape of a picture, given as width to height, such as 1:1 for square"
+    },
+    {
+      "term": "transparency",
+      "meaning": "parts of an image that are see-through, so the background shows through"
+    },
+    {
+      "term": "Pillow",
+      "meaning": "a Python library for opening and changing image files"
+    }
+  ],
+  "depends_on": [
+    ".agents/skills/design/scripts/cip/core.py",
+    "pillow (Python image library)",
+    "google-genai (Google's Python client library)",
+    "Google Gemini image service",
+    "A .env file in the design folder or in the home .claude folder, if present"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 35,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "18f80f7cc7219641",
+      "title": "Imports, models, and setup",
+      "what": "Imports the tools this program needs, adds its own folder to the search path so the core module loads, and names two Gemini image models: a fast one and a higher quality one.",
+      "why": "Likely reason: lets the user choose speed or quality by name without changing code.",
+      "watch_out": "Model names are fixed text, so if the provider renames a model, image requests fail until this list is updated."
+    },
+    {
+      "start": 36,
+      "end": 67,
+      "kind": "function",
+      "name": "load_logo_image",
+      "id": "s2",
+      "hash": "d86e1627c8800472",
+      "title": "Preparing the logo picture",
+      "what": "Opens the logo image and converts it to a plain color picture. Transparent areas become a white background, and any loading problem prints a message and returns nothing.",
+      "why": "Likely reason: the image model works best with plain color pictures.",
+      "watch_out": "Transparent areas become white, so white parts of a logo on a see-through background would disappear."
+    },
+    {
+      "start": 68,
+      "end": 88,
+      "kind": "function",
+      "name": "load_env",
+      "id": "s3",
+      "hash": "68215ef900452a46",
+      "title": "Loading saved settings from files",
+      "what": "Reads settings from up to three .env files and places them in the environment, unless the same setting already exists. This is how the program finds its API key without typing it each time.",
+      "why": "Likely reason: keeps the secret key out of the command line and out of the code.",
+      "watch_out": "This runs as soon as the file loads, and the first file that sets a name wins over later files."
+    },
+    {
+      "start": 89,
+      "end": 134,
+      "kind": "function",
+      "name": "build_cip_prompt (part 1)",
+      "id": "s4",
+      "hash": "82d8082a8e4617cc",
+      "title": "Gathering the design details",
+      "what": "Looks up the deliverable, style, industry, and mockup scene in the guideline data, and collects names, colors, typography, materials, finish, and mood, using plain fallback values when a lookup finds nothing.",
+      "why": "Likely reason: builds the prompt from real guideline facts rather than only the user's words.",
+      "watch_out": "Style and industry are only looked up when given, so otherwise the prompt falls back to generic wording."
+    },
+    {
+      "start": 135,
+      "end": 185,
+      "kind": "function",
+      "name": "build_cip_prompt (part 2)",
+      "id": "s5",
+      "hash": "4c9eed61ac9f0ab9",
+      "title": "Writing the image instructions",
+      "what": "Writes the text sent to the image model. With a logo, the text tells the model to use the logo exactly as shown; without one, it describes a generated look. Empty pieces are removed and the rest are joined with commas.",
+      "why": "Likely reason: the two modes need different wording, because a supplied logo must not be redrawn.",
+      "watch_out": "The logo mode asks the model to keep the logo exact, but the model may still alter it, so each picture needs a visual check."
+    },
+    {
+      "start": 186,
+      "end": 243,
+      "kind": "function",
+      "name": "generate_with_nano_banana (part 1)",
+      "id": "s6",
+      "hash": "ed9077fe6f4a3216",
+      "title": "Preparing the image request",
+      "what": "Checks that the Google library and an API key are available, opens a client connection, picks the model, prints a summary of the job, and chooses between text only and text plus logo.",
+      "why": "Likely reason: stops early with a clear message when something needed is missing.",
+      "watch_out": "A missing library or key makes this return nothing without stopping the whole run, so the caller must handle an empty result."
+    },
+    {
+      "start": 244,
+      "end": 285,
+      "kind": "function",
+      "name": "generate_with_nano_banana (part 2)",
+      "id": "s7",
+      "hash": "6ae2c1217e8ca0cf",
+      "title": "Sending the request and saving the image",
+      "what": "Sends the request asking only for an image, takes the first image in the reply, and saves it to the output folder with the brand, deliverable, and time in its name. It returns the saved file path, or nothing if no image came back.",
+      "why": "Likely reason: asking for image-only output means the reply holds the picture directly.",
+      "watch_out": "The file name uses time to the second, so two images for the same brand and deliverable made in the same second overwrite each other."
+    },
+    {
+      "start": 286,
+      "end": 340,
+      "kind": "function",
+      "name": "generate_cip_set",
+      "id": "s8",
+      "hash": "b2a0db8b170b064f",
+      "title": "Generating a full set of deliverables",
+      "what": "Loads the logo once, gets the guideline brief for the brand, then builds and generates one image for each deliverable in the list, defaulting to five common items. It returns the saved images with their prompts.",
+      "why": "Likely reason: one call produces a matching family of items for a brand.",
+      "watch_out": "Each deliverable is a separate billed image request, and a failed one is left out of the list without stopping the others, so the count may be lower than requested."
+    },
+    {
+      "start": 341,
+      "end": 369,
+      "kind": "function",
+      "name": "check_logo_required",
+      "id": "s9",
+      "hash": "c7538eb708650d3d",
+      "title": "Asking about a missing logo",
+      "what": "When no logo is given and the no-prompt flag is not set, it shows terminal choices: continue, generate a logo with the logo design skill, or exit. It returns the chosen word, with continue as the default.",
+      "why": "Likely reason: warns that the AI will invent the logo, so the user can supply one instead.",
+      "watch_out": "The function only returns a word, so the caller must act on generate and exit, and nothing in this section does that."
+    },
+    {
+      "start": 370,
+      "end": 417,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s10",
+      "hash": "681d4cc9bca2cc88",
+      "title": "Defining the command options",
+      "what": "Sets up the command-line options: brand name, logo path, deliverable or list, industry, style, mockup scene, set mode, output folder, model, aspect ratio, prompt-only, JSON output, and no-prompt. It also holds the usage examples shown to the user.",
+      "why": "Likely reason: lets the user control each part of generation from the command line.",
+      "watch_out": "What options such as set and prompt-only do is in parts of main that are not included in these notes, so their behavior is not confirmed here."
+    },
+    {
+      "start": 418,
+      "end": 468,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s11",
+      "hash": "95a50d6ad1b21041",
+      "title": "Logo check and mockup generation branch",
+      "what": "Checks whether a logo was supplied. If one was given, it is loaded, and a missing or unreadable logo stops the run with an error. If none was given, the user may be told to create one with the logo tool, or the run continues without a logo. Then it either prints mockup prompts or creates a set of mockup images.",
+      "why": "Likely reason: mockups are built on the logo, so the logo is settled before any mockup work starts.",
+      "watch_out": "How check_logo_required behaves is not visible here, so confirm whether it waits for typed input before automating runs."
+    },
+    {
+      "start": 469,
+      "end": 482,
+      "kind": "function",
+      "name": "main (part 3)",
+      "id": "s12",
+      "hash": "20b4d17ae770c072",
+      "title": "Single mockup output step",
+      "what": "For one deliverable, either prints the generated prompt text or creates one mockup image and reports where it was saved. With JSON output, it prints the file location together with the prompt data.",
+      "why": "Likely reason: the same two choices, prompt text only or real image, are offered for single and set modes.",
+      "watch_out": "The output path and aspect ratio are passed straight to image generation, so a bad path only fails when the file is saved."
+    },
+    {
+      "start": 483,
+      "end": 484,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s13",
+      "hash": "b60851f8e384a572",
+      "title": "Program start when run directly",
+      "what": "When this file is run as a program, it starts the main routine. When another file imports it, nothing starts.",
+      "why": "Standard Python pattern that lets other code reuse the functions in this file without launching the tool.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-11T21:02:54+00:00",
+  "explained_by": "haiku",
+  "summary": "A command-line tool that creates branded mockup pictures, such as business cards, letterheads, signs, and vehicles, by sending brand guideline text and an optional logo to a Google Gemini image model.",
+  "purpose": "Produces brand identity preview images from a brand name, optionally using the real logo.",
+  "why": "The file header says it uses Gemini image generation for high-quality mockups and supports using actual brand logos. Likely reason for the logo mode: the real logo appears instead of one the AI redraws.",
+  "how": "1. Load saved settings. 2. Read the command options. 3. If a logo is given, load it and flatten its transparent areas to white. 4. For each deliverable, look up the brief and build the prompt. 5. Send the prompt, with the logo if given, to the chosen model. 6. Save each returned image to the output folder and print its path. Later steps in main are not in these notes.",
+  "inputs": "Brand name, optional logo image file, deliverable or list of deliverables, industry (default technology), optional style and mockup scene, model choice (flash or pro), aspect ratio (default 1:1), output folder, and an API key from the environment or .env files. Terminal answers to the missing-logo question.",
+  "outputs": "Image files named from the brand, deliverable, and time, saved to the output folder; printed progress and file paths; a list of results when generating a set. The other output options are not confirmed from the notes.",
+  "risks": "Each image is a billed request to Google. The brand logo is sent to an outside service, so only send logos you are allowed to share. Transparent logo parts can be lost. Images made in the same second with the same names overwrite each other. The model may alter a logo despite the instructions.",
+  "debug": "For a missing key message, set GEMINI_API_KEY or GOOGLE_API_KEY, or add it to a .env file. For a missing package message, install google-genai and pillow. For no image generated, the request may have been refused or returned only text; try another deliverable or the other model. For logo problems, check the file path and whether the background is transparent. For missing files, check the output folder and the printed path.",
+  "summary_hash": "sha256:2745040c9b534cf4113d2f7f4d7a52bc96a9fbfa12204c4f8460be4e15449069"
+}

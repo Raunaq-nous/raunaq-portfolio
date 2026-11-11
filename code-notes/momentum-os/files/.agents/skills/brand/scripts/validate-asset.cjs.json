@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "path": ".agents/skills/brand/scripts/validate-asset.cjs",
+  "language": "JavaScript",
+  "lines": 387,
+  "hash": "sha256:4546c9109fb0f4f767426508cb29e60d02b301f8897cf16d8e378b7ce9d997fc",
+  "area": "agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible for this file.",
+      "Minimum dimensions are defined but not checked.",
+      "The fix option is documented but not implemented.",
+      "The manifest location is fixed to the current folder."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Manifest",
+      "meaning": "A list file that records which assets exist and where they are stored."
+    },
+    {
+      "term": "Kebab-case",
+      "meaning": "Lowercase words joined by hyphens, such as launch-banner."
+    },
+    {
+      "term": "Regular expression",
+      "meaning": "A pattern used to check whether text has a certain shape."
+    },
+    {
+      "term": "Exit code",
+      "meaning": "The number a program returns when it finishes. Zero usually means success and one means a problem."
+    }
+  ],
+  "depends_on": [
+    "Node.js built-in fs and path modules",
+    "a manifest file at the hidden assets folder in the project root, if present"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "5d429cfdac14e1af",
+      "title": "Purpose and usage notes",
+      "what": "Describes the checks the tool performs and shows how to run it, including a JSON option and a fix option.",
+      "why": "Gives a single entry point for checking assets.",
+      "watch_out": "The fix option is listed in the usage notes, but no code reads it, so it does nothing."
+    },
+    {
+      "start": 19,
+      "end": 49,
+      "kind": "value",
+      "name": "RULES",
+      "id": "s2",
+      "hash": "058cb1e06f6f1d9b",
+      "title": "The rules in one place",
+      "what": "Holds the naming pattern with examples, minimum pixel sizes by asset type, maximum and recommended file sizes, and the approved formats grouped as image, vector, video, or document.",
+      "why": "Likely reason: keeps the rules easy to change in one spot.",
+      "watch_out": "The minimum pixel sizes are defined but nothing in this file checks them, so undersized images pass."
+    },
+    {
+      "start": 50,
+      "end": 69,
+      "kind": "function",
+      "name": "parseFilename",
+      "id": "s3",
+      "hash": "dbef28ce5e7f0075",
+      "title": "Splitting a file name into parts",
+      "what": "Removes the extension and splits the name at underscores into type, campaign, description, date, and an optional variant. It returns nothing if there are fewer than four parts.",
+      "why": "Lets each part be checked on its own.",
+      "watch_out": "An extra underscore inside one part shifts the later parts, so the checks read the wrong fields."
+    },
+    {
+      "start": 70,
+      "end": 118,
+      "kind": "function",
+      "name": "validateFilename",
+      "id": "s4",
+      "hash": "839d28e0f9f2e68a",
+      "title": "Checking the file name",
+      "what": "Checks the whole name against the pattern, confirms the date is eight digits, and requires kebab-case for campaign and description. It notes an unknown asset type as a suggestion only, and returns the issues, suggestions, and parsed parts.",
+      "why": "Enforces the naming convention so assets can be found by name.",
+      "watch_out": "The list of asset types is written inside this function, not in the rules section, so a new type must be added here too."
+    },
+    {
+      "start": 119,
+      "end": 154,
+      "kind": "function",
+      "name": "validateFileSize",
+      "id": "s5",
+      "hash": "b7ec71562fdb0a1e",
+      "title": "Checking the file size",
+      "what": "Reads the file size and picks the limits for its kind. Going over the maximum is an issue, and going over the recommended size is only a warning.",
+      "why": "Likely reason: keeps files light enough to load quickly, with two levels so that only serious problems block a pass.",
+      "watch_out": "Limits are picked by extension, so document types such as PDF or PSD are checked against the image limits."
+    },
+    {
+      "start": 155,
+      "end": 183,
+      "kind": "function",
+      "name": "validateFormat",
+      "id": "s6",
+      "hash": "88b232889ad27119",
+      "title": "Checking the file format",
+      "what": "Confirms the extension is on the approved list and records which kind it belongs to. An unlisted format is reported as an issue.",
+      "why": "Keeps only the file types the team has agreed to use.",
+      "watch_out": "A new format must be added to the matching group in the rules, or it will be rejected."
+    },
+    {
+      "start": 184,
+      "end": 210,
+      "kind": "function",
+      "name": "checkManifest",
+      "id": "s7",
+      "hash": "16cdcb0818205d7c",
+      "title": "Looking up the asset in the manifest",
+      "what": "Looks in the manifest file for this asset's path. It reports not registered if the manifest is missing, unreadable, or does not list the asset.",
+      "why": "Likely reason: tracks which assets are approved and where they are kept.",
+      "watch_out": "A missing or broken manifest only adds a warning, so unregistered assets can pass unnoticed."
+    },
+    {
+      "start": 211,
+      "end": 225,
+      "kind": "function",
+      "name": "suggestFilename",
+      "id": "s8",
+      "hash": "8f49c627baf54aaa",
+      "title": "Suggesting a corrected file name",
+      "what": "Builds a suggested name from the readable parts, filling gaps with general, untitled, or png, and using today's date.",
+      "why": "Gives the person a ready starting point for renaming.",
+      "watch_out": "Today's date replaces the original date, so the suggestion does not reflect when the asset was made."
+    },
+    {
+      "start": 226,
+      "end": 236,
+      "kind": "function",
+      "name": "formatBytes",
+      "id": "s9",
+      "hash": "131fb271810501ba",
+      "title": "Making byte counts readable",
+      "what": "Converts a number of bytes into a readable size with a unit, such as kilobytes or megabytes, rounded to two decimals.",
+      "why": "Makes size messages easy to read.",
+      "watch_out": "The unit list stops at gigabytes, which is fine for assets but would show a wrong unit for anything larger."
+    },
+    {
+      "start": 237,
+      "end": 293,
+      "kind": "function",
+      "name": "validateAsset (part 1)",
+      "id": "s10",
+      "hash": "c0e2faf1fade91fc",
+      "title": "Running every check on one file",
+      "what": "Confirms the file exists, then runs the name, format, size, and manifest checks in that order. It collects issues, warnings, and suggestions into one result.",
+      "why": "Puts all the checks in one place for each asset.",
+      "watch_out": "If the file is missing, the function stops at once, so the other checks never run."
+    },
+    {
+      "start": 294,
+      "end": 307,
+      "kind": "method",
+      "name": "validateAsset: if",
+      "id": "s11",
+      "hash": "540412487073203d",
+      "title": "Adding a corrected name and setting pass or fail",
+      "what": "Adds a suggested name when the file name was wrong and could be split. The asset passes only when there are no issues, since warnings do not block it.",
+      "why": "Gives a clear next step and a clear result.",
+      "watch_out": "Only issues decide pass or fail, so an unregistered file or one over the recommended size still passes."
+    },
+    {
+      "start": 308,
+      "end": 347,
+      "kind": "function",
+      "name": "formatOutput",
+      "id": "s12",
+      "hash": "1d5be99a9de65710",
+      "title": "Formatting the text report",
+      "what": "Writes the report with a pass or fail status, the path, then the issues, warnings, suggestions, and file size, separated by divider lines.",
+      "why": "Gives people a readable summary.",
+      "watch_out": "The file size line appears only when the size was measured, so a missing size is left out without comment."
+    },
+    {
+      "start": 348,
+      "end": 387,
+      "kind": "function",
+      "name": "main",
+      "id": "s13",
+      "hash": "071415d3cb3f5958",
+      "title": "Running from the command line",
+      "what": "Reads the asset path from the arguments, prints usage and stops if none is given, validates the file, prints the report or JSON, and exits with zero for pass or one for fail.",
+      "why": "Lets scripts and automated checks react to the result.",
+      "watch_out": "Any issue makes the exit code one, so a script that checks it will stop on failure."
+    }
+  ],
+  "explained_at": "2026-11-11T20:55:43+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks one marketing asset file against brand rules for its name, format, size, and manifest registration, then prints a pass or fail report.",
+  "purpose": "Catches badly named, oversized, or unsupported marketing files before they are shared.",
+  "why": "Likely reason: keeps the asset library consistent and easy to search.",
+  "how": "The script resolves the file path, then checks that the file exists. It checks the name against the naming pattern and type list, checks the format is approved, compares the file size to limits, and looks for the file in a manifest. It then suggests a corrected name if the name is wrong and prints the result as text or JSON with a pass or fail exit code.",
+  "inputs": "A path to one asset file, an optional JSON output flag, and an optional fix flag that is mentioned in the usage notes.",
+  "outputs": "A text or JSON report, and an exit code of zero for pass or one for fail. It writes no files.",
+  "risks": "Pixel dimensions are defined in the rules but never checked. The fix option is mentioned in the usage notes but no code reads it. A missing manifest or unregistered asset is only a warning.",
+  "debug": "If a valid file fails, read the issues list in the report. If a name is rejected, compare it with the pattern and the examples in the rules. If a manifest result is wrong, check that the manifest file exists in the hidden assets folder at the project root.",
+  "summary_hash": "sha256:4546c9109fb0f4f767426508cb29e60d02b301f8897cf16d8e378b7ce9d997fc"
+}

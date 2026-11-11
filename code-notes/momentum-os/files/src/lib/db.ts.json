@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "path": "src/lib/db.ts",
+  "language": "TypeScript",
+  "lines": 168,
+  "hash": "sha256:be4cd0e57ee3a3418a57ae3e36b1cd1c7daf99592283b00bffed81e907fac59c",
+  "area": "src-lib",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automatic test is visible.",
+      "Errors are only logged.",
+      "Failed sync items retry forever.",
+      "Clearing and writing a table is not atomic."
+    ]
+  },
+  "terms": [
+    {
+      "term": "IndexedDB",
+      "meaning": "A database built into the browser that stores data on the user's device."
+    },
+    {
+      "term": "Dexie",
+      "meaning": "A helper library that makes IndexedDB easier to use."
+    },
+    {
+      "term": "sync queue",
+      "meaning": "A list of changes made offline that waits to be sent to the cloud."
+    },
+    {
+      "term": "upsert",
+      "meaning": "Save a record: update it if it exists, otherwise insert it."
+    }
+  ],
+  "depends_on": [
+    "dexie",
+    "./supabase"
+  ],
+  "used_by": [
+    "src/store/useMomentumStore.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "386d13ab161e16f0",
+      "title": "Imports",
+      "what": "Loads the local database library and the cloud connection.",
+      "why": "Needed for local storage and syncing.",
+      "watch_out": ""
+    },
+    {
+      "start": 4,
+      "end": 12,
+      "kind": "type",
+      "name": "SyncQueueItem",
+      "id": "s2",
+      "hash": "5624dd0628252813",
+      "title": "Sync queue entry shape",
+      "what": "Describes one waiting change: which table, what action, which record, the data and when it happened.",
+      "why": "Lets offline changes be saved and sent later.",
+      "watch_out": "The data field is loosely typed, so nothing checks it is correct before it is sent."
+    },
+    {
+      "start": 13,
+      "end": 61,
+      "kind": "class",
+      "name": "MomentumDatabase, db",
+      "id": "s3",
+      "hash": "9140fc81a9a59365",
+      "title": "Local database definition",
+      "what": "Defines the browser database and one table for each area of life, plus the sync queue, and exports one shared copy.",
+      "why": "Likely reason: local storage for offline use.",
+      "watch_out": "The name says v2 but the schema is version 1. Reason not stated. Any change to table indexes needs a new version number."
+    },
+    {
+      "start": 62,
+      "end": 106,
+      "kind": "function",
+      "name": "loadStateFromDexie",
+      "id": "s4",
+      "hash": "75a49c4083780273",
+      "title": "Load all local data",
+      "what": "Reads every table at once and returns them together, or returns nothing if reading fails.",
+      "why": "Likely reason: one fast read at startup.",
+      "watch_out": "A null result means the caller must handle the empty case, or the screens will look blank."
+    },
+    {
+      "start": 107,
+      "end": 122,
+      "kind": "function",
+      "name": "saveCollectionToDexie",
+      "id": "s5",
+      "hash": "dc952be08f26faab",
+      "title": "Replace a table with a list",
+      "what": "Empties one local table and writes the new list into it.",
+      "why": "Likely reason: simple full save of one area.",
+      "watch_out": "Clearing and writing are two steps, so an interruption between them can leave the table empty."
+    },
+    {
+      "start": 123,
+      "end": 139,
+      "kind": "function",
+      "name": "queueOfflineMutation",
+      "id": "s6",
+      "hash": "72c237956ee9e9ca",
+      "title": "Queue a change for later",
+      "what": "Adds a record to the sync queue with the current time so it can be sent when online.",
+      "why": "Likely reason: keeps offline edits safe.",
+      "watch_out": "A failure here is only logged, so the change can be lost without the user knowing."
+    },
+    {
+      "start": 140,
+      "end": 168,
+      "kind": "function",
+      "name": "processSyncQueue",
+      "id": "s7",
+      "hash": "5f05da23e15781e9",
+      "title": "Send queued changes to the cloud",
+      "what": "When online and signed in, sends each queued insert, update or delete to the cloud, and removes it from the queue after success.",
+      "why": "Likely reason: pushes offline work up when the connection returns.",
+      "watch_out": "Items that keep failing stay in the queue and retry every time, with no limit."
+    }
+  ],
+  "explained_at": "2026-11-11T21:16:51+00:00",
+  "explained_by": "haiku",
+  "summary": "Manages the app's local database in the browser so data is kept offline, and queues changes to send to the cloud later.",
+  "purpose": "Lets the app work without a connection and keeps a list of changes waiting to be synced.",
+  "why": "Likely reason: the browser database lets the app load instantly and survive offline use.",
+  "how": "1) Defines the local database and one table per area of life, plus a sync queue table. 2) Loads all tables into one object at startup. 3) Replaces a table's contents when saving. 4) Adds changes to the queue when offline. 5) Sends queued changes to the cloud when online and signed in.",
+  "inputs": "Saved data from the app stores, changes to queue, and the signed-in user id.",
+  "outputs": "Loaded app data, saved local tables, and changes pushed to the cloud.",
+  "risks": "Clearing and rewriting a table is not one step, so an interruption can leave it empty. Errors are logged but not shown. Failed queue items retry with no limit.",
+  "debug": "Open the browser developer tools and look at the IndexedDB storage named MomentumOS. Check the console for lines that start with Failed or Error syncing. If data vanishes after a save, look at the clear and write step.",
+  "summary_hash": "sha256:be4cd0e57ee3a3418a57ae3e36b1cd1c7daf99592283b00bffed81e907fac59c"
+}

@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "path": ".agents/skills/design-system/scripts/html-token-validator.py",
+  "language": "Python",
+  "lines": 327,
+  "hash": "sha256:9556a65e7aacda23388478294ee9a5cb84b315d964fbbf754aa0dcdbcfee58e6",
+  "area": "agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Fourteen of seventeen sections were visible. The main function and its exit handling were not.",
+      "The --fix option is labeled work in progress.",
+      "No tests were visible.",
+      "A missing folder is silent, which can hide a broken check."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Design token",
+      "meaning": "a named setting, such as a brand color or font size, that all pages reuse so one change updates everything"
+    },
+    {
+      "term": "CSS variable",
+      "meaning": "a named value in a stylesheet, written as a name starting with two dashes, that other styles can read"
+    },
+    {
+      "term": "Hex color",
+      "meaning": "a color written as a # followed by letters and digits, such as a code for blue"
+    },
+    {
+      "term": "rgba",
+      "meaning": "a color written as red, green, blue numbers plus a transparency value"
+    },
+    {
+      "term": "Regular expression",
+      "meaning": "a compact text pattern used to search for things such as color codes"
+    },
+    {
+      "term": "Inline style",
+      "meaning": "a style written directly on an HTML element, usually as a style attribute"
+    }
+  ],
+  "depends_on": [
+    "assets/design-tokens.css",
+    "assets/design-tokens.json",
+    "assets/designs/slides",
+    "assets/infographics",
+    "Python standard library: re, json, sys, pathlib, typing"
+  ],
+  "used_by": [
+    "Not visible in this file."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 60,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "de14a4d28f222034",
+      "title": "Setup, allowed colors and exceptions",
+      "what": "Sets the project location, the folders to check, the patterns for forbidden colors and fonts, the brand transparency colors that are allowed, and the external sites that are allowed.",
+      "why": "Likely reason: defines what counts as an off-brand value and which exceptions are accepted.",
+      "watch_out": "The brand color numbers are typed in by hand, so they must be updated if the brand palette changes."
+    },
+    {
+      "start": 61,
+      "end": 61,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "da39a3ee5e6b4b0d",
+      "title": "Blank spacer line",
+      "what": "An empty line that separates setup from the next part. Nothing runs here.",
+      "why": "Only a layout choice in the file.",
+      "watch_out": ""
+    },
+    {
+      "start": 62,
+      "end": 77,
+      "kind": "class",
+      "name": "ValidationResult",
+      "id": "s3",
+      "hash": "e076e0249cd6e693",
+      "title": "Result holder for one file",
+      "what": "Keeps a list of errors and warnings for one file and a pass flag. Adding any error marks the file as failed.",
+      "why": "Lets each check record its findings in one place.",
+      "watch_out": "Warnings never fail a file, so a file with only warnings still passes."
+    },
+    {
+      "start": 78,
+      "end": 88,
+      "kind": "function",
+      "name": "load_css_variables",
+      "id": "s4",
+      "hash": "43cba4323f6059aa",
+      "title": "Loads token variable names from stylesheet",
+      "what": "Reads the shared design token stylesheet and collects each variable name with its value.",
+      "why": "Gives the validator a list of known token names.",
+      "watch_out": "The loaded values are not used by the visible checks, so the validator does not compare values against the stylesheet."
+    },
+    {
+      "start": 89,
+      "end": 96,
+      "kind": "function",
+      "name": "is_inside_block",
+      "id": "s5",
+      "hash": "f52c6d60c3427c92",
+      "title": "Checks if a position is inside a tag pair",
+      "what": "Tells whether a spot in the page sits between an opening tag and its closing tag, for example inside a script or style block.",
+      "why": "Lets the validator treat script blocks and style blocks differently.",
+      "watch_out": "It looks at the last opening and closing tags before the spot, so unusual markup such as tags inside comments can give a wrong answer."
+    },
+    {
+      "start": 97,
+      "end": 102,
+      "kind": "function",
+      "name": "is_allowed_exception",
+      "id": "s6",
+      "hash": "c5307f3ff77591d7",
+      "title": "Skips approved external sites",
+      "what": "Returns true if the text around a match mentions one of the approved external sites, such as font or image hosts.",
+      "why": "External font and image addresses are allowed to contain values that would otherwise be flagged.",
+      "watch_out": "Any approved site name near the match skips the check, which can hide a real problem that sits close to such a link."
+    },
+    {
+      "start": 103,
+      "end": 107,
+      "kind": "function",
+      "name": "is_allowed_rgba",
+      "id": "s7",
+      "hash": "6df99e83035ff5f0",
+      "title": "Accepts brand transparency colors",
+      "what": "Returns true if an rgba value starts with one of the allowed brand color numbers.",
+      "why": "Likely reason: transparency cannot be written with the simple token values, as the code's comment notes.",
+      "watch_out": "Only the start of the value is compared, so a different color that begins with the same numbers would also pass."
+    },
+    {
+      "start": 108,
+      "end": 114,
+      "kind": "function",
+      "name": "get_context",
+      "id": "s8",
+      "hash": "417e95b34bc889ca",
+      "title": "Reads text around a match",
+      "what": "Returns about one hundred characters before and after a match so checks can see the surrounding markup.",
+      "why": "Lets checks decide if a value is inside a style attribute or a var call.",
+      "watch_out": "The window is fixed, so a long style attribute can push the telling marker outside the window and change the result."
+    },
+    {
+      "start": 115,
+      "end": 168,
+      "kind": "function",
+      "name": "validate_html (part 1)",
+      "id": "s9",
+      "hash": "62e9fd07ba427083",
+      "title": "Main checks for hard-coded values",
+      "what": "Checks that the page links the shared token stylesheet, then scans for forbidden colors and fonts. Matches in script blocks, approved sites, brand transparency, or var calls are skipped. Remaining matches inside style blocks or inline styles are recorded as errors.",
+      "why": "Keeps slides and infographics on brand by requiring the shared tokens.",
+      "watch_out": "A hard-coded color outside a style block or inline style is never reported, and a value inside a var call is skipped even if it is a real hard-coded value."
+    },
+    {
+      "start": 169,
+      "end": 184,
+      "kind": "function",
+      "name": "validate_html (part 2)",
+      "id": "s10",
+      "hash": "0f1b98461795935f",
+      "title": "Token usage count and final result",
+      "what": "Counts the var references to key token groups and warns when there are fewer than five. Returns the result for the file.",
+      "why": "Encourages pages to use tokens throughout, not in a single place.",
+      "watch_out": "This is only a warning, so a page that barely uses tokens still passes."
+    },
+    {
+      "start": 185,
+      "end": 195,
+      "kind": "function",
+      "name": "validate_file",
+      "id": "s11",
+      "hash": "98b41c5aa18b2dce",
+      "title": "Validates one file",
+      "what": "Reports a missing file as an error. Otherwise it reads the file and runs the checks.",
+      "why": "Gives a clear result for a single file, whether the file was given by name or found in a folder.",
+      "watch_out": "The file is read with the default text encoding, so a file saved in another encoding could fail to read."
+    },
+    {
+      "start": 196,
+      "end": 204,
+      "kind": "function",
+      "name": "validate_directory",
+      "id": "s12",
+      "hash": "0afcc885de76aac5",
+      "title": "Validates a whole folder",
+      "what": "Checks every HTML file in a folder in alphabetical order and returns all results. A folder that does not exist gives an empty list.",
+      "why": "Lets one run cover all slides or all infographics.",
+      "watch_out": "A missing or misspelled folder returns nothing and prints nothing, so the run can look like a pass."
+    },
+    {
+      "start": 205,
+      "end": 220,
+      "kind": "function",
+      "name": "print_result",
+      "id": "s13",
+      "hash": "770e0abc7cd6a91b",
+      "title": "Prints one file's result",
+      "what": "Prints a check mark or cross for the file, up to five of its errors, and optionally up to three warnings in verbose mode.",
+      "why": "Gives a short readable report for each file.",
+      "watch_out": "Only the first five errors are printed, though the summary still counts every error."
+    },
+    {
+      "start": 221,
+      "end": 259,
+      "kind": "function",
+      "name": "print_summary",
+      "id": "s14",
+      "hash": "a1e1dfb913bdf240",
+      "title": "Prints summary and overall result",
+      "what": "Prints counts per folder, lists failed files with their errors, and prints a final line. It returns true only when there are no errors at all.",
+      "why": "Gives one clear pass or fail answer for the whole run.",
+      "watch_out": "The returned true or false must be turned into a process exit code. Whether that happens is in the main function, which was not visible."
+    },
+    {
+      "start": 260,
+      "end": 318,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s15",
+      "hash": "370cca30eab884a7",
+      "title": "Reading options and choosing files",
+      "what": "Reads the command options for the HTML checker. If `--colors` is given, it prints the first 30 design token variables and stops. Otherwise it checks the files you name, or every file in the asset folders selected by `--type`, and reports a named file that does not exist as an error.",
+      "why": "Likely reason: lets one command handle a single file, a chosen asset type, or a quick look at the design tokens.",
+      "watch_out": "The `--fix` option is declared, but nothing in this section uses it, so it has no effect."
+    },
+    {
+      "start": 319,
+      "end": 325,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s16",
+      "hash": "8fc73c0619654ffb",
+      "title": "Printing results and setting exit code",
+      "what": "Prints the summary for all checks and stops the program with a failure code when any check fails. Anything that runs this tool, such as a build, sees the failure through that code.",
+      "why": "Likely reason: lets automatic checks notice problems without reading the printed text.",
+      "watch_out": "Anything that runs this tool must read the exit code, because the printed text alone would not stop a build."
+    },
+    {
+      "start": 326,
+      "end": 327,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s17",
+      "hash": "abf59c67b9f1a1c4",
+      "title": "Starting the program when run directly",
+      "what": "Runs the checker only when this file is started directly, not when another program loads it. A person typing the command sees the checker run.",
+      "why": "Likely reason: a standard Python pattern that lets other code import this file without triggering a run.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-11T21:00:45+00:00",
+  "explained_by": "haiku",
+  "summary": "A checker that scans HTML slides and infographics and reports hard-coded colors and fonts that should use the shared design tokens.",
+  "purpose": "Keeps every generated page on brand by flagging values that should instead come from the design token variables.",
+  "why": "The file header states its source of truth is the shared design token stylesheet. Reason for each exception is partly stated in comments, such as brand transparency needing rgba.",
+  "how": "For each HTML file it confirms the shared stylesheet is linked, then scans for hex, rgb, rgba, hsl and font patterns. It skips matches inside script blocks, near approved external sites, using approved brand transparency, or inside a var() call. Remaining matches inside style blocks or inline styles become errors. It counts var() references and warns if there are fewer than five. Results are printed per folder with a summary.",
+  "inputs": "HTML files in the slides and infographics folders, or one file given on the command line, plus the optional type and verbose flags.",
+  "outputs": "A printed list of passed and failed files, errors for each failure, optional warnings, and an overall pass or fail result.",
+  "risks": "Hard-coded colors outside style blocks and inline styles are not reported as errors. A missing folder gives no results and no message, so it can look like a pass. The brand color numbers are copied by hand and must match the palette. The --fix option is marked as work in progress.",
+  "debug": "If a file wrongly fails, check the error text for the exact value and confirm whether it should be a token. If a folder shows nothing, confirm the path under the assets folder exists. If the summary says passed with no files, check the folder path. The main function was not visible, so check how it sets the exit code.",
+  "summary_hash": "sha256:9556a65e7aacda23388478294ee9a5cb84b315d964fbbf754aa0dcdbcfee58e6"
+}

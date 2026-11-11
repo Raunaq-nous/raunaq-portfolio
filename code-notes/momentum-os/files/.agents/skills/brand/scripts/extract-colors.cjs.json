@@ -1,0 +1,229 @@
+{
+  "schema_version": 1,
+  "path": ".agents/skills/brand/scripts/extract-colors.cjs",
+  "language": "JavaScript",
+  "lines": 341,
+  "hash": "sha256:36d21f3905e5762cfc8054b3f3b7276f6bc656884fe57c6bfa539526044778ed",
+  "area": "agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only lines 1 to 120 of 341 were visible.",
+      "The image analysis part and the main run steps were not visible, so the end-to-end behavior cannot be judged.",
+      "No tests were visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Hex color",
+      "meaning": "a color written as a # followed by six letters or digits, such as a code for blue"
+    },
+    {
+      "term": "RGB",
+      "meaning": "a color written as three numbers for amounts of red, green and blue"
+    },
+    {
+      "term": "Euclidean distance",
+      "meaning": "the straight-line distance between two colors when each is treated as a point in red, green and blue space"
+    },
+    {
+      "term": "ImageMagick",
+      "meaning": "a separate command-line tool that can analyze images, mentioned here as an option for color extraction"
+    },
+    {
+      "term": "Markdown",
+      "meaning": "a plain text format with simple symbols for headings, used by the brand guidelines file"
+    }
+  ],
+  "depends_on": [
+    "fs (Node.js built-in)",
+    "path (Node.js built-in)",
+    "docs/brand-guidelines.md (default input file)"
+  ],
+  "used_by": [
+    "Not visible in this file."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 26,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a627e91a0934575b",
+      "title": "Script header and setup",
+      "what": "Explains what the tool does, shows how to run it with an image or the palette view, and sets the default brand guide path. Uses only built-in Node.js modules, so no extra packages are installed.",
+      "why": "Likely reason: avoiding extra packages means the script runs anywhere Node.js is installed, and full image analysis is left to other tools.",
+      "watch_out": "The default guide path is relative to the folder the command runs from, so running it from another folder can fail to find the file."
+    },
+    {
+      "start": 27,
+      "end": 34,
+      "kind": "function",
+      "name": "extractHexColors",
+      "id": "s2",
+      "hash": "f1ef475986358960",
+      "title": "Finding hex colors in text",
+      "what": "Reads a block of text and returns a list of unique six-digit hex color codes, with each code appearing once.",
+      "why": "Likely reason: brand guides list colors as codes, so this pulls them out for comparison.",
+      "watch_out": "Only six-digit codes are found, so three-digit short codes are ignored, and the same color written in upper and lower case counts as two colors."
+    },
+    {
+      "start": 35,
+      "end": 79,
+      "kind": "function",
+      "name": "parseBrandColors",
+      "id": "s3",
+      "hash": "5e965adaee055b01",
+      "title": "Reading brand colors from the guidelines",
+      "what": "Reads the brand guidelines markdown file and collects every six-digit color code under the Primary, Secondary, Neutral, and Semantic headings. It returns the colors in groups plus one combined list with duplicates removed. If the file is missing, it returns nothing.",
+      "why": "Likely reason: the brand palette is the reference that image colors are checked against.",
+      "watch_out": "A color written outside those four headings is ignored, and a missing heading gives an empty group with no warning."
+    },
+    {
+      "start": 80,
+      "end": 93,
+      "kind": "function",
+      "name": "hexToRgb",
+      "id": "s4",
+      "hash": "a7b116cf29c91bf5",
+      "title": "Converting a color code to numbers",
+      "what": "Converts a six-digit color code into its red, green, and blue amounts, each from 0 to 255. It returns nothing when the text is not a valid six-digit code.",
+      "why": "Distance math needs numbers, not text. Reason for the exact format is not stated in the code.",
+      "watch_out": "Short three-digit color codes are rejected, so they must be expanded to six digits before this runs."
+    },
+    {
+      "start": 94,
+      "end": 109,
+      "kind": "function",
+      "name": "rgbToHex",
+      "id": "s5",
+      "hash": "b176e4c10e08e525",
+      "title": "Converting numbers back to a color code",
+      "what": "Turns red, green, and blue numbers back into an uppercase six-digit color code, rounding any decimals. The main path shown in this file does not call it.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Numbers outside 0 to 255 are not limited, so they produce a malformed color code."
+    },
+    {
+      "start": 110,
+      "end": 125,
+      "kind": "function",
+      "name": "colorDistance",
+      "id": "s6",
+      "hash": "20936d70d6f85219",
+      "title": "Measuring how different two colors are",
+      "what": "Measures the straight-line distance between two colors across red, green, and blue. It accepts color codes or number sets, and returns infinity if a color cannot be read.",
+      "why": "Gives one number for how similar two colors look, which the matching step uses.",
+      "watch_out": "Straight-line distance in red, green, and blue is only a rough match for how people see color, so the threshold of 50 is a judgment call."
+    },
+    {
+      "start": 126,
+      "end": 143,
+      "kind": "function",
+      "name": "findNearestBrandColor",
+      "id": "s7",
+      "hash": "1eb6203d2a97ca74",
+      "title": "Finding the closest brand color",
+      "what": "Looks through the brand colors and finds the one nearest to a given color, returning that color and how far away it is.",
+      "why": "Used to decide whether an image color is close enough to count as on-brand.",
+      "watch_out": "With an empty brand list it returns no color and an infinite distance, so callers must handle that case."
+    },
+    {
+      "start": 144,
+      "end": 163,
+      "kind": "function",
+      "name": "calculateCompliance",
+      "id": "s8",
+      "hash": "20ec736dff94ecda",
+      "title": "Scoring how on-brand an image is",
+      "what": "Gives the percentage of extracted colors that sit within the allowed distance of some brand color. An empty list of image colors scores 100 percent, and an empty brand list scores zero.",
+      "why": "Likely reason: gives one score for on-brand use. Reason for scoring an empty image as 100 percent is not stated in the code.",
+      "watch_out": "A 100 percent score can appear when no colors were found at all, so check the input first. This function is exported but the main path shown does not call it."
+    },
+    {
+      "start": 164,
+      "end": 170,
+      "kind": "function",
+      "name": "generateImageMagickCommand",
+      "id": "s9",
+      "hash": "fe0df4cbe8df3a3d",
+      "title": "Building the image color command",
+      "what": "Builds the text of a command that asks ImageMagick, an image tool, for the most common colors in an image, up to a given number. It prints the command and does not run it.",
+      "why": "Likely reason: the script hands the pixel work to an existing image tool rather than reading pixels itself.",
+      "watch_out": "The image path is placed inside double quotes without escaping, so a file name containing a quote or dollar sign can break the command when run in a shell."
+    },
+    {
+      "start": 171,
+      "end": 196,
+      "kind": "function",
+      "name": "parseImageMagickOutput",
+      "id": "s10",
+      "hash": "7c91eb380cc1bcf9",
+      "title": "Reading the image tool's color list",
+      "what": "Reads the text output from the image tool, pulls out each color code with its pixel count, and sorts the list so the most common color comes first.",
+      "why": "Turns raw tool output into a ranked list that the matching step can use.",
+      "watch_out": "Lines without a six-digit color code are skipped, and a missing count becomes zero, so the ranking can be wrong without any warning."
+    },
+    {
+      "start": 197,
+      "end": 229,
+      "kind": "function",
+      "name": "displayPalette",
+      "id": "s11",
+      "hash": "835f79965d8760ee",
+      "title": "Printing the brand palette",
+      "what": "Prints the brand palette to the terminal, grouped into primary, secondary, neutral, and semantic, with a total count at the bottom. Empty groups are left out.",
+      "why": "Lets a person check which palette the script loaded.",
+      "watch_out": ""
+    },
+    {
+      "start": 230,
+      "end": 280,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s12",
+      "hash": "8e5d84c3e6e93a7d",
+      "title": "Reading options and loading the palette",
+      "what": "Reads the command options: JSON output, palette-only mode, and a custom brand file path. It loads the brand palette and stops with a message if the guidelines file is missing. If no image was given or palette mode is on, it shows the palette and stops.",
+      "why": "Likely reason: lets one command work both as a palette viewer and as a color checker.",
+      "watch_out": "If the brand file option is given with no path after it, the script may crash with a type error. The default guidelines path is defined in the file header, which is not in this packet."
+    },
+    {
+      "start": 281,
+      "end": 337,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s13",
+      "hash": "daa58ec0c73615ff",
+      "title": "Preparing the extraction steps and results",
+      "what": "For an image, builds a result with its full path, the brand palette, the image tool command, and step-by-step instructions. One instruction offers an alternative that uses an AI image analysis script. It prints the result as text or JSON, and lists the threshold of 50. It does not run the image tool or compare any colors itself.",
+      "why": "Likely reason: the script prepares the work and leaves the extraction to other tools.",
+      "watch_out": "The output states a threshold of 50, but no comparison happens here, so a reader may assume a check was already done."
+    },
+    {
+      "start": 338,
+      "end": 341,
+      "kind": "function",
+      "name": "main (part 3)",
+      "id": "s14",
+      "hash": "6e3a78f133328513",
+      "title": "Running only when started directly",
+      "what": "Starts the main routine only when this file is run from the command line, not when another file loads it.",
+      "why": "Likely reason: lets other scripts and tests import the helper functions without starting the command.",
+      "watch_out": "If this check is removed, the file will run its main routine whenever something imports it."
+    }
+  ],
+  "explained_at": "2026-11-11T20:57:27+00:00",
+  "explained_by": "haiku",
+  "summary": "A command-line helper that reads the brand color list from the brand guidelines document and can measure how close a color is to those brand colors.",
+  "purpose": "Helps check whether colors match the brand palette. The header says image color analysis is done by another tool, such as ImageMagick or an AI skill.",
+  "why": "The header states it uses only built-in Node.js features and points to other tools for full image analysis. Only part of the file was visible, so the full reason is not shown.",
+  "how": "It reads docs/brand-guidelines.md by default and pulls out hex color codes from the Primary, Secondary, Neutral and Semantic sections. It converts colors between hex and RGB form and measures distance between two colors. The visible part does not show the image analysis or the command-line steps.",
+  "inputs": "A brand guidelines markdown file, and color values as hex codes or RGB numbers.",
+  "outputs": "A palette grouped by section, and a distance number between two colors. Compliance and palette display functions exist but were not fully visible.",
+  "risks": "Relies on the guidelines file having sections with the exact headings Primary, Secondary, Neutral and Semantic. A changed heading means no colors are found, with no error.",
+  "debug": "If no colors appear, check the guidelines file for the section headings and hex codes. If the path is wrong, the default docs/brand-guidelines.md is resolved from the current folder, so run it from the project root.",
+  "summary_hash": "sha256:36d21f3905e5762cfc8054b3f3b7276f6bc656884fe57c6bfa539526044778ed"
+}

@@ -1,0 +1,250 @@
+{
+  "schema_version": 1,
+  "path": ".agents/skills/ui-ux-pro-max/scripts/core.py",
+  "language": "Python",
+  "lines": 464,
+  "hash": "sha256:64c149019196ee24647464a27278eb96d3b4638ded73ebfc35ccd2bc99c083a9",
+  "area": "agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only 7 of the 15 sections were available, so the search, domain detection and stack search parts cannot be checked.",
+      "No tests were shown for this file.",
+      "Missing file handling is not visible in the sections given."
+    ]
+  },
+  "terms": [
+    {
+      "term": "BM25",
+      "meaning": "a standard ranking method that scores how well a document matches a query, giving more credit to rare words"
+    },
+    {
+      "term": "tokenize",
+      "meaning": "to split text into individual words for matching"
+    },
+    {
+      "term": "stopword",
+      "meaning": "a very common word, such as the or is, that is ignored in search"
+    },
+    {
+      "term": "IDF",
+      "meaning": "inverse document frequency, a score that is higher for words that appear in few documents"
+    },
+    {
+      "term": "CSV",
+      "meaning": "comma separated values, a plain text table format with one row per line"
+    },
+    {
+      "term": "cache",
+      "meaning": "a saved copy of data kept so it does not have to be read again"
+    },
+    {
+      "term": "mtime",
+      "meaning": "the last modified time of a file, used to tell whether it has changed"
+    },
+    {
+      "term": "index",
+      "meaning": "a prepared lookup table of words and their counts, built before searching"
+    }
+  ],
+  "depends_on": [
+    "Python standard library (csv, re, pathlib, math, collections)",
+    "CSV files in the data folder"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 60,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "e28cb51d24c7e582",
+      "title": "Search settings for each data file",
+      "what": "Maps each search area, such as styles, colors, charts, fonts, icons, motion and UX guidelines, to its data file. For each area it lists the columns that are searched and the columns shown in results.",
+      "why": "Likely reason: keeping these lists in one place means a new area needs only one new entry.",
+      "watch_out": "Column names must match the CSV header text exactly, including spaces and symbols, or the search and results will not work for that column."
+    },
+    {
+      "start": 61,
+      "end": 120,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "4272f935cdafd02c",
+      "title": "Columns shown in full and stack settings",
+      "what": "Lists the columns whose text is never cut short, such as code snippets and checklists, and the list of framework stacks, each tied to its own data file. Also sets the shared columns used by all stacks.",
+      "why": "Likely reason: cutting a code snippet in the middle would make it unusable, so those columns are kept whole.",
+      "watch_out": "A new code-style column must be added to the never-cut list, or it may be shortened in results."
+    },
+    {
+      "start": 121,
+      "end": 152,
+      "kind": "setup",
+      "name": "File setup (part 3)",
+      "id": "s3",
+      "hash": "f98cb6cdf647ae34",
+      "title": "Word splitting and filler word list",
+      "what": "Breaks text into lowercase words, removes punctuation and drops words shorter than two letters and common filler words like the and is. Short technical words like ui, css and 3d are kept.",
+      "why": "The code comment says short domain words must stay searchable, so filtering is by a list rather than by length alone.",
+      "watch_out": "Single-letter words are always dropped, so a one-letter search term finds nothing."
+    },
+    {
+      "start": 153,
+      "end": 159,
+      "kind": "function",
+      "name": "_normalize",
+      "id": "s4",
+      "hash": "c5ef080fd8166e4c",
+      "title": "Replacing spelling variants before search",
+      "what": "Swaps common spelling variants and shortcuts, such as colour to color, a11y to accessibility, and dark-mode to dark, so different spellings match the same content.",
+      "why": "Likely reason: users get the same results whichever spelling they type.",
+      "watch_out": "The swap is plain text replacement, so the shortcut nav also changes inside longer words such as navigation, which garbles them."
+    },
+    {
+      "start": 160,
+      "end": 201,
+      "kind": "class",
+      "name": "BM25 (part 1)",
+      "id": "s5",
+      "hash": "db96033c17779174",
+      "title": "Building the word index",
+      "what": "Turns a list of documents into a searchable index. It counts the words in each document, counts how many documents each word appears in, and gives each word a rarity score.",
+      "why": "This is the setup step that the ranking needs before it can score matches.",
+      "watch_out": "Calling the index build again on the same object adds counts on top of the old ones, so a new object should be created instead."
+    },
+    {
+      "start": 202,
+      "end": 236,
+      "kind": "method",
+      "name": "BM25: score",
+      "id": "s6",
+      "hash": "4a2c9ecaa1be5dd6",
+      "title": "Scoring documents against a query",
+      "what": "For each document, adds up a relevance score for every query word it contains. Rare words and words that appear often in a short document count for more. Returns every document with its score, best match first.",
+      "why": "Likely reason: this is the standard BM25 ranking, a common method for text search.",
+      "watch_out": "Every document is scored on each search, so searches slow down as the data grows, which is acceptable for these small files."
+    },
+    {
+      "start": 237,
+      "end": 250,
+      "kind": "function",
+      "name": "_load_csv",
+      "id": "s7",
+      "hash": "9884e60efd855bab",
+      "title": "Loading a CSV file with a cache",
+      "what": "Reads a CSV file into rows and remembers the result. If the file's modified time has not changed, the saved rows are returned without reading the file again.",
+      "why": "The comment says the same files are reused across several searches in one run, so caching saves time.",
+      "watch_out": "A missing file raises an error here, and nothing in this section catches it, so the search stops."
+    },
+    {
+      "start": 251,
+      "end": 265,
+      "kind": "function",
+      "name": "_get_bm25",
+      "id": "s8",
+      "hash": "7e144b807c659c23",
+      "title": "Remembering the search index per file",
+      "what": "Builds the word-matching index for a data file and reuses it until that file changes on disk. Users notice repeated searches responding faster.",
+      "why": "Likely reason: rebuilding the index on every search would be slow for files with many rows.",
+      "watch_out": "The cache is keyed on the file's modification time, so an edit that does not change that timestamp could be missed."
+    },
+    {
+      "start": 266,
+      "end": 291,
+      "kind": "function",
+      "name": "_search_csv",
+      "id": "s9",
+      "hash": "30e191c793951c09",
+      "title": "Running one search over one data file",
+      "what": "Reads a data file, scores each row against the query, and returns the top matching rows with only the chosen columns. A missing or unreadable file returns an empty result or a row containing an error message.",
+      "why": "Shared engine so every search area gets the same ranking and error handling.",
+      "watch_out": "Read errors come back as a fake result row with an _error key, so callers must check for it or it will look like a normal hit."
+    },
+    {
+      "start": 292,
+      "end": 318,
+      "kind": "function",
+      "name": "_suggest_terms",
+      "id": "s10",
+      "hash": "51f66b79a4231118",
+      "title": "Offering near-miss words after no hits",
+      "what": "When a search finds nothing, proposes up to six known vocabulary words that share a short beginning with the query, so the user can retry with a better word.",
+      "why": "The docstring states the purpose: so the caller can retry instead of silently reporting nothing.",
+      "watch_out": "Matching uses only the first three letters, so suggestions can be loosely related. The comment about sorting by frequency does not match the code, which keeps discovery order."
+    },
+    {
+      "start": 319,
+      "end": 346,
+      "kind": "function",
+      "name": "_load_product_keywords",
+      "id": "s11",
+      "hash": "f9f4cd2fe75a1c8f",
+      "title": "Loading product keywords from the data file",
+      "what": "Reads keywords from the product data file and merges them with a short built-in list, longest first, so product types are detected from current data.",
+      "why": "The comment says this keeps the list in sync with the data and avoids manual edits. The built-in list is a fallback when the data folder is missing.",
+      "watch_out": "If the file is missing or unreadable, the function silently falls back to the short built-in list with no warning."
+    },
+    {
+      "start": 347,
+      "end": 376,
+      "kind": "function",
+      "name": "_domain_keywords",
+      "id": "s12",
+      "hash": "f3969a3e4e828628",
+      "title": "Keyword lists for each search area",
+      "what": "Holds the words that signal each area, such as colour, chart, or animation. The table is built once on first use and reused after that.",
+      "why": "Likely reason: keeps all routing vocabulary in one place and avoids rebuilding it on every search.",
+      "watch_out": "Some words such as font and typography appear in more than one area, so editing this table can change which area wins for a query."
+    },
+    {
+      "start": 377,
+      "end": 410,
+      "kind": "function",
+      "name": "detect_domain",
+      "id": "s13",
+      "hash": "057fd3fc6ef4334c",
+      "title": "Picking the right search area for a query",
+      "what": "Scores every area by how many of its keywords appear in the query, giving longer phrases more weight, and returns the best one. If nothing matches, it falls back to the style area.",
+      "why": "The docstring says longer phrases are more specific. A fixed tie order keeps results the same on every run.",
+      "watch_out": "Keywords containing symbols such as the hash sign sit at word edges where the boundary check may not match as a person expects."
+    },
+    {
+      "start": 411,
+      "end": 441,
+      "kind": "function",
+      "name": "search",
+      "id": "s14",
+      "hash": "9db9d0ef30bdc582",
+      "title": "Main search entry for one area",
+      "what": "Runs a search in one area. If no area is given, it detects one first, then returns the results plus the detected area and a runner-up area. Empty results include suggested words.",
+      "why": "This is the public search that the rest of the skill calls.",
+      "watch_out": "An unknown area name silently falls back to the style settings instead of reporting an error."
+    },
+    {
+      "start": 442,
+      "end": 464,
+      "kind": "function",
+      "name": "search_stack",
+      "id": "s15",
+      "hash": "24805d88f2b4b245",
+      "title": "Searching a specific tech stack",
+      "what": "Searches the guidance file for one named framework and returns matches. An unknown stack name returns an error listing the stacks that exist.",
+      "why": "Each stack has its own guidance file, so advice stays framework-specific.",
+      "watch_out": "All stacks share the same column settings, so the stack name only chooses the file, not which columns are searched."
+    }
+  ],
+  "explained_at": "2026-11-11T21:06:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Search engine core that ranks rows from CSV style-guide data files by relevance to a text query, using the BM25 method. Only part of the file was available for this review.",
+  "purpose": "Lets the design tools find the most relevant guidance rows for a user's words, such as colors, fonts, charts or specific frameworks.",
+  "why": "Likely reason: ranking by relevance gives useful results from plain text, and caching avoids reading the same file again in one run. Reason for some choices not stated in the code.",
+  "how": "First, the search settings say which file and columns belong to each area. Text is lowercased, common spelling variants are swapped, punctuation is removed and filler words are dropped. A word index is built from the rows, and each row is scored against the query. Loaded CSV files are remembered and reloaded only when their modification time changes.",
+  "inputs": "A search area name, a query text, and the CSV data files in the data folder.",
+  "outputs": "Ranked rows from the CSV files and the relevance order. The shown sections include the ranking and the loaded rows; the rest of the search flow is not visible.",
+  "risks": "Column names must match CSV headers exactly. Calling the index build twice on one object adds counts on top of the old ones. A missing data file stops the load with an error. The spelling swap can garble longer words that contain a shortcut.",
+  "debug": "If a search returns nothing, check the word list and column names for that area against the CSV header row. If an area fails to load, confirm its file exists in the data folder. If results look skewed, check that each search creates a fresh index object.",
+  "summary_hash": "sha256:64c149019196ee24647464a27278eb96d3b4638ded73ebfc35ccd2bc99c083a9"
+}

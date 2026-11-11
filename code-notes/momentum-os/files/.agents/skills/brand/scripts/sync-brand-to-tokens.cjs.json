@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "path": ".agents/skills/brand/scripts/sync-brand-to-tokens.cjs",
+  "language": "JavaScript",
+  "lines": 248,
+  "hash": "sha256:390a760570fdba6d6ecfdfd8907fc802b64659b6178f8920349b0c6a2c822106",
+  "area": "agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "A regression test covers only the bundled starter template.",
+      "The brand name is hard-coded and always reads ClaudeKit Marketing followed by Primary.",
+      "A failed CSS rebuild still reports success.",
+      "A malformed token JSON file is not handled and would crash the script."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Design tokens",
+      "meaning": "A shared file of named values, such as colors and spacing, that the app and documents both read so they stay consistent."
+    },
+    {
+      "term": "Semantic color",
+      "meaning": "A color named by its purpose, such as success or error, that points to a brand shade."
+    },
+    {
+      "term": "Shade scale",
+      "meaning": "A set of ten colors running from very light to very dark, numbered 50 to 900, built from one base color."
+    },
+    {
+      "term": "Dry run",
+      "meaning": "A test mode that shows what would change without saving anything."
+    },
+    {
+      "term": "Hex color",
+      "meaning": "A color written as a hash sign and six letters or digits."
+    }
+  ],
+  "depends_on": [
+    "docs/brand-guidelines.md",
+    "assets/design-tokens.json",
+    "assets/design-tokens.css",
+    "the design system generate-tokens script under .claude/skills/design-system/scripts",
+    "Node.js built-in fs, path, and child_process modules"
+  ],
+  "used_by": [
+    ".agents/skills/brand/scripts/tests/test_sync_brand_to_tokens.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 21,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "103d4de77059d083",
+      "title": "Fixed file locations",
+      "what": "Sets the paths the sync uses: the brand guidelines markdown, the design token JSON file, the token CSS file, and the generator script. The header also explains the dry-run option.",
+      "why": "Keeps every location in one place so they are easy to change.",
+      "watch_out": "All paths are relative to the folder the command is run from, so running it from another folder reads different files."
+    },
+    {
+      "start": 22,
+      "end": 78,
+      "kind": "function",
+      "name": "extractColorsFromMarkdown",
+      "id": "s2",
+      "hash": "681e1553b59fd823",
+      "title": "Pulling colors from the guidelines",
+      "what": "Finds the primary, secondary, and accent base colors. It checks a Quick Reference table first, then the color tables under each role heading, and finally looks for an accent color in any table. It also picks up dark and light shades when a row is labeled that way.",
+      "why": "Likely reason: the guide format is loose, so several places are checked in order.",
+      "watch_out": "The words dark and light are matched anywhere in a row label, so an unusual label could assign a shade to the wrong role."
+    },
+    {
+      "start": 79,
+      "end": 97,
+      "kind": "function",
+      "name": "generateColorScale",
+      "id": "s3",
+      "hash": "234d1677b2c1f8f7",
+      "title": "Building a ten-step shade scale",
+      "what": "Makes ten shades from one base color, from 50 (lightest) to 900 (darkest). It uses the supplied light or dark shades where they exist and estimates the rest.",
+      "why": "Likely reason: the design system expects a full scale for each color, so gaps are filled with estimates.",
+      "watch_out": "Estimated shades come from simple brightness changes and may not match the brand's intended look."
+    },
+    {
+      "start": 98,
+      "end": 109,
+      "kind": "function",
+      "name": "adjustBrightness",
+      "id": "s4",
+      "hash": "fc815821f967ad36",
+      "title": "Lightening or darkening a color",
+      "what": "Adds or subtracts the same amount from red, green, and blue to make a color lighter or darker, keeping each value within range. Anything that is not text returns black.",
+      "why": "Used to estimate missing shades in the scale.",
+      "watch_out": "Shifting each channel by the same amount can change the color's tint, not just its brightness, and a non-text input quietly becomes black."
+    },
+    {
+      "start": 110,
+      "end": 140,
+      "kind": "function",
+      "name": "updateDesignTokens (part 1)",
+      "id": "s5",
+      "hash": "54e7746288559bc0",
+      "title": "Updating the color names in the token file",
+      "what": "Sets the brand name line in the token file and removes the old coral, purple, and mint color names. It then adds primary, secondary, and accent scales, skipping any role with no base color and printing a warning.",
+      "why": "Keeps the token file in step with the guidelines.",
+      "watch_out": "The new scale names are always primary, secondary, and accent, not the brand's own color names, and the brand name line always reads ClaudeKit Marketing followed by Primary."
+    },
+    {
+      "start": 141,
+      "end": 186,
+      "kind": "method",
+      "name": "updateDesignTokens: if",
+      "id": "s6",
+      "hash": "0a42e07f3e30c493",
+      "title": "Pointing meaning-based colors at the new scales",
+      "what": "Re-points named purpose colors such as primary, hover, success, error, and info to the matching shades. Success uses the accent, error uses the primary, and info uses the secondary. It also updates a button background tint using the primary base color.",
+      "why": "Likely reason: the app uses purpose names, so each purpose is tied to a brand color. Which color means which purpose is written in a comment.",
+      "watch_out": "Error messages share the primary color, so changing the primary color also changes how errors look."
+    },
+    {
+      "start": 187,
+      "end": 219,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s7",
+      "hash": "38a98c3bafddcdd6",
+      "title": "Reading the guide and existing tokens",
+      "what": "Starts the sync. It stops with an error if the guidelines file is missing, prints the colors it found, reads the existing token file if present, and applies the update.",
+      "why": "Lets the user check what was found before anything is written.",
+      "watch_out": "A role with no color prints as undefined and is skipped quietly, and malformed token JSON is not caught."
+    },
+    {
+      "start": 220,
+      "end": 248,
+      "kind": "method",
+      "name": "main: if",
+      "id": "s8",
+      "hash": "e4ef8d98f20f654e",
+      "title": "Dry run, saving, and rebuilding the CSS",
+      "what": "In dry-run mode, prints a short preview of the color tokens and writes nothing. Otherwise it saves the token JSON, then runs the generator to rebuild the CSS. If the rebuild fails, it prints a warning, but the script still says the sync is complete.",
+      "why": "Dry run lets the user check changes first. The CSS rebuild is handled by a separate generator script.",
+      "watch_out": "The completion message appears even after a failed CSS rebuild, so the warning above it must be checked."
+    }
+  ],
+  "explained_at": "2026-11-11T20:55:43+00:00",
+  "explained_by": "haiku",
+  "summary": "Copies the main brand colors from the brand guidelines into the design token file, then rebuilds the token CSS file from it.",
+  "purpose": "Keeps the colors the app and slides use in step with the brand guide, so changing the guide updates the design.",
+  "why": "Likely reason: the brand guide is written for people, and the design tokens are what the code reads, so this script bridges the two.",
+  "how": "The script reads the guidelines file and finds primary, secondary, and accent base colors. It builds a ten-step shade scale for each, updates the semantic color names that point to those shades, and writes the token JSON file. Then it runs the generator script to rebuild the CSS file. A dry-run option prints a preview and writes nothing.",
+  "inputs": "The file docs/brand-guidelines.md, and the existing assets/design-tokens.json file if present. The generator script is also read from the design system skill folder.",
+  "outputs": "An updated assets/design-tokens.json file and a regenerated assets/design-tokens.css file. In dry-run mode, a preview is printed only.",
+  "risks": "The brand name written into the token file is always the fixed prefix ClaudeKit Marketing followed by Primary, not the real brand name. A failed CSS rebuild still ends with a success message. Estimated shades may not match the intended brand look.",
+  "debug": "If colors are wrong, run with the dry-run option and check the printed primary, secondary, and accent values against the guide. If a role is skipped, check that its table has a hex code in the expected row. If the CSS is stale, look for the failure warning, then run the generator script by hand.",
+  "summary_hash": "sha256:390a760570fdba6d6ecfdfd8907fc802b64659b6178f8920349b0c6a2c822106"
+}

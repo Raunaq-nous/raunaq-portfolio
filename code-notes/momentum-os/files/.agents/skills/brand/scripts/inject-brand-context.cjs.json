@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "path": ".agents/skills/brand/scripts/inject-brand-context.cjs",
+  "language": "JavaScript",
+  "lines": 349,
+  "hash": "sha256:5b98abdeb5c636f247102cd235f1d3421db7a4de53fd853360feaa0c471b5c96",
+  "area": "agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible for this file.",
+      "Extraction depends on exact heading and table formats, so unexpected formats fail silently.",
+      "Missing guideline sections produce empty values with no warning.",
+      "Error handling covers only a missing file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Hex color",
+      "meaning": "A color written as a hash sign and six letters or digits, such as a code for a specific blue."
+    },
+    {
+      "term": "Regular expression",
+      "meaning": "A pattern used to search text for matching words or shapes, such as a heading followed by a table."
+    },
+    {
+      "term": "System prompt",
+      "meaning": "Hidden instructions given to an AI before a user's request, which shape how it responds."
+    },
+    {
+      "term": "JSON",
+      "meaning": "A plain text format for storing structured data as named fields."
+    }
+  ],
+  "depends_on": [
+    "docs/brand-guidelines.md",
+    "Node.js built-in fs and path modules"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 20,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "0f1a13ecc94c7ff6",
+      "title": "File setup and default guidelines path",
+      "what": "Describes what the script does and how to run it, and sets the default guidelines path to docs/brand-guidelines.md. The header also explains that output is a block of text for an AI prompt.",
+      "why": "Likely reason: records the default location so the script works without arguments in a standard project.",
+      "watch_out": "The default path is relative to the folder the script is run from, so running it elsewhere finds no file."
+    },
+    {
+      "start": 21,
+      "end": 28,
+      "kind": "function",
+      "name": "extractHexColors",
+      "id": "s2",
+      "hash": "8b3eaed403597ec5",
+      "title": "Finding all hex colors in text",
+      "what": "Finds every six-digit color code in a block of text and returns each one once, in the order found.",
+      "why": "Used by the color sections to collect colors from the guide without listing them by hand.",
+      "watch_out": "Three-digit color codes are not picked up."
+    },
+    {
+      "start": 29,
+      "end": 61,
+      "kind": "function",
+      "name": "extractColorsFromTable",
+      "id": "s3",
+      "hash": "6c8e68e6a6696853",
+      "title": "Collecting colors by brand role",
+      "what": "Looks for Primary Colors, Secondary Colors, Neutral, and Semantic headings and collects the color codes under each. It returns them as four groups.",
+      "why": "The AI needs to know which colors are primary and which are supporting colors.",
+      "watch_out": "Despite its name, this reads any text under the heading, not only tables, and a missing heading leaves its group empty without a warning."
+    },
+    {
+      "start": 62,
+      "end": 94,
+      "kind": "function",
+      "name": "extractTypography",
+      "id": "s4",
+      "hash": "0ef574532ad454c0",
+      "title": "Extracting font names",
+      "what": "Looks for heading, body, and monospace font names defined in a CSS-style line, and falls back to a Font Stack section if those are absent.",
+      "why": "Likely reason: the guide may state fonts in code form or in a readable table, so both are checked.",
+      "watch_out": "The fallback match is loose and could pick up a font name from the wrong sentence."
+    },
+    {
+      "start": 95,
+      "end": 151,
+      "kind": "function",
+      "name": "extractVoice",
+      "id": "s5",
+      "hash": "95f8c62d580f0ba0",
+      "title": "Extracting voice traits and prohibited terms",
+      "what": "Collects brand personality traits from a table and joins them into one phrase. It gathers prohibited terms from a Prohibited section, and if none are found, falls back to a Forbidden Phrases list.",
+      "why": "Tells the AI how the brand should sound and which words to avoid.",
+      "watch_out": "Only rows containing the word Avoid or a divider line are filtered out, so a stray table header could appear in the prohibited list."
+    },
+    {
+      "start": 152,
+      "end": 180,
+      "kind": "function",
+      "name": "extractCoreAttributes",
+      "id": "s6",
+      "hash": "3e8437d3d6ac3325",
+      "title": "Extracting core attributes",
+      "what": "Reads a Core Attributes table and returns each bold name with its description.",
+      "why": "Gives the AI a short list of what the brand stands for.",
+      "watch_out": "Rows whose first cell is not bold are skipped without any warning."
+    },
+    {
+      "start": 181,
+      "end": 234,
+      "kind": "function",
+      "name": "extractImageStyle (part 1)",
+      "id": "s7",
+      "hash": "9550b4865bfd93cb",
+      "title": "Extracting the image style base prompt and keywords",
+      "what": "Finds the base prompt template inside a code block under its heading, flattens it to one line, and collects style keywords from a table.",
+      "why": "Likely reason: gives image generators a fixed style description to reuse.",
+      "watch_out": "The code block must sit directly after the Base Prompt Template heading, or the prompt comes back empty."
+    },
+    {
+      "start": 235,
+      "end": 264,
+      "kind": "method",
+      "name": "extractImageStyle: if",
+      "id": "s8",
+      "hash": "6afe45ca89b0ce48",
+      "title": "Extracting visual don'ts and example prompts",
+      "what": "Reads the Visual Don'ts table and keeps each forbidden visual, skipping header rows. Then it collects labeled example prompts written as a bold label followed by a code block.",
+      "why": "Likely reason: tells image generators what to avoid and gives sample prompts to copy from.",
+      "watch_out": "The example section stops at the next second-level heading, so examples placed after one are missed."
+    },
+    {
+      "start": 265,
+      "end": 306,
+      "kind": "function",
+      "name": "generatePromptAddition",
+      "id": "s9",
+      "hash": "2b17421515fdfb2e",
+      "title": "Building the AI instruction text",
+      "what": "Writes the final text block with colors, fonts, voice, attributes, and prohibited terms. It adds image guidance only when a base prompt was found, and caps keywords at 10 and mood items at 5. It ends with a line asking the AI to apply the guidelines to all output.",
+      "why": "This is the text an AI reads, so it must hold all the brand rules in one place.",
+      "watch_out": "The typography line shows only one font name, the heading font when present, so the body font is not shown."
+    },
+    {
+      "start": 307,
+      "end": 349,
+      "kind": "function",
+      "name": "main",
+      "id": "s10",
+      "hash": "c9c721225f557c53",
+      "title": "Running the script from the command line",
+      "what": "Reads the guidelines path from the arguments, stops with an error if the file is missing, extracts all the brand data, and prints either the instruction text or the JSON data.",
+      "why": "This is the entry point that ties all the extraction steps together.",
+      "watch_out": "The script never saves its output to a file, so the caller must capture the terminal output, and the main routine runs as soon as the file loads."
+    }
+  ],
+  "explained_at": "2026-11-11T20:55:43+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads a brand guidelines markdown file and prints a block of text that tells an AI how to apply the brand's colors, fonts, voice, and image style.",
+  "purpose": "Turns a human-written brand guide into instructions an AI can follow when it writes or designs content.",
+  "why": "Likely reason: keeps AI output consistent with the brand without someone retyping the rules each time.",
+  "how": "The script reads the guidelines file, pulls out colors, fonts, voice traits, prohibited terms, core attributes, and image style by matching headings and patterns, then prints either a formatted text block or all the extracted data as JSON.",
+  "inputs": "A path to a brand guidelines markdown file. If no path is given, it uses docs/brand-guidelines.md from the current folder.",
+  "outputs": "A text block printed to the terminal, or a JSON object of the extracted brand data. It writes no files.",
+  "risks": "The script matches patterns in the text, so a small change in how the guide is written can silently drop colors, fonts, or rules. It also runs its main routine as soon as it loads.",
+  "debug": "If the output is missing items, check the matching heading names in the guidelines file, since each section is found by its heading. If the script exits with a not-found message, check the path. Run it with the JSON option to see exactly what was extracted.",
+  "summary_hash": "sha256:5b98abdeb5c636f247102cd235f1d3421db7a4de53fd853360feaa0c471b5c96"
+}

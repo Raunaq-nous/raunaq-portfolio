@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "path": "src/app/api/ai/route.ts",
+  "language": "TypeScript",
+  "lines": 327,
+  "hash": "sha256:795eb2a1747f9596341f536567cc80f4eb4e1e74edf2829f6058a833b94685fe",
+  "area": "src-app",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Debug logging runs on every request and is left on.",
+      "The AI reply is not checked for shape before it is returned.",
+      "Later actions, such as answering questions and goal breakdown, are in sections that were not supplied, so they could not be checked."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Route",
+      "meaning": "a server address the app calls, here under /api/ai"
+    },
+    {
+      "term": "Payload",
+      "meaning": "the data sent along with a request"
+    },
+    {
+      "term": "Environment variable",
+      "meaning": "a setting kept on the server, such as the Groq key, not shown to the browser"
+    },
+    {
+      "term": "Fallback flag",
+      "meaning": "a marker in the reply telling the app to use its offline backup"
+    }
+  ],
+  "depends_on": [
+    "next/server",
+    "groq-sdk"
+  ],
+  "used_by": [
+    "src/utils/aiAssistantEngine.ts (sends its requests here)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "cc68fc0ad2db4682",
+      "title": "Startup log line",
+      "what": "Writes a line to the server console when the file loads, to confirm the route is available.",
+      "why": "Likely reason: used while setting up and debugging the AI route.",
+      "watch_out": "Logging runs on every request as well, which fills the server log over time."
+    },
+    {
+      "start": 6,
+      "end": 56,
+      "kind": "function",
+      "name": "POST (part 1)",
+      "id": "s2",
+      "hash": "e132913f207626dd",
+      "title": "Checking the key and the request",
+      "what": "Checks that the Groq key is set and that the request body is valid JSON with a payload. If either check fails, returns an error with a fallback flag so the app switches to its offline helper.",
+      "why": "Likely reason: gives the app a clear signal to fall back, instead of a crash.",
+      "watch_out": "Keep the key in server settings only. It must never be copied into browser code."
+    },
+    {
+      "start": 57,
+      "end": 104,
+      "kind": "method",
+      "name": "POST: if",
+      "id": "s3",
+      "hash": "daf9a1437b06f54c",
+      "title": "Parsing a typed command with AI",
+      "what": "Sends the typed command to Groq with strict rules: fill only fields the user stated, never invent names or numbers, and turn words like next Friday into real dates. Returns the AI's JSON.",
+      "why": "Likely reason: strict rules stop the AI from making up details.",
+      "watch_out": "The AI reply is returned after parsing without a shape check, so a wrong shape reaches the app unless the app checks it."
+    },
+    {
+      "start": 105,
+      "end": 146,
+      "kind": "function",
+      "name": "POST (part 3)",
+      "id": "s4",
+      "hash": "928f6b50a952de51",
+      "title": "Command schema tail and internship rules",
+      "what": "Finishes the list of fields for a typed command, including hackathon fields, then starts the internship instructions with the same strict no invention rules.",
+      "why": "Likely reason: the same strict rules are reused for each action.",
+      "watch_out": "These instructions are long hand written text. A small wording change can change what the AI fills in."
+    },
+    {
+      "start": 147,
+      "end": 191,
+      "kind": "function",
+      "name": "POST (part 4)",
+      "id": "s5",
+      "hash": "20fe663a7fbd13a7",
+      "title": "Internship fields for the AI to return",
+      "what": "Tells the AI the exact fields to return for an internship: company, role, status, location, salary, dates, resume version, portfolio link and notes.",
+      "why": "Likely reason: the field names match what the app stores for an internship.",
+      "watch_out": "Field names here must match the app's stored names, or auto-filled values land in the wrong place."
+    },
+    {
+      "start": 192,
+      "end": 221,
+      "kind": "function",
+      "name": "POST (part 5)",
+      "id": "s6",
+      "hash": "da8cb944253baaac",
+      "title": "Hackathon fields and the parse action",
+      "what": "Lists the hackathon fields the AI should return, including dates, team, tech stack, prize and progress. Sends the text to Groq and returns the JSON reply.",
+      "why": "Likely reason: one call returns a full draft of the hackathon form.",
+      "watch_out": "The progress percentage is requested as a number, which the AI may guess. Check it after auto-fill."
+    },
+    {
+      "start": 222,
+      "end": 257,
+      "kind": "method",
+      "name": "POST: if",
+      "id": "s7",
+      "hash": "79b6f95bfa002aee",
+      "title": "Deadline risk action",
+      "what": "Sends the user's assignments, hackathons and internships to Groq, asking for a list of risks in a fixed shape. Returns the list, accepting either a bare list or an object holding one.",
+      "why": "Likely reason: lets the dashboard show AI risk warnings instead of the offline rule.",
+      "watch_out": "All of the user's assignment, hackathon and internship data is sent to Groq, a third party, so this is a privacy decision."
+    },
+    {
+      "start": 258,
+      "end": 290,
+      "kind": "method",
+      "name": "POST: if",
+      "id": "s8",
+      "hash": "7f3fdfa5e00dbe92",
+      "title": "Goal breakdown action",
+      "what": "When the app asks to break a goal into steps, it asks the Groq AI model for three to five tasks, each with a title, a time estimate and a priority, then returns that list.",
+      "why": "Likely reason: turns a large goal into smaller tasks the user can act on.",
+      "watch_out": "The reply is read as JSON, and if the model returns a different shape the list can silently come back empty."
+    },
+    {
+      "start": 291,
+      "end": 327,
+      "kind": "method",
+      "name": "POST: if",
+      "id": "s9",
+      "hash": "6fceb1740ba82483",
+      "title": "Workspace question answer",
+      "what": "Sends the user's question and their workspace data to the Groq AI model and returns the written answer, or a standard line if the answer is empty.",
+      "why": "Likely reason: powers the AI assistant's answers using the user's own data.",
+      "watch_out": "The whole workspace context is sent to an outside AI service, and no size limit is applied to it."
+    }
+  ],
+  "explained_at": "2026-11-11T21:16:51+00:00",
+  "explained_by": "haiku",
+  "summary": "The server side endpoint the app calls for AI work. It checks the request, sends the text to Groq with strict instructions, and returns the JSON result.",
+  "purpose": "Keep the Groq key on the server, and run the AI calls for command parsing, form auto-fill and deadline risk prediction.",
+  "why": "Likely reason: the key must stay secret, so AI calls go through the server. Only the key check hints at this in the code.",
+  "how": "1. Logs the request. 2. Checks that the Groq key is set. 3. Reads the JSON body and checks there is a payload. 4. Creates the Groq client. 5. Runs the action named in the request (parseCommand, parseInternship, parseHackathon or predictRisks), each with its own instructions. 6. Returns the parsed JSON, or an error with a fallback flag.",
+  "inputs": "A JSON body with an action name and a payload. For parsing, the payload holds the text. For predictRisks, it holds the assignments, hackathons and internships lists.",
+  "outputs": "JSON from the AI, or an error message with a status code and a fallback flag.",
+  "risks": "Sends the user's data to Groq. Logs are written on every request. The AI reply is returned without checking its shape. Actions beyond line 257 were not supplied, so they were not checked.",
+  "debug": "Look for the labelled console lines to see which step ran. A 400 response with the key message means the server key is missing. A parse error means the AI reply was not valid JSON. Check that the action name in the request matches one of the names above.",
+  "summary_hash": "sha256:795eb2a1747f9596341f536567cc80f4eb4e1e74edf2829f6058a833b94685fe"
+}

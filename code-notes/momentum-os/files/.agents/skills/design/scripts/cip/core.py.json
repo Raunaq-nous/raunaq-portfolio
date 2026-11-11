@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "path": ".agents/skills/design/scripts/cip/core.py",
+  "language": "Python",
+  "lines": 215,
+  "hash": "sha256:78a78a51f12d2382b2854414df395dc62b68532626ef724ddd5de713507911e4",
+  "area": "agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated tests are in the packet.",
+      "The ranking code is duplicated from the slide search tool.",
+      "Missing files and mismatched columns fail silently."
+    ]
+  },
+  "terms": [
+    {
+      "term": "CIP",
+      "meaning": "Corporate Identity Program, a company's full set of brand look rules and items such as cards, signs, and vehicles"
+    },
+    {
+      "term": "BM25",
+      "meaning": "a common method for ranking how well text matches search words"
+    },
+    {
+      "term": "CSV",
+      "meaning": "a plain text table where each line is a row and commas separate the fields"
+    },
+    {
+      "term": "brief",
+      "meaning": "a short summary of the key decisions for a brand's look"
+    },
+    {
+      "term": "dictionary",
+      "meaning": "a set of labeled values, like a form with named fields"
+    }
+  ],
+  "depends_on": [
+    ".agents/skills/design/data/cip (deliverables, styles, industries, and mockup CSV files)"
+  ],
+  "used_by": [
+    ".agents/skills/design/scripts/cip/generate.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 40,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ca650b782d9458a5",
+      "title": "Settings and search columns",
+      "what": "Sets the data folder for the guidelines and lists, for each of four areas, the file name, the columns searched, and the columns shown.",
+      "why": "Likely reason: keeps file names and columns together so they can be changed in one place.",
+      "watch_out": "Column names must match the CSV headers exactly, and a mismatch produces blank results with no error."
+    },
+    {
+      "start": 41,
+      "end": 78,
+      "kind": "class",
+      "name": "BM25 (part 1)",
+      "id": "s2",
+      "hash": "1106056f29084e8f",
+      "title": "Word-scoring setup and text cleanup",
+      "what": "Holds the same word-ranking class used by the slide search tool. It lowercases text, drops words of two letters or fewer, and counts how often each word appears across rows.",
+      "why": "Likely reason: the same ranking method is reused for guideline search.",
+      "watch_out": "This ranking code is a copy of the slide search code, so a fix in one place must be repeated in the other."
+    },
+    {
+      "start": 79,
+      "end": 103,
+      "kind": "method",
+      "name": "BM25: score",
+      "id": "s3",
+      "hash": "79218716d73cf97c",
+      "title": "Scoring every row against the query",
+      "what": "Gives each guideline row a relevance score for the query words, then sorts the rows so the best matches come first.",
+      "why": "Likely reason: ranks results so the most relevant guideline entries appear first.",
+      "watch_out": "Every row is scored on every search, so very large data files would slow the search."
+    },
+    {
+      "start": 104,
+      "end": 110,
+      "kind": "function",
+      "name": "_load_csv",
+      "id": "s4",
+      "hash": "847e91f32571003f",
+      "title": "Reading a CSV file into rows",
+      "what": "Opens a guideline data file and returns each line as a set of labeled fields.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "A missing file raises an error here, so callers must check that it exists first."
+    },
+    {
+      "start": 111,
+      "end": 135,
+      "kind": "function",
+      "name": "_search_csv",
+      "id": "s5",
+      "hash": "43f806cd8b42fd78",
+      "title": "Searching one guideline file",
+      "what": "Loads one file, builds searchable text for each row from the chosen columns, ranks the rows, and returns the top matches with a score above zero, showing only the chosen columns.",
+      "why": "Likely reason: the shared search step behind every guideline lookup.",
+      "watch_out": "An output column missing from the row silently disappears from the results."
+    },
+    {
+      "start": 136,
+      "end": 151,
+      "kind": "function",
+      "name": "detect_domain",
+      "id": "s6",
+      "hash": "52233734f2600520",
+      "title": "Guessing the guideline area from words",
+      "what": "Counts keyword hits for deliverables, styles, industries, and mockups in the query, and returns the area with the most hits. With no hits, it returns deliverable.",
+      "why": "Likely reason: lets a plain query work without naming the area.",
+      "watch_out": "Keywords match inside longer words, so cap also counts inside words such as capital and pushes the search toward deliverables."
+    },
+    {
+      "start": 152,
+      "end": 173,
+      "kind": "function",
+      "name": "search",
+      "id": "s7",
+      "hash": "4064d4e9c8a304f4",
+      "title": "Running one search in one area",
+      "what": "Picks the area (given or guessed), finds its file, runs the search, and returns the area, query, file name, count, and results. If the file is missing, it returns an error instead.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "An unknown area name silently falls back to deliverables, so results may come from an unintended area."
+    },
+    {
+      "start": 174,
+      "end": 183,
+      "kind": "function",
+      "name": "search_all",
+      "id": "s8",
+      "hash": "be323356831e097f",
+      "title": "Searching every area at once",
+      "what": "Runs the search in each area and keeps only the areas that have results, grouped by area name.",
+      "why": "Likely reason: gives one overview across all guideline areas.",
+      "watch_out": "An area whose file is missing is dropped without any message, so a broken data file is easy to miss."
+    },
+    {
+      "start": 184,
+      "end": 215,
+      "kind": "function",
+      "name": "get_cip_brief",
+      "id": "s9",
+      "hash": "634b8564cc931cf3",
+      "title": "Assembling a brand guideline brief",
+      "what": "Finds the best industry and style matches, then looks up up to five deliverables named in the industry's key deliverables text. It returns the brand name with the industry, style, deliverables, colors, typography, materials, and finishes.",
+      "why": "Likely reason: gives the image generator one complete summary of the brand's identity.",
+      "watch_out": "The key deliverables text is split at every space, so a phrase such as business card becomes two separate searches for business and card."
+    }
+  ],
+  "explained_at": "2026-11-11T21:00:45+00:00",
+  "explained_by": "haiku",
+  "summary": "A search helper for the Corporate Identity Program (CIP) guidelines that finds matching deliverables, styles, industries, and mockup scenes, and can build a brand summary from them.",
+  "purpose": "Supplies the guideline facts the image generator uses to build a brand's look.",
+  "why": "Likely reason: keeps design guidance in data files so it can be searched and edited without changing code.",
+  "how": "1. Map each area to its data file and columns. 2. Rank rows against the query using word scoring. 3. Guess the area when none is given. 4. Return the matching rows. 5. Chain the industry, style, and deliverable lookups into one brief.",
+  "inputs": "Search text, an optional area name, and a result count. For a brief: brand name, industry phrase, and an optional style phrase.",
+  "outputs": "Matching rows as labeled fields, or a brief with industry, style, recommended deliverables, colors, typography, materials, and finishes.",
+  "risks": "Mismatched columns give blank results silently. Missing files are dropped silently. Deliverable phrases are split on spaces. Short words are ignored in searches.",
+  "debug": "Confirm the data files exist in the cip data folder. Check the column headers against the settings. Run a search and look at which rows come back. If a brief is missing parts, check that industry's fields in the data file.",
+  "summary_hash": "sha256:78a78a51f12d2382b2854414df395dc62b68532626ef724ddd5de713507911e4"
+}

@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "path": "supabase/migrations/20260823_fix_coins_default.sql",
+  "language": "SQL",
+  "lines": 50,
+  "hash": "sha256:279e7f638d733823d68c6e7c93d11d1dc7084e3c40dc1310722b948cacfe12c1",
+  "area": "supabase",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test or migration run record is visible.",
+      "The persona default of academic does not match the app's persona options.",
+      "The coins default statement appears to change nothing because the earlier schema already sets it to zero."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SQL migration",
+      "meaning": "a saved script that changes the database structure in steps"
+    },
+    {
+      "term": "Trigger",
+      "meaning": "a rule that runs automatically when a set event happens, such as a new account being created"
+    },
+    {
+      "term": "SECURITY DEFINER",
+      "meaning": "a setting that makes a function run with the rights of its creator instead of the caller"
+    },
+    {
+      "term": "Supabase",
+      "meaning": "the hosted database and login service the app uses"
+    }
+  ],
+  "depends_on": [
+    "supabase/migrations/20260808_initial_schema.sql",
+    "auth.users (the login system's user table)"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 4,
+      "kind": "statement",
+      "name": "ALTER",
+      "id": "s1",
+      "hash": "e815e2f62c649116",
+      "title": "Adding the persona column",
+      "what": "Adds a persona setting to profiles if it is not already there, with a default of academic.",
+      "why": "Likely reason: the app's persona setting needed a place in the database.",
+      "watch_out": "The default academic is not one of the persona choices the app defines."
+    },
+    {
+      "start": 5,
+      "end": 7,
+      "kind": "statement",
+      "name": "ALTER",
+      "id": "s2",
+      "hash": "833c6431caebe8bb",
+      "title": "Setting the coins default",
+      "what": "Sets the default number of coins on profiles to zero.",
+      "why": "Reason not stated in the code. The initial schema already sets this default, so the statement appears to change nothing.",
+      "watch_out": ""
+    },
+    {
+      "start": 8,
+      "end": 11,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s3",
+      "hash": "c0de81755e6a5a03",
+      "title": "Profile creation function",
+      "what": "Defines a function that will create a profile for a new account, using the sign-up name, role and persona where given.",
+      "why": "Likely reason: profiles must exist before the app can read or update them.",
+      "watch_out": "Blank names fall back to New User, so a new account may appear with a placeholder name until the user changes it."
+    },
+    {
+      "start": 12,
+      "end": 47,
+      "kind": "statement",
+      "name": "INSERT",
+      "id": "s4",
+      "hash": "cf53cb463b8de9cb",
+      "title": "Profile insert with fallbacks",
+      "what": "Inserts a profile with fixed starting values, using sign-up details where present and default text where missing. If a profile already exists, it refreshes the name, role and persona.",
+      "why": "Likely reason: the upsert keeps the function safe to run again for an account that already has a profile.",
+      "watch_out": "The update on conflict overwrites the name, role and persona, so any edits the user made to those fields are replaced if this runs again."
+    },
+    {
+      "start": 48,
+      "end": 50,
+      "kind": "statement",
+      "name": "CREATE",
+      "id": "s5",
+      "hash": "ddabbbe3f670863d",
+      "title": "Attaching the profile rule to sign-up",
+      "what": "Connects the profile function to the login system's user table so it runs after each new account is created.",
+      "why": "Likely reason: sign-up is the only moment that reliably creates a new profile, so the rule runs there.",
+      "watch_out": "The rule runs for every new account, so an error inside the function can block sign-up."
+    }
+  ],
+  "explained_at": "2026-11-11T21:19:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Adds a persona setting to user profiles, sets the coins default, and creates a rule that makes a profile row for each new sign-up.",
+  "purpose": "Lets every new account get a profile row automatically with starting values, and stores the user's persona.",
+  "why": "Reason not stated in the code for the coins default, which the earlier schema already sets to zero. The sign-up profile rule is likely there because profiles were not reliably created at sign-up.",
+  "how": "First adds the persona column if it is missing. Then sets the coins default to zero. Then defines a function that inserts a profile from the sign-up details with safe fallbacks, and updates name, role and persona if the row already exists. Finally attaches that function to the login system's user table so it runs after each new account.",
+  "inputs": "The new account's sign-up details, namely name, role and persona, plus the existing profiles table.",
+  "outputs": "A profile row for each new account with level 1, 0 experience, 1000 experience to next level, 0 coins, 0 streak, 2 freeze tokens, 0 momentum, and the chosen persona.",
+  "risks": "The persona default of academic does not match the app's persona options of student, professional and builder, so a new user may get a value the app does not recognize. The function runs with elevated rights, so any change to it needs care.",
+  "debug": "If a new account has no profile row, check that the trigger exists on the login system's user table and read the database error log. If a persona shows as academic when another was chosen, check the field name sent at sign-up. If starting values look wrong, compare them with the store's starting values.",
+  "summary_hash": "sha256:279e7f638d733823d68c6e7c93d11d1dc7084e3c40dc1310722b948cacfe12c1"
+}

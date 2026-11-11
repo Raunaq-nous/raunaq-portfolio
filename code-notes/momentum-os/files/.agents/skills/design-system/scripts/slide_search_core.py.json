@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "path": ".agents/skills/design-system/scripts/slide_search_core.py",
+  "language": "Python",
+  "lines": 453,
+  "hash": "sha256:2464050ae338eb50728086046b644845fa7ae943f32efead3908fdbe1473edbe",
+  "area": "agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated tests are in the packet.",
+      "Some documented rules are not enforced, including the no-consecutive full-screen rule.",
+      "The full-screen position math does not match the one-based slide numbers the tool uses.",
+      "Missing or mismatched columns fail silently."
+    ]
+  },
+  "terms": [
+    {
+      "term": "BM25",
+      "meaning": "a common method for ranking how well text matches search words, favoring rare, relevant words"
+    },
+    {
+      "term": "CSV",
+      "meaning": "a plain text table where each line is a row and commas separate the fields"
+    },
+    {
+      "term": "emotion",
+      "meaning": "the feeling a slide is meant to create, such as hope or urgency"
+    },
+    {
+      "term": "full-bleed",
+      "meaning": "a slide whose background image covers the whole screen edge to edge"
+    },
+    {
+      "term": "pattern break",
+      "meaning": "a deliberate change in look from the slide before, to hold attention"
+    },
+    {
+      "term": "dictionary",
+      "meaning": "a set of labeled values, like a form with named fields"
+    }
+  ],
+  "depends_on": [
+    ".agents/skills/design-system/data (slide CSV files)",
+    "Python standard library tools for CSV, text patterns, file paths, and math"
+  ],
+  "used_by": [
+    ".agents/skills/design-system/scripts/search-slides.py (likely, the import line is not in the packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 42,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "841c4d1647261232",
+      "title": "Settings and domain definitions",
+      "what": "Sets where the data files live, the default number of results, and which columns each design area searches and shows. Together these decide what a search looks at and what it prints.",
+      "why": "Likely reason: keeps file names and column lists in one place so they can change without touching the search logic.",
+      "watch_out": "Column names must match the CSV headers exactly, and a mismatch gives blank results with no error."
+    },
+    {
+      "start": 43,
+      "end": 80,
+      "kind": "class",
+      "name": "BM25 (part 1)",
+      "id": "s2",
+      "hash": "1106056f29084e8f",
+      "title": "Word-scoring setup and text cleanup",
+      "what": "Holds the BM25 class, which turns text into lowercase words, drops words of two letters or fewer, and counts how common each word is across all rows.",
+      "why": "Likely reason: BM25 is a standard way to rank text matches by how rare and relevant each word is.",
+      "watch_out": "Words of two letters or fewer are ignored, so a short acronym as the whole query returns no matches."
+    },
+    {
+      "start": 81,
+      "end": 105,
+      "kind": "method",
+      "name": "BM25: score",
+      "id": "s3",
+      "hash": "79218716d73cf97c",
+      "title": "Scoring every row against the query",
+      "what": "Gives each row a relevance score for the search words, then sorts the rows so the best matches come first. Rows with no matching words score zero.",
+      "why": "Likely reason: this is the step that decides which results appear first.",
+      "watch_out": "Every row is scored on every search, so very large data files would make searches slower."
+    },
+    {
+      "start": 106,
+      "end": 112,
+      "kind": "function",
+      "name": "_load_csv",
+      "id": "s4",
+      "hash": "847e91f32571003f",
+      "title": "Reading a CSV file into rows",
+      "what": "Opens a data file and returns each line as a record with named fields, so the search can read fields by name.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "A missing file raises an error here, so callers must check that the file exists first."
+    },
+    {
+      "start": 113,
+      "end": 137,
+      "kind": "function",
+      "name": "_search_csv",
+      "id": "s5",
+      "hash": "43f806cd8b42fd78",
+      "title": "Searching one data file",
+      "what": "Loads one data file, builds searchable text for each row from the chosen columns, ranks the rows, and returns the top matches with a score above zero, showing only the chosen output columns.",
+      "why": "Likely reason: the shared search step behind every area, so all areas rank results the same way.",
+      "watch_out": "A query with no matching words returns an empty list instead of a fallback, so callers must handle no results."
+    },
+    {
+      "start": 138,
+      "end": 157,
+      "kind": "function",
+      "name": "detect_domain",
+      "id": "s6",
+      "hash": "f3178b2c85438db0",
+      "title": "Guessing the design area from words",
+      "what": "Counts how many keywords for each area appear in the query and picks the area with the most hits. If nothing matches, it returns the strategy area.",
+      "why": "Likely reason: lets a plain search work without the user naming the area.",
+      "watch_out": "Keywords match inside longer words, so the short keyword line also matches timeline and pushes the search toward charts."
+    },
+    {
+      "start": 158,
+      "end": 179,
+      "kind": "function",
+      "name": "search",
+      "id": "s7",
+      "hash": "508e90a78df8e180",
+      "title": "Running one search in one area",
+      "what": "Picks the area (given or guessed), finds its data file, runs the search, and returns the area name, query, file name, match count, and results. If the file is missing, it returns an error message instead.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "An unknown area name silently falls back to the strategy area, so a typo gives results from the wrong area."
+    },
+    {
+      "start": 180,
+      "end": 214,
+      "kind": "function",
+      "name": "search_all",
+      "id": "s8",
+      "hash": "872d7a2261ae94b4",
+      "title": "Searching every area at once",
+      "what": "Runs the search in each area and keeps only the areas that returned at least one result. The default number of results here is two, not three.",
+      "why": "Likely reason: gives a broad overview, showing only the areas that matched.",
+      "watch_out": "An area whose data file is missing is left out without any message."
+    },
+    {
+      "start": 215,
+      "end": 228,
+      "kind": "function",
+      "name": "_load_decision_csv",
+      "id": "s9",
+      "hash": "1f287f2668ca6fa5",
+      "title": "Loading a lookup table for decisions",
+      "what": "Reads one of the decision tables and stores each row under its key value, such as a goal, emotion, or slide type, so a row can be found directly.",
+      "why": "Likely reason: makes it quick to find the recommendation for one goal, emotion, or slide type.",
+      "watch_out": "If two rows share the same key, the later row silently replaces the earlier one."
+    },
+    {
+      "start": 229,
+      "end": 246,
+      "kind": "function",
+      "name": "get_layout_for_goal",
+      "id": "s10",
+      "hash": "45e47c6824886250",
+      "title": "Choosing a layout for a goal",
+      "what": "Returns the layout recommendation for a slide goal, falling back to the features row when the goal has none. If the layout row marks a pattern break and a previous emotion is given, it adds flags that say the slide should contrast with that emotion.",
+      "why": "Likely reason: keeps layout choices in a data table that designers can edit.",
+      "watch_out": "The pattern flags it adds are not read anywhere in this file, so they have no effect on the context result."
+    },
+    {
+      "start": 247,
+      "end": 282,
+      "kind": "function",
+      "name": "get_typography_for_slide",
+      "id": "s11",
+      "hash": "b4b9e5f9fa0808af",
+      "title": "Choosing text sizes for a slide",
+      "what": "Returns the text style for a slide. Metric and quote flags are checked first; otherwise the slide type is mapped to a text style, and unknown types use the feature-grid style.",
+      "why": "Likely reason: matches the text style to the job each slide does.",
+      "watch_out": "The contextual search only passes the goal, so the metric and quote checks never apply there."
+    },
+    {
+      "start": 283,
+      "end": 291,
+      "kind": "function",
+      "name": "get_color_for_emotion",
+      "id": "s12",
+      "hash": "a1ac435b04684328",
+      "title": "Choosing colors for an emotion",
+      "what": "Returns the color treatment for an emotion, or the clarity treatment when the emotion has no row.",
+      "why": "Likely reason: ties color choices to the feeling each slide should create.",
+      "watch_out": "If the clarity row is also missing, the result is empty and the color section is left out of the output."
+    },
+    {
+      "start": 292,
+      "end": 300,
+      "kind": "function",
+      "name": "get_background_config",
+      "id": "s13",
+      "hash": "8c3e8399bd80c0b4",
+      "title": "Looking up background image settings",
+      "what": "Returns the background image settings for a slide type from the backgrounds table, or nothing when no row exists.",
+      "why": "Likely reason: keeps background image choices in a data table.",
+      "watch_out": "The lookup uses the goal name, so a background appears only if the table has a row with that exact name."
+    },
+    {
+      "start": 301,
+      "end": 324,
+      "kind": "function",
+      "name": "should_use_full_bleed",
+      "id": "s14",
+      "hash": "70154e1fbdc568fa",
+      "title": "Deciding on full-screen image slides",
+      "what": "Says whether a slide should use a full-screen background image. Only strong feelings (hope, urgency, fear, curiosity) qualify, in decks of at least three slides, at the first slide, the one-third and two-thirds points, or the second-to-last slide.",
+      "why": "The docstring says it limits full-screen image slides to a few well-placed emotional moments.",
+      "watch_out": "The docstring promises no two full-screen slides in a row and one at the end, but the code checks each slide alone and never selects the last slide, so those rules are not fully enforced."
+    },
+    {
+      "start": 325,
+      "end": 351,
+      "kind": "function",
+      "name": "calculate_pattern_break",
+      "id": "s15",
+      "hash": "af1c29b7b7862611",
+      "title": "Deciding on a contrast break",
+      "what": "Says whether a slide should visually break the pattern. It does so at the one-third and two-thirds points of decks of five or more slides, and whenever the previous emotion is frustration, hope, or fear.",
+      "why": "The docstring says it supports emotional contrast, following a named presentation technique.",
+      "watch_out": "The partner emotions in the list are never checked, so a break happens for any of the three starting emotions, whatever the new slide feels."
+    },
+    {
+      "start": 352,
+      "end": 405,
+      "kind": "function",
+      "name": "search_with_context (part 1)",
+      "id": "s16",
+      "hash": "69ae14cb1c7e05e7",
+      "title": "Building the context: goal and basic results",
+      "what": "Runs the normal search for the query and guesses the slide's goal from words such as problem, solution, cta, hook, or traction. It then looks up the layout and text style for that goal.",
+      "why": "Likely reason: turns a plain query into a full slide recommendation.",
+      "watch_out": "When no goal word matches, the goal comes from the area guesser, which returns area names such as strategy or chart rather than slide goals, so those lookups often find nothing."
+    },
+    {
+      "start": 406,
+      "end": 453,
+      "kind": "function",
+      "name": "search_with_context (part 2)",
+      "id": "s17",
+      "hash": "be7fdf6f033af9f6",
+      "title": "Adding colors, breaks, background, and animation",
+      "what": "Adds the color treatment, the pattern break and full-screen decisions, background settings when the layout asks for an image, and an animation effect for the goal. It returns the query, the full context, and the basic results together.",
+      "why": "Likely reason: completes the recommendation so one call gives everything a slide needs.",
+      "watch_out": "The emotion behind colors and full-screen decisions comes only from the layout row, so a missing layout row quietly switches them to the clarity default."
+    }
+  ],
+  "explained_at": "2026-11-11T21:00:45+00:00",
+  "explained_by": "haiku",
+  "summary": "A search engine that finds slide design advice in local data files and, for a slide's position and emotion, returns a suggested layout, text style, colors, background, and animation.",
+  "purpose": "Powers slide design search and the contextual slide recommendation used by the search tool.",
+  "why": "The file describes itself as a BM25 search engine for the premium slide system. Likely reason: lets people search design advice in plain words and get a full recommendation for each slide.",
+  "how": "1. Load the data files and the column settings. 2. Rank rows with word scoring for plain searches. 3. For contextual searches, guess the slide goal from the query. 4. Look up the layout, text style, colors, and background for that goal. 5. Work out the pattern break and full-screen flags from the slide position. 6. Add an animation name and return everything together.",
+  "inputs": "Search text, optional area name, number of results, slide position, total slides, and the emotion of the previous slide.",
+  "outputs": "Lists of matching rows as labeled fields, or a recommendation with the basic results. A missing data file returns an error message instead of results.",
+  "risks": "Column names that do not match the data give blank results with no message. The area guesser can pick the wrong area. Full-screen slide positions do not match the rules in the notes. Data files are reread on every call.",
+  "debug": "If results are empty, check that the search words are at least three letters and that the data file exists in the data folder. If a recommendation looks odd, check the inferred goal in the context output and confirm the goal names match the table keys. Check for duplicate keys in the decision tables.",
+  "summary_hash": "sha256:2464050ae338eb50728086046b644845fa7ae943f32efead3908fdbe1473edbe"
+}

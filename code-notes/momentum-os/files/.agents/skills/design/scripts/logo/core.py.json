@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "path": ".agents/skills/design/scripts/logo/core.py",
+  "language": "Python",
+  "lines": 175,
+  "hash": "sha256:4f8b36ffe538e5995d0e0b740053a0899a1adf445ffdf484bd47f94e71ade8d0",
+  "area": "agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible for this file.",
+      "Short words are ignored, which can hide valid queries.",
+      "Missing data is reported as an empty result rather than a clear error in the all-domains search."
+    ]
+  },
+  "terms": [
+    {
+      "term": "BM25",
+      "meaning": "a standard scoring method that ranks text by how well its words match a query"
+    },
+    {
+      "term": "CSV",
+      "meaning": "a spreadsheet saved as plain text with commas between values"
+    },
+    {
+      "term": "token",
+      "meaning": "a single cleaned word produced from text during search"
+    },
+    {
+      "term": "domain",
+      "meaning": "one category of guidance, such as style, color, or industry"
+    },
+    {
+      "term": "IDF",
+      "meaning": "inverse document frequency, a weight that makes rare words count for more"
+    }
+  ],
+  "depends_on": [
+    "Python standard library (csv, re, pathlib, math, collections)",
+    "CSV files in the logo data folder"
+  ],
+  "used_by": [
+    ".agents/skills/design/scripts/logo/search.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 35,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "939a3a1f2c1f5d56",
+      "title": "Setup, data location, and search columns",
+      "what": "Sets where the CSV data lives and which columns are searched and shown for styles, colors, and industries.",
+      "why": "Keeps the data layout in one place so the search code stays the same when data changes.",
+      "watch_out": "Column names must match the CSV headers exactly, or those fields are silently left out of results."
+    },
+    {
+      "start": 36,
+      "end": 73,
+      "kind": "class",
+      "name": "BM25 (part 1)",
+      "id": "s2",
+      "hash": "1106056f29084e8f",
+      "title": "Word scoring engine setup",
+      "what": "Creates the scoring engine and prepares it for a set of rows. Splits text into lowercase words of three or more letters, counts how many rows contain each word, and gives each word a weight.",
+      "why": "Lets the search rank rows by how relevant their words are, not just by exact matches.",
+      "watch_out": "Words of two letters or less are ignored, so terms such as AI or 3D can never match."
+    },
+    {
+      "start": 74,
+      "end": 98,
+      "kind": "method",
+      "name": "BM25: score",
+      "id": "s3",
+      "hash": "79218716d73cf97c",
+      "title": "Scoring rows against a query",
+      "what": "Gives every row a score for the query based on matching words. Rare words count for more and very long rows are penalized slightly. Returns all rows, best first.",
+      "why": "Likely reason: this is a widely used ranking method for text search.",
+      "watch_out": "Repeated words can raise a weak row above a better one, because scores are not capped."
+    },
+    {
+      "start": 99,
+      "end": 105,
+      "kind": "function",
+      "name": "_load_csv",
+      "id": "s4",
+      "hash": "847e91f32571003f",
+      "title": "Reading a CSV file into rows",
+      "what": "Opens a CSV file and returns each row as a set of named fields.",
+      "why": "Makes spreadsheet-style data easy to search by column name.",
+      "watch_out": "The whole file is read on every search, so large files will slow each request."
+    },
+    {
+      "start": 106,
+      "end": 130,
+      "kind": "function",
+      "name": "_search_csv",
+      "id": "s5",
+      "hash": "43f806cd8b42fd78",
+      "title": "Running a search on one file",
+      "what": "Loads one CSV file, builds searchable text for each row, ranks the rows, and returns the top matches that scored above zero with the chosen columns.",
+      "why": "This is the single step that turns a file into search results.",
+      "watch_out": "A query with no matching words returns an empty list, which looks the same as a missing file."
+    },
+    {
+      "start": 131,
+      "end": 145,
+      "kind": "function",
+      "name": "detect_domain",
+      "id": "s6",
+      "hash": "e323d5fccb92ea8b",
+      "title": "Guessing the domain from the query",
+      "what": "Counts keyword hits for style, color, and industry, and picks the domain with the most hits. Falls back to style when nothing matches.",
+      "why": "Lets users type a plain query without naming a domain.",
+      "watch_out": "Ties go to whichever domain is listed first, and a hash symbol counts as a color hint, so a query with a hash can be pulled toward colors."
+    },
+    {
+      "start": 146,
+      "end": 167,
+      "kind": "function",
+      "name": "search",
+      "id": "s7",
+      "hash": "cc9deb7c9bfc2b12",
+      "title": "Main search for one domain",
+      "what": "Chooses the domain if none was given, loads its file, runs the search, and returns the results with metadata. If the file is missing, it returns an error message instead.",
+      "why": "This is the main entry point other scripts call to search.",
+      "watch_out": "An unknown domain name quietly falls back to style, so a typo searches the wrong data without warning."
+    },
+    {
+      "start": 168,
+      "end": 175,
+      "kind": "function",
+      "name": "search_all",
+      "id": "s8",
+      "hash": "294775435de37cd2",
+      "title": "Searching all domains at once",
+      "what": "Runs the search on every domain and keeps only the domains that returned something. Defaults to two results per domain, which is one fewer than the single search.",
+      "why": "Gives a broad answer across all guidance in one call.",
+      "watch_out": "Domains that failed or are empty are dropped without a message, so a missing file looks the same as no match."
+    }
+  ],
+  "explained_at": "2026-11-11T21:02:54+00:00",
+  "explained_by": "haiku",
+  "summary": "A local search engine that finds the most relevant logo style, color, or industry guidance rows from CSV files using a word-scoring method.",
+  "purpose": "Gives the logo tools a way to pull the best matching guidance for a query without any outside service.",
+  "why": "Likely reason: a local search over CSV files needs no database or network connection.",
+  "how": "Picks a domain from keywords if none is given. Loads the matching CSV file. Joins the search columns of each row into one block of text. Scores each block against the query with the BM25 method. Keeps the top rows that scored above zero and returns the chosen output columns.",
+  "inputs": "A query text, an optional domain name, and a maximum result count.",
+  "outputs": "A dictionary with domain, query, file, count, and results, or an error entry if the file is missing. The all-domains function returns a dictionary keyed by domain.",
+  "risks": "Words of two letters or less are ignored, so a query like AI matches nothing. Domain detection is keyword based and can guess wrong. Files are reread on every search. A missing file in the all-domains search is dropped without a message.",
+  "debug": "Confirm the CSV files exist in the logo data folder. Try a longer or different word. Test each domain on its own, since the all-domains search hides empty results.",
+  "summary_hash": "sha256:4f8b36ffe538e5995d0e0b740053a0899a1adf445ffdf484bd47f94e71ade8d0"
+}

@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "path": "src/utils/aiAssistantEngine.ts",
+  "language": "TypeScript",
+  "lines": 367,
+  "hash": "sha256:74b4a37de754475bd50352b20180c53db7b00bb3a4d3fe78e6f0811efe6707c3",
+  "area": "src-utils",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The offline helper returns hardcoded values that look like real results.",
+      "Silent fallback can hide server or key problems.",
+      "No tests are visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Helper (provider)",
+      "meaning": "an object that does one of the app's AI jobs"
+    },
+    {
+      "term": "Fallback",
+      "meaning": "a backup path used when the main path fails"
+    },
+    {
+      "term": "Interface",
+      "meaning": "a list of jobs that every helper is required to provide"
+    },
+    {
+      "term": "Heuristic",
+      "meaning": "a simple rule based guess used instead of AI"
+    },
+    {
+      "term": "Route",
+      "meaning": "a server address the app calls to do work, here under /api/ai"
+    }
+  ],
+  "depends_on": [
+    "../types",
+    "src/app/api/ai/route.ts (reached through fetch)"
+  ],
+  "used_by": [
+    "src/app/api/ai/route.ts (receives the requests this file sends)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 2,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a087aa194e47daf8",
+      "title": "Importing shared data types",
+      "what": "Brings in the shared data shapes for tasks, habits, goals, assignments and similar items.",
+      "why": "Likely reason: keeps the AI code working with the same data definitions as the rest of the app.",
+      "watch_out": ""
+    },
+    {
+      "start": 3,
+      "end": 13,
+      "kind": "type",
+      "name": "ParsedCommand",
+      "id": "s2",
+      "hash": "35dd7e5b26f53bf7",
+      "title": "Shape of a parsed command",
+      "what": "Defines what the app expects after reading a typed or spoken sentence: its type, title, due date, time, priority and energy level.",
+      "why": "Likely reason: every helper returns the same shape, so the screens do not change when the helper does.",
+      "watch_out": "The type list includes reminder and query, which the offline helper never produces."
+    },
+    {
+      "start": 14,
+      "end": 22,
+      "kind": "type",
+      "name": "RiskReport",
+      "id": "s3",
+      "hash": "742005b3a954ec95",
+      "title": "Shape of a deadline risk report",
+      "what": "Defines one warning item: which assignment, hackathon or internship is at risk, its due date, how severe it is, and why.",
+      "why": "Likely reason: a fixed shape lets the dashboard show risk cards consistently.",
+      "watch_out": "Risk levels are fixed text labels with emoji, so any code that compares them must match them exactly."
+    },
+    {
+      "start": 23,
+      "end": 29,
+      "kind": "type",
+      "name": "RecommendedHabit",
+      "id": "s4",
+      "hash": "ff739446c48eded8",
+      "title": "Shape of a suggested habit",
+      "what": "Defines a habit suggestion with a title, description, category and reason. No function in the visible code returns this shape.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The category is typed as any, so the compiler will not catch a wrong category."
+    },
+    {
+      "start": 30,
+      "end": 36,
+      "kind": "type",
+      "name": "AIProvider",
+      "id": "s5",
+      "hash": "1b622dc4d3b1682a",
+      "title": "The jobs every AI helper must do",
+      "what": "Lists the four jobs any helper must provide: parse a command, predict deadline risks, break a goal into tasks, and answer a question. Each job may return its result at once or later.",
+      "why": "Likely reason: lets the app switch between the offline helper and the server backed helper without changing the screens.",
+      "watch_out": "Adding a job here forces every helper to add it too, including the one that calls the server."
+    },
+    {
+      "start": 37,
+      "end": 92,
+      "kind": "class",
+      "name": "LocalHeuristicAIProvider (part 1)",
+      "id": "s6",
+      "hash": "44a037c1367f60f7",
+      "title": "Offline helper: reading a typed command",
+      "what": "Reads a typed sentence with keyword rules. It guesses priority and energy level, sets a due date for words like tomorrow or certain weekdays, and sets a time only for a few named times. It returns a task or an assignment with a cleaned up title.",
+      "why": "Likely reason: a backup that works with no internet or AI key.",
+      "watch_out": "When no time is given it still sets 8 pm, and when no date word is found it uses today, so the app may show a deadline the user never stated."
+    },
+    {
+      "start": 93,
+      "end": 137,
+      "kind": "method",
+      "name": "LocalHeuristicAIProvider: predictDeadlineRisks",
+      "id": "s7",
+      "hash": "a3bdea2dcd4afabe",
+      "title": "Offline helper: finding deadline risks",
+      "what": "Flags pending assignments due within 72 hours that are under half done, marking those due within 24 hours as high risk. Flags hackathons due within 96 hours that are under 60 percent built.",
+      "why": "Likely reason: a simple early warning rule that works without AI.",
+      "watch_out": "Hackathon risks are always marked high, and the time windows are fixed numbers rather than settings the user can change."
+    },
+    {
+      "start": 138,
+      "end": 184,
+      "kind": "class",
+      "name": "LocalHeuristicAIProvider (part 3)",
+      "id": "s8",
+      "hash": "50538687948053d5",
+      "title": "Offline helper: goal phases and keyword answers",
+      "what": "Splits any goal into three fixed phases (research, build, verify) with set times and priorities. For questions, it returns keyword replies. The score and focus hour answers are fixed text, and the deadline answer lists all pending assignments, not just this week's.",
+      "why": "Likely reason: a placeholder so the feature still responds without AI.",
+      "watch_out": "The 88 out of 100 score and the peak hours answer are hardcoded, so the offline helper can give a confident answer that is not based on the user's data."
+    },
+    {
+      "start": 185,
+      "end": 241,
+      "kind": "class",
+      "name": "GroqAIProvider, localHeuristicAIProvider, groqAIProvider (part 1)",
+      "id": "s9",
+      "hash": "2ec3a4e27aa6c108",
+      "title": "Server helper: parsing a typed command",
+      "what": "Sends the typed command to the app's own AI route and returns the result. If the reply is missing or fails, it quietly uses the offline helper and writes a console warning.",
+      "why": "Likely reason: use the stronger AI when it is available, with a safe backup.",
+      "watch_out": "The fallback is silent to the user, so a missing AI key can look like normal results. Check the console warning when results look off."
+    },
+    {
+      "start": 242,
+      "end": 278,
+      "kind": "class",
+      "name": "GroqAIProvider, localHeuristicAIProvider, groqAIProvider (part 2)",
+      "id": "s10",
+      "hash": "2640bfb59d5de87b",
+      "title": "Server helper: internship and hackathon parsing",
+      "what": "Sends internship and hackathon text to the server for structured results. If that fails, simple keyword guesses fill in a company or event name, plus default role or title text.",
+      "why": "Likely reason: the same backup pattern, with extra fields for these two kinds of entries.",
+      "watch_out": "The offline company guess only recognizes a few names and otherwise takes a word after 'at', so it may show Target Company or a random word. These two methods are not in the shared job list, so the default helper does not pass them on."
+    },
+    {
+      "start": 279,
+      "end": 316,
+      "kind": "method",
+      "name": "GroqAIProvider, localHeuristicAIProvider, groqAIProvider: predictDeadlineRisks",
+      "id": "s11",
+      "hash": "7d74f0a6248bbb44",
+      "title": "Server helper: deadline risks and goal phases",
+      "what": "Asks the server for risk reports and goal steps, and checks that the reply is a list before using it. Falls back to the offline helper when the reply is not usable.",
+      "why": "Likely reason: the same backup pattern as the other jobs.",
+      "watch_out": "All the user's assignments, hackathons and internships are sent to the server, so this data leaves the device."
+    },
+    {
+      "start": 317,
+      "end": 339,
+      "kind": "method",
+      "name": "GroqAIProvider, localHeuristicAIProvider, groqAIProvider: answerConversationalQuery",
+      "id": "s12",
+      "hash": "03c55ebb3fc786d3",
+      "title": "Server helper: answering questions",
+      "what": "Sends the question along with the user's tasks, assignments, hackathons and habits to the server, and returns the answer text. Falls back to the offline keyword answers on failure.",
+      "why": "Likely reason: the same backup pattern as the other jobs.",
+      "watch_out": "The offline fallback can return the fixed 88 out of 100 score, so a server failure can show a made up number."
+    },
+    {
+      "start": 340,
+      "end": 367,
+      "kind": "class",
+      "name": "DynamicAIProvider, defaultAIProvider",
+      "id": "s13",
+      "hash": "6fda43d76aad4341",
+      "title": "Choosing which helper to use",
+      "what": "Uses the offline helper only when a window flag named __MOMENTUM_AI_MODE__ is set to heuristic. Otherwise it uses the server backed helper. This chosen helper is what the rest of the app calls.",
+      "why": "Likely reason: a switch for testing or for running without AI.",
+      "watch_out": "The flag is read from the browser window, so it must be set before the app asks for an answer. If reading it fails, the server backed helper is used."
+    }
+  ],
+  "explained_at": "2026-11-11T21:14:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the app's AI helpers: an offline keyword based helper, a server backed helper that uses Groq when it can, and a switch that picks between them.",
+  "purpose": "Let the app parse commands, flag deadline risks, break goals into tasks, and answer questions, even when the AI service is unavailable.",
+  "why": "Likely reason: the app should still work without AI, so an offline backup sits behind the same set of jobs. Reason otherwise not stated.",
+  "how": "1. Defines the shapes of parsed commands, risk reports and habit suggestions. 2. Defines the one set of jobs every helper must provide. 3. The offline helper does each job with keyword rules. 4. The Groq helper asks the server route for each job and falls back to the offline helper on any failure. 5. The switch uses the offline helper when a window flag says heuristic, and the Groq helper otherwise.",
+  "inputs": "Typed or spoken text, lists of assignments, hackathons, internships, tasks, habits and goals, and a goal record.",
+  "outputs": "Parsed command objects, lists of risk reports, lists of goal phases, and answer text.",
+  "risks": "The offline helper sets a due time of 8 pm and today's date when the text does not give them. It also returns a fixed score of 88 out of 100 and fixed peak focus hours. Server failures are silent, so the user may see made up answers without knowing.",
+  "debug": "If answers look generic or repetitive, check whether the offline helper is active through the window flag. Look for the warning text in the browser console, which names the reason for the fallback. If the server path keeps failing, check the server route and the Groq key.",
+  "summary_hash": "sha256:74b4a37de754475bd50352b20180c53db7b00bb3a4d3fe78e6f0811efe6707c3"
+}
