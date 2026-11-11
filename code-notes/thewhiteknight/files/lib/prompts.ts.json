@@ -1,0 +1,458 @@
+{
+  "schema_version": 1,
+  "path": "lib/prompts.ts",
+  "language": "TypeScript",
+  "lines": 1150,
+  "hash": "sha256:0f4a2abb5427b7fc4ef54f7ff57a5bdbe1d172c5d1b6dadd09924b73ef961969",
+  "area": "lib",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only 22 of 33 sections were provided, so the rest were not reviewed.",
+      "The resume rules conflict on the number of bullets per job.",
+      "Layout code depends on a shared module-level variable.",
+      "Some source text is cut off in the packet.",
+      "No tests are visible, and the file does not check AI output."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Prompt",
+      "meaning": "the written instructions sent to an AI model"
+    },
+    {
+      "term": "ATS",
+      "meaning": "applicant tracking system, software many companies use to screen resumes"
+    },
+    {
+      "term": "Cold outreach",
+      "meaning": "a message sent to someone who has not asked to hear from you"
+    },
+    {
+      "term": "JSON",
+      "meaning": "a plain text format for structured data that programs can read"
+    },
+    {
+      "term": "Module-level variable",
+      "meaning": "a value shared across the whole file, which functions can change"
+    }
+  ],
+  "depends_on": [
+    "./profile",
+    "./store"
+  ],
+  "used_by": [
+    "Not visible in the packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup, GenerationAction",
+      "id": "s1",
+      "hash": "bd2405f35df16f96",
+      "title": "Imports and document types",
+      "what": "Imports the profile and application shapes, and lists the document types the app can generate.",
+      "why": "One list keeps the document types in step across the app.",
+      "watch_out": "Adding a document type here does nothing until a matching prompt builder exists."
+    },
+    {
+      "start": 6,
+      "end": 14,
+      "kind": "type",
+      "name": "ContactProfile",
+      "id": "s2",
+      "hash": "26b177a57de36976",
+      "title": "Contact shape",
+      "what": "Describes a person at the target company: name, title, company, optional link, location, and role.",
+      "why": "Gives the outreach prompts a consistent contact shape.",
+      "watch_out": "The role must be one of the listed values, so other text will not match."
+    },
+    {
+      "start": 15,
+      "end": 22,
+      "kind": "type",
+      "name": "AFScoreBlock",
+      "id": "s3",
+      "hash": "bdb91a3077cc4383",
+      "title": "Score section shape",
+      "what": "Describes one part of a job-fit score: a number, a reason, and optional lists of evidence, gaps, and signals.",
+      "why": "Holds each part of the job-fit score in a common form.",
+      "watch_out": "The allowed range of the number is not set here; the scoring prompt is where that limit is described."
+    },
+    {
+      "start": 23,
+      "end": 28,
+      "kind": "type",
+      "name": "LegitimacySignal",
+      "id": "s4",
+      "hash": "e2f716f962a52aa9",
+      "title": "Legitimacy signal shape",
+      "what": "Describes one check on whether a job posting looks genuine, with a weight of positive, neutral, or concerning.",
+      "why": "Keeps each finding separate so the screen can list them.",
+      "watch_out": "The weight is text the AI must set correctly, and nothing here checks it."
+    },
+    {
+      "start": 29,
+      "end": 56,
+      "kind": "type",
+      "name": "AFScoreResult",
+      "id": "s5",
+      "hash": "084fb366ce4088c9",
+      "title": "Job-fit result shape",
+      "what": "Describes the full job-fit result: archetype, five scored sections, an overall score, a recommendation, a legitimacy verdict, and parsed job details.",
+      "why": "Describes the structure the scoring output is expected to follow.",
+      "watch_out": "This is only a description; nothing in this file checks that the AI reply matches it."
+    },
+    {
+      "start": 57,
+      "end": 64,
+      "kind": "type",
+      "name": "SkillGapResult",
+      "id": "s6",
+      "hash": "93c604a5e1280469",
+      "title": "Skill gap result shape",
+      "what": "Describes a skill gap report with strong matches, partial matches, missing skills with priority, a readiness score, and a headline.",
+      "why": "Matches the JSON the skill gap prompt asks the AI to return.",
+      "watch_out": "The prompt asks for raw JSON, so any extra words in the reply will break reading."
+    },
+    {
+      "start": 65,
+      "end": 83,
+      "kind": "type",
+      "name": "SkillBuilderResult",
+      "id": "s7",
+      "hash": "a8e8f2b5829176c8",
+      "title": "Skill builder result shape",
+      "what": "Describes a skill-building plan: tracked skills with levels and progress, demand counts, learning steps, and summary lists.",
+      "why": "Gives the skill builder output a defined structure.",
+      "watch_out": "The progress and week counts are estimates made by the AI, so treat them as rough."
+    },
+    {
+      "start": 84,
+      "end": 141,
+      "kind": "function",
+      "name": "buildProfileContext (part 1)",
+      "id": "s8",
+      "hash": "63af9b6d2c698e25",
+      "title": "Profile block for prompts",
+      "what": "Turns the saved profile into one labeled text block with all jobs and bullets, education, skills, projects, certificates, and publications.",
+      "why": "The code says the AI must see every job and bullet and must not invent facts.",
+      "watch_out": "This block includes email and phone, so they are sent to whichever AI service runs the prompt."
+    },
+    {
+      "start": 142,
+      "end": 146,
+      "kind": "function",
+      "name": "buildProfileContext (part 2)",
+      "id": "s9",
+      "hash": "9c4e0119157f3850",
+      "title": "Voice notes in the profile block",
+      "what": "Adds the voice and tone notes to the end of the profile block and trims surrounding spaces.",
+      "why": "Places the writing style rules right after the facts the AI should use.",
+      "watch_out": "Empty voice notes leave a heading with nothing under it, which weakens the style guidance."
+    },
+    {
+      "start": 147,
+      "end": 174,
+      "kind": "function",
+      "name": "buildJDContext",
+      "id": "s10",
+      "hash": "ee2301c8be525b1a",
+      "title": "Job details block",
+      "what": "Turns a saved job application into a labeled text block with company, role, location, requirements, red flags, and the first 3000 characters of the raw posting.",
+      "why": "Likely reason: the 3000-character limit keeps prompt length bounded. The code does not state this.",
+      "watch_out": "Anything in the job posting after the first 3000 characters is dropped from the AI's view."
+    },
+    {
+      "start": 175,
+      "end": 230,
+      "kind": "function",
+      "name": "getResumeStructureGuidance, profile_hasProjects, profile_hasPubs (part 1)",
+      "id": "s11",
+      "hash": "7e1da261f94aad4e",
+      "title": "Resume layout by career family",
+      "what": "Picks the resume section order, emphasis, and writing tip for each career family. Students with under two years of experience get education first, and technical roles may get a notable builds section.",
+      "why": "The code comments say each career family needs its own structure, so this function returns different guidance for each.",
+      "watch_out": "It reads a shared variable set by the resume prompt, so calling it from anywhere else would use stale or empty profile data."
+    },
+    {
+      "start": 231,
+      "end": 280,
+      "kind": "function",
+      "name": "getResumeStructureGuidance, profile_hasProjects, profile_hasPubs (part 2)",
+      "id": "s12",
+      "hash": "6fbfb0a399c95ca5",
+      "title": "Layout guidance and helper checks",
+      "what": "Continues the per-family guidance for marketing, sales, finance, operations, data, research, creative, and general roles. Also defines two checks: at least two projects, and at least one publication.",
+      "why": "Same reason as the earlier layout section, with two small checks that decide which optional sections appear.",
+      "watch_out": "The fixed thresholds mean a profile with one project or no publications silently loses those optional sections."
+    },
+    {
+      "start": 281,
+      "end": 338,
+      "kind": "function",
+      "name": "resumePrompt (part 1)",
+      "id": "s13",
+      "hash": "e622b0e6defa3100",
+      "title": "Resume request rules",
+      "what": "Starts the resume request: names the target job, adds profile and job blocks, lists must-cover keywords and skills, and sets rules against invented facts, job counts, length, and style.",
+      "why": "The code marks these rules as critical because invented facts are the main risk for a resume.",
+      "watch_out": "The rules say no more than three bullets per job but also say two to four bullets, so the AI must choose and may vary."
+    },
+    {
+      "start": 339,
+      "end": 375,
+      "kind": "function",
+      "name": "resumePrompt (part 2)",
+      "id": "s14",
+      "hash": "104691be5204a98f",
+      "title": "Resume output layout",
+      "what": "Builds the exact output layout the AI must follow, changing section order by career family, and appends certificates at the end.",
+      "why": "Keeps the output in a predictable order that the resume page can display.",
+      "watch_out": "Certificate lines are written with long dashes, which conflicts with the no em dashes rule, so the output may break that rule."
+    },
+    {
+      "start": 376,
+      "end": 407,
+      "kind": "function",
+      "name": "coverLetterPrompt",
+      "id": "s15",
+      "hash": "be9741e8f2b5ac81",
+      "title": "Cover letter request",
+      "what": "Builds the request for a four-paragraph cover letter that avoids banned phrases and follows the opening patterns from the voice notes.",
+      "why": "The code states the letter should not sound generic, and the rules enforce that.",
+      "watch_out": "Asking the AI to follow the opening patterns exactly can make different letters sound alike."
+    },
+    {
+      "start": 408,
+      "end": 456,
+      "kind": "function",
+      "name": "executiveSummaryPrompt",
+      "id": "s16",
+      "hash": "be8501d4b37076ab",
+      "title": "Executive summary request",
+      "what": "Builds the request for a four-part executive summary: a third-person summary, a requirement-to-evidence list, a section on what the candidate brings, and an honest areas-for-growth section.",
+      "why": "The code says a senior decision-maker will read it, so it must be tight and specific.",
+      "watch_out": "The evidence list format line has a stray extra bracket, which may confuse the AI's output format."
+    },
+    {
+      "start": 457,
+      "end": 511,
+      "kind": "function",
+      "name": "problemSolverPrompt (part 1)",
+      "id": "s17",
+      "hash": "9a86ce2b8c236aed",
+      "title": "Problem solver request, first half",
+      "what": "Starts the problem solver request: explains the document's purpose, adds profile, job, and optional research blocks, sets seven rules, and lists the first six sections.",
+      "why": "The code requires specific, grounded content, so the request limits generic answers.",
+      "watch_out": "The source is cut off in the purpose description, and the request says nine sections while the headings do not clearly add up to nine."
+    },
+    {
+      "start": 512,
+      "end": 540,
+      "kind": "function",
+      "name": "problemSolverPrompt (part 2)",
+      "id": "s18",
+      "hash": "c6e95cb93d514e15",
+      "title": "Problem solver request, second half",
+      "what": "Gives the exact layout for three AI tool ideas, each with a name, purpose, reason for this company, build plan, value, and demo format, then the outreach delivery section.",
+      "why": "The code requires tools a non-engineer can build with AI help, so each entry asks for effort and a stack.",
+      "watch_out": "The outreach delivery instruction is cut off in the source, so its full intended wording is unclear."
+    },
+    {
+      "start": 541,
+      "end": 565,
+      "kind": "function",
+      "name": "skillGapPrompt",
+      "id": "s19",
+      "hash": "e69c6fc2f60954da",
+      "title": "Skill gap request",
+      "what": "Builds the request for a skill gap analysis that must return only raw JSON: strong matches, partial matches, missing skills, a readiness score, and a headline.",
+      "why": "The code needs a structured result the app can display directly.",
+      "watch_out": "Any words outside the JSON will break the code that reads the reply, and that code is not visible here."
+    },
+    {
+      "start": 566,
+      "end": 624,
+      "kind": "function",
+      "name": "hmOutreachPrompt",
+      "id": "s20",
+      "hash": "b988fe717f6d569c",
+      "title": "Hiring manager email request",
+      "what": "Builds the request for a cold email to a hiring manager, asking for two versions with subject lines and a word limit.",
+      "why": "The rules aim for a short, specific email that a busy person will answer.",
+      "watch_out": "The top job requirement is inserted into the prompt as an example, so a weak requirement phrase will shape the email."
+    },
+    {
+      "start": 625,
+      "end": 669,
+      "kind": "function",
+      "name": "linkedInDMPrompt",
+      "id": "s21",
+      "hash": "1e38db05e8ec2a81",
+      "title": "LinkedIn message request",
+      "what": "Builds the request for a LinkedIn message in two versions of up to 65 words, with no mention of the job posting.",
+      "why": "The rules aim for a short, peer-style message that asks an easy question.",
+      "watch_out": "The ban on mentioning an application is only an instruction to the AI; nothing in the code checks the reply."
+    },
+    {
+      "start": 670,
+      "end": 715,
+      "kind": "function",
+      "name": "ceoColdEmailPrompt",
+      "id": "s22",
+      "hash": "a4420224509a66b6",
+      "title": "CEO cold email request",
+      "what": "Builds the request for a cold email to a company's chief executive, asking for a thought-led note and a fifteen-minute conversation.",
+      "why": "The code says the goal is a conversation about value, not a job application.",
+      "watch_out": "If no contact name is given, the greeting keeps a bracketed placeholder that must be filled in before sending."
+    },
+    {
+      "start": 716,
+      "end": 767,
+      "kind": "function",
+      "name": "hmOutreachPromptWithProfile",
+      "id": "s23",
+      "hash": "9868b01e4af41bd5",
+      "title": "Outreach email prompt with contact details",
+      "what": "Builds the instructions the AI follows to write a short cold email to one named person found through people search. The draft uses the candidate profile, the job details, and the contact's name and title.",
+      "why": "Likely reason: the email should feel written for one person, so the contact block is passed in and the seniority advice changes the framing.",
+      "watch_out": "The prompt tells the AI the recipient is verified, but the contact came from a search and may be wrong, so the user should check the name and title before sending."
+    },
+    {
+      "start": 768,
+      "end": 804,
+      "kind": "function",
+      "name": "referralDMPromptWithProfile",
+      "id": "s24",
+      "hash": "d5286167c9f37ee3",
+      "title": "Referral message prompt for company contacts",
+      "what": "Builds instructions for a short LinkedIn message to someone at the target company. It asks for a short call or one question, not a referral in the first message.",
+      "why": "Likely reason: referral requests that open with a direct ask are often ignored, so the rules push the first message to be a soft request.",
+      "watch_out": "The 70-word limit and the no-referral-first rule are only text instructions, so the AI can break them and the user should read each draft."
+    },
+    {
+      "start": 805,
+      "end": 842,
+      "kind": "function",
+      "name": "linkedInDMPromptWithProfile",
+      "id": "s25",
+      "hash": "84d57abfefc59b65",
+      "title": "LinkedIn message prompt for named people",
+      "what": "Builds instructions for a LinkedIn message to a named person. The message centers on what the recipient gets from replying and ends with a low-cost question.",
+      "why": "The code comment says most messages fail because they focus on the sender, so the prompt asks the AI to focus on the recipient.",
+      "watch_out": "The rule against saying the candidate applied depends on the AI following it, and no code checks the output."
+    },
+    {
+      "start": 843,
+      "end": 878,
+      "kind": "function",
+      "name": "refinePrompt",
+      "id": "s26",
+      "hash": "70a169faa269075e",
+      "title": "Prompt for refining an existing document",
+      "what": "Builds instructions for changing a generated document, such as a resume, using only the change the user typed. It stops the AI from rewriting other parts or adding facts that are not in the profile.",
+      "why": "Likely reason: users ask for small edits, and without firm limits the AI could rewrite the whole document and invent experience.",
+      "watch_out": "The main protection against invented facts is a text rule, so anyone editing the profile or the rules must keep the no-invention instruction."
+    },
+    {
+      "start": 879,
+      "end": 937,
+      "kind": "function",
+      "name": "afScoringPrompt (part 1)",
+      "id": "s27",
+      "hash": "06786fd43e831982",
+      "title": "Job scoring prompt, opening section",
+      "what": "Starts the instructions for scoring one job against the candidate profile and target role types. It includes the candidate context, the target role list, the job facts, and the job description cut to 6000 characters.",
+      "why": "The AI can only score fairly if it sees the profile and job details before the scoring rules.",
+      "watch_out": "The job description is cut after 6000 characters, so requirements near the end of a long posting are never seen."
+    },
+    {
+      "start": 938,
+      "end": 996,
+      "kind": "function",
+      "name": "afScoringPrompt (part 2)",
+      "id": "s28",
+      "hash": "8c19c640e1fcf5f5",
+      "title": "Job scoring rules and thresholds",
+      "what": "Holds the scoring rules: five 1 to 5 scores covering resume fit, target role fit, pay, company culture, and red flags. It also sets how those combine into one score, the recommendation levels, and a posting legitimacy check.",
+      "why": "Likely reason: a fixed rubric makes scores comparable across jobs, and the rules tell the AI not to call a posting suspicious without evidence.",
+      "watch_out": "The weights are left to the AI's judgment, so the combined score for the same job can change if the model changes. The apply and skip cut-offs are fixed in this text."
+    },
+    {
+      "start": 997,
+      "end": 1029,
+      "kind": "function",
+      "name": "afScoringPrompt (part 3)",
+      "id": "s29",
+      "hash": "05860bf12a15aeb8",
+      "title": "Required output format for scoring",
+      "what": "Sets the exact JSON shape the AI must return, including scores, evidence, legitimacy signals, extracted job facts, and the best matching target role. The app reads these fields to show the result.",
+      "why": "The app needs a predictable structure to store and display the score, so the prompt asks for raw JSON with no extra text.",
+      "watch_out": "If a field name here changes, the code that reads the result and the stored application type must change too, or the score panel will show blanks."
+    },
+    {
+      "start": 1030,
+      "end": 1049,
+      "kind": "function",
+      "name": "jdScoringPrompt",
+      "id": "s30",
+      "hash": "37a92d4d473094a7",
+      "title": "Simpler job requirements extraction prompt",
+      "what": "Builds instructions asking the AI to pull out requirements, skills, soft skills, years of experience, and red flags from a job description, without scoring it.",
+      "why": "Reason not stated in the code. It appears to be a lighter version for when only the job facts are needed.",
+      "watch_out": "This version cuts the job description at 4000 characters, while the full scoring prompt uses 6000, so the two can extract different facts from the same posting."
+    },
+    {
+      "start": 1050,
+      "end": 1098,
+      "kind": "function",
+      "name": "skillBuilderPrompt",
+      "id": "s31",
+      "hash": "bcf32485d0062586",
+      "title": "Skill growth plan prompt",
+      "what": "Builds instructions for a skill plan. It lists the skills that target jobs ask for, asks the AI to estimate the user's level on each, and asks for a learning path, next milestone, and weeks needed.",
+      "why": "The plan should reflect real demand from saved jobs, so the aggregated skills and requirements are passed in as its basis.",
+      "watch_out": "The prompt asks for at least 8 skills and uses the profile as the only evidence, so a thin profile can lead to weak or invented evidence the user must check."
+    },
+    {
+      "start": 1099,
+      "end": 1113,
+      "kind": "type",
+      "name": "NLUpdateResult",
+      "id": "s32",
+      "hash": "af5603787a49f962",
+      "title": "Shape of a parsed status update",
+      "what": "Defines the structure of the result from reading a short note about an application, such as a status change, an interview, or a new contact. The app uses it to show a preview before saving anything.",
+      "why": "Likely reason: the app needs fixed fields so it can change saved data safely instead of trusting free text.",
+      "watch_out": "The status list in this type includes sourced, but the prompt's list of allowed statuses leaves it out, so the AI may never return that value."
+    },
+    {
+      "start": 1114,
+      "end": 1150,
+      "kind": "function",
+      "name": "nlUpdatePrompt",
+      "id": "s33",
+      "hash": "c96bc83dd7fdf169",
+      "title": "Prompt for parsing a plain-language update",
+      "what": "Builds instructions that turn a free-text note, such as a recruiter call next Tuesday, into the fields of the parsed update. Today's date is included so words like next Tuesday can become real dates.",
+      "why": "Likely reason: users write notes in plain language, and this turns them into structured changes the user can confirm.",
+      "watch_out": "Today's date comes from the UTC clock, so for users in other time zones late in the evening, relative dates like today or tomorrow can be off by one day."
+    }
+  ],
+  "explained_at": "2026-11-11T22:19:22+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the written instructions sent to the AI for each document the app generates, using the saved profile and job details.",
+  "purpose": "Holds the writing rules, output layouts, and data types for resumes, cover letters, outreach messages, job scoring, and skill analysis.",
+  "why": "Keeping every prompt in one file makes the rules easy to change in one place. The rules repeated throughout the file forbid invented facts and banned phrases, as stated in the code.",
+  "how": "1) Define the result shapes. 2) Build a profile block and a job block from saved data. 3) Each document type has its own function that combines those blocks with task rules and an output layout. 4) The resume layout changes by career family.",
+  "inputs": "Profile and application objects from other files, plus optional company research text and contact details.",
+  "outputs": "Long text prompts that are sent to an AI model. This file does not call the AI itself.",
+  "risks": "Prompts send contact details to AI services. Many rules repeat or conflict. Some functions depend on a shared module-level variable that could go stale. Part of the source is cut off in the packet, so some intended wording is not visible.",
+  "debug": "If output contains invented facts, check the saved profile first, then the anti-fabrication rules. If the layout is wrong, look at the output template for that document type. If a skill analysis fails to read, check that the AI reply was pure JSON. Confirm which prompt function a given document type calls.",
+  "summary_hash": "sha256:0f4a2abb5427b7fc4ef54f7ff57a5bdbe1d172c5d1b6dadd09924b73ef961969"
+}

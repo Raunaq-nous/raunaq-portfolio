@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "path": "app/api/contacts/search/route.ts",
+  "language": "TypeScript",
+  "lines": 190,
+  "hash": "sha256:8283fb3bbf50a4e23059231a15313d0cf9b1f842e75631a7e2ddfe110e6c3bfd",
+  "area": "app-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Name matching is approximate.",
+      "No tests are visible in the packet.",
+      "No login check is visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Exa",
+      "meaning": "An external search service that finds web pages, here used to find professional profiles."
+    },
+    {
+      "term": "Apollo",
+      "meaning": "An external service with a database of business contacts."
+    },
+    {
+      "term": "Deduplicate",
+      "meaning": "Remove repeated entries so the same person appears once."
+    }
+  ],
+  "depends_on": [
+    "lib/exa-client",
+    "lib/apollo-client"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "68e468ea3a647d38",
+      "title": "Imports for the two search services",
+      "what": "Brings in the Exa and Apollo search helpers and sets the Node.js runtime.",
+      "why": "Keeps each provider in its own helper.",
+      "watch_out": ""
+    },
+    {
+      "start": 7,
+      "end": 16,
+      "kind": "type",
+      "name": "ContactSearchRequest",
+      "id": "s2",
+      "hash": "36d1cf486dc8bd93",
+      "title": "Search request shape",
+      "what": "Describes the input: company, role type, optional job role and location, provider keys, and result count.",
+      "why": "Gives the search a fixed input format.",
+      "watch_out": "Provider keys come from the browser, so they travel with each request."
+    },
+    {
+      "start": 17,
+      "end": 28,
+      "kind": "type",
+      "name": "ContactCard",
+      "id": "s3",
+      "hash": "eca0370f0014c7f3",
+      "title": "Contact card shape",
+      "what": "Describes one contact: name, title, company, links, email, location, source, and confidence level.",
+      "why": "Both providers are converted into this one format.",
+      "watch_out": ""
+    },
+    {
+      "start": 29,
+      "end": 56,
+      "kind": "value",
+      "name": "TITLE_KEYWORDS",
+      "id": "s4",
+      "hash": "c47b38779196cf2c",
+      "title": "Job title keywords by role type",
+      "what": "Maps each role type to a list of title patterns such as Head of, Director, or CEO.",
+      "why": "Turns a simple choice into specific titles to search for.",
+      "watch_out": "With no job role given, the default word Manager is used, which may be too broad."
+    },
+    {
+      "start": 57,
+      "end": 64,
+      "kind": "function",
+      "name": "normalizeCompany",
+      "id": "s5",
+      "hash": "ca2e0a9aad0ca263",
+      "title": "Company name cleanup",
+      "what": "Lowercases a company name and removes words such as Inc, LLC, Ltd, and Group, then tidies spacing.",
+      "why": "Company names are written many different ways.",
+      "watch_out": "Removing the word group could merge different companies with similar names."
+    },
+    {
+      "start": 65,
+      "end": 72,
+      "kind": "function",
+      "name": "companyMatches",
+      "id": "s6",
+      "hash": "7bbafd657bcf4e6d",
+      "title": "Company name match check",
+      "what": "Treats two company names as the same if they are equal or one contains the other.",
+      "why": "Handles cases like Anthropic and Anthropic PBC.",
+      "watch_out": "Containment can match unrelated names when one name is a short part of another."
+    },
+    {
+      "start": 73,
+      "end": 108,
+      "kind": "function",
+      "name": "parseExaProfile",
+      "id": "s7",
+      "hash": "10406331e8fb13cb",
+      "title": "Read an Exa result",
+      "what": "Pulls a name, title, and company out of an Exa result title, and drops results that belong to another company.",
+      "why": "Exa returns free text, so the title must be split apart.",
+      "watch_out": "Depends on the LinkedIn title format, so a format change would break the parsing."
+    },
+    {
+      "start": 109,
+      "end": 126,
+      "kind": "function",
+      "name": "parseApolloPerson",
+      "id": "s8",
+      "hash": "baa1c3b3176d45c7",
+      "title": "Read an Apollo person",
+      "what": "Turns an Apollo person record into a contact card, and drops people at other companies.",
+      "why": "Apollo returns structured data, so this step is simpler.",
+      "watch_out": "The email check looks for a text marker. If Apollo changes that marker, emails may be wrongly marked."
+    },
+    {
+      "start": 127,
+      "end": 138,
+      "kind": "function",
+      "name": "dedupe",
+      "id": "s9",
+      "hash": "af45fa1fe9b7155e",
+      "title": "Remove duplicate contacts",
+      "what": "Removes repeats, matching by LinkedIn link first, then email, then name plus company.",
+      "why": "Both providers can return the same person.",
+      "watch_out": "Contacts with no link or email are matched by name and company only, so two different people with the same name could be merged."
+    },
+    {
+      "start": 139,
+      "end": 190,
+      "kind": "function",
+      "name": "POST",
+      "id": "s10",
+      "hash": "530881357f572b6e",
+      "title": "Run both searches and merge",
+      "what": "Runs the searches that have keys, combines and removes duplicates, and returns the contacts with provider counts.",
+      "why": "Combines two sources into one list for the user.",
+      "watch_out": "Apollo results come first in the merge, so they win when the same person appears in both."
+    }
+  ],
+  "explained_at": "2026-11-11T22:11:34+00:00",
+  "explained_by": "haiku",
+  "summary": "Finds people at a company who could be hiring managers, referrers, or executives, using the Exa and Apollo search services.",
+  "purpose": "Helps the user find people to contact about a job.",
+  "why": "Likely reason: networking and outreach work better when the user knows who to contact.",
+  "how": "Picks job title keywords for the role type, searches Exa and Apollo, keeps only results that look like they belong to the company, removes duplicates, and returns the contacts with any provider errors.",
+  "inputs": "Company name, role type, optional job role, location, provider keys, and number of results.",
+  "outputs": "A contacts list, an optional errors list, and counts per provider. Errors: 400 for missing company or keys, 500 for other failures.",
+  "risks": "Provider keys are sent in the request body, so they pass through this server. Matching company names is loose, so the wrong person may be kept.",
+  "debug": "No contacts: check the provider counts in the response, then the parse functions. The errors list says which provider failed.",
+  "summary_hash": "sha256:8283fb3bbf50a4e23059231a15313d0cf9b1f842e75631a7e2ddfe110e6c3bfd"
+}

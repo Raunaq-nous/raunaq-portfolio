@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "path": "lib/kv.ts",
+  "language": "TypeScript",
+  "lines": 76,
+  "hash": "sha256:94875fa7815fe4f224747b9d420ffddc3bd5074a43f747796aa9fedc0c94beff",
+  "area": "lib",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or example data are visible.",
+      "Read-then-write steps are not atomic, so race conditions are possible.",
+      "Create functions overwrite existing records without a check.",
+      "Callers' error handling is not visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Redis",
+      "meaning": "a fast database that stores data under simple keys, often kept in memory"
+    },
+    {
+      "term": "Upstash",
+      "meaning": "a hosted Redis service that this app connects to over the internet"
+    },
+    {
+      "term": "Environment variable",
+      "meaning": "a named setting kept outside the code, such as a database address or token"
+    },
+    {
+      "term": "Index (set)",
+      "meaning": "a list of unique values stored in Redis so every item can be found"
+    },
+    {
+      "term": "Password hash",
+      "meaning": "a scrambled form of a password that can be checked but not reversed"
+    },
+    {
+      "term": "Token",
+      "meaning": "a secret string that proves to the database service who is asking"
+    }
+  ],
+  "depends_on": [
+    "@upstash/redis"
+  ],
+  "used_by": [
+    "Not visible in the packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "73b8f0d182e98d8b",
+      "title": "Server-only file setup",
+      "what": "Marks the file as server-only and loads the Redis client library. Nothing in this file runs in the browser.",
+      "why": "The top note says it is server-only, which keeps database access on the server side.",
+      "watch_out": "If a browser component imports this file, the app may fail to build or may expose server logic; keep it to server code."
+    },
+    {
+      "start": 4,
+      "end": 14,
+      "kind": "function",
+      "name": "getRedis",
+      "id": "s2",
+      "hash": "d9c9facc1b319aaf",
+      "title": "Connecting to the database",
+      "what": "Builds a Redis connection from the database address and token in the environment settings, and stops with a clear error if either is missing.",
+      "why": "It accepts two naming schemes, one for direct Upstash setup and one that the Vercel integration provides, so either setup works.",
+      "watch_out": "The first non-empty value wins, so an old setting under the first name will override a newer one under the second name."
+    },
+    {
+      "start": 15,
+      "end": 23,
+      "kind": "type",
+      "name": "StoredUser",
+      "id": "s3",
+      "hash": "2ed79fc65845a812",
+      "title": "User record shape",
+      "what": "Defines the fields of a stored user: email, password hash, admin flag, and creation time.",
+      "why": "Every user record has the same fields, so reads and writes stay consistent.",
+      "watch_out": "The field holds a password hash, not a password; never store a plain password in this record."
+    },
+    {
+      "start": 24,
+      "end": 28,
+      "kind": "function",
+      "name": "getUser",
+      "id": "s4",
+      "hash": "f110929e6c8824a9",
+      "title": "Looking up a user",
+      "what": "Finds a user by email and returns the record, or nothing if no account exists.",
+      "why": "Emails are lowercased first, so differences in capital letters still match the same account.",
+      "watch_out": "Callers must handle the empty result, because a missing user is returned as nothing rather than an error."
+    },
+    {
+      "start": 29,
+      "end": 35,
+      "kind": "function",
+      "name": "createUser",
+      "id": "s5",
+      "hash": "9eba70f2999bdd4a",
+      "title": "Creating a user",
+      "what": "Saves a new user record and adds the email to the list of all users.",
+      "why": "The users list lets other code find every account without scanning the whole database.",
+      "watch_out": "It replaces any existing record with the same email, so check userExists first to avoid overwriting an account."
+    },
+    {
+      "start": 36,
+      "end": 42,
+      "kind": "function",
+      "name": "userExists",
+      "id": "s6",
+      "hash": "6e9a042ce5af3f30",
+      "title": "Checking if a user exists",
+      "what": "Answers yes or no for whether an account with this email is already stored.",
+      "why": "Sign-up code can use it to reject duplicate emails before creating a user.",
+      "watch_out": "Two sign-ups at the same moment could both pass this check, because nothing locks the check and the save together."
+    },
+    {
+      "start": 43,
+      "end": 49,
+      "kind": "type",
+      "name": "InviteCode",
+      "id": "s7",
+      "hash": "de57a22b6e374bf1",
+      "title": "Invite code record shape",
+      "what": "Defines an invite code record: the code, whether it was used, who used it, and when it was created.",
+      "why": "Tracks each invitation so it can be used only once, according to the marking step.",
+      "watch_out": "The usedBy field holds an email string that nothing here checks against real accounts."
+    },
+    {
+      "start": 50,
+      "end": 56,
+      "kind": "function",
+      "name": "createInviteCode",
+      "id": "s8",
+      "hash": "d3f2a83810198c9d",
+      "title": "Creating an invite code",
+      "what": "Creates a new unused invite code and adds it to the invites list.",
+      "why": "It uses the same list pattern as users, so every code can be listed later.",
+      "watch_out": "Creating a code that already exists silently replaces it and resets its used flag."
+    },
+    {
+      "start": 57,
+      "end": 61,
+      "kind": "function",
+      "name": "getInviteCode",
+      "id": "s9",
+      "hash": "f35a05e882ac544e",
+      "title": "Looking up an invite code",
+      "what": "Finds one invite code and returns it, or nothing if it does not exist.",
+      "why": "Other invite functions and sign-up checks rely on it.",
+      "watch_out": "Codes are used directly as database keys without trimming or case changes, unlike emails, so stray spaces will cause a mismatch."
+    },
+    {
+      "start": 62,
+      "end": 69,
+      "kind": "function",
+      "name": "markInviteUsed",
+      "id": "s10",
+      "hash": "8cc553be1b8a2526",
+      "title": "Marking an invite as used",
+      "what": "Marks an invite as used and records the email of the person who used it.",
+      "why": "Stops the same invite from being used again, as long as the calling code checks it first.",
+      "watch_out": "It reads, then writes in two steps, so two simultaneous uses could both succeed. A missing code is ignored without an error."
+    },
+    {
+      "start": 70,
+      "end": 76,
+      "kind": "function",
+      "name": "listInviteCodes",
+      "id": "s11",
+      "hash": "b1fa58ec4bf4d162",
+      "title": "Listing all invite codes",
+      "what": "Returns every stored invite code, in no particular order.",
+      "why": "Likely reason: an admin view of all invitations. The code does not say this.",
+      "watch_out": "It makes one lookup per code, so a long list means many database requests and slower loading."
+    }
+  ],
+  "explained_at": "2026-11-11T22:16:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Server-side storage helper that saves and reads user accounts and single-use invite codes in an Upstash Redis database.",
+  "purpose": "Gives the rest of the app one place to create, find, and mark users and invite codes.",
+  "why": "Keeping account data in a shared database lets it survive beyond one server run. The top-of-file note says it is server-only, which keeps database credentials off the browser. Reason for the single-use invite design is not stated in the code.",
+  "how": "1) Connect to Redis using credentials from environment settings. 2) Store each user under a key built from the lowercased email and add that email to a users index. 3) Store each invite code under a key built from the code and add it to an invites index. 4) Provide lookups, a yes or no existence check, a step that marks an invite used, and a full list of invites.",
+  "inputs": "Emails, password hashes (already hashed by the caller), invite code strings, and two sets of environment settings for the database URL and token.",
+  "outputs": "User records, invite records, yes or no answers, and lists. Its main effect is writes to the Redis database.",
+  "risks": "Read-then-write steps have no locking, so simultaneous sign-ups or invite uses could race. createUser and createInviteCode overwrite existing records without warning. Missing credentials throw an error on every call. This file does not hash passwords; the caller must do it.",
+  "debug": "If sign-up or login fails, first check that the database environment settings exist, since the error message names them. Then check the stored user key, which is the lowercased email. For invite problems, check the invites index and the used flag on the code. Network errors come from the Redis library, so check connectivity to the Upstash URL.",
+  "summary_hash": "sha256:94875fa7815fe4f224747b9d420ffddc3bd5074a43f747796aa9fedc0c94beff"
+}

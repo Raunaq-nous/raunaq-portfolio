@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "path": "lib/batch-runner.ts",
+  "language": "TypeScript",
+  "lines": 176,
+  "hash": "sha256:bfda14bc57c005c55816639044fc2d8be2c56a9527c29c38ff6393b1d2cb5662",
+  "area": "lib",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Each job's failure is caught, so the rest of the batch continues.",
+      "No restart-after-refresh logic is visible here, although the header implies progress survives refresh.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "concurrency",
+      "meaning": "how many jobs are processed at the same time"
+    },
+    {
+      "term": "browser storage",
+      "meaning": "a small area in the user's browser that keeps data across page refreshes"
+    },
+    {
+      "term": "worker",
+      "meaning": "a loop that takes the next queued job and processes it until the queue is empty"
+    }
+  ],
+  "depends_on": [
+    "./profile",
+    "./store",
+    "./model-settings",
+    "./prompts",
+    "the /api/score route"
+  ],
+  "used_by": [
+    "Not visible in the packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f9fb3e12b2da7482",
+      "title": "File header and imports",
+      "what": "Describes the file as a browser-side queue that scores jobs and saves progress, and brings in the modules it needs.",
+      "why": "The header explains the design choices up front.",
+      "watch_out": ""
+    },
+    {
+      "start": 10,
+      "end": 20,
+      "kind": "type",
+      "name": "BatchInput",
+      "id": "s2",
+      "hash": "8741931157eb1a9a",
+      "title": "Job input shape",
+      "what": "The information needed to score one job: company, role, location, job text, and optional extras such as link, remote flag, seniority and sector.",
+      "why": "Defines what a caller must supply for each job.",
+      "watch_out": "If the remote flag is not set, remote status is guessed from the word remote in the location."
+    },
+    {
+      "start": 21,
+      "end": 29,
+      "kind": "type",
+      "name": "BatchItem",
+      "id": "s3",
+      "hash": "c13c77f60df2ff6d",
+      "title": "Queued job shape",
+      "what": "One job in the queue, with its status (queued, scoring, done or error) and its result once known.",
+      "why": "Lets the screen show progress for each job.",
+      "watch_out": "The item score is out of 5, while the saved application score is out of 10, so the two scales must not be mixed."
+    },
+    {
+      "start": 30,
+      "end": 39,
+      "kind": "type",
+      "name": "BatchState",
+      "id": "s4",
+      "hash": "23b4996648d58fae",
+      "title": "Batch shape",
+      "what": "The whole batch: its ID, all its jobs, start and finish times, and concurrency level.",
+      "why": "Saved as one unit so progress can be restored later.",
+      "watch_out": "The storage key is fixed, so a new batch overwrites the saved one."
+    },
+    {
+      "start": 40,
+      "end": 44,
+      "kind": "function",
+      "name": "loadBatchState",
+      "id": "s5",
+      "hash": "22805f89d1cd02c7",
+      "title": "Loading saved batch",
+      "what": "Reads the saved batch from browser storage, or returns nothing if none exists or the data cannot be read.",
+      "why": "Lets the app restore progress after a reload.",
+      "watch_out": "Unreadable data is silently treated as no batch, which can hide a problem."
+    },
+    {
+      "start": 45,
+      "end": 53,
+      "kind": "function",
+      "name": "saveBatchState, clearBatchState",
+      "id": "s6",
+      "hash": "a12baa09d66207b4",
+      "title": "Saving or clearing batch",
+      "what": "Writes the batch to browser storage, or removes it when given nothing, and notifies the page that the batch changed.",
+      "why": "Keeps the screen in sync with what is stored.",
+      "watch_out": "Passing nothing deletes the saved batch."
+    },
+    {
+      "start": 54,
+      "end": 58,
+      "kind": "function",
+      "name": "providerSettings",
+      "id": "s7",
+      "hash": "89b46af7119b3291",
+      "title": "Provider choice for scoring",
+      "what": "Builds the provider choice to send with scoring, but only when the user picked a provider other than the default.",
+      "why": "The default provider needs no extra settings. Other reasons are not stated in the code.",
+      "watch_out": "When a non-default provider is chosen, the user's API key is included in the request body."
+    },
+    {
+      "start": 59,
+      "end": 80,
+      "kind": "function",
+      "name": "scoreOne",
+      "id": "s8",
+      "hash": "29c14664919e4edb",
+      "title": "Scoring one job",
+      "what": "Sends one job's details, the buckets and the profile to the scoring route, and returns the result or throws the server's error.",
+      "why": "Keeps the scoring call in one place.",
+      "watch_out": "If seniority is missing, the job is scored as senior by default."
+    },
+    {
+      "start": 81,
+      "end": 139,
+      "kind": "function",
+      "name": "processItem",
+      "id": "s9",
+      "hash": "e13589ab93d67b38",
+      "title": "Processing one job",
+      "what": "Scores one job, builds the application record from the result, saves it, and marks the job done. Any failure marks the job as error and the batch continues.",
+      "why": "Turns a scoring result into a tracked application without stopping the whole batch.",
+      "watch_out": "When the total score is missing, the application score is calculated by doubling the 5-point score, so the scales must stay consistent."
+    },
+    {
+      "start": 140,
+      "end": 176,
+      "kind": "function",
+      "name": "runBatch",
+      "id": "s10",
+      "hash": "076d0eaccffd3ca3",
+      "title": "Running the whole batch",
+      "what": "Creates the batch, runs the queue with a fixed number of workers at the same time, saves progress after each change, and returns the finished batch.",
+      "why": "Limits simultaneous scoring requests so the server and AI provider are not overloaded.",
+      "watch_out": "Raising the concurrency increases AI cost and the chance of rate limits."
+    }
+  ],
+  "explained_at": "2026-11-11T22:14:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs a queue of job descriptions through the scoring service a few at a time, saves each result as an application, and keeps progress in the browser.",
+  "purpose": "Lets the user score many job postings in one go instead of one at a time.",
+  "why": "The header says progress is saved in browser storage so a page refresh does not lose it.",
+  "how": "1. Creates a batch with an ID for each job, all marked queued. 2. Saves the batch to browser storage. 3. Starts a fixed number of workers, two by default. 4. Each worker takes the next job, scores it on the server, saves it as an application, and marks it done or error. 5. Saves the final state and returns it.",
+  "inputs": "A list of job inputs (company, role, location, job text, and optional link and details), the user profile, the target buckets, and the concurrency level.",
+  "outputs": "A batch state showing each job's status, score, recommendation and linked application. It also saves applications and the batch state to browser storage.",
+  "risks": "If the page is refreshed mid-run, unfinished jobs are left in their last state and nothing in this file restarts them. The user's AI key is sent with each scoring request. Record IDs are short random strings, so duplicates are unlikely but possible.",
+  "debug": "Open the browser developer tools and look at the local storage entry careeros_batch_state to see each item's status and error text. If many items fail, check the scoring route and the AI settings.",
+  "summary_hash": "sha256:bfda14bc57c005c55816639044fc2d8be2c56a9527c29c38ff6393b1d2cb5662"
+}

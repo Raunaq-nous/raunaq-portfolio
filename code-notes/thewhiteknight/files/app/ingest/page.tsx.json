@@ -1,0 +1,305 @@
+{
+  "schema_version": 1,
+  "path": "app/ingest/page.tsx",
+  "language": "TypeScript (React)",
+  "lines": 647,
+  "hash": "sha256:dbb45a23e21465d94773b07a032e638a5638326523ff14736efe4a1decb98bf1",
+  "area": "app",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "Several failures are silent by design, so users may not know a step failed.",
+      "Target buckets are hardcoded sample data named as mock data.",
+      "Saved API keys are sent from the browser to server routes.",
+      "Possible mismatch between the saved score field and the displayed score."
+    ]
+  },
+  "terms": [
+    {
+      "term": "API",
+      "meaning": "a doorway other programs use to ask this app for data or actions"
+    },
+    {
+      "term": "base64",
+      "meaning": "a way of writing a binary file, such as a PDF or photo, as plain text so it can be sent in a message"
+    },
+    {
+      "term": "component",
+      "meaning": "a reusable piece of the screen with its own code, such as a header or a button"
+    },
+    {
+      "term": "state",
+      "meaning": "values the screen remembers, which cause the screen to redraw when they change"
+    },
+    {
+      "term": "seed profile",
+      "meaning": "sample profile data used when the user has not saved a real one"
+    },
+    {
+      "term": "JD",
+      "meaning": "job description, the text of a job posting"
+    }
+  ],
+  "depends_on": [
+    "../components",
+    "../../lib/store",
+    "../../lib/scoring",
+    "../../lib/profile",
+    "../../lib/model-settings",
+    "../../lib/integration-settings",
+    "next/navigation",
+    "next/link",
+    "react",
+    "/api/extract-jd",
+    "/api/extract-pdf",
+    "/api/parse-jd",
+    "/api/fetch-url"
+  ],
+  "used_by": [
+    "Visible: the Ingest route in app/ingest. Other callers are not visible."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "223e1d7e9d0f9108",
+      "title": "Imports and setup",
+      "what": "Brings in the page framework tools, the shared header and footer, the save, score, profile and settings helpers this page uses.",
+      "why": "Likely reason: the page needs data helpers from other parts of the app, and the browser marker lets it use buttons and file pickers.",
+      "watch_out": "If any of these helper files is moved or renamed, the whole page fails to load."
+    },
+    {
+      "start": 13,
+      "end": 43,
+      "kind": "value",
+      "name": "MOCK_BUCKETS",
+      "id": "s2",
+      "hash": "87c4483ee5e42f16",
+      "title": "Placeholder target buckets",
+      "what": "Holds two hardcoded job target groups, AI Product and MBB Strategy, each with title, sector, location, keyword, company and seniority rules, plus a weight.",
+      "why": "Likely reason: the name MOCK_BUCKETS suggests stand-in data until real target groups are read from settings.",
+      "watch_out": "These rules shape every score, and they are not read from the user's own settings."
+    },
+    {
+      "start": 44,
+      "end": 57,
+      "kind": "function",
+      "name": "extractTextFromImage",
+      "id": "s3",
+      "hash": "3fb5ded33c02b29e",
+      "title": "Reading text from an image",
+      "what": "Sends a photo or screenshot to the server's extraction route and returns the text found in it.",
+      "why": "The browser cannot read text from images itself, so the server does the work.",
+      "watch_out": "If the server returns no text field, the result is empty without a clear message."
+    },
+    {
+      "start": 58,
+      "end": 71,
+      "kind": "function",
+      "name": "extractTextFromPdf",
+      "id": "s4",
+      "hash": "b44dcc34089bbc12",
+      "title": "Reading text from a PDF",
+      "what": "Sends a PDF, encoded as text, to the server's PDF route and returns the extracted words.",
+      "why": "Browsers do not read PDF text directly, so the server handles it.",
+      "watch_out": "Large PDFs are sent in one message, and size limits are not visible here."
+    },
+    {
+      "start": 72,
+      "end": 81,
+      "kind": "function",
+      "name": "parseJDFields",
+      "id": "s5",
+      "hash": "15a4f64997baa4d0",
+      "title": "Asking for job fields",
+      "what": "Sends the job text to the parse route to guess company, role, location, sector, seniority and remote status. Returns nothing if the call fails.",
+      "why": "Likely reason: fills the form automatically, and silent failure lets the user type the fields by hand.",
+      "watch_out": "The saved AI provider key is sent with the text, and the guessed fields still need the user's check."
+    },
+    {
+      "start": 82,
+      "end": 95,
+      "kind": "function",
+      "name": "fetchUrlContent",
+      "id": "s6",
+      "hash": "af1d108457dae2ed",
+      "title": "Fetching a job posting by link",
+      "what": "Asks the server to download the text of a job posting link, sending the Exa key from settings if one is saved.",
+      "why": "Lets the user paste a link rather than copying text. The on-screen hint about LinkedIn and Exa suggests LinkedIn pages need the key to work well.",
+      "watch_out": "The Exa key is sent from the browser to the server in the request body."
+    },
+    {
+      "start": 96,
+      "end": 104,
+      "kind": "function",
+      "name": "readFileAsText",
+      "id": "s7",
+      "hash": "9ee3d661952a95b2",
+      "title": "Reading a plain text file",
+      "what": "Reads a .txt or .md file in the browser and returns its words.",
+      "why": "Plain text needs no server, so it is read directly.",
+      "watch_out": "Files saved in another text encoding may show garbled characters, and this is not checked."
+    },
+    {
+      "start": 105,
+      "end": 117,
+      "kind": "function",
+      "name": "readFileAsBase64",
+      "id": "s8",
+      "hash": "065a652612374d85",
+      "title": "Encoding a file for upload",
+      "what": "Reads a file and returns its content encoded as text with the file header removed, so it can be sent to the server.",
+      "why": "Likely reason: PDFs and images are binary, so they must be encoded before being sent in a message.",
+      "watch_out": "An empty file gives an empty result that the caller treats as blank with no warning."
+    },
+    {
+      "start": 118,
+      "end": 123,
+      "kind": "value",
+      "name": "WORD_TYPES, TEXT_TYPES",
+      "id": "s9",
+      "hash": "7da85687eb13b252",
+      "title": "Accepted Word and text file types",
+      "what": "Lists the Word and text file types the page accepts for upload.",
+      "why": "Used to decide which reader handles each dropped file.",
+      "watch_out": "The old .doc format is listed, but it often extracts poorly."
+    },
+    {
+      "start": 124,
+      "end": 183,
+      "kind": "function",
+      "name": "IngestPage (part 1)",
+      "id": "s10",
+      "hash": "415d8ad09cabcae8",
+      "title": "Page memory and auto-fill",
+      "what": "Holds all form values, progress flags and messages. Adds text to the job box and fills the form fields from the parsed result.",
+      "why": "Screens redraw from remembered values, so this holds everything the form shows.",
+      "watch_out": "Auto-fill overwrites company, role and other fields the user already typed, but keeps a source link already entered."
+    },
+    {
+      "start": 184,
+      "end": 242,
+      "kind": "function",
+      "name": "IngestPage (part 2)",
+      "id": "s11",
+      "hash": "54582a26ce339590",
+      "title": "Sorting files by type",
+      "what": "Checks each dropped or chosen file as text, PDF, Word or image, then reads text and Word files in the browser and sends PDFs to the server.",
+      "why": "Each file type needs a different reader.",
+      "watch_out": "A Word file that reads as blank gets a warning, and the next file's message can replace it."
+    },
+    {
+      "start": 243,
+      "end": 298,
+      "kind": "function",
+      "name": "IngestPage (part 3)",
+      "id": "s12",
+      "hash": "4f34c674f41bfb4f",
+      "title": "Image files and final auto-fill",
+      "what": "Extracts text from each image one at a time, then joins all extracted text and runs the field guess.",
+      "why": "Likely reason: one image at a time keeps the progress message accurate.",
+      "watch_out": "Only the last error message is kept, so several failures may show as one message."
+    },
+    {
+      "start": 299,
+      "end": 358,
+      "kind": "function",
+      "name": "IngestPage (part 4)",
+      "id": "s13",
+      "hash": "d95565102a89b3d5",
+      "title": "Drop handlers, scoring and save preparation",
+      "what": "Handles file drops and file picker choices, sends the job and profile for scoring, and starts building the saved record from the score result.",
+      "why": "Likely reason: the file picker is reset after each choice so the same file can be picked again.",
+      "watch_out": "If no profile is saved, scoring uses sample data, and the saved score uses a different field from the one shown on screen."
+    },
+    {
+      "start": 359,
+      "end": 398,
+      "kind": "function",
+      "name": "IngestPage (part 5)",
+      "id": "s14",
+      "hash": "e8b5c7f9c2f3d46c",
+      "title": "Saving and page header area",
+      "what": "Finishes the saved record, writes it, and returns to the home page. Also shows the page title, cancel button, error box and auto-fill notice.",
+      "why": "Turns a one-off evaluation into a tracked item.",
+      "watch_out": "The settings link only appears when the error text contains the word Settings, so changing that wording removes the link."
+    },
+    {
+      "start": 399,
+      "end": 454,
+      "kind": "function",
+      "name": "IngestPage (part 6)",
+      "id": "s15",
+      "hash": "488e6b286d0d2256",
+      "title": "Link, company and role fields",
+      "what": "Shows the job link box with a fetch button, a LinkedIn hint when the link is from LinkedIn, and the company, role, location and sector inputs.",
+      "why": "Likely reason: LinkedIn is a common source, so it gets a specific tip.",
+      "watch_out": "The fetch button is disabled while anything is busy, so a stuck busy flag blocks it."
+    },
+    {
+      "start": 455,
+      "end": 507,
+      "kind": "function",
+      "name": "IngestPage (part 7)",
+      "id": "s16",
+      "hash": "95b34cab2f4a7d9e",
+      "title": "Remote box and upload buttons",
+      "what": "Shows the remote role checkbox, buttons for adding a photo or files, a clear button when there is content, and two hidden file pickers.",
+      "why": "Likely reason: the photo picker asks the phone for the camera through its capture setting.",
+      "watch_out": "The clear button removes all text and fields at once, with no confirmation."
+    },
+    {
+      "start": 508,
+      "end": 553,
+      "kind": "function",
+      "name": "IngestPage (part 8)",
+      "id": "s17",
+      "hash": "bd5c2409714f68f0",
+      "title": "Progress notes and job text box",
+      "what": "Shows which files were captured and which step is running, accepts dropped files, holds the job text, and shows the score button.",
+      "why": "Lets the user see progress and edit the text directly.",
+      "watch_out": "The score button needs company, role and job text, so a missing field silently disables it."
+    },
+    {
+      "start": 554,
+      "end": 592,
+      "kind": "function",
+      "name": "IngestPage (part 9)",
+      "id": "s18",
+      "hash": "72590d5f7739c63b",
+      "title": "Score summary and category rows",
+      "what": "Shows the overall score out of five in a color, the recommendation, the job type, and a row for each category with its reasoning.",
+      "why": "Gives a quick verdict before the details.",
+      "watch_out": "The color steps at 4.5, 4.0 and 3.5 are fixed in the code."
+    },
+    {
+      "start": 593,
+      "end": 647,
+      "kind": "function",
+      "name": "IngestPage (part 10)",
+      "id": "s19",
+      "hash": "cda1d4f2b3d7615e",
+      "title": "Legitimacy, evidence and save button",
+      "what": "Shows whether the posting looks genuine, the signals found, the evidence of match and gaps, and the button that saves the job.",
+      "why": "Helps the user judge posting quality and fit before saving.",
+      "watch_out": "Only the first five signals, evidence items and gaps are shown, so longer lists are cut off without notice."
+    }
+  ],
+  "explained_at": "2026-11-11T22:29:56+00:00",
+  "explained_by": "haiku",
+  "summary": "The Ingest New Job page. The user adds a job description by link, file, photo or typed text, the page fills in the basic fields, the AI scores the job against the user's profile, and the user can save it to the pipeline.",
+  "purpose": "Turns a job posting into a saved and scored application so it can be tracked on the home page.",
+  "why": "Likely reason: job text arrives in many formats, so one page collects them all and runs one scoring step. The reason for the placeholder target buckets is not stated in the code.",
+  "how": "1. The user gives job text by link (fetched on the server), file upload, photo, or typing. 2. Text files and Word files are read in the browser. PDFs and images are sent to server routes for text extraction. 3. The combined text is sent to a parse route to guess company, role, location, sector, seniority and remote status. 4. The user checks the fields. 5. Pressing score sends the job, fields, placeholder buckets and profile to the scoring function. 6. The result shows a total score, recommendation, category reasons, legitimacy signals, evidence and gaps. 7. Add to pipeline builds an application record, saves it, and returns to the home page.",
+  "inputs": "A job link, uploaded files (text, Word, PDF, images), camera photos, pasted text, typed fields, the saved profile (or a sample profile if none is saved), and the AI and integration settings stored in the browser.",
+  "outputs": "Filled form fields, the on-screen score result, and a saved application record when the user confirms.",
+  "risks": "The AI provider key and Exa key saved in browser settings are sent in request bodies to server routes. Word files often extract poorly. If no profile is saved, scoring uses sample data without a clear warning. The target buckets are hardcoded sample data. The saved score uses the total score while the screen shows the global score; these may differ and nothing checks them.",
+  "debug": "If fields do not fill in, the parse step fails silently by design, so check the parse route response in the browser's network view. If file extraction fails, read the red error box and check the matching server route (extract-pdf or extract-jd). If scores look odd, first check whether a real profile is saved. The score button stays disabled until company, role and job text are all filled. Saving with a wrong score usually means the total and global fields differ.",
+  "summary_hash": "sha256:dbb45a23e21465d94773b07a032e638a5638326523ff14736efe4a1decb98bf1"
+}

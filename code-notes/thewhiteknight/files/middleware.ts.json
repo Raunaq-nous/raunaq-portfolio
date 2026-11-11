@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "path": "middleware.ts",
+  "language": "TypeScript",
+  "lines": 34,
+  "hash": "sha256:a7ad44b50ff6003a2b925c3bf5f092275de77187bbbab66fdfba5d192288fd85",
+  "area": "root-files",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The logic is short and handles missing and bad sessions.",
+      "Admin-only routes are not protected here.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "middleware",
+      "meaning": "code that runs before each request reaches a page or API"
+    },
+    {
+      "term": "session cookie",
+      "meaning": "a small piece of data the browser keeps to remember who is logged in"
+    },
+    {
+      "term": "signature",
+      "meaning": "a checksum made with a secret so the server can confirm a token is genuine"
+    },
+    {
+      "term": "matcher",
+      "meaning": "a setting that lists which addresses the middleware applies to"
+    },
+    {
+      "term": "redirect",
+      "meaning": "sending the browser to a different address"
+    }
+  ],
+  "depends_on": [
+    "next/server",
+    "./lib/session"
+  ],
+  "used_by": [
+    "Run automatically by Next.js for matching requests"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup, PUBLIC_PATHS",
+      "id": "s1",
+      "hash": "cc9491e6568122dc",
+      "title": "Imports and public address list",
+      "what": "Brings in the request tools and the session check. Lists the addresses anyone can visit without logging in.",
+      "why": "Likely reason: sign-in, sign-up and onboarding must work before a user has a session.",
+      "watch_out": "Adding a private page to this list by mistake makes it public."
+    },
+    {
+      "start": 6,
+      "end": 31,
+      "kind": "function",
+      "name": "middleware",
+      "id": "s2",
+      "hash": "729eaefaa5e17acd",
+      "title": "Login gate for each request",
+      "what": "Decides for each request whether it may pass. Public paths and static files pass. Everything else needs a valid session cookie, or the visitor is sent to login.",
+      "why": "Likely reason: keeps every private page and API behind one check.",
+      "watch_out": "Prefix matching means a short public entry opens similar addresses too, so keep entries specific."
+    },
+    {
+      "start": 32,
+      "end": 34,
+      "kind": "value",
+      "name": "config",
+      "id": "s3",
+      "hash": "cd32a890d0899bc3",
+      "title": "Which requests it runs on",
+      "what": "Tells Next.js to run this check on almost every address, skipping built static files and the site icon.",
+      "why": "Likely reason: limits the check to requests that need it, for speed.",
+      "watch_out": "The skip list here and the skip checks in the code must stay in step."
+    }
+  ],
+  "explained_at": "2026-11-11T22:33:50+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks each request before it reaches a page or API and sends visitors without a valid login to the login page.",
+  "purpose": "Protects private pages and APIs so only logged-in users reach them.",
+  "why": "Likely reason: one central check is easier to keep correct than a separate check on every page.",
+  "how": "1. Lets through public pages: login, register, onboard, admin setup and a few auth routes. 2. Lets through static files and the health check. 3. Looks for the session cookie. 4. If it is missing, redirects to login. 5. Checks the cookie's signature with `verifySession`. 6. If the check fails, clears the cookie and redirects to login. 7. Otherwise lets the request continue.",
+  "inputs": "Each request's address and its session cookie.",
+  "outputs": "Either the request continues, or the browser is redirected to login, with a bad cookie cleared.",
+  "risks": "Public paths match by prefix, so any address starting with one of them is also public. That includes `/api/admin/setup`, which must protect itself. Admin rights are not checked here, so admin APIs must check on their own. The signature check runs on every request, so a slow session check slows everything.",
+  "debug": "If users loop back to login, check the session cookie and `verifySession` in lib/session. If a public page redirects, check its address against PUBLIC_PATHS. If an API returns a login page instead of data, check the matcher setting.",
+  "summary_hash": "sha256:a7ad44b50ff6003a2b925c3bf5f092275de77187bbbab66fdfba5d192288fd85"
+}

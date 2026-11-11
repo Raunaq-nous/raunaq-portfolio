@@ -1,0 +1,250 @@
+{
+  "schema_version": 1,
+  "path": "lib/notifications.ts",
+  "language": "TypeScript",
+  "lines": 180,
+  "hash": "sha256:9eaae9490554f8c639838a3b4214b235d9e05193fbb453fbed83be7baa83e6ea",
+  "area": "lib",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Corrupt storage is silently erased on the next save.",
+      "Random ids can collide.",
+      "No tests are visible.",
+      "The confirmation step described in the header is not implemented in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Local storage",
+      "meaning": "a small permanent storage space in a web browser, kept for one website"
+    },
+    {
+      "term": "ISO date text",
+      "meaning": "a standard way of writing dates as text that sorts correctly"
+    },
+    {
+      "term": "Change event",
+      "meaning": "a signal one part of the app sends so other parts can refresh"
+    },
+    {
+      "term": "Dismissed",
+      "meaning": "hidden from the list but still kept in storage"
+    },
+    {
+      "term": "Draft",
+      "meaning": "text prepared for the user to review before anything is sent"
+    }
+  ],
+  "depends_on": [],
+  "used_by": [
+    "Not visible in the packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 4,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "17e6875817e3163c",
+      "title": "File purpose note",
+      "what": "The header says this is a browser-side queue of actions and reminders that waits for the user to confirm before anything runs.",
+      "why": "Stated in the header: high-stakes actions such as sending messages need a human check first.",
+      "watch_out": "This file only stores items and never sends anything, so the confirmation step must live in other code that is not visible here."
+    },
+    {
+      "start": 5,
+      "end": 14,
+      "kind": "type",
+      "name": "NotifType",
+      "id": "s2",
+      "hash": "8fae434301dd5707",
+      "title": "Notification types",
+      "what": "Lists the kinds of item: pending messages and emails, follow-up and deadline reminders, and general information.",
+      "why": "Lets the screen show each kind with its own label and behavior.",
+      "watch_out": "These names are saved in storage, so renaming one will leave older saved items unrecognized."
+    },
+    {
+      "start": 15,
+      "end": 37,
+      "kind": "type",
+      "name": "Notification",
+      "id": "s3",
+      "hash": "0167770d3a58dbc1",
+      "title": "Notification shape",
+      "what": "Defines one item: its title, body, optional contact and draft details, timing, and whether it was dismissed or sent.",
+      "why": "One shape holds every kind of item, so the list code stays simple.",
+      "watch_out": "Draft text and contact details are stored in plain form in browser storage."
+    },
+    {
+      "start": 38,
+      "end": 42,
+      "kind": "function",
+      "name": "load",
+      "id": "s4",
+      "hash": "f1b284f7bf250aaa",
+      "title": "Loading the list",
+      "what": "Reads all items from browser storage, or returns an empty list if the data is missing or broken.",
+      "why": "Likely reason: an empty list keeps the app running when storage is unreadable.",
+      "watch_out": "Broken data becomes an empty list without any message, and the next save then overwrites the broken data."
+    },
+    {
+      "start": 43,
+      "end": 48,
+      "kind": "function",
+      "name": "save",
+      "id": "s5",
+      "hash": "51d837ce4773d1c6",
+      "title": "Saving the list",
+      "what": "Writes the full list to browser storage and sends a change event so open screens refresh.",
+      "why": "The change event lets screens update without a page reload.",
+      "watch_out": "Every save rewrites the whole list, so two open tabs can overwrite each other's changes."
+    },
+    {
+      "start": 49,
+      "end": 54,
+      "kind": "function",
+      "name": "getNotifications",
+      "id": "s6",
+      "hash": "e27539fcd82adb3f",
+      "title": "Getting visible notifications",
+      "what": "Returns all items that are not dismissed, sorted so the earliest due or created item comes first.",
+      "why": "Shows the most urgent items at the top of the list.",
+      "watch_out": "Sorting compares date text, which only works because the dates use a sortable format."
+    },
+    {
+      "start": 55,
+      "end": 62,
+      "kind": "function",
+      "name": "addNotification",
+      "id": "s7",
+      "hash": "ce4ca5ef25452c3f",
+      "title": "Adding a notification",
+      "what": "Adds a new item with a random short id and the current time, then returns that id.",
+      "why": "The caller keeps the id so it can dismiss or update the item later.",
+      "watch_out": "Random ids can collide in rare cases, and a collision would make later updates hit the wrong item."
+    },
+    {
+      "start": 63,
+      "end": 67,
+      "kind": "function",
+      "name": "dismissNotification",
+      "id": "s8",
+      "hash": "111b0611d57a9c4e",
+      "title": "Dismissing a notification",
+      "what": "Hides one item from the list without deleting it.",
+      "why": "Keeps a record of the item while removing it from view.",
+      "watch_out": "Dismissed items are never deleted, so storage keeps growing over time."
+    },
+    {
+      "start": 68,
+      "end": 72,
+      "kind": "function",
+      "name": "updateNotification",
+      "id": "s9",
+      "hash": "3358a44361dd2142",
+      "title": "Updating a notification",
+      "what": "Changes some fields of one item, such as its sent status.",
+      "why": "Lets other code change one item without rebuilding it by hand.",
+      "watch_out": "Nothing stops a change from overwriting the id, which would break later lookups."
+    },
+    {
+      "start": 73,
+      "end": 76,
+      "kind": "function",
+      "name": "markSent",
+      "id": "s10",
+      "hash": "09f504a3ac5fdfcc",
+      "title": "Marking an item sent",
+      "what": "Marks one item as sent and records the time.",
+      "why": "Lets reminders count as done after the user has sent the message.",
+      "watch_out": "This only records the status; it does not send anything, and sending happens elsewhere."
+    },
+    {
+      "start": 77,
+      "end": 90,
+      "kind": "function",
+      "name": "scheduleFollowUp",
+      "id": "s11",
+      "hash": "03676499a9448714",
+      "title": "Scheduling a follow-up reminder",
+      "what": "Creates a reminder to follow up on a job application after a number of days, seven by default.",
+      "why": "Keeps follow-up nudges on the list so the user does not have to remember them.",
+      "watch_out": "The due date is calculated from the device clock, so a wrong device time gives wrong reminder times."
+    },
+    {
+      "start": 91,
+      "end": 111,
+      "kind": "function",
+      "name": "queueDM",
+      "id": "s12",
+      "hash": "93e8d80fffdb31f9",
+      "title": "Queueing a LinkedIn message",
+      "what": "Adds a pending item to send a LinkedIn direct message, with the drafted text attached, waiting for review.",
+      "why": "Stores the draft for review instead of sending it straight away.",
+      "watch_out": "The title changes depending on whether a contact is given, so a missing contact produces a generic title."
+    },
+    {
+      "start": 112,
+      "end": 132,
+      "kind": "function",
+      "name": "queueReferralDM",
+      "id": "s13",
+      "hash": "5c63606a39db2f77",
+      "title": "Queueing a referral request",
+      "what": "Adds a pending referral request to a named contact for a specific role.",
+      "why": "Uses the same review-first flow, tailored to asking a contact for a referral.",
+      "watch_out": "A contact is required here, unlike the direct message version, so callers without a contact cannot use it."
+    },
+    {
+      "start": 133,
+      "end": 154,
+      "kind": "function",
+      "name": "queueOutreach",
+      "id": "s14",
+      "hash": "bc445686b614e343",
+      "title": "Queueing a hiring manager email",
+      "what": "Adds a pending outreach email to a hiring manager, optionally linked to a named contact.",
+      "why": "Stored for review before any email goes out.",
+      "watch_out": "The contact email is optional, so the code that sends it must handle a missing address."
+    },
+    {
+      "start": 155,
+      "end": 176,
+      "kind": "function",
+      "name": "queueCEOEmail",
+      "id": "s15",
+      "hash": "907c270159c928b1",
+      "title": "Queueing a CEO cold email",
+      "what": "Adds a pending cold email to a company's chief executive, with the draft attached.",
+      "why": "Uses the same review-first flow, with its own type so the screen can label it differently.",
+      "watch_out": "The function trusts the caller that the contact is the CEO; it does not verify the role."
+    },
+    {
+      "start": 177,
+      "end": 180,
+      "kind": "function",
+      "name": "getUnreadCount",
+      "id": "s16",
+      "hash": "da1bc41ab06a1ad4",
+      "title": "Counting items needing attention",
+      "what": "Counts items that are not dismissed, not sent, and already due.",
+      "why": "Likely reason: drives a count badge on the screen.",
+      "watch_out": "It compares date text with the current time, relying on the same device clock and sortable date format."
+    }
+  ],
+  "explained_at": "2026-11-11T22:16:46+00:00",
+  "explained_by": "haiku",
+  "summary": "A browser-side queue that holds drafted messages and reminders until the user acts on them.",
+  "purpose": "Keeps pending outreach and follow-up reminders in one list, and provides a count for the screen.",
+  "why": "Stored in browser local storage, so reminders survive page reloads without a server. The file header states that high-stakes actions wait for explicit user confirmation, but that confirmation is not enforced in this file.",
+  "how": "1) Queue functions create an item with a random id and a creation time. 2) All items live in one saved list under a single storage key. 3) Reads hide dismissed items and sort by due time or creation time. 4) Every change rewrites the whole list and sends a change event. 5) The count function returns items that are due and not yet sent.",
+  "inputs": "Application identifiers, company and role names, drafted text, optional contact details, and a number of days for follow-ups.",
+  "outputs": "A saved list in browser storage, a sorted list for the screen, a count, and change events.",
+  "risks": "Corrupt saved data is treated as empty, and the next save overwrites it, so old items are lost silently. Two open tabs can overwrite each other's changes. Drafts and contact details are stored without encryption. Random ids are not guaranteed to be unique.",
+  "debug": "If reminders disappear, check the browser storage entry for this list and whether it holds valid list data. If the badge count is wrong, compare due times with the device clock. If the list does not refresh after a change, check that the screen listens for the change event.",
+  "summary_hash": "sha256:9eaae9490554f8c639838a3b4214b235d9e05193fbb453fbed83be7baa83e6ea"
+}

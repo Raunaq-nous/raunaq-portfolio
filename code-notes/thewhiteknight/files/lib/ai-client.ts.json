@@ -1,0 +1,259 @@
+{
+  "schema_version": 1,
+  "path": "lib/ai-client.ts",
+  "language": "TypeScript",
+  "lines": 222,
+  "hash": "sha256:041e024dea9a968209f0a71469211bd1f21e2b8d1ddbde76bde9a9c3fab7b575",
+  "area": "lib",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Retries, error messages and fallbacks are handled, which is good.",
+      "Network failures with no response are not retried.",
+      "Hard-coded default model names may be out of date.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "AI provider",
+      "meaning": "a company that runs AI models the app can ask, such as Together AI, Anthropic or OpenAI"
+    },
+    {
+      "term": "token",
+      "meaning": "a small chunk of text that AI models read and write; limits and costs are counted in tokens"
+    },
+    {
+      "term": "reasoning model",
+      "meaning": "an AI model that thinks through hidden notes before answering, which uses extra tokens"
+    },
+    {
+      "term": "JSON mode",
+      "meaning": "a setting asking the AI to reply in strict JSON, a structured data format"
+    },
+    {
+      "term": "environment variable",
+      "meaning": "a named setting stored on the server, such as an API key, kept out of the code"
+    },
+    {
+      "term": "rate limit",
+      "meaning": "a cap a provider puts on how many requests can be made in a period"
+    }
+  ],
+  "depends_on": [
+    "api.together.xyz",
+    "api.anthropic.com",
+    "api.openai.com",
+    "TOGETHER_API_KEY and AI_MODEL environment settings"
+  ],
+  "used_by": [
+    "Not visible in the packet; the routes such as skill-builder call chatJSON from here"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a511e82e7da6dfb2",
+      "title": "Provider addresses and default models",
+      "what": "Sets the web addresses for the three AI providers and the default text and vision models. Together AI is the default.",
+      "why": "Likely reason: Together AI is the default provider. The reason for this choice is not stated in the code.",
+      "watch_out": "Model names here are hard-coded defaults, so they need manual updates unless the environment setting overrides them."
+    },
+    {
+      "start": 11,
+      "end": 16,
+      "kind": "value",
+      "name": "FALLBACK_VISION_MODELS",
+      "id": "s2",
+      "hash": "140f33aaa22dd9d9",
+      "title": "Backup vision models",
+      "what": "A list of backup image models tried in order when the main vision model fails with a server error.",
+      "why": "Lets image reading still work when one model is having trouble.",
+      "watch_out": "Backups are used only for server errors, not for bad requests."
+    },
+    {
+      "start": 17,
+      "end": 19,
+      "kind": "value",
+      "name": "REASONING_MODEL_PATTERNS",
+      "id": "s3",
+      "hash": "92b978b4382f9754",
+      "title": "Reasoning model name patterns",
+      "what": "Name patterns that identify models which think before answering, so their hidden reasoning can be removed and given more room.",
+      "why": "These models need a bigger output budget and their reasoning text must be cleaned out.",
+      "watch_out": "A new reasoning model with an unfamiliar name will not match and will be treated as a normal model."
+    },
+    {
+      "start": 20,
+      "end": 23,
+      "kind": "function",
+      "name": "isReasoningModel",
+      "id": "s4",
+      "hash": "59abeeb4ac530dec",
+      "title": "Checking for reasoning models",
+      "what": "Tells whether a model name matches any reasoning pattern.",
+      "why": "Lets the rest of the code choose the right handling without repeating the checks.",
+      "watch_out": "It looks only at the model name text."
+    },
+    {
+      "start": 24,
+      "end": 34,
+      "kind": "function",
+      "name": "stripThinkBlocks",
+      "id": "s5",
+      "hash": "07103d3a1609ebaa",
+      "title": "Removing hidden reasoning text",
+      "what": "Removes hidden reasoning sections from a reply, including one that was cut off, leaving only the final answer.",
+      "why": "Users should see the answer, not the model's internal notes.",
+      "watch_out": "It runs only for models that match the patterns, so other models' think tags would appear in the output."
+    },
+    {
+      "start": 35,
+      "end": 39,
+      "kind": "type",
+      "name": "ChatMessage",
+      "id": "s6",
+      "hash": "a7a1f872ccb857c7",
+      "title": "Chat message shape",
+      "what": "The shape of one message sent to an AI: its role and its text or image parts.",
+      "why": "Gives all three providers a common format.",
+      "watch_out": "The Anthropic path takes only the first system message, so keep one system message per request."
+    },
+    {
+      "start": 40,
+      "end": 46,
+      "kind": "type",
+      "name": "ChatOptions",
+      "id": "s7",
+      "hash": "9d192b8708ca534e",
+      "title": "Chat call options",
+      "what": "The optional settings for one AI call: model name, creativity level, output length and whether to ask for JSON.",
+      "why": "Lets each caller adjust a request without changing the defaults.",
+      "watch_out": "JSON mode is applied for Together and OpenAI only, not Anthropic."
+    },
+    {
+      "start": 47,
+      "end": 52,
+      "kind": "type",
+      "name": "ProviderSettings",
+      "id": "s8",
+      "hash": "3d0d27b44bd2d789",
+      "title": "Provider choice and key",
+      "what": "Describes which provider the user chose, with an optional model and the user's own key.",
+      "why": "Lets users run the app on a provider and key they choose in settings.",
+      "watch_out": "The key comes with the request from the browser, so it must never be written to logs."
+    },
+    {
+      "start": 53,
+      "end": 58,
+      "kind": "function",
+      "name": "getTogetherKey",
+      "id": "s9",
+      "hash": "27f290e35e31eb24",
+      "title": "Reading the Together AI key",
+      "what": "Reads the Together AI key from the server environment and stops with a clear message if it is missing.",
+      "why": "Keeps the key out of the code and gives a helpful error.",
+      "watch_out": "If this key is missing, every default-provider call fails here."
+    },
+    {
+      "start": 59,
+      "end": 79,
+      "kind": "function",
+      "name": "fetchWithRetry",
+      "id": "s10",
+      "hash": "1d137afbabda3348",
+      "title": "Retrying busy requests",
+      "what": "Sends a web request and retries up to four times with growing waits when the provider is overloaded or rate-limits the app.",
+      "why": "Providers often return short-lived busy or rate-limit errors that succeed on a retry.",
+      "watch_out": "Requests that get no response at all are not retried."
+    },
+    {
+      "start": 80,
+      "end": 134,
+      "kind": "function",
+      "name": "chatTogether",
+      "id": "s11",
+      "hash": "f91787d7378939d7",
+      "title": "Talking to Together AI",
+      "what": "Sends a chat request to Together AI, gives reasoning models a bigger budget, and returns the final text. It gives a specific error if the model used its whole budget while thinking.",
+      "why": "Reasoning models spend many tokens thinking, so a small budget can produce an empty answer.",
+      "watch_out": "Reasoning models get at least 12,000 output tokens per call, which can raise cost."
+    },
+    {
+      "start": 135,
+      "end": 160,
+      "kind": "function",
+      "name": "chatAnthropic",
+      "id": "s12",
+      "hash": "8e29bc34ca3bfabb",
+      "title": "Talking to Anthropic",
+      "what": "Sends a chat request to Anthropic and returns the text of the reply, using the user's key.",
+      "why": "Lets users choose an Anthropic model with their own key.",
+      "watch_out": "JSON mode is ignored here, so structured replies depend on the model following the prompt."
+    },
+    {
+      "start": 161,
+      "end": 179,
+      "kind": "function",
+      "name": "chatOpenAI",
+      "id": "s13",
+      "hash": "2796ca5d1adee4e0",
+      "title": "Talking to OpenAI",
+      "what": "Sends a chat request to OpenAI and returns the text of the reply, with JSON mode when asked.",
+      "why": "Same purpose as the Anthropic path, for OpenAI users.",
+      "watch_out": "The default model name gpt-4o is hard-coded."
+    },
+    {
+      "start": 180,
+      "end": 189,
+      "kind": "function",
+      "name": "chat",
+      "id": "s14",
+      "hash": "13f9150142db10fa",
+      "title": "Main chat entry point",
+      "what": "The single function other code calls for a text reply. It picks Anthropic or OpenAI when the user chose one with a key, and otherwise uses Together AI.",
+      "why": "Callers do not need to know which provider is in use.",
+      "watch_out": "If the user chose Anthropic or OpenAI but no key is present, the call silently falls back to Together AI."
+    },
+    {
+      "start": 190,
+      "end": 198,
+      "kind": "function",
+      "name": "chatJSON",
+      "id": "s15",
+      "hash": "cca6f9be90d1a6e2",
+      "title": "Structured reply helper",
+      "what": "Asks for a reply and turns it into a data object, first removing any code-block markup.",
+      "why": "Most callers need structured data rather than plain text.",
+      "watch_out": "If the reply is not valid JSON, this throws an error."
+    },
+    {
+      "start": 199,
+      "end": 222,
+      "kind": "function",
+      "name": "visionExtract",
+      "id": "s16",
+      "hash": "b3677161cd26888c",
+      "title": "Reading text from an image",
+      "what": "Sends an image with an instruction to a vision model and returns the extracted text, trying backup models only after server errors.",
+      "why": "Used to read text from uploaded images or scans, such as a resume photo. Reason for the fallback design is visible in the error check.",
+      "watch_out": "Images are sent as encoded text inside the request, so large files cost more and may hit limits."
+    }
+  ],
+  "explained_at": "2026-11-11T22:14:27+00:00",
+  "explained_by": "haiku",
+  "summary": "The single server-side gateway for talking to AI providers (Together AI by default, plus Anthropic and OpenAI), including retries, reasoning-model handling and image reading.",
+  "purpose": "Lets every feature ask an AI for text, structured data or image readings without knowing which provider is in use.",
+  "why": "Likely reason: one shared client keeps retry, error and cleanup logic in one place. The code does not state this directly.",
+  "how": "1. Chooses a provider from the user's settings, defaulting to Together AI. 2. Sends the request, retrying on rate limits and server errors. 3. For reasoning models, enlarges the output budget and removes hidden reasoning text. 4. Returns plain text, or parses it as JSON for structured calls. 5. For images, tries a main vision model, then backup models if the server fails.",
+  "inputs": "Chat messages, options such as model, temperature, output length and JSON mode, optional provider settings with a user-supplied key, and for images the encoded picture and an instruction.",
+  "outputs": "Text replies, parsed JSON objects for structured calls, or errors that explain what went wrong.",
+  "risks": "User-supplied keys pass through the request, so they must never be logged. Reasoning models get at least 12,000 output tokens per call, which can be costly. Default model names are hard-coded and will go out of date. JSON mode is not applied for Anthropic.",
+  "debug": "Start with the error message. Empty content errors mention the finish reason and token budget. Rate limit or server errors show the provider's status and message. Check the AI_MODEL, AI_VISION_MODEL and TOGETHER_API_KEY environment settings first.",
+  "summary_hash": "sha256:041e024dea9a968209f0a71469211bd1f21e2b8d1ddbde76bde9a9c3fab7b575"
+}

@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "path": "lib/session.ts",
+  "language": "TypeScript",
+  "lines": 43,
+  "hash": "sha256:0e8ad57d1025d6768ea1f9b35b1b2124aaa153f322157050f2f3133ae8c74bd8",
+  "area": "lib",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "A missing secret shows a clear error when signing but looks like a logged-out user when verifying.",
+      "No logout or token cancellation is visible in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "JWT",
+      "meaning": "JSON Web Token, a signed text package that holds data such as an email and an expiry time"
+    },
+    {
+      "term": "signed token",
+      "meaning": "data plus a checksum made with a secret, so any change to the data is detected"
+    },
+    {
+      "term": "cookie",
+      "meaning": "a small piece of data the browser stores and sends with each request to the site"
+    },
+    {
+      "term": "environment variable",
+      "meaning": "a setting kept in the hosting configuration instead of in the code"
+    }
+  ],
+  "depends_on": [
+    "jose",
+    "next/headers",
+    "the SESSION_SECRET environment variable"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e03bf134845f2084",
+      "title": "Libraries, cookie name, and signing method",
+      "what": "Imports the token library and the cookie reader, and sets the cookie name and the signing method.",
+      "why": "Keeps the cookie name in one place so every helper uses the same one.",
+      "watch_out": "Changing the cookie name logs out every current user."
+    },
+    {
+      "start": 8,
+      "end": 13,
+      "kind": "function",
+      "name": "getSecret",
+      "id": "s2",
+      "hash": "9f22712336bb00e0",
+      "title": "Reading the signing secret",
+      "what": "Reads the secret from the environment and converts it into the form the signing library needs. Stops with an error if the secret is missing.",
+      "why": "Likely reason: signing with no secret would be insecure, so the code refuses to continue.",
+      "watch_out": "This error is raised when signing, but verification hides it, as the debug notes explain."
+    },
+    {
+      "start": 14,
+      "end": 18,
+      "kind": "type",
+      "name": "SessionPayload",
+      "id": "s3",
+      "hash": "ecc6b760dfe7d25b",
+      "title": "Data stored in each login token",
+      "what": "Defines the data kept in a login token: an email address and an admin flag.",
+      "why": "Keeps the token contents small and known to the rest of the app.",
+      "watch_out": "Adding a field here does not change tokens that were already issued."
+    },
+    {
+      "start": 19,
+      "end": 26,
+      "kind": "function",
+      "name": "signSession",
+      "id": "s4",
+      "hash": "cc9b6ebdd0d8517e",
+      "title": "Creating a login token",
+      "what": "Creates a signed login token that expires 30 days after it is created.",
+      "why": "Lets the user stay logged in for a month without signing in again. The reason for 30 days is not stated in the code.",
+      "watch_out": "Once issued, a token stays valid until it expires, even if the user's admin status is later removed."
+    },
+    {
+      "start": 27,
+      "end": 35,
+      "kind": "function",
+      "name": "verifySession",
+      "id": "s5",
+      "hash": "51a66fd584bf42e9",
+      "title": "Checking a login token",
+      "what": "Checks a token's signature and expiry. Returns the stored email and admin flag, or null if anything is wrong.",
+      "why": "Returning null instead of an error lets pages treat a bad token the same as no login.",
+      "watch_out": "Catching every error also hides a missing secret, so the owner may see logged-out users instead of a clear error."
+    },
+    {
+      "start": 36,
+      "end": 43,
+      "kind": "function",
+      "name": "getSession",
+      "id": "s6",
+      "hash": "54cc00df143e84a9",
+      "title": "Finding the current user from the cookie",
+      "what": "Reads the login cookie from the current request, checks it, and returns the logged-in user or null.",
+      "why": "Gives pages one simple call to find out who is logged in.",
+      "watch_out": "Only works where the server can read cookies, not in browser code."
+    }
+  ],
+  "explained_at": "2026-11-11T22:19:22+00:00",
+  "explained_by": "haiku",
+  "summary": "Creates and checks the signed login token stored in a browser cookie, so the app knows who is logged in and whether that person is an admin.",
+  "purpose": "Keeps login state on the server using a signed token instead of a session database.",
+  "why": "Likely reason: a signed token lets the server trust the login without storing each session. The full reason is not stated in the code.",
+  "how": "Reads the signing secret from the environment. When signing, it creates a token holding the email and admin flag that expires after 30 days. When verifying, it checks the signature and expiry. Reads the login cookie from the current request to find the token.",
+  "inputs": "The SESSION_SECRET environment variable, an email and admin flag when signing, and the cookie named careeros_session when reading.",
+  "outputs": "A signed token string when signing. The email and admin flag when verifying, or null when the token is missing or invalid.",
+  "risks": "Changing the secret logs out every user. A token stays valid for 30 days, and this file has no way to cancel one early. The admin flag is trusted from the token without a type check. All verification errors become null, so a broken secret looks like a logged-out user.",
+  "debug": "If users keep getting logged out, check that SESSION_SECRET is set in the hosting settings and has not changed. Check that the cookie named careeros_session is in the browser. When signing, a missing secret throws an error that names the variable. When verifying, the same problem only shows up as logged out.",
+  "summary_hash": "sha256:0e8ad57d1025d6768ea1f9b35b1b2124aaa153f322157050f2f3133ae8c74bd8"
+}

@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "path": "app/api/auth/register/route.ts",
+  "language": "TypeScript",
+  "lines": 50,
+  "hash": "sha256:e5e1a24a3785cc70ea25c3b320cdac784318de26e5efe5c78596c22f19bd7191",
+  "area": "app-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Invite use is not atomic, so a code can be used twice in a race.",
+      "Email casing is inconsistent.",
+      "No tests are visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Invite code",
+      "meaning": "A short code that a person must enter to create an account."
+    },
+    {
+      "term": "Race condition",
+      "meaning": "A bug where two actions happen at the same time and produce a conflicting result."
+    }
+  ],
+  "depends_on": [
+    "lib/kv",
+    "lib/session",
+    "bcryptjs"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "32a0d549aec386d1",
+      "title": "Imports for sign-up",
+      "what": "Brings in the request tools, password hashing, storage helpers for users and invites, and session helpers.",
+      "why": "Keeps the sign-up steps in one file.",
+      "watch_out": ""
+    },
+    {
+      "start": 8,
+      "end": 50,
+      "kind": "function",
+      "name": "POST",
+      "id": "s2",
+      "hash": "0aeb728b52f1e7ce",
+      "title": "Sign-up handler",
+      "what": "Checks the inputs and invite, creates the account, marks the invite used, and signs the new user in.",
+      "why": "Doing it in one step means the new user lands signed in.",
+      "watch_out": "The steps are not wrapped in one transaction, so a failure between creating the user and marking the invite used can leave the data inconsistent."
+    }
+  ],
+  "explained_at": "2026-11-11T22:11:34+00:00",
+  "explained_by": "haiku",
+  "summary": "Creates a new account using a valid, unused invite code, then logs the new user in.",
+  "purpose": "Sign-up for invited people.",
+  "why": "Likely reason: sign-up is limited to people who have an invite code.",
+  "how": "Checks that the email, password, and invite code are present and the password has at least 8 characters. Checks the invite exists and is unused, and that the email is not already taken. Hashes the password, creates the user, marks the invite used, then signs the user in with a cookie.",
+  "inputs": "Email, password, and invite code in the request body.",
+  "outputs": "A success message with the lowercase email and a login cookie. Errors: 400 for invalid input, 409 if the email already has an account, 500 for other failures.",
+  "risks": "The invite is marked used after the account is created, so two people using the same code at the same moment could both succeed. The account is saved with the email as typed, but the login token uses the lowercase version, so later lookups may not match.",
+  "debug": "Invalid invite code errors mean the code is wrong or missing: check getInviteCode in lib/kv. If sign-up says the account exists, check getUser. If the account exists but login fails, compare email capitalization.",
+  "summary_hash": "sha256:e5e1a24a3785cc70ea25c3b320cdac784318de26e5efe5c78596c22f19bd7191"
+}

@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "path": "app/api/scan/jobs/route.ts",
+  "language": "TypeScript",
+  "lines": 307,
+  "hash": "sha256:b4b62014415670a938932b0fc4d517f6a73ea39aada1b6cb9f44accb8f6f32cb",
+  "area": "app-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Two sections were not included in the packet, so the end of the flow is unreviewed.",
+      "No login check is visible.",
+      "No tests are visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ATS",
+      "meaning": "Applicant tracking system. Here it means the company job board software such as Greenhouse, Ashby, or Lever."
+    },
+    {
+      "term": "Tenant",
+      "meaning": "The name a company uses on a job board, which forms part of its web address."
+    },
+    {
+      "term": "Adzuna",
+      "meaning": "An external job search service covering many countries."
+    },
+    {
+      "term": "Relevance score",
+      "meaning": "A number from 0 to 100 showing how well a job matches the search."
+    }
+  ],
+  "depends_on": [
+    "lib/exa-client",
+    "lib/company-targets",
+    "lib/adzuna-client"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ee5ce1a6e2891b22",
+      "title": "Imports and runtime setting",
+      "what": "Brings in the Exa, company target, and Adzuna helpers, and sets the Node.js runtime.",
+      "why": "Needed to fetch jobs from each source.",
+      "watch_out": ""
+    },
+    {
+      "start": 8,
+      "end": 22,
+      "kind": "type",
+      "name": "JobScanRequest",
+      "id": "s2",
+      "hash": "bb6b03ccdef40b5f",
+      "title": "Scan request shape",
+      "what": "Describes the search request: query, regions, companies, keys, result count, and optional keywords to boost or exclude.",
+      "why": "Gives the search a fixed input format.",
+      "watch_out": "Keys come from the browser, so they travel with each request."
+    },
+    {
+      "start": 23,
+      "end": 33,
+      "kind": "type",
+      "name": "JobResult",
+      "id": "s3",
+      "hash": "2d1d9b06a8c98247",
+      "title": "Job result shape",
+      "what": "Describes one job: title, company, location, link, source, date, snippet, and relevance score.",
+      "why": "All sources are converted into this one format.",
+      "watch_out": "Source names must match the names used in the code."
+    },
+    {
+      "start": 34,
+      "end": 50,
+      "kind": "function",
+      "name": "fetchGreenhouse",
+      "id": "s4",
+      "hash": "3e912ae936cee673",
+      "title": "Greenhouse job fetch",
+      "what": "Gets open jobs from a company's Greenhouse board and converts them to results, returning nothing on failure.",
+      "why": "Greenhouse publishes public job lists without a key.",
+      "watch_out": "Failures are hidden, so a broken board looks like a company with no jobs."
+    },
+    {
+      "start": 51,
+      "end": 66,
+      "kind": "function",
+      "name": "fetchAshby",
+      "id": "s5",
+      "hash": "7d464919ff9ea9f3",
+      "title": "Ashby job fetch",
+      "what": "Gets open jobs from an Ashby board, building a link when none is given.",
+      "why": "Same purpose as the Greenhouse fetch, for a different job board.",
+      "watch_out": "Relies on Ashby's public address format, and a change there breaks it silently."
+    },
+    {
+      "start": 67,
+      "end": 82,
+      "kind": "function",
+      "name": "fetchLever",
+      "id": "s6",
+      "hash": "cb2236d0876920e4",
+      "title": "Lever job fetch",
+      "what": "Gets open jobs from a Lever board and converts their dates.",
+      "why": "Covers a third job board type.",
+      "watch_out": "Any failure returns nothing, with no message."
+    },
+    {
+      "start": 83,
+      "end": 91,
+      "kind": "value",
+      "name": "REGION_PORTAL_DOMAINS",
+      "id": "s7",
+      "hash": "64b0f9d8b4f60c50",
+      "title": "Job sites by region",
+      "what": "Lists the job websites to use for each region, such as Naukri for India.",
+      "why": "Helps point searches at local job boards.",
+      "watch_out": "Its use is not visible in the packet, so changing it may have no effect here."
+    },
+    {
+      "start": 92,
+      "end": 95,
+      "kind": "value",
+      "name": "STOPWORDS",
+      "id": "s8",
+      "hash": "75cf1eb8a9b40eb9",
+      "title": "Common words to ignore",
+      "what": "A short list of common small words, such as the and of, that are ignored when matching.",
+      "why": "Stops common words from inflating scores.",
+      "watch_out": "Adding a useful word here removes it from matching."
+    },
+    {
+      "start": 96,
+      "end": 99,
+      "kind": "function",
+      "name": "tokenize",
+      "id": "s9",
+      "hash": "c5c1223fe4e4d11c",
+      "title": "Split text into keywords",
+      "what": "Breaks text into lowercase keywords, dropping punctuation, one-letter words, and common words.",
+      "why": "Matching works on keywords.",
+      "watch_out": "One-letter words are dropped, so a one-letter name would be ignored."
+    },
+    {
+      "start": 100,
+      "end": 133,
+      "kind": "function",
+      "name": "scoreRelevance",
+      "id": "s10",
+      "hash": "7a9901a89f10a7d2",
+      "title": "Score a job for relevance",
+      "what": "Gives a job a score from 0 to 100 based on how well its title and snippet match the search words, and gives 0 when an excluded word appears.",
+      "why": "Puts the best matches first.",
+      "watch_out": "Exclusion uses plain substring matching, so an exclude word like Intern would also reject titles that contain it inside another word."
+    },
+    {
+      "start": 134,
+      "end": 173,
+      "kind": "function",
+      "name": "fetchAdzuna",
+      "id": "s11",
+      "hash": "02ec61f47b9d8902",
+      "title": "Adzuna job search",
+      "what": "Searches Adzuna in up to three countries for the chosen regions, collecting up to 20 recent jobs per country.",
+      "why": "Adzuna gives structured search across many countries.",
+      "watch_out": "Each search uses credits, so the three-country limit protects them. A failed country is skipped silently."
+    },
+    {
+      "start": 174,
+      "end": 221,
+      "kind": "function",
+      "name": "POST (part 1)",
+      "id": "s12",
+      "hash": "e3b60195d6db4a66",
+      "title": "Gather jobs from all sources",
+      "what": "Reads the request, splits the query into keywords, fetches enabled company boards in parallel, and adds Adzuna results when keys and regions are given.",
+      "why": "Collects everything before scoring.",
+      "watch_out": "A query with no useful keywords returns an error."
+    },
+    {
+      "start": 222,
+      "end": 274,
+      "kind": "method",
+      "name": "POST: if",
+      "id": "s13",
+      "hash": "52c122a6ed64a0fb",
+      "title": "Scoring and filtering step",
+      "what": "Not reviewed: the code for this section was not included in the packet.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 275,
+      "end": 307,
+      "kind": "function",
+      "name": "POST (part 3)",
+      "id": "s14",
+      "hash": "2a1b5bd30bdfd0d9",
+      "title": "Final results step",
+      "what": "Not reviewed: the code for this section was not included in the packet.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-11T22:11:34+00:00",
+  "explained_by": "haiku",
+  "summary": "Collects open job postings from company job boards and the Adzuna job search, then scores them against the query and sorts by relevance.",
+  "purpose": "Finds job listings that match the user's search.",
+  "why": "Likely reason: saves the user from searching many sites by hand.",
+  "how": "Reads the query, regions, companies, and keys. Fetches listings from each enabled company job board in parallel, and adds Adzuna results per region. Later steps, which are not all visible in the packet, score and return the results.",
+  "inputs": "Query text, regions, company targets, Exa and Adzuna keys, result count, optional role keywords, and optional exclude keywords.",
+  "outputs": "A list of job results, or an error with status 400 or 500. Source errors are collected and returned with the results.",
+  "risks": "The endpoint has no login check that is visible here. Each Adzuna search uses credits. A failure in one source does not stop the others.",
+  "debug": "No results: check the query words, the company board names, and the exclude words. Check the Adzuna keys and region settings.",
+  "summary_hash": "sha256:b4b62014415670a938932b0fc4d517f6a73ea39aada1b6cb9f44accb8f6f32cb"
+}
