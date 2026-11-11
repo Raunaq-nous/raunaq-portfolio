@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "path": "frontend/src/api/client.ts",
+  "language": "TypeScript",
+  "lines": 151,
+  "hash": "sha256:de50b5b6422e3626faf39f3f4522a1e823d3a0aff01d679d4ecd36d3d47470df",
+  "area": "frontend-src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Failed requests are logged and passed back to callers, which is good.",
+      "The convenience exports at the bottom may lose the connection's context, and this needs checking before callers rely on them.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "API",
+      "meaning": "A doorway other programs use to ask this app for data or actions."
+    },
+    {
+      "term": "Endpoint",
+      "meaning": "One specific address on the backend that performs one action, such as calculating costs."
+    },
+    {
+      "term": "axios",
+      "meaning": "A library that sends web requests from the browser to a server."
+    },
+    {
+      "term": "Interceptor",
+      "meaning": "A hook that runs on every response, here used to log errors."
+    },
+    {
+      "term": "Blob",
+      "meaning": "A chunk of raw file data held in the browser, such as a downloaded Excel file."
+    },
+    {
+      "term": "Timeout",
+      "meaning": "The longest time a request will wait for an answer before giving up."
+    },
+    {
+      "term": "FastAPI",
+      "meaning": "A Python framework for building the backend web interface."
+    }
+  ],
+  "depends_on": [
+    "axios",
+    "frontend/src/types",
+    "Python FastAPI backend, reached through the /api address"
+  ],
+  "used_by": [
+    "frontend/src/store/useModelStore (probable, not visible in this packet)",
+    "Any component that imports these method names directly (not visible in this packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "8e239206afe9de6f",
+      "title": "Imports and data shapes",
+      "what": "Brings in the network library and the shapes of the data the app sends and receives, such as inputs, outputs, sessions and model responses.",
+      "why": "The shapes let the editor check that data is used with the fields it is expected to have.",
+      "watch_out": "If a shared type is renamed in the types file, this file will stop compiling."
+    },
+    {
+      "start": 14,
+      "end": 57,
+      "kind": "class",
+      "name": "APIClient (part 1)",
+      "id": "s2",
+      "hash": "483a650eed1e7b6b",
+      "title": "Client setup and session basics",
+      "what": "Creates the client with the /api address, JSON headers, a 60-second limit, and an error logger. Also includes simple calls to check the server is alive, create a session, read one session, and list sessions.",
+      "why": "Likely reason: setting the address and limit once means every request shares the same behaviour.",
+      "watch_out": "The 60-second limit applies to every request, so a calculation that runs longer fails on this side even if the server keeps working."
+    },
+    {
+      "start": 58,
+      "end": 108,
+      "kind": "method",
+      "name": "APIClient: deleteSession",
+      "id": "s3",
+      "hash": "e62692aa6c7eea80",
+      "title": "Session removal and calculation calls",
+      "what": "Covers deleting a session, running a full calculation, running a quick calculation that returns cost numbers only, updating input values in a session, and fetching the breakdown for one component.",
+      "why": "The full calculation includes lecture and web research unless the caller turns them off, which is why it takes longer.",
+      "watch_out": "Full calculations with research are the requests most likely to hit the 60-second limit."
+    },
+    {
+      "start": 109,
+      "end": 133,
+      "kind": "method",
+      "name": "APIClient: getLectureStep",
+      "id": "s4",
+      "hash": "0ca75e27bf2351fd",
+      "title": "Lecture, export, and defaults calls",
+      "what": "Fetches one numbered lecture step for a session, exports the session to an Excel file, and fetches the default inputs.",
+      "why": "Likely reason: the lecture is split into numbered steps so each can be fetched on its own, and the Excel file is binary so it is handled as a Blob rather than as text.",
+      "watch_out": "The step number must match a step the backend actually created, or the request will fail."
+    },
+    {
+      "start": 134,
+      "end": 151,
+      "kind": "value",
+      "name": "apiClient",
+      "id": "s5",
+      "hash": "21a782b4fd10219a",
+      "title": "Shared client and named exports",
+      "what": "Creates one shared client object, then copies its methods out as named exports so other files can import them one by one.",
+      "why": "Likely reason: a convenience so callers can import a single function without the whole object.",
+      "watch_out": "Copied-out methods lose the link to the connection object they rely on, so calling them this way can fail; check before using these names."
+    }
+  ],
+  "explained_at": "2026-11-11T23:23:05+00:00",
+  "explained_by": "haiku",
+  "summary": "The single place where the web app talks to its Python backend over the network, with one method for each backend action.",
+  "purpose": "Hides web addresses and request details so the rest of the app can simply call a method such as calculate or getDefaults.",
+  "why": "Likely reason: keeping all network calls in one file makes them easy to find and change. The 60-second wait is set because calculations can be slow.",
+  "how": "Creates one connection object pointed at the /api address, with JSON headers and a 60-second time limit. Each method sends one request (read, create, update, delete, calculate, or export) and returns the data from the response. A shared logger prints any failed request to the console, then passes the error on to the caller.",
+  "inputs": "Method arguments such as the cost model inputs, session IDs, a component name, a lecture step number, and calculation options that switch lecture and web research on or off.",
+  "outputs": "Data returned by the backend: session information, cost results, lecture steps, validation details, default inputs, or an Excel file held in memory as a Blob.",
+  "risks": "Errors are passed back to the caller, so any caller that does not handle them will fail silently. The 60-second limit may cut off a slow calculation. The convenience exports at the bottom take methods off the connection object, which can break them if callers use them that way.",
+  "debug": "Open the browser developer console: each failed request is logged with the backend's error message. Confirm the backend is running and that the route names match the server. An error saying a property of undefined cannot be read points to the detached methods at the bottom of the file.",
+  "summary_hash": "sha256:de50b5b6422e3626faf39f3f4522a1e823d3a0aff01d679d4ecd36d3d47470df"
+}

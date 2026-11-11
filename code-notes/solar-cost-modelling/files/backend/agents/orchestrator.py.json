@@ -1,0 +1,217 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/orchestrator.py",
+  "language": "Python",
+  "lines": 416,
+  "hash": "sha256:d856c61b20847f5bd2307db5f7d35ee0013f2846704a6dff2b352ba12524c3e7",
+  "area": "backend-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors from the web research and lecture jobs are dropped without any report to the user.",
+      "The quick calculation helper returns nothing when inputs fail validation.",
+      "The input update helper's description says it recalculates, but it does not.",
+      "No tests for this file are visible.",
+      "Progress and status messages use print statements instead of a logging system."
+    ]
+  },
+  "terms": [
+    {
+      "term": "orchestrator",
+      "meaning": "a coordinator that tells other helpers what to do and in what order."
+    },
+    {
+      "term": "async",
+      "meaning": "a way of running code so that waiting on slow work, such as network calls, does not freeze the rest of the program."
+    },
+    {
+      "term": "parallel",
+      "meaning": "running several jobs at the same time instead of one after another."
+    },
+    {
+      "term": "thread pool",
+      "meaning": "a set of background workers that run ordinary, non-async code without blocking the main flow."
+    },
+    {
+      "term": "ModelResponse",
+      "meaning": "the wrapper object the app returns, holding the results along with checks, warnings, and notes."
+    },
+    {
+      "term": "validation",
+      "meaning": "checks that inputs make sense before any math runs."
+    },
+    {
+      "term": "ILR (inverter loading ratio)",
+      "meaning": "the ratio of solar panel capacity to inverter capacity; the code requires it to be above 1."
+    },
+    {
+      "term": "ESS (energy storage system)",
+      "meaning": "battery storage added alongside the solar panels."
+    },
+    {
+      "term": "kWdc",
+      "meaning": "kilowatts of direct-current solar panel capacity, the main size unit in this model."
+    },
+    {
+      "term": "singleton",
+      "meaning": "one shared object created once and reused by every caller."
+    }
+  ],
+  "depends_on": [
+    "schemas.inputs",
+    "schemas.outputs",
+    "core.calculator",
+    "agents.web_research_agent",
+    "agents.lecture_agent",
+    "export.excel_exporter",
+    "Python standard library: asyncio, typing, datetime, uuid"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 21,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3fd1322ebe630f43",
+      "title": "Imports and purpose note",
+      "what": "Describes the file as the coordinator for the solar cost calculation, research, lecture, and export parts. Loads the input and output shapes, the calculator, the web research and lecture helpers, and the Excel exporter so the rest of the file can use them.",
+      "why": "Likely reason: joins several helpers into one place so the app calls a single entry point. Reason for the import order is not stated in the code.",
+      "watch_out": "These imports load when the app starts, so a broken import in any one helper file stops the whole backend from starting."
+    },
+    {
+      "start": 22,
+      "end": 71,
+      "kind": "class",
+      "name": "MultiAgentOrchestrator (part 1)",
+      "id": "s2",
+      "hash": "2a192750f55b1764",
+      "title": "Orchestrator setup and session start",
+      "what": "Creates the orchestrator and its helpers: the web research helper only when that option is on, plus the lecture writer and the Excel exporter. The main processing method then gives the run a session ID if none was passed in and checks the inputs.",
+      "why": "Likely reason: setting up the helpers once lets every run reuse them. The constructor describes the web research switch as enabling parallel web research.",
+      "watch_out": "The web research helper exists only when the option is on, so code that uses it must check for an empty value first."
+    },
+    {
+      "start": 72,
+      "end": 126,
+      "kind": "class",
+      "name": "MultiAgentOrchestrator (part 2)",
+      "id": "s3",
+      "hash": "f3a3908b677791ee",
+      "title": "Stop on errors, then run jobs",
+      "what": "If any input check reports an error, the run stops and returns a failed response listing each problem. Otherwise it runs the cost calculation, starts web research and the lecture at the same time, and waits for both to finish.",
+      "why": "Likely reason: bad inputs would produce meaningless numbers, so the run stops early. Reason the two side jobs run together is likely to save time; the code does not say so directly.",
+      "watch_out": "A failed response carries no cost data, so any screen that expects numbers must handle the failure case."
+    },
+    {
+      "start": 127,
+      "end": 175,
+      "kind": "class",
+      "name": "MultiAgentOrchestrator (part 3)",
+      "id": "s4",
+      "hash": "7cbf7c8bb3eb0e1c",
+      "title": "Collect results and sanity warnings",
+      "what": "Keeps the results of the side jobs that succeeded and silently drops any that failed. It then warns if the total PV cost per kWdc is outside 500 to 3000, or if the storage total is not higher than the PV-only total, and returns the full response with session details.",
+      "why": "Likely reason: a failed side job should not block the main cost result. Reason failures are hidden rather than reported is not stated in the code.",
+      "watch_out": "A failed web research or lecture job looks the same as one that was turned off, so the user is not told that research is missing."
+    },
+    {
+      "start": 176,
+      "end": 233,
+      "kind": "method",
+      "name": "MultiAgentOrchestrator: _generate_lecture_async",
+      "id": "s5",
+      "hash": "c5e8370635205499",
+      "title": "Running the lecture writer off the main path",
+      "what": "Runs the lecture generation, which is a normal non-async function, in a background thread so it does not hold up the rest of the run. The result is the step-by-step lecture sequence the app shows to the user.",
+      "why": "Likely reason: the lecture writer cannot be awaited directly, so a background thread is used. The code comment states this.",
+      "watch_out": "The main method passes no web research results to the lecture, even though this helper accepts them."
+    },
+    {
+      "start": 234,
+      "end": 286,
+      "kind": "class",
+      "name": "MultiAgentOrchestrator (part 5)",
+      "id": "s6",
+      "hash": "9ca6076c2e6db8ea",
+      "title": "Extra input checks and Excel export",
+      "what": "Adds a check that storage costs are provided when storage is on, and warnings (not blocking errors) when module efficiency or the ILR is outside typical ranges. The export helper passes the inputs, outputs, and web research to the Excel exporter and returns the file bytes.",
+      "why": "Likely reason: warnings let the user continue with unusual but possible values, while errors block clearly broken ones. Reason beyond that is not stated in the code.",
+      "watch_out": "The check list is incomplete by its own comment, so many bad values pass through without any message."
+    },
+    {
+      "start": 287,
+      "end": 323,
+      "kind": "method",
+      "name": "MultiAgentOrchestrator: update_inputs",
+      "id": "s7",
+      "hash": "c54db8cba0b30abb",
+      "title": "Applying changes to saved inputs",
+      "what": "Takes a stored set of inputs and a set of changed values, applies each change (including dotted names that point inside a group), and returns a new inputs object. It does not run the cost calculation.",
+      "why": "Likely reason: lets the app change one or two values without rebuilding the whole input set. Reason for the copy approach is not stated in the code.",
+      "watch_out": "The docstring says it recalculates, but it only returns updated inputs, so the caller must run the calculation again."
+    },
+    {
+      "start": 324,
+      "end": 371,
+      "kind": "method",
+      "name": "MultiAgentOrchestrator: get_component_breakdown",
+      "id": "s8",
+      "hash": "38270fce8b3840c0",
+      "title": "Splitting one cost into parts",
+      "what": "For a named component, such as modules or O&M, it splits the stored minimum, maximum, and median costs by each part's fixed percentage and returns the parts with their values. An unknown name, or a component with no parts, returns an empty result.",
+      "why": "Likely reason: lets the app show a breakdown of one component. Reason for the second set of values, called mmp, is not stated in the code.",
+      "watch_out": "An unknown component name returns an empty result with no error, so a typo looks like a component with no detail."
+    },
+    {
+      "start": 372,
+      "end": 386,
+      "kind": "function",
+      "name": "calculate_cost_model",
+      "id": "s9",
+      "hash": "312ff4a17bd87bd1",
+      "title": "Full run shortcut",
+      "what": "A short helper that runs the full cost model, including web research and the lecture, using the shared orchestrator, and returns the full response. Callers can pass an optional session ID to label the run.",
+      "why": "Likely reason: lets other parts of the app make one call without creating an orchestrator themselves.",
+      "watch_out": "It uses the one shared orchestrator created when the file loads, so every caller shares the same helper objects."
+    },
+    {
+      "start": 387,
+      "end": 404,
+      "kind": "function",
+      "name": "calculate_quick",
+      "id": "s10",
+      "hash": "9251bbc61f5c4af7",
+      "title": "Fast run with outputs only",
+      "what": "Runs the cost model with lecture and web research off and returns only response.data, the cost outputs.",
+      "why": "Skipping the slower parts makes the run faster.",
+      "watch_out": "It returns response.data directly, so if that is empty on failure the caller gets that value; the function does not check for errors itself."
+    },
+    {
+      "start": 405,
+      "end": 416,
+      "kind": "function",
+      "name": "export_model_to_excel",
+      "id": "s11",
+      "hash": "71556f2b5559c284",
+      "title": "Excel export helper",
+      "what": "Creates an Excel file from the inputs and outputs using the shared orchestrator and returns the file as raw bytes. Web research results are not included in this export.",
+      "why": "Likely reason: gives the rest of the app one function that produces a downloadable spreadsheet. Reason not stated in the code.",
+      "watch_out": "The function returns raw bytes, so the caller must save or send them with the correct file type; the exporter's format is not visible here."
+    }
+  ],
+  "explained_at": "2026-11-11T23:34:42+00:00",
+  "explained_by": "haiku",
+  "summary": "The coordinator that checks inputs, runs the solar cost calculation, runs optional web research and lecture generation at the same time, and returns one combined response or an Excel export.",
+  "purpose": "Acts as the single entry point for the cost model. It checks inputs, runs the calculator, starts the side jobs, collects their results, adds warnings, and returns the response. It also has helpers to update inputs, break a component into parts, and export to Excel.",
+  "why": "Likely reason: keeps the calculator and helper agents in one place so the rest of the app makes one call. Reason for the shared module-level object is not stated in the code; it likely avoids rebuilding the helpers on every request.",
+  "how": "1. Give the run a session ID if none is passed in. 2. Check the inputs, and stop with a failed response if any error is found. 3. Run the calculator. 4. Start web research and lecture generation at the same time, if enabled. 5. Wait for both, and keep whichever succeeded. 6. Add warnings for unusual totals and for storage settings that do not add cost. 7. Return the response with its metadata.",
+  "inputs": "A cost model inputs object (system size, module, inverter, storage, labor, and other settings), an optional session ID, and switches for lecture and web research. The export helper takes the inputs and the calculated outputs.",
+  "outputs": "A ModelResponse holding the success flag, the outputs, validation results, web research results, the lecture sequence, warnings, and metadata. The helper functions return just the outputs, an Excel file as bytes, or a component breakdown.",
+  "risks": "Failed side jobs disappear silently, so a missing lecture or research section looks like a turned-off feature. The quick calculation returns nothing when inputs are invalid. The input update helper does not recalculate despite its description. The shared orchestrator is created when the file loads, so a startup failure in its helpers stops the app. The lecture never receives web research results.",
+  "debug": "For a failed run, read the validation results in the response first. For missing research or lecture, check the metadata switches and then test the agents directly, since their failures are hidden here. For odd totals, compare the minimum PV total with the 500 to 3000 range in the warnings. For an empty breakdown, check the component name against the map in the breakdown helper.",
+  "summary_hash": "sha256:d856c61b20847f5bd2307db5f7d35ee0013f2846704a6dff2b352ba12524c3e7"
+}

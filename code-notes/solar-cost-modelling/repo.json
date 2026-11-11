@@ -1,0 +1,296 @@
+{
+  "schema_version": 1,
+  "name": "Solar-Cost-Modelling",
+  "commit": "1e90b43",
+  "synced_at": "2026-11-11T23:40:26+00:00",
+  "summary": "Solar-Cost-Modelling is a tool for estimating the cost of building a solar power project, with an optional battery storage part. A user enters system sizes, prices, rates and financial assumptions in a web page. A Python backend turns those into low, high and median cost figures per kilowatt for each part of the project. It can also add market research comparisons and a step-by-step lesson that explains the math. Results can be shown as charts, tables and a system diagram, and exported to an Excel file.",
+  "who_its_for": "People who want to understand or estimate solar project costs, such as students, analysts or planners. It also suits anyone learning how those costs are built up, thanks to the lesson feature.",
+  "how_it_runs": "The frontend is a web app built with React and Vite, and it talks to a Python backend over /api requests. The backend runs a coordinator that checks inputs, does the cost calculation, and runs research and lesson creation at the same time. Session data is held in memory, so it is likely lost when the server restarts.",
+  "start_here": [
+    "backend/main.py",
+    "backend/schemas/inputs.py",
+    "backend/core/calculator.py",
+    "backend/agents/orchestrator.py",
+    "frontend/src/store/useModelStore.ts",
+    "frontend/src/components/layout/Dashboard.tsx",
+    "frontend/src/components/panels/ResultsPanel.tsx"
+  ],
+  "areas": [
+    {
+      "id": "frontend-src",
+      "name": "frontend/src",
+      "match": [
+        "frontend/src/*"
+      ],
+      "summary": "The screens and logic of the web app: input form, results, charts, diagram, market research view, lecture viewer, shared state, and the code that calls the backend.",
+      "why": "This is everything the user sees and clicks.",
+      "debug_tips": "If a screen looks wrong or shows stale numbers, check the shared store first, then the panel for that tab. If data fails to load, check the api client file."
+    },
+    {
+      "id": "frontend",
+      "name": "frontend",
+      "match": [
+        "frontend/*"
+      ],
+      "summary": "Setup files for the web app: the HTML page, package list, build and style settings, and hosting rules that forward /api requests to the hosted backend.",
+      "why": "They control how the app is built, run locally and deployed.",
+      "debug_tips": "If the app will not start or API calls go to the wrong place, check the Vite config for local use and vercel.json for the hosted site."
+    },
+    {
+      "id": "backend-agents",
+      "name": "backend/agents",
+      "match": [
+        "backend/agents/*"
+      ],
+      "summary": "The coordinator and helpers that run the calculation, produce the lesson, and do market research. The research parts appear to use simulated or fixed data in this version, not real web results.",
+      "why": "They combine the calculation with the extras into one answer.",
+      "debug_tips": "If research numbers look suspiciously the same every time, that is likely the fixed data. If a whole run fails, start in the orchestrator."
+    },
+    {
+      "id": "backend",
+      "name": "backend",
+      "match": [
+        "backend/*"
+      ],
+      "summary": "The server entry point and settings. It sets up the API, browser access rules, one shared coordinator, and in-memory session storage, and lists the needed Python packages.",
+      "why": "Nothing works until this server starts and its settings are filled in.",
+      "debug_tips": "If the server will not start, check the installed packages against requirements.txt and that a real settings file was copied from .env.example. If the browser blocks requests, check the access rules in main.py."
+    },
+    {
+      "id": "backend-schemas",
+      "name": "backend/schemas",
+      "match": [
+        "backend/schemas/*"
+      ],
+      "summary": "Definitions of what goes in and comes out: each input with its default, allowed range and checks, and the shape of every result.",
+      "why": "They guard against bad inputs and keep the backend and frontend agreeing on data shape.",
+      "debug_tips": "If a request is rejected, compare the value to the allowed range in the inputs file. If the screen misses a field, compare outputs here with the frontend types file."
+    },
+    {
+      "id": "backend-core",
+      "name": "backend/core",
+      "match": [
+        "backend/core/*"
+      ],
+      "summary": "The calculator that turns inputs into dollar-per-kilowatt costs for each part of the project, each with low, high and median values.",
+      "why": "This is the heart of the tool and the source of the numbers.",
+      "debug_tips": "If a cost looks wrong, test the calculator alone with simple inputs and compare each part by hand. Also check the defaults in the inputs file."
+    },
+    {
+      "id": "backend-export",
+      "name": "backend/export",
+      "match": [
+        "backend/export/*"
+      ],
+      "summary": "Builds a multi-sheet Excel workbook from the inputs, cost results and any research, and sends it back as a file.",
+      "why": "It lets users save and share their results.",
+      "debug_tips": "If the download is empty or missing sheets, check that results existed before exporting. Open the file to see which sheet is missing data."
+    }
+  ],
+  "decisions": [],
+  "readiness": {
+    "overall": "not-ready",
+    "summary": "The top fixes are to add automated tests, add sign-in and permissions with database migrations and backups, and write a repeatable deploy and rollback process with CI. After that, run the dependency audit and a history secret scan.",
+    "checked_at": "2026-11-11T23:40:41+00:00",
+    "checks": [
+      {
+        "id": "starts",
+        "question": "Does the app build and start with one documented command?",
+        "status": "partial",
+        "evidence": "`README.md` documents backend setup (venv, pip install -r `backend/requirements.txt`, uvicorn main:app --reload) and frontend setup (npm install, npm run d...), but it is two separate sequences, not one command, and the frontend step is cut off in the excerpt. No package.json was detected by the scan, which is odd given `frontend/package-lock.json` exists. Build was not run.",
+        "next_step": "Add a single entry point (Makefile or docker-compose) that installs and starts both, and confirm the frontend script name in the README."
+      },
+      {
+        "id": "tests",
+        "question": "Are there automated tests, and do they pass?",
+        "status": "fail",
+        "evidence": "0 test files found in the tracked files. Nothing to run. Not checked: whether tests pass, since no tests exist and none were executed.",
+        "next_step": "Add a few tests for the cost calculation core and the main API routes, and run them in CI."
+      },
+      {
+        "id": "errors",
+        "question": "When something goes wrong, does the app show a clear message instead of crashing or failing silently?",
+        "status": "unknown",
+        "evidence": "Not checked: error handling needs code reading or a run. The scan found 0 swallowed errors, which is a good sign, but it does not show that users see clear messages.",
+        "next_step": "Add a FastAPI exception handler returning clear JSON errors and show them in the frontend."
+      },
+      {
+        "id": "inputs",
+        "question": "Does it check what people type or upload before using it?",
+        "status": "partial",
+        "evidence": "Pydantic is listed in the README and the scan found 26 input validation matches across 8 files, so backend validation exists. Upload handling and frontend checks were not confirmed.",
+        "next_step": "Confirm every API route uses Pydantic schemas with bounds, and check size and type limits on any upload."
+      },
+      {
+        "id": "secrets",
+        "question": "Are passwords and API keys kept out of the code and out of git history?",
+        "status": "partial",
+        "evidence": "Only `backend/.env.example` is tracked and .gitignore mentions .env. No secret-looking strings were found in HEAD. Git history was not scanned.",
+        "next_step": "Run a history scan (gitleaks or trufflehog) and rotate any key ever committed."
+      },
+      {
+        "id": "access",
+        "question": "Can only the right people see and change things (sign-in and permissions)?",
+        "status": "fail",
+        "evidence": "Only 1 auth/session/permission match in 1 file, which suggests no real sign-in or permission system. The README mentions session persistence but no users or roles.",
+        "next_step": "Add sign-in and per-user ownership checks on sessions and exports before exposing it publicly, or state it is a single-user local tool."
+      },
+      {
+        "id": "data",
+        "question": "Is important data backed up, and are database changes made through migrations?",
+        "status": "fail",
+        "evidence": "No migrations folder found, though SQLAlchemy is used for session persistence. No backup process is documented.",
+        "next_step": "Add Alembic migrations and document how the database is backed up."
+      },
+      {
+        "id": "dependencies",
+        "question": "Are third-party packages reasonably up to date and free of known security problems?",
+        "status": "unknown",
+        "evidence": "Not checked: the dependency audit was not run. `backend/requirements.txt` and `frontend/package-lock.json` exist, but the Python file is not a lockfile with pinned hashes, and package ages were not assessed.",
+        "next_step": "Run pip-audit and npm audit, and pin Python versions."
+      },
+      {
+        "id": "logs",
+        "question": "If it breaks while people use it, will logs or alerts show what happened?",
+        "status": "partial",
+        "evidence": "Logging appears in 4 matches across 3 files, which is minimal. No alerting or error tracking was found.",
+        "next_step": "Set up structured logging in the API with request IDs and add an error tracker such as Sentry."
+      },
+      {
+        "id": "performance",
+        "question": "Does it stay fast with realistic amounts of data and users?",
+        "status": "unknown",
+        "evidence": "Not checked: performance needs a run or load test. The README lists Redis caching, but nothing shows behavior under realistic data or users. LLM agent calls may be slow.",
+        "next_step": "Time a typical calculation end to end and add timeouts and caching around the agent calls."
+      },
+      {
+        "id": "deploy",
+        "question": "Is there a written, repeatable way to deploy it and to roll back a bad release?",
+        "status": "fail",
+        "evidence": "Only `frontend/vercel.json` was found. There is no backend deployment config, CI pipeline, or rollback instructions.",
+        "next_step": "Write a short DEPLOY.md covering backend hosting, environment variables, and rollback, and add a CI workflow."
+      },
+      {
+        "id": "docs",
+        "question": "Could someone new run it and understand it from the docs alone?",
+        "status": "partial",
+        "evidence": "Good doc set: `README.md`, `FRONTEND_SETUP.md`, `USER_GUIDE.md`, `docs/ARCHITECTURE.md`, `docs/DATA_SCHEMA.md`, `docs/USAGE_GUIDE.md`. The README setup omits required env vars, Redis setup and the full frontend command in the excerpt.",
+        "next_step": "List required environment variables and Redis/database prerequisites in the README quick start."
+      }
+    ],
+    "method": "Static evidence only; tests, build and audit were not run in this pass."
+  },
+  "debug_playbook": [
+    {
+      "symptom": "The page loads but data never appears or shows an error",
+      "likely_area": "frontend-src",
+      "where_to_look": [
+        "frontend/src/api/client.ts",
+        "frontend/src/store/useModelStore.ts",
+        "frontend/vite.config.ts",
+        "frontend/vercel.json"
+      ],
+      "steps": [
+        "Check that the backend is running.",
+        "Check that /api requests are forwarded to the right address in the Vite config or vercel.json.",
+        "Look at the error held in the shared store and shown by the app shell."
+      ]
+    },
+    {
+      "symptom": "A cost number looks wrong",
+      "likely_area": "backend-core",
+      "where_to_look": [
+        "backend/core/calculator.py",
+        "backend/schemas/inputs.py"
+      ],
+      "steps": [
+        "Try simple inputs and compare to a hand calculation.",
+        "Check the default values and units in the inputs file.",
+        "Look at low, high and median values separately."
+      ]
+    },
+    {
+      "symptom": "The server rejects the inputs",
+      "likely_area": "backend-schemas",
+      "where_to_look": [
+        "backend/schemas/inputs.py",
+        "backend/agents/orchestrator.py"
+      ],
+      "steps": [
+        "Read the error message for the field name.",
+        "Compare the value with its allowed range and the rules about impossible combinations.",
+        "Reset to defaults in the form and change one value at a time."
+      ]
+    },
+    {
+      "symptom": "Market research or lecture looks fake, repeated or is missing",
+      "likely_area": "backend-agents",
+      "where_to_look": [
+        "backend/agents/solar_research_orchestrator.py",
+        "backend/agents/web_research_agent.py",
+        "backend/agents/lecture_agent.py"
+      ],
+      "steps": [
+        "Remember that search and AI steps appear to be simulated with fixed data in this version.",
+        "Check whether the research or lecture step was turned on for the run.",
+        "Check the orchestrator to see if one step failed while the others succeeded."
+      ]
+    },
+    {
+      "symptom": "The Excel export fails or is incomplete",
+      "likely_area": "backend-export",
+      "where_to_look": [
+        "backend/export/excel_exporter.py",
+        "backend/main.py"
+      ],
+      "steps": [
+        "Run the analysis before exporting so results exist.",
+        "Check the export route in main.py for errors.",
+        "Open the file and note which sheet lacks data."
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Frontend",
+      "meaning": "The part of the app that runs in the browser and that the user sees."
+    },
+    {
+      "term": "Backend",
+      "meaning": "The Python server that does the calculations and sends results to the frontend."
+    },
+    {
+      "term": "API",
+      "meaning": "The set of requests the frontend uses to ask the backend to do things."
+    },
+    {
+      "term": "Orchestrator",
+      "meaning": "The coordinator that runs the calculation, research and lecture steps and combines their output."
+    },
+    {
+      "term": "BOS",
+      "meaning": "Balance of system, meaning the equipment and work besides the panels and inverters, such as wiring. The summaries use the term without defining it, so this is a general meaning."
+    },
+    {
+      "term": "PV",
+      "meaning": "Photovoltaic, the solar panel technology that makes electricity from sunlight."
+    },
+    {
+      "term": "Session",
+      "meaning": "A temporary record of one user's work, kept in the server's memory."
+    },
+    {
+      "term": "Schema",
+      "meaning": "A written description of what data looks like and what values are allowed."
+    },
+    {
+      "term": "Vite",
+      "meaning": "A tool that runs and builds the frontend during development."
+    },
+    {
+      "term": "Tailwind",
+      "meaning": "A styling tool that generates the look of the app from named style classes."
+    }
+  ],
+  "skipped": []
+}

@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "path": "backend/core/calculator.py",
+  "language": "Python",
+  "lines": 424,
+  "hash": "sha256:e913d8db5e35103b64ab0b556855914d8990857a612aa8f4156b10f1fc7bdd3d",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The high market price formulas appear to use the lower cost, which looks like a mistake in every part.",
+      "Hardcoded multipliers are hidden from the user and cannot be adjusted.",
+      "No tests are visible, and the formulas cannot be compared with the design document from the packet.",
+      "Checks for zero divisors are not visible in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "MSP",
+      "meaning": "minimum sustainable price, the lowest price that covers all operations plus a minimum margin, as the Excel glossary defines it"
+    },
+    {
+      "term": "MMP",
+      "meaning": "market median price, the typical market price, as the Excel glossary defines it"
+    },
+    {
+      "term": "kWdc",
+      "meaning": "kilowatts of direct-current panel capacity, the usual size measure for solar panels"
+    },
+    {
+      "term": "ILR",
+      "meaning": "inverter loading ratio, the ratio of panel capacity to inverter capacity"
+    },
+    {
+      "term": "NPV",
+      "meaning": "net present value, the worth today of money paid in future years"
+    },
+    {
+      "term": "O&M",
+      "meaning": "operations and maintenance, the running costs after a system is built"
+    },
+    {
+      "term": "Capex",
+      "meaning": "capital expenditure, the up-front cost to build a project"
+    }
+  ],
+  "depends_on": [
+    "schemas.inputs",
+    "schemas.outputs",
+    "numpy",
+    "datetime (Python standard library)"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "dc24504afbd24b1d",
+      "title": "Imports and file purpose",
+      "what": "Describes the file as the cost engine that follows the project's formula document. It brings in the number library and the shapes for inputs and outputs.",
+      "why": "Likely reason: the formulas are kept together in one module. The file comment names DATA_SCHEMA.md as the source, which is not in the packet.",
+      "watch_out": "Changing a formula here without updating the document it names will leave the two out of step."
+    },
+    {
+      "start": 18,
+      "end": 71,
+      "kind": "class",
+      "name": "CostCalculator (part 1)",
+      "id": "s2",
+      "hash": "85c7684634f52d44",
+      "title": "Setup and the main calculation order",
+      "what": "Stores the user's inputs and a timestamp, using the current time as the session ID if none is given. Then runs each part of the cost model in a set order. Storage is calculated only when it is switched on.",
+      "why": "Likely reason: later parts need totals from earlier parts, so the order is fixed.",
+      "watch_out": "The order matters, because other costs and O&M depend on totals from earlier steps, so reordering the calls would change results."
+    },
+    {
+      "start": 72,
+      "end": 128,
+      "kind": "class",
+      "name": "CostCalculator (part 2)",
+      "id": "s3",
+      "hash": "29141a1ae7c35435",
+      "title": "Packaging output and module, inverter costs",
+      "what": "Packs all part results into one output object, then works out the module and inverter costs. Module cost comes from the cost per watt entered by the user and the module efficiency. Inverter cost is scaled by the inverter loading ratio.",
+      "why": "Likely reason: one packaged output keeps the app and the Excel file reading the same numbers.",
+      "watch_out": "The high market price here is built from the lower cost, not the upper cost, so the high figure is understated."
+    },
+    {
+      "start": 129,
+      "end": 181,
+      "kind": "method",
+      "name": "CostCalculator: calculate_ess",
+      "id": "s4",
+      "hash": "ab3e548626711027",
+      "title": "Battery storage cost formula",
+      "what": "Works out the battery storage cost from storage hours, system size, cost per kilowatt-hour and any fixed per-project cost, minus the storage incentive. It runs only when storage is switched on.",
+      "why": "Likely reason: storage is optional, so its math is kept separate. The incentive lowers the net cost.",
+      "watch_out": "The high market price here is also built from the lower cost, which repeats the same problem found in the other parts."
+    },
+    {
+      "start": 182,
+      "end": 222,
+      "kind": "method",
+      "name": "CostCalculator: calculate_ebos",
+      "id": "s5",
+      "hash": "caea5a4d3b4e2f96",
+      "title": "Electrical balance of system costs",
+      "what": "Adds up transformers, breakers, combiner boxes and wiring for the low and high cases, then applies shipping and tariff percentages. The result is turned into a cost per kilowatt.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Transformers and breakers scale with AC capacity while combiners and wiring scale with DC size, so changing the inverter loading ratio moves these groups by different amounts."
+    },
+    {
+      "start": 223,
+      "end": 262,
+      "kind": "method",
+      "name": "CostCalculator: calculate_fieldwork",
+      "id": "s6",
+      "hash": "c231004e2cc95596",
+      "title": "Field and office labor costs",
+      "what": "Works out crew cost from hours per kilowatt, the hourly rate and the labor burden, once for field work and once for office work. Each gives a low and high figure using fixed spread multipliers.",
+      "why": "Likely reason: field and office work vary in different ways, so each has its own spread.",
+      "watch_out": "The low and high spread multipliers are typed into the code, so a user cannot change how wide the range is."
+    },
+    {
+      "start": 263,
+      "end": 321,
+      "kind": "method",
+      "name": "CostCalculator: calculate_other",
+      "id": "s7",
+      "hash": "6cfca60d29fc7879",
+      "title": "Other costs and O&M inputs",
+      "what": "Adds overhead, contingency, management and profit rates on top of the subtotal to get other costs. It also begins the O&M figure by adding fixed annual costs and costs that scale with total capital cost.",
+      "why": "Likely reason: overhead is a share of everything built so far, and O&M depends on the capital total.",
+      "watch_out": "Insurance and property tax are shares of total capital cost, so any error in the capital totals flows straight into O&M."
+    },
+    {
+      "start": 322,
+      "end": 380,
+      "kind": "class",
+      "name": "CostCalculator (part 7)",
+      "id": "s8",
+      "hash": "bf6f4a2442ac17a6",
+      "title": "O&M present value and PV-only total",
+      "what": "Discounts 20 years of yearly O&M costs back to today's value and divides by system size to get a per-kilowatt figure. It then adds all parts into the PV-only total.",
+      "why": "Likely reason: money paid in later years is worth less today, so the code discounts it before adding it to the build cost.",
+      "watch_out": "The discount rate is a user input, so a very low rate makes O&M look much larger."
+    },
+    {
+      "start": 381,
+      "end": 424,
+      "kind": "class",
+      "name": "CostCalculator (part 8)",
+      "id": "s9",
+      "hash": "713935a282c45409",
+      "title": "Storage total and component breakdown",
+      "what": "Adds the storage cost to the PV-only total when storage is on. It also includes a helper that splits each part's cost across its listed sub-parts using their percentages.",
+      "why": "Likely reason: the app shows totals with and without storage, and breakdowns for detail views.",
+      "watch_out": "The breakdown helper requires a name on every sub-part with no fallback, so a sub-part missing that name will crash it."
+    }
+  ],
+  "explained_at": "2026-11-11T23:37:59+00:00",
+  "explained_by": "haiku",
+  "summary": "The cost engine. It turns the user's cost inputs into dollar-per-kilowatt estimates for each part of a solar project, each with a low, a high and a median value, then adds them into totals.",
+  "purpose": "Produces the cost numbers the app reports. The cost figures shown elsewhere in the project come from here, so this is the most important file to check.",
+  "why": "Likely reason: keeping all cost formulas in one place makes them easier to review. The file comment says the formulas follow a separate document, DATA_SCHEMA.md, which is not in the packet.",
+  "how": "The calculate_all method runs the parts in a fixed order: modules, inverters, SBOS, EBOS, field labor and office labor. It adds these into a subtotal, uses the subtotal to calculate other costs, then uses total capital cost to calculate O&M. Battery storage is calculated only if it is switched on. Each part gives a minimum sustainable price (MSP) and a market median price (MMP) range, and a median is derived from the low and high ends.",
+  "inputs": "A CostModelInputs object from the schemas package. It holds system size, inverter loading ratio (ILR), storage duration, module and inverter costs, battery costs, balance of system costs, labor hours and rates, overhead rates, O&M figures and a storage on/off switch. An optional session ID.",
+  "outputs": "A CostModelOutputs object with one entry per part, the PV-only total, the PV-plus-storage total when storage is on, a timestamp and the session ID.",
+  "risks": "Several multipliers, such as labor spread factors and market price markups, are typed into the code and cannot be changed by the user. In every part, the upper market price is calculated from the lower cost rather than the upper cost, so the high market price is too low. The unit of module efficiency is not stated here, and the formula divides by it. Divisions by system size, ILR or storage duration are not guarded in this file.",
+  "debug": "Start with calculate_all and find the part whose numbers look wrong. Compare the inputs with that part's method. Check the high market price values first, since they are built from the lower cost. If the code crashes, look for zero values in system size, ILR or storage duration. To check formulas against the design, open DATA_SCHEMA.md, which is not in the packet.",
+  "summary_hash": "sha256:e913d8db5e35103b64ab0b556855914d8990857a612aa8f4156b10f1fc7bdd3d"
+}

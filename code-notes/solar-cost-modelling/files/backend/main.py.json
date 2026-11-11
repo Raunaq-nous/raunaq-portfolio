@@ -1,0 +1,294 @@
+{
+  "schema_version": 1,
+  "path": "backend/main.py",
+  "language": "Python",
+  "lines": 432,
+  "hash": "sha256:1e049c6c55dc87a7caf593632961fdc2f95a4f22022a4b198d808d2e4cc8f35b",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Sessions are kept only in memory, a gap the file itself notes.",
+      "Allowed browser addresses are fixed to local development addresses.",
+      "Only 4 of 19 sections are visible in this packet, so error handling and access control could not be checked.",
+      "No tests are visible in the files provided."
+    ]
+  },
+  "terms": [
+    {
+      "term": "FastAPI",
+      "meaning": "a Python toolkit for building web servers that answer requests"
+    },
+    {
+      "term": "Endpoint",
+      "meaning": "a web address the server answers, such as one that creates a session"
+    },
+    {
+      "term": "CORS",
+      "meaning": "a browser rule that decides which web pages from other addresses may call this server"
+    },
+    {
+      "term": "Session",
+      "meaning": "a saved working copy of one user's inputs"
+    },
+    {
+      "term": "In-memory",
+      "meaning": "kept in the server's working memory, so it is lost when the server stops"
+    },
+    {
+      "term": "Request shape",
+      "meaning": "a class that checks incoming data has the expected fields and types, as Pydantic BaseModel does"
+    }
+  ],
+  "depends_on": [
+    "fastapi",
+    "pydantic",
+    "schemas.inputs",
+    "schemas.outputs",
+    "agents.orchestrator (MultiAgentOrchestrator)"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 42,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "913039e282b24ed7",
+      "title": "Server setup, access rules and shared objects",
+      "what": "Creates the web server and sets which browser addresses may call it. Creates one shared orchestrator for all requests and an empty dictionary for saved sessions. Every request this server handles uses these shared objects.",
+      "why": "Likely reason: building these once at startup avoids rebuilding them for every request. A comment says a real database should replace the session dictionary.",
+      "watch_out": "The shared orchestrator and session dictionary live in server memory, so restarting the server clears every saved session."
+    },
+    {
+      "start": 43,
+      "end": 47,
+      "kind": "class",
+      "name": "SessionCreate",
+      "id": "s2",
+      "hash": "c9b2e30b23bd854f",
+      "title": "Shape of a new-session request",
+      "what": "Describes the data sent when a session is created. Starting inputs are optional, so a session can be opened empty and filled in later.",
+      "why": "Likely reason: a user may open a session before entering any numbers. Reason not stated in the code.",
+      "watch_out": "Code that reads a session must handle the case where no inputs were given."
+    },
+    {
+      "start": 48,
+      "end": 52,
+      "kind": "class",
+      "name": "SessionUpdate",
+      "id": "s3",
+      "hash": "4c2d5e3b3d2d0c73",
+      "title": "Shape of a session update request",
+      "what": "Describes the data sent when a session's inputs are changed: a free-form dictionary of field names and new values. Any key is accepted at this level.",
+      "why": "Likely reason: lets the frontend send only the fields that changed.",
+      "watch_out": "Because the dictionary accepts any names and values, wrong field names or types can pass this step and must be checked where the update is applied."
+    },
+    {
+      "start": 53,
+      "end": 60,
+      "kind": "class",
+      "name": "CalculationRequest",
+      "id": "s4",
+      "hash": "5bee683ace68f641",
+      "title": "Shape of a calculation request",
+      "what": "Describes a request to run the cost model: the full set of inputs, an optional session ID, and two switches. The lecture switch and the web research switch both default to on. The lecture switch is not explained in the visible code.",
+      "why": "Likely reason: both extras are included unless the caller turns them off.",
+      "watch_out": "Web research is on by default, and the research code in this project uses fixed sample data, so a default calculation may show placeholder citations if it uses that agent."
+    },
+    {
+      "start": 61,
+      "end": 65,
+      "kind": "class",
+      "name": "ExportRequest",
+      "id": "s5",
+      "hash": "6cd2e1d4c0b91a27",
+      "title": "Unused export request shape",
+      "what": "Defines a small request shape that holds only a session code. The Excel export endpoint in this file does not use it. That endpoint takes the session code directly.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Nothing in this file reads this shape, so changing it has no effect here."
+    },
+    {
+      "start": 66,
+      "end": 76,
+      "kind": "function",
+      "name": "root",
+      "id": "s6",
+      "hash": "c0a96dbbecca52ab",
+      "title": "Welcome endpoint with app name",
+      "what": "Answers a request to the base web address with the app name, a version label, an online status, and the current time. Opening the server address in a browser shows this.",
+      "why": "Likely reason: a simple way to confirm the server is running and responding.",
+      "watch_out": "The version label is typed in by hand and must be changed manually when the app is updated."
+    },
+    {
+      "start": 77,
+      "end": 91,
+      "kind": "function",
+      "name": "health_check",
+      "id": "s7",
+      "hash": "632f3a79e52aad00",
+      "title": "Health report for agent services",
+      "what": "Returns a status report that lists the calculator, lecture, and Excel export as ready. It lists web research as ready only when the orchestrator has it switched on, and otherwise as disabled. Monitoring tools or a person can use it to see what is working.",
+      "why": "Likely reason: lets a tester or monitor see at a glance which parts of the system are available.",
+      "watch_out": "Three of the four services are reported as ready without any real check, so the report can say ready even when a service has failed."
+    },
+    {
+      "start": 92,
+      "end": 122,
+      "kind": "function",
+      "name": "create_session",
+      "id": "s8",
+      "hash": "b5be04c37e4b7402",
+      "title": "Creating a new working session",
+      "what": "Makes a new unique session code and stores a record in memory under that code, with optional starting inputs. It returns the code and the creation time. A user's work is kept under this code.",
+      "why": "Likely reason: lets separate calculations be kept apart and revisited later.",
+      "watch_out": "Sessions are held only in memory, so every stored session is lost when the server restarts."
+    },
+    {
+      "start": 123,
+      "end": 139,
+      "kind": "function",
+      "name": "get_session",
+      "id": "s9",
+      "hash": "75906f8585952d1e",
+      "title": "Fetching a saved session",
+      "what": "Returns everything stored for a session code, or a not-found error if the code is unknown.",
+      "why": "Likely reason: lets the front end reload saved inputs and results.",
+      "watch_out": "Returns the whole record, including saved results, so large sessions send a lot of data."
+    },
+    {
+      "start": 140,
+      "end": 183,
+      "kind": "function",
+      "name": "calculate",
+      "id": "s10",
+      "hash": "0283eff8e0658132",
+      "title": "Full cost calculation with saving",
+      "what": "Runs the full cost model on the given inputs and can also add research and a lecture. If a session code is given, the inputs, outputs, research, lecture, and warnings are saved to that session. Unexpected failures return an error that includes the failure message.",
+      "why": "Likely reason: one main path that does all the work and keeps results available for later steps.",
+      "watch_out": "Results are saved even when the calculation reports that it did not succeed, because this endpoint never checks that flag before saving."
+    },
+    {
+      "start": 184,
+      "end": 215,
+      "kind": "function",
+      "name": "calculate_quick",
+      "id": "s11",
+      "hash": "d84a6498993dccd9",
+      "title": "Quick calculation with no saving",
+      "what": "Runs only the cost numbers, without research or a lecture, and returns just the outputs. If the calculator reports errors, it returns a bad request error that lists those error messages. Nothing is saved.",
+      "why": "Likely reason: a fast option for callers who only need the numbers.",
+      "watch_out": "Only error messages are listed back to the caller, so warnings are hidden from it."
+    },
+    {
+      "start": 216,
+      "end": 269,
+      "kind": "function",
+      "name": "update_inputs",
+      "id": "s12",
+      "hash": "449377b851443de9",
+      "title": "Changing saved inputs and recalculating",
+      "what": "Takes an existing session, applies the requested field changes to its saved inputs, and reruns the full calculation with research and lecture included. It then saves the new inputs and results and returns the updated session.",
+      "why": "Likely reason: lets someone change one assumption without retyping every input.",
+      "watch_out": "Every update runs web research and the lecture, which can be slow or depend on outside services. The result is also saved without checking that the calculation succeeded."
+    },
+    {
+      "start": 270,
+      "end": 310,
+      "kind": "function",
+      "name": "export_excel",
+      "id": "s13",
+      "hash": "afe7340bcaaf6c3d",
+      "title": "Downloading the Excel workbook",
+      "what": "Rebuilds the saved inputs, outputs, and research for a session, asks the orchestrator to create a spreadsheet, and sends it as a download. The file name uses the first eight characters of the session code. It returns a bad request error if no calculation has been saved yet.",
+      "why": "Likely reason: the spreadsheet is built from stored results, so no new calculation is needed.",
+      "watch_out": "The file name uses only part of the session code, so two sessions could in principle end up with the same name."
+    },
+    {
+      "start": 311,
+      "end": 345,
+      "kind": "function",
+      "name": "get_component_breakdown",
+      "id": "s14",
+      "hash": "46dcef121d60b95c",
+      "title": "Detail for one cost component",
+      "what": "Looks up the detailed breakdown for one named cost part, such as modules, from the saved outputs. It returns a not-found error if the name is wrong or the part has no breakdown.",
+      "why": "Likely reason: lets the front end show a drill-down view when a user asks for more detail.",
+      "watch_out": "The component name must match exactly. This file does not check it against a list of valid names."
+    },
+    {
+      "start": 346,
+      "end": 376,
+      "kind": "function",
+      "name": "get_lecture_step",
+      "id": "s15",
+      "hash": "be85a4fe32ec6993",
+      "title": "Fetching one lecture step",
+      "what": "Finds the teaching step with a given number in the session's saved lecture and returns it. It returns a not-found error if that number does not exist.",
+      "why": "Likely reason: lets the lecture be shown one step at a time.",
+      "watch_out": "Lecture steps exist only after a calculation that included the lecture. Without one, the endpoint returns a bad request error."
+    },
+    {
+      "start": 377,
+      "end": 388,
+      "kind": "function",
+      "name": "get_defaults",
+      "id": "s16",
+      "hash": "5e064703c45caab0",
+      "title": "Default input values",
+      "what": "Returns the standard starting value for every input, as defined in the input schema file. A new user sees these values before changing anything.",
+      "why": "Likely reason: gives the front end a starting point for the input form.",
+      "watch_out": "The values come from the schema file, so changing a default there changes what this endpoint returns."
+    },
+    {
+      "start": 389,
+      "end": 407,
+      "kind": "function",
+      "name": "delete_session",
+      "id": "s17",
+      "hash": "97e865d3d6dbc8ec",
+      "title": "Deleting a saved session",
+      "what": "Removes a session and its saved inputs and results from memory, then confirms the deletion. It returns a not-found error if the code is unknown.",
+      "why": "Likely reason: lets users clear out old work.",
+      "watch_out": "Deletion is permanent. This file has no undo and no backup."
+    },
+    {
+      "start": 408,
+      "end": 429,
+      "kind": "function",
+      "name": "list_sessions",
+      "id": "s18",
+      "hash": "70850bf5a5a10bcb",
+      "title": "Listing all saved sessions",
+      "what": "Returns each session code with its creation time, its last update time, whether it has results, and the total number of sessions.",
+      "why": "Likely reason: lets a user or the front end show which sessions exist.",
+      "watch_out": "Anyone who can reach the server can see every session, because this file has no login check."
+    },
+    {
+      "start": 430,
+      "end": 432,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s19",
+      "hash": "73f230975a46a981",
+      "title": "Starting the server directly",
+      "what": "When this file is run directly, starts the web server on port 8000 on all network addresses and restarts it automatically when files change.",
+      "why": "Likely reason: a convenient way to start the server during development.",
+      "watch_out": "Listening on all addresses makes the server reachable from other computers on the network. Automatic reload is meant for development, not for a live service."
+    }
+  ],
+  "explained_at": "2026-11-11T23:39:45+00:00",
+  "explained_by": "haiku",
+  "summary": "The web server entry point for the cost tool. It sets up the API, browser access rules, one shared orchestrator and in-memory session storage, then defines the endpoints listed in the outline. Only the setup and request shapes are visible in this packet, so the endpoint code could not be checked.",
+  "purpose": "Lets the frontend create sessions, run calculations, update inputs, export Excel and read breakdowns through web requests. The endpoint names suggest these roles, but their code is not in the packet.",
+  "why": "Likely reason: it is the single place that hands work to the rest of the backend and exposes it to the frontend. A comment says a real database should replace the in-memory storage later.",
+  "how": "On start, it creates the FastAPI app and allows requests from two local development addresses. It creates one MultiAgentOrchestrator with web research turned on, and an empty sessions dictionary. Then it declares the shapes of incoming requests: SessionCreate, SessionUpdate, CalculationRequest and ExportRequest. The endpoint functions listed in the outline use these shapes to read requests and send results back. The entry point at the end starts the server when the file is run directly, though its code is not in the packet.",
+  "inputs": "Web requests from the frontend, in the shapes defined by the request classes. Setup uses the allowed addresses written into the file, not values from the settings file.",
+  "outputs": "JSON responses from each endpoint, and the Excel export endpoint can return a file as a streamed response.",
+  "risks": "Sessions live only in memory, so they are lost on restart and are not shared between server copies. The sessions dictionary has no visible size limit. Allowed addresses are fixed to two local addresses, so a deployed frontend would be blocked. Session updates accept any dictionary, so bad field names or values must be caught elsewhere. No login or access control is visible in the shown code, so anyone who can reach the server may read or change sessions.",
+  "debug": "If the browser shows a CORS error, compare the frontend address with the allowed list in setup. If a session disappears, check whether the server restarted, since sessions are only in memory. If a calculation is slow or fails, check how the orchestrator was built, since web research is turned on there. For input errors, look at the request class involved and at the update_inputs endpoint.",
+  "summary_hash": "sha256:1e049c6c55dc87a7caf593632961fdc2f95a4f22022a4b198d808d2e4cc8f35b"
+}

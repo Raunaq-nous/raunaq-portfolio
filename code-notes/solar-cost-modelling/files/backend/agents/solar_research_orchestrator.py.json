@@ -1,0 +1,341 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/solar_research_orchestrator.py",
+  "language": "Python",
+  "lines": 826,
+  "hash": "sha256:455c1c235ae771739f84ffac8d452fa0549c7bb3f5a27e3b32000bafeeefd850",
+  "area": "backend-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "Most research is simulated, so the sources and figures are placeholders presented as real evidence.",
+      "The search strings are built but never sent to a search engine.",
+      "The confidence figure can exceed 1.0 because a bonus is added after the cap.",
+      "No tests or error handling are visible in this file.",
+      "The strictness setting and model roles do nothing in the visible code.",
+      "The final validation step was not in the packet, so its safety checks are unconfirmed."
+    ]
+  },
+  "terms": [
+    {
+      "term": "BM25",
+      "meaning": "a classic keyword-matching score that ranks documents by how well the search words appear in them."
+    },
+    {
+      "term": "dense vector retrieval",
+      "meaning": "searching by meaning, by turning text into lists of numbers and finding close matches."
+    },
+    {
+      "term": "hybrid retrieval",
+      "meaning": "combining keyword matching with meaning matching to find sources."
+    },
+    {
+      "term": "reranking",
+      "meaning": "a second, more careful sort of results that were already found."
+    },
+    {
+      "term": "cross-encoder",
+      "meaning": "a model that reads a question and a passage together to judge how well they fit."
+    },
+    {
+      "term": "chunk",
+      "meaning": "a small piece of a source's text, stored so it can be searched."
+    },
+    {
+      "term": "crawling",
+      "meaning": "automatically visiting web pages and reading their content."
+    },
+    {
+      "term": "RAG (retrieval-augmented generation)",
+      "meaning": "a method where an AI writes its answer from text it was just given, rather than from memory."
+    },
+    {
+      "term": "anti-hallucination",
+      "meaning": "checks that stop an AI from stating facts its sources do not support."
+    },
+    {
+      "term": "enum",
+      "meaning": "a fixed list of named choices, like a dropdown menu."
+    },
+    {
+      "term": "Wdc and kWdc",
+      "meaning": "units for direct-current solar panel capacity: watts and kilowatts."
+    },
+    {
+      "term": "relevance score",
+      "meaning": "a number showing how well a source matches the search."
+    }
+  ],
+  "depends_on": [
+    "schemas.outputs",
+    "Python standard library: asyncio, typing, datetime, enum, json"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 21,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "2b75346fe4416826",
+      "title": "Purpose note and imports",
+      "what": "Describes the file as a research pipeline meant to find and check solar cost figures from the web, using search, retrieval, two stages of reading, and validation. Imports the result shapes and standard tools it needs. The code comments show that much of the pipeline is still simulated.",
+      "why": "Likely reason: the description states the intended design, which is more ambitious than the code currently does.",
+      "watch_out": "The header describes features such as hybrid search and several AI models that the visible code does not perform, so do not read it as a status report."
+    },
+    {
+      "start": 22,
+      "end": 28,
+      "kind": "class",
+      "name": "SearchTrack",
+      "id": "s2",
+      "hash": "27caecacf9319a01",
+      "title": "Three kinds of search queries",
+      "what": "Defines three labels for groups of search queries: strict (exact terms), semantic (paraphrased), and expanded (broader topic). The labels tag where each query and source came from.",
+      "why": "Likely reason: keeps precise and broad searches separate so their results can be weighed differently. Reason beyond that is not stated in the code.",
+      "watch_out": "The labels are attached to data, but nothing in the visible code weighs the three groups differently."
+    },
+    {
+      "start": 29,
+      "end": 35,
+      "kind": "class",
+      "name": "StrictnessMode",
+      "id": "s3",
+      "hash": "971678286fffd78c",
+      "title": "Strictness setting levels",
+      "what": "Defines three levels for how strict the research should be: strict (evidence only), balanced (small labeled inferences allowed), and exploratory (brainstorming allowed). The orchestrator stores the chosen level, which defaults to strict.",
+      "why": "Likely reason: lets the user decide how much the research may speculate. The visible code does not use the level to change any behavior.",
+      "watch_out": "Choosing a looser level has no visible effect on the steps, so a user may assume the rules changed when they did not."
+    },
+    {
+      "start": 36,
+      "end": 43,
+      "kind": "class",
+      "name": "ModelRole",
+      "id": "s4",
+      "hash": "8ef12e63462b6a20",
+      "title": "Roles for different AI models",
+      "what": "Lists four roles a helper AI model could play: controller (planning), generator (writing queries and summaries), reranker (sorting results), and validator (checking evidence). No visible code calls a model for any of these roles.",
+      "why": "Likely reason: a planned design for using several models. Reason beyond the labels is not stated in the code.",
+      "watch_out": "The roles are defined but unused in the visible code, so no AI model is run for them."
+    },
+    {
+      "start": 44,
+      "end": 98,
+      "kind": "class",
+      "name": "SolarResearchOrchestrator (part 1)",
+      "id": "s5",
+      "hash": "441cd3bad6183607",
+      "title": "Solar search terms and trusted sites",
+      "what": "Holds the exact search terms for each part of a solar cost model (modules, inverters, storage, labor, and benchmarks) and the list of sites treated as trusted, such as national lab and industry research sites. These lists feed the search and scoring steps.",
+      "why": "Likely reason: keeps searches focused on known solar terms and reliable sources. The choice of these specific sites is not explained in the code.",
+      "watch_out": "Being on the trusted list only affects scoring; it does not check that a site's content is accurate."
+    },
+    {
+      "start": 99,
+      "end": 156,
+      "kind": "method",
+      "name": "SolarResearchOrchestrator: __init__",
+      "id": "s6",
+      "hash": "c6ce1af1f7ee8435",
+      "title": "Setup and the main research method",
+      "what": "Sets the strictness level and the multi-model flag from the caller (the flag is stored but not used in visible code) and creates empty stores for evidence and indexed text. It then defines the main method, which runs the research in order: decompose the question, build searches, select sources, crawl, retrieve, rerank, extract evidence, synthesize, validate, and build the result.",
+      "why": "Likely reason: one entry point runs each stage in a fixed order, so every research run follows the same path.",
+      "watch_out": "The stores are kept on the object, so reusing one orchestrator for many research calls lets old text build up."
+    },
+    {
+      "start": 157,
+      "end": 193,
+      "kind": "class",
+      "name": "SolarResearchOrchestrator (part 3)",
+      "id": "s7",
+      "hash": "2452dda56c21b805",
+      "title": "Ranking, evidence, and final assembly",
+      "what": "Runs the later stages in order: reranking and filtering the chunks, pulling out evidence, synthesizing an answer, validating it, and building the final result. This is the part that turns retrieved text into the answer the rest of the app receives.",
+      "why": "Likely reason: each stage narrows or checks the previous stage's output, so weak text is caught before it reaches the user.",
+      "watch_out": "The validation step is defined in a part of the file that is not in this packet, so how strict it is cannot be confirmed here."
+    },
+    {
+      "start": 194,
+      "end": 247,
+      "kind": "method",
+      "name": "SolarResearchOrchestrator: _decompose_query",
+      "id": "s8",
+      "hash": "321c44e6212d3605",
+      "title": "Turning cost parts into questions",
+      "what": "For the chosen component, picks a fixed list of research questions (for example, about module price per watt) and the exact search terms. It also sets a date window that asks for recent sources and includes the trusted sites list.",
+      "why": "Likely reason: the questions tell the research what to look for, so each cost part gets targeted questions. Reason for the particular wording is not stated in the code.",
+      "watch_out": "A component not in the list gets generic questions built from its name, which may not match the cost model."
+    },
+    {
+      "start": 248,
+      "end": 277,
+      "kind": "class",
+      "name": "SolarResearchOrchestrator (part 5)",
+      "id": "s9",
+      "hash": "30b9fbbb6948f334",
+      "title": "Input terms and decomposition result",
+      "what": "Turns the names of numeric user inputs into plain phrases by replacing underscores with spaces, then packages the questions, follow-up questions, date window, trusted sites, and terms into one structure for the later steps. The follow-up questions are listed, but no visible step uses them.",
+      "why": "Likely reason: gives the later steps one bundle to read. Reason for the phrases is not stated beyond that.",
+      "watch_out": "Phrases made from input names, such as 'system size', are never added to a search, so they have no effect on results."
+    },
+    {
+      "start": 278,
+      "end": 333,
+      "kind": "method",
+      "name": "SolarResearchOrchestrator: _generate_search_queries",
+      "id": "s10",
+      "hash": "01be279ddb1de24f",
+      "title": "Building search strings in three groups",
+      "what": "Creates search strings for each component in three groups: strict strings with exact terms and site limits, semantic phrasings, and expanded phrasings about broader topics. Strict strings are chosen per component, with a general fallback.",
+      "why": "Likely reason: precise searches come first, then wider ones. Reason for the specific numbers in some strings, such as efficiency percentages, is not stated in the code.",
+      "watch_out": "These search strings are built but never sent to a search engine in the visible code, so no web search takes place here."
+    },
+    {
+      "start": 334,
+      "end": 375,
+      "kind": "class",
+      "name": "SolarResearchOrchestrator (part 7)",
+      "id": "s11",
+      "hash": "766c821ba7e3c8da",
+      "title": "Fallback searches and search step start",
+      "what": "Finishes the fallback strings for benchmark and other components, and adds the semantic and expanded groups. Then starts the source selection step, which only notes that a real search service would be used in production.",
+      "why": "Likely reason: the comment says the search is a placeholder until a real search service is connected. This is stated in the code.",
+      "watch_out": "The comment names Bing, Google, or Tavily as the planned services, but none is connected in this version."
+    },
+    {
+      "start": 376,
+      "end": 429,
+      "kind": "class",
+      "name": "SolarResearchOrchestrator (part 8)",
+      "id": "s12",
+      "hash": "54b7ba5949ffad93",
+      "title": "Fixed source list for modules and inverters",
+      "what": "Provides a hardcoded list of sources for module and inverter prices. Each entry has a title, a short snippet with a price range, a relevance score, and a domain, and is treated as if it were a search result.",
+      "why": "Likely reason: the comments mark this as mock data that stands in for search during development. Reason beyond that is not stated.",
+      "watch_out": "The price figures and report titles are typed in and were not checked against the real documents, so they should not be quoted as real sources."
+    },
+    {
+      "start": 430,
+      "end": 482,
+      "kind": "class",
+      "name": "SolarResearchOrchestrator (part 9)",
+      "id": "s13",
+      "hash": "b62e510a9cd2bf84",
+      "title": "Fixed source list and sorting",
+      "what": "Adds the fixed sources for storage and labor, plus a general fallback, then sorts all candidates by relevance score, highest first. The sorted list is what the rest of the pipeline treats as the sources found.",
+      "why": "Likely reason: the same placeholder approach as the earlier lists. Reason not stated in the code.",
+      "watch_out": "The same NREL document link appears for modules, inverters, and the fallback, which suggests these are placeholders rather than checked sources."
+    },
+    {
+      "start": 483,
+      "end": 523,
+      "kind": "method",
+      "name": "SolarResearchOrchestrator: _crawl_and_chunk",
+      "id": "s14",
+      "hash": "c61138018ec4276f",
+      "title": "Storing snippets as searchable chunks",
+      "what": "Turns each candidate's short snippet into a chunk record with an ID, title, text, domain, score, and timestamp, and saves the chunks in the object's index. It does not open the web pages, so the snippet is the only text kept.",
+      "why": "Likely reason: the code is meant to fetch full pages later and split them into pieces; the comments mark the present behavior as a stand-in. Full reason not stated.",
+      "watch_out": "Only the short snippet is kept as text, so any later claim rests on a few words rather than the full source."
+    },
+    {
+      "start": 524,
+      "end": 568,
+      "kind": "method",
+      "name": "SolarResearchOrchestrator: _hybrid_retrieval",
+      "id": "s15",
+      "hash": "62867a811e34d42e",
+      "title": "Scoring and picking the top sources",
+      "what": "Gives each chunk a score from its search relevance, adds a bonus if it contains exact solar terms and another if its domain is trusted, and caps the result at 1.0. It keeps the top ten chunks by this score.",
+      "why": "Likely reason: the bonuses favor sources that use the right terms and come from trusted sites. Reason the bonus sizes are these numbers is not stated.",
+      "watch_out": "The comments describe keyword search and meaning search combined, but the visible code only adds bonuses to one score, so this is not a true hybrid search."
+    },
+    {
+      "start": 569,
+      "end": 600,
+      "kind": "method",
+      "name": "SolarResearchOrchestrator: _rerank_and_filter",
+      "id": "s16",
+      "hash": "b5e8280cdd3127b0",
+      "title": "Reordering and dropping weak chunks",
+      "what": "Adds a small extra score to chunks that contain exact terms, drops any chunk below 0.5, and sorts the rest from highest to lowest. The comments say a dedicated reranking model would be used later, but this version uses none.",
+      "why": "Likely reason: a simple cutoff removes weak sources before evidence is pulled out. The reason for the 0.5 value is not stated.",
+      "watch_out": "The fixed sources all score 0.91 or higher before any bonus, so this cutoff removes none of them and does little real filtering."
+    },
+    {
+      "start": 601,
+      "end": 641,
+      "kind": "method",
+      "name": "SolarResearchOrchestrator: _extract_evidence",
+      "id": "s17",
+      "hash": "1859ed60854e72f5",
+      "title": "Pulling out evidence for each source",
+      "what": "Turns each ranked chunk into an evidence record with an ID, the source link and title, the snippet as the quote, a list of questions it seems to answer, a reason, and its score. The quote is the whole snippet, not a chosen sentence.",
+      "why": "Likely reason: keeps a traceable link from each claim back to its source. The comment says a language model check was planned for matching questions.",
+      "watch_out": "The reason text calls every source 'authoritative' whatever its content, so this wording is not a real judgment."
+    },
+    {
+      "start": 642,
+      "end": 689,
+      "kind": "method",
+      "name": "SolarResearchOrchestrator: _synthesize_answer",
+      "id": "s18",
+      "hash": "6bb37f0134689357",
+      "title": "Combining evidence into claims",
+      "what": "Turns each evidence item into a claim, lists any research question with no matching evidence as unanswered, and reports the evidence count and an average confidence. It does not write an answer; it carries the evidence text forward.",
+      "why": "Likely reason: makes gaps in the research visible rather than hidden. Reason the confidence is an average of scores is shown by the calculation itself.",
+      "watch_out": "The confidence is an average of scores that can go above 1.0, because a bonus is added after the 1.0 cap, so it is not a true percentage."
+    },
+    {
+      "start": 690,
+      "end": 746,
+      "kind": "method",
+      "name": "SolarResearchOrchestrator: _validate_and_check",
+      "id": "s19",
+      "hash": "dad916dcdb2ca947",
+      "title": "Final checks before the answer is used",
+      "what": "Runs the last checks on a drafted research answer. It marks the answer as not valid if any claim has no supporting evidence, and adds warnings when sources look old or questions remain unanswered. The check meant to confirm each web address is real always reports a pass without looking at anything.",
+      "why": "The code comment says the real version should re-fetch each page and confirm the quote, so this is a stand-in for a safety gate that is not finished.",
+      "watch_out": "A PASS from the web address check means nothing yet, and the old-source test looks for old years in the fetch date, not the date the source was published."
+    },
+    {
+      "start": 747,
+      "end": 801,
+      "kind": "method",
+      "name": "SolarResearchOrchestrator: _build_research_result",
+      "id": "s20",
+      "hash": "20453e4a2fa2e896",
+      "title": "Packages everything into the final research result",
+      "what": "Turns the evidence list into the result object the rest of the app receives. It holds the sources, the first three quotes as verbatim quotes, a timestamp and the confidence score. The validity flag from the check step is not passed on, and the suggestions list is always empty in this version.",
+      "why": "The code comment says suggestions would be more detailed in a production version, so this part is a simplified version.",
+      "watch_out": "The input and output validation fields are left empty here, so the Excel validation sheet will show headers but no rows unless the caller fills them in."
+    },
+    {
+      "start": 802,
+      "end": 826,
+      "kind": "function",
+      "name": "research_solar_component",
+      "id": "s21",
+      "hash": "2b39b96bfd2bbd99",
+      "title": "Simple entry point for one component",
+      "what": "Gives other parts of the app one plain function to call for a single component. It passes the component name, user inputs, calculated results and extra context to the shared orchestrator object and returns the research result it gets back.",
+      "why": "Likely reason: callers do not need to know how the shared orchestrator is created or configured.",
+      "watch_out": "It relies on the shared orchestrator created when this file loads, so any error during that creation would break every call."
+    }
+  ],
+  "explained_at": "2026-11-11T23:37:59+00:00",
+  "explained_by": "haiku",
+  "summary": "A research pipeline meant to find and check solar cost figures from the web, but in this version the search, page reading, and AI steps are simulated with fixed sources, so its output is not real research.",
+  "purpose": "Gathers and checks sources for each part of a solar cost model (modules, inverters, storage, labor, and benchmarks) and returns a result with evidence, unanswered questions, and a confidence figure. The file is written as the design for a full research system.",
+  "why": "Likely reason: the design separates the research steps (find, read, rank, extract, write, check) so each can be improved or tested on its own. The visible code shows the steps but not the real tools behind them.",
+  "how": "1. Build the research questions, date window, and trusted sites for the component. 2. Build search strings in three groups. 3. Select candidate sources (a fixed list in this version). 4. Turn each source snippet into a chunk. 5. Score the chunks and keep the top ten. 6. Drop chunks scoring below 0.5 and sort the rest. 7. Create evidence records from the remaining chunks. 8. Turn the evidence into claims and list unanswered questions. 9. Validate and build the final result, in a part of the file not included in this packet.",
+  "inputs": "A component name (modules, inverters, ess, labor, benchmarks, or other), the user's input values, the calculated cost output, and an optional context note. The strictness mode is set when the orchestrator is created.",
+  "outputs": "A research result (WebResearchResult from the schemas) built from the evidence and validation. The intermediate steps produce dictionaries of questions, search strings, chunks, evidence, and claims.",
+  "risks": "Most sources are fixed placeholder entries with typed-in price ranges, so the outputs look like real citations but are not checked. Search strings are built but never sent to a search engine. Snippet prices use per-watt units while the cost model uses per-kilowatt units, with no conversion. The confidence figure can exceed 1.0. Stores of evidence and text persist on the object between calls. The strictness setting and model roles have no visible effect.",
+  "debug": "Find the stage that matches the symptom. For wrong sources, check the fixed source lists for that component. For odd scores, check the bonuses in the retrieval and rerank steps. For empty evidence, check whether any chunk reaches 0.5. For unanswered questions, check the keyword matching in the evidence step. If results carry over between runs, check whether one orchestrator was reused, since its stores persist. The final validation and result building were not in this packet, so check them separately.",
+  "summary_hash": "sha256:455c1c235ae771739f84ffac8d452fa0549c7bb3f5a27e3b32000bafeeefd850"
+}

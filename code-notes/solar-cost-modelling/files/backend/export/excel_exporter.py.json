@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "path": "backend/export/excel_exporter.py",
+  "language": "Python",
+  "lines": 592,
+  "hash": "sha256:8fa3825e65f67ef4473c3731d4db3e0c80b5b4ae8827d1e128a0d3ddb3195e36",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Some charts are incomplete or leave out major costs, so they can mislead.",
+      "The docstring claims live formulas that are not created.",
+      "The Status and Default columns show values that were not actually checked or defined.",
+      "No tests are visible in the files provided."
+    ]
+  },
+  "terms": [
+    {
+      "term": "openpyxl",
+      "meaning": "a Python library that writes Excel files"
+    },
+    {
+      "term": "Workbook",
+      "meaning": "an Excel file made up of several sheets"
+    },
+    {
+      "term": "Sheet",
+      "meaning": "one tab inside a workbook"
+    },
+    {
+      "term": "Formula (Excel)",
+      "meaning": "a cell that calculates its value from other cells, so it updates when they change"
+    },
+    {
+      "term": "Bytes",
+      "meaning": "raw file contents rather than readable text"
+    },
+    {
+      "term": "Placeholder function",
+      "meaning": "a function that exists but does nothing yet"
+    }
+  ],
+  "depends_on": [
+    "openpyxl",
+    "schemas.inputs",
+    "schemas.outputs",
+    "io (Python standard library)",
+    "datetime (Python standard library)"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "477fdb67aaa8335e",
+      "title": "Imports and file purpose",
+      "what": "Describes the file as an Excel exporter with formulas, charts and a consulting-style look. It brings in the Excel library and the shapes for inputs, outputs and research results.",
+      "why": "Likely reason: the spreadsheet is built with a dedicated library. The formula claim in the description is not borne out in the code below.",
+      "watch_out": "The description promises formulas, but the cells hold fixed numbers, so users may assume the workbook recalculates."
+    },
+    {
+      "start": 19,
+      "end": 70,
+      "kind": "class",
+      "name": "ExcelExporter (part 1)",
+      "id": "s2",
+      "hash": "7ce621499e31ba1d",
+      "title": "Exporter setup and the export run",
+      "what": "Starts a new exporter, creates the workbook and builds each sheet in turn. It then saves the result into memory and returns it as raw bytes. The validation sheet is added only when research results are supplied.",
+      "why": "Likely reason: keeping the workbook in memory means nothing has to be written to disk first.",
+      "watch_out": "The exporter keeps the workbook in a shared attribute, so one exporter should be used for one export only."
+    },
+    {
+      "start": 71,
+      "end": 129,
+      "kind": "method",
+      "name": "ExcelExporter: _create_inputs_sheet",
+      "id": "s3",
+      "hash": "795e8ac9ee4c4ea1",
+      "title": "Inputs sheet: all user settings",
+      "what": "Creates the Inputs sheet with a title and column headers. It then adds a section for each group of settings. Storage settings appear only when storage is on.",
+      "why": "Likely reason: lets a reader see which numbers produced the results.",
+      "watch_out": "The list of groups is written by hand, so a new input group must be added here manually or it will not appear."
+    },
+    {
+      "start": 130,
+      "end": 169,
+      "kind": "class",
+      "name": "ExcelExporter (part 3)",
+      "id": "s4",
+      "hash": "515dadf0651d3512",
+      "title": "Input rows and the status column",
+      "what": "Finishes the inputs sheet with the O&M group and writes each setting as a row with a readable name, key, value, unit, group, description, default and validation rule. Each row gets a check mark in the Status column.",
+      "why": "The code comment says field details are simplified for now, with fuller information planned later.",
+      "watch_out": "The check mark, the default and the validation rule are fixed or copied, so the sheet implies every input was validated when none was."
+    },
+    {
+      "start": 170,
+      "end": 226,
+      "kind": "method",
+      "name": "ExcelExporter: _create_summary_sheet",
+      "id": "s5",
+      "hash": "60a08a1cea61850a",
+      "title": "Summary sheet of component costs",
+      "what": "Creates the Summary sheet with one row per cost part, showing the low, high and median values for both MSP and MMP, and the unit. Storage appears as a row only when it is on.",
+      "why": "Likely reason: this is the one-page view a reader would look at first.",
+      "watch_out": "The figures are copied in as plain numbers, so they will not update if an input is changed in Excel."
+    },
+    {
+      "start": 227,
+      "end": 283,
+      "kind": "class",
+      "name": "ExcelExporter (part 5)",
+      "id": "s6",
+      "hash": "a23564f839bb7de9",
+      "title": "Summary totals and breakdown sheet setup",
+      "what": "Adds the total rows for PV-only and, when storage is on, PV plus storage. Then starts the Detailed Breakdown sheet with its title and column headers.",
+      "why": "Likely reason: totals sit below the component rows, which is the usual layout.",
+      "watch_out": "The totals are numbers taken from the calculator, not sums of the rows above, so any mismatch would not be caught here."
+    },
+    {
+      "start": 284,
+      "end": 337,
+      "kind": "class",
+      "name": "ExcelExporter (part 6)",
+      "id": "s7",
+      "hash": "5ece66fab01f67bd",
+      "title": "Subcomponent rows in the breakdown",
+      "what": "Writes one row per sub-part of each cost part, with its cost, share and a short description, then leaves a blank row between parts. Parts with no sub-parts are skipped.",
+      "why": "Likely reason: gives readers who want detail a view of what makes up each cost.",
+      "watch_out": "Each sub-part's cost is the part's median times its share, so the rows only add up correctly if the shares add up to one."
+    },
+    {
+      "start": 338,
+      "end": 386,
+      "kind": "method",
+      "name": "ExcelExporter: _add_component_breakdown_chart",
+      "id": "s8",
+      "hash": "d00047cf737a1880",
+      "title": "Bar chart and an empty comparison stub",
+      "what": "Writes a small table of low and high values for six cost parts and draws a bar chart from it. It also contains a comparison chart placeholder that does nothing, which leaves a gap on the Charts sheet.",
+      "why": "Reason not stated in the code. The comparison chart is described as similar to this one but is empty.",
+      "watch_out": "The bar chart leaves out office labor, storage and O&M, so its totals do not match the summary."
+    },
+    {
+      "start": 387,
+      "end": 420,
+      "kind": "method",
+      "name": "ExcelExporter: _add_cost_proportion_pie_chart",
+      "id": "s9",
+      "hash": "2779bc73a9c1ca91",
+      "title": "Cost share pie chart",
+      "what": "Writes five category totals (modules, inverters, balance of system, labor and other) and draws a pie chart of their shares. Storage and O&M are not included.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The pie shows shares of only some costs, so its percentages do not describe the full project total."
+    },
+    {
+      "start": 421,
+      "end": 471,
+      "kind": "method",
+      "name": "ExcelExporter: _create_glossary_sheet",
+      "id": "s10",
+      "hash": "269f4ee72e6a7020",
+      "title": "Glossary of terms",
+      "what": "Creates a Glossary sheet with a fixed list of fourteen terms, each with its key name and a definition. The list is typed in and is not read from the rest of the app.",
+      "why": "Likely reason: a reader who opens the workbook alone can look up terms without other documents.",
+      "watch_out": "Some terms, such as LCOE, ITC and PPA, do not appear in the sheets built here, which may confuse readers."
+    },
+    {
+      "start": 472,
+      "end": 525,
+      "kind": "method",
+      "name": "ExcelExporter: _create_validation_sheet",
+      "id": "s11",
+      "hash": "900084a7879e8e4e",
+      "title": "Research validation results sheet",
+      "what": "Creates the Validation and Research sheet. Each row shows a component, a field, the user's value, the market range, a colored status word and up to two source titles.",
+      "why": "Likely reason: lets a reader see which inputs the research checked and what it found.",
+      "watch_out": "The sheet shows only input checks, so output checks and market tips from the research do not appear in the workbook."
+    },
+    {
+      "start": 526,
+      "end": 578,
+      "kind": "method",
+      "name": "ExcelExporter: _apply_borders",
+      "id": "s12",
+      "hash": "474dbea55b5bebd0",
+      "title": "Borders and small label helpers",
+      "what": "Draws thin borders around a block of cells. It also holds lookup helpers that supply units, short descriptions, simple validation rules and sub-part descriptions. The lookups cover only a few names, and other names get blank or guessed defaults.",
+      "why": "Likely reason: the lookups fill in columns without repeating code. The comments say more entries will be added later.",
+      "watch_out": "Unknown field names get a default validation rule of greater than zero, which may not suit that field."
+    },
+    {
+      "start": 579,
+      "end": 592,
+      "kind": "function",
+      "name": "export_to_excel",
+      "id": "s13",
+      "hash": "69ef1914da4137bd",
+      "title": "Shortcut function for the export",
+      "what": "A simple function other code can call to get an Excel file in one step. It creates an exporter and returns the bytes from its export.",
+      "why": "Likely reason: callers do not need to create the exporter themselves.",
+      "watch_out": "Callers must treat the returned bytes as a binary file, not as text."
+    }
+  ],
+  "explained_at": "2026-11-11T23:37:59+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds a multi-sheet Excel workbook from the inputs, the cost results and optional web research, and returns the file as raw bytes.",
+  "purpose": "Gives the user a spreadsheet to read and share, with inputs, summary costs, a detailed breakdown, charts, a glossary and optional validation results.",
+  "why": "Likely reason: a spreadsheet is what many cost-model users expect. The docstring says the look copies consulting-firm style. Reason for the specific colors is not stated.",
+  "how": "The export method creates a new workbook and removes the blank default sheet. It then builds the sheets in order: Inputs, Summary, Detailed Breakdown, Charts, Glossary, and Validation & Research only if research is supplied. Each sheet is written cell by cell with headers, number formats, borders and colored status words. The workbook is saved into memory and returned as bytes. The export_to_excel function is a shortcut that creates the exporter and calls export.",
+  "inputs": "A CostModelInputs object, a CostModelOutputs object, and an optional list of WebResearchResult objects.",
+  "outputs": "A binary Excel file returned as bytes. Sheets are Inputs, Summary, Detailed Breakdown, Charts, Glossary and, when research is given, Validation & Research.",
+  "risks": "The docstring says the workbook has formulas, but every cell holds a fixed number, so it will not update if an input changes. The bar chart shows only field labor and leaves out office labor, storage and O&M. The pie chart leaves out storage and O&M. The comparison chart is an empty placeholder. The Default column repeats the current value rather than a real default. The Status column shows a check mark for every input whether or not it was checked.",
+  "debug": "If a figure in Excel differs from the app, compare the Summary sheet with the calculator output for the same inputs, since the sheet only copies numbers. For a missing or empty chart, check the _create_charts_sheet method and the placeholder named _add_msp_mmp_comparison_chart. If the validation sheet is missing, check that research results were passed to export. A validation sheet with headers but no rows means the research had no input checks.",
+  "summary_hash": "sha256:8fa3825e65f67ef4473c3731d4db3e0c80b5b4ae8827d1e128a0d3ddb3195e36"
+}

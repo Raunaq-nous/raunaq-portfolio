@@ -1,0 +1,286 @@
+{
+  "schema_version": 1,
+  "path": "backend/schemas/inputs.py",
+  "language": "Python",
+  "lines": 517,
+  "hash": "sha256:c2f77ffed3e9aacc92cc3d2fed1a0235d5adfdeeeefea0376a04b5cac8b4f139",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible for these rules.",
+      "Several rules run only when a switch is on, such as battery storage or the tracker.",
+      "Some cost ranges, such as the electrical balance-of-system group, have no check that the maximum is above the minimum.",
+      "Unit labels are descriptive only and are not checked."
+    ]
+  },
+  "terms": [
+    {
+      "term": "pydantic",
+      "meaning": "a library that checks that data has the right shape and values before the app uses it."
+    },
+    {
+      "term": "BaseModel",
+      "meaning": "the base class pydantic provides; each input group in this file is built on it."
+    },
+    {
+      "term": "validator",
+      "meaning": "a rule that checks a value, or a combination of values, and rejects it if the rule fails."
+    },
+    {
+      "term": "enum",
+      "meaning": "a fixed list of allowed choices, here the inverter types."
+    },
+    {
+      "term": "ILR",
+      "meaning": "inverter load ratio, the ratio of panel DC capacity to inverter AC capacity."
+    },
+    {
+      "term": "DC and AC",
+      "meaning": "direct current from the panels and alternating current sent to the grid."
+    },
+    {
+      "term": "BOS",
+      "meaning": "balance of system, everything around the panels such as racking, wiring, and electrical gear."
+    },
+    {
+      "term": "ESS",
+      "meaning": "energy storage system, meaning the battery."
+    },
+    {
+      "term": "tracker",
+      "meaning": "a motorized mounting frame that turns panels to follow the sun."
+    },
+    {
+      "term": "O&M",
+      "meaning": "operations and maintenance, the yearly cost of keeping the plant running."
+    },
+    {
+      "term": "capex",
+      "meaning": "capital expenditure, the up-front cost of building the plant."
+    },
+    {
+      "term": "NPV",
+      "meaning": "net present value, the value today of future yearly payments after discounting."
+    },
+    {
+      "term": "optional",
+      "meaning": "a value that may be left empty, shown here as None."
+    }
+  ],
+  "depends_on": [
+    "pydantic",
+    "typing (standard library)",
+    "enum (standard library)"
+  ],
+  "used_by": [
+    "backend/main.py (uses CostModelInputs)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "9b95697758df6179",
+      "title": "Setup of imports",
+      "what": "Brings in the tools needed to define the data shapes and their checks.",
+      "why": "Reason not stated in the code beyond what is needed by the classes below.",
+      "watch_out": ""
+    },
+    {
+      "start": 11,
+      "end": 17,
+      "kind": "class",
+      "name": "InverterType",
+      "id": "s2",
+      "hash": "f88a1b9ad665e80b",
+      "title": "Allowed inverter types",
+      "what": "Lists the three inverter types the app accepts: central, string, and micro. Any other value is refused.",
+      "why": "Likely reason: stops the inverter type from being any arbitrary text.",
+      "watch_out": "Any code that checks inverter type must use these exact three words."
+    },
+    {
+      "start": 18,
+      "end": 39,
+      "kind": "class",
+      "name": "SystemInputs",
+      "id": "s3",
+      "hash": "5921aa8fa9d39d4d",
+      "title": "Project size and key ratios",
+      "what": "Holds the overall project size in DC kilowatts with a default of 100 megawatts, the inverter load ratio, and the battery hours per kilowatt. These set the scale for most other costs.",
+      "why": "Likely reason: these are the top-level facts that every other cost depends on.",
+      "watch_out": "The battery hours value is optional and the file does not say whether it matters when the battery is switched off."
+    },
+    {
+      "start": 40,
+      "end": 99,
+      "kind": "class",
+      "name": "ModuleInputs (part 1)",
+      "id": "s4",
+      "hash": "65f06a3eda12039e",
+      "title": "Module hardware and production settings",
+      "what": "Holds the physical and production facts for solar modules: efficiency, size, weight, factory capacity, labor hours, electricity use, depreciation period, and yearly maintenance rate. It also sets the first part of the module price range.",
+      "why": "Likely reason: these describe the module itself and how it is made, which the cost math needs.",
+      "watch_out": "Efficiency is a fraction, so 20.6 percent is entered as 0.206. The unit labels do not stop a value entered in the wrong form."
+    },
+    {
+      "start": 100,
+      "end": 117,
+      "kind": "class",
+      "name": "ModuleInputs (part 2)",
+      "id": "s5",
+      "hash": "edbee4c442f0083e",
+      "title": "Module price range and its check",
+      "what": "Sets the low and high module price per watt and checks that the high price is above the low price. A reversed range is refused.",
+      "why": "Likely reason: the price is a range, so both ends are needed, and the check blocks a reversed range.",
+      "watch_out": "This check runs when the object is created. Changing a value after creation may not be checked again."
+    },
+    {
+      "start": 118,
+      "end": 169,
+      "kind": "class",
+      "name": "InverterInputs",
+      "id": "s6",
+      "hash": "8acd702cfece94c2",
+      "title": "Inverter settings and price check",
+      "what": "Holds the inverter type, factory capacity, low and high price per AC kilowatt, labor hours, depreciation period, and efficiency. It refuses a price range where the high value is not above the low value.",
+      "why": "Likely reason: the inverter is priced as a range, and the check blocks reversed ranges.",
+      "watch_out": "The inverter price is per AC kilowatt while the project size is per DC kilowatt, so the two must not be mixed up."
+    },
+    {
+      "start": 170,
+      "end": 220,
+      "kind": "class",
+      "name": "ESSInputs (part 1)",
+      "id": "s7",
+      "hash": "06cea928c77b1c5b",
+      "title": "Battery storage settings",
+      "what": "Holds the battery on or off switch, low and high price per kWh, fixed project costs, incentive, efficiency, and cycle life, each with defaults and range checks.",
+      "why": "Storage is optional, so it defaults to off with preset values.",
+      "watch_out": "Field checks (greater than 0, efficiency up to 1) run whenever values are given, even when storage is off. None is allowed for the optional fields."
+    },
+    {
+      "start": 221,
+      "end": 230,
+      "kind": "method",
+      "name": "ESSInputs: validate_ess_params",
+      "id": "s8",
+      "hash": "26f7d0859e277c4a",
+      "title": "Battery switch rule",
+      "what": "When the battery is switched on, requires both battery price limits to be filled in and checks that the high price is above the low price.",
+      "why": "Likely reason: the battery cost math needs both limits, and only when storage is used.",
+      "watch_out": "Because the check only runs when the switch is on, turning the switch on later may expose invalid battery values."
+    },
+    {
+      "start": 231,
+      "end": 281,
+      "kind": "class",
+      "name": "SBOSInputs",
+      "id": "s9",
+      "hash": "7aabf19c447bc7f5",
+      "title": "Racking and tracker settings",
+      "what": "Holds the racking area needed per kilowatt, a switch for whether a tracker is used, and separate low and high price ranges for trackers and for fixed racking. The check uses the tracker range when the tracker is on and the fixed range when it is off.",
+      "why": "Likely reason: a tracker and a fixed mount have different costs, so the switch picks the right price range.",
+      "watch_out": "Only the range selected by the switch is checked, so an invalid range for the other mount type is ignored."
+    },
+    {
+      "start": 282,
+      "end": 341,
+      "kind": "class",
+      "name": "EBOSInputs (part 1)",
+      "id": "s10",
+      "hash": "a3c419e47a63d252",
+      "title": "Electrical balance of system price ranges",
+      "what": "Holds low and high prices for transformers, breakers, combiner boxes, and wiring, plus rates for shipping and import tariffs. Each item has its own unit, per AC kilowatt or per DC kilowatt.",
+      "why": "Likely reason: these electrical parts are priced separately, each with its own unit.",
+      "watch_out": "This group has no check that the high price is above the low price, so a reversed range is accepted. The units differ between items, so mixing them up changes the totals."
+    },
+    {
+      "start": 342,
+      "end": 347,
+      "kind": "class",
+      "name": "EBOSInputs (part 2)",
+      "id": "s11",
+      "hash": "f40c8c7b2fab0b0b",
+      "title": "Electrical balance of system tariff limit",
+      "what": "Finishes the import tariff setting, which must be between zero and one, meaning zero to one hundred percent.",
+      "why": "Likely reason: a tariff is a percentage, so the range is limited to sensible fractions.",
+      "watch_out": "The limit is a fraction, so a value entered as 15 instead of 0.15 would be refused."
+    },
+    {
+      "start": 348,
+      "end": 382,
+      "kind": "class",
+      "name": "LaborInputs",
+      "id": "s12",
+      "hash": "fd597067dcd9e688",
+      "title": "Labor rates and hours",
+      "what": "Holds the hourly rates and hours per kilowatt for field workers and office workers, plus the labor burden rate for benefits and taxes.",
+      "why": "Likely reason: field and office work are costed separately, and both add benefits and taxes on top of wages.",
+      "watch_out": "Rates are dollars per hour and hours are per kilowatt, so the units are easy to confuse. The burden rate is a fraction."
+    },
+    {
+      "start": 383,
+      "end": 414,
+      "kind": "class",
+      "name": "OtherCostsInputs",
+      "id": "s13",
+      "hash": "a99a68c17c76c5fe",
+      "title": "Sales tax, contingency, management, and profit",
+      "what": "Holds four percentage rates for sales tax on equipment, a contingency buffer, management overhead, and developer profit. Each must be between zero and one hundred percent.",
+      "why": "Likely reason: these are added on top of the subtotal as standard percentage allowances.",
+      "watch_out": "These percentages change the final total directly, so a small change in any one moves the answer noticeably."
+    },
+    {
+      "start": 415,
+      "end": 474,
+      "kind": "class",
+      "name": "OMInputs (part 1)",
+      "id": "s14",
+      "hash": "bbd01b284ed36a53",
+      "title": "Yearly operations and maintenance ranges",
+      "what": "Holds low and high yearly costs for cleaning, inspection, replacement, insurance, and property tax. Cleaning, inspection, and replacement are per kilowatt, while insurance and property tax are percentages of up-front cost.",
+      "why": "Likely reason: running a plant has several yearly costs, each with its own range and unit.",
+      "watch_out": "Insurance and property tax are percentages of up-front cost, while the other three are dollar amounts per kilowatt. Mixing them up changes the result by a large amount."
+    },
+    {
+      "start": 475,
+      "end": 497,
+      "kind": "class",
+      "name": "OMInputs (part 2)",
+      "id": "s15",
+      "hash": "b8ec7f6e2b849b88",
+      "title": "Land lease and discount rate",
+      "what": "Holds the low and high yearly land lease cost per kilowatt, and the discount rate used to turn future yearly costs into a value today. The discount rate must be above zero and below one.",
+      "why": "Likely reason: future yearly costs are worth less today, so the discount rate converts them to present value.",
+      "watch_out": "The discount rate must be a fraction, so a value of 6 percent must be entered as 0.06. Entering 6 is refused."
+    },
+    {
+      "start": 498,
+      "end": 517,
+      "kind": "class",
+      "name": "CostModelInputs",
+      "id": "s16",
+      "hash": "aa5c532a1e58463c",
+      "title": "Complete input bundle",
+      "what": "Gathers all the input groups into one object, each with starting values, so the whole set of assumptions can be passed around as a unit. It also includes an example block that shows a sample input set for documentation.",
+      "why": "Likely reason: one bundle keeps the whole set of inputs together for the calculator and the API.",
+      "watch_out": "The example block is only a note for readers. Nothing checks that it matches the rules, and it uses an older settings style that still works."
+    }
+  ],
+  "explained_at": "2026-11-11T23:39:45+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines every user-editable input for the solar cost model, with its default value, allowed range, unit label, and checks that reject impossible combinations.",
+  "purpose": "Gives the app one authoritative place that says what each input means, what values are allowed, and what the starting values are.",
+  "why": "Likely reason: stops bad or impossible numbers, such as a negative system size or a maximum cost below the minimum, from reaching the calculator.",
+  "how": "Each group of related inputs is its own class built on pydantic. Every field has a default value, limits such as greater than zero or between zero and one, a plain description, and a unit label. A few classes add extra checks that compare pairs of values or only run when a switch is on. The top-level class CostModelInputs gathers all the groups together.",
+  "inputs": "Values supplied by the user or the API, shaped like nested groups of named numbers, switches and choices.",
+  "outputs": "Checked input objects with defaults filled in. If a value breaks a rule, pydantic raises an error that names the field and the rule.",
+  "risks": "Several checks run only when a switch is on, such as battery storage or the tracker. When the switch is off, bad values in those groups pass without complaint. Unit labels are descriptive only, so the code does not convert or verify units. Some cost ranges are not checked to make sure the maximum is above the minimum.",
+  "debug": "Read the error message first, since it names the field. Find that field's group in this file and check its limits. If a value is refused only when a switch is on, look at the switch in that group. To see the starting values, create the input object with no arguments and inspect it.",
+  "summary_hash": "sha256:c2f77ffed3e9aacc92cc3d2fed1a0235d5adfdeeeefea0376a04b5cac8b4f139"
+}
