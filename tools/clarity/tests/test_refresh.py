@@ -143,5 +143,32 @@ class Refresh(unittest.TestCase):
         self.assertIn("secret", state["repos"]["Alpha"]["held_back"])
 
 
+class IgnoreWriter(unittest.TestCase):
+    """write_clarityignore: patterns from the config reach the checkout, repeatably and without losing the repo's own lines."""
+
+    def test_write_keep_and_remove(self):
+        sys.path.insert(0, str(TOOLS))
+        import refresh
+        with tempfile.TemporaryDirectory() as tmp:
+            root, repo = Path(tmp) / "portfolio", Path(tmp) / "repo"
+            root.mkdir()
+            repo.mkdir()
+            cfg = {"ignore": {"alpha": ["db/migrations/", "seed.ts"]}}
+            (repo / ".clarityignore").write_text("# mine\nvendor-extra/\n", encoding="utf-8")
+            self.assertEqual(refresh.write_clarityignore(root, repo, cfg, "Alpha"), 2)
+            first = (repo / ".clarityignore").read_text(encoding="utf-8")
+            self.assertIn("vendor-extra/", first)
+            self.assertIn("db/migrations/", first)
+            self.assertEqual(refresh.write_clarityignore(root, repo, cfg, "Alpha"), 2)
+            self.assertEqual(first, (repo / ".clarityignore").read_text(encoding="utf-8"))  # repeatable
+            refresh.write_clarityignore(root, repo, {"ignore": {}}, "Alpha")
+            left = (repo / ".clarityignore").read_text(encoding="utf-8")
+            self.assertIn("vendor-extra/", left)
+            self.assertNotIn("db/migrations/", left)  # managed block removed, repo's own line kept
+            (root / ".clarityignore").write_text("public/code/\n", encoding="utf-8")
+            self.assertEqual(refresh.write_clarityignore(root, root, cfg, "Alpha"), 0)  # portfolio's own file untouched
+            self.assertEqual((root / ".clarityignore").read_text(encoding="utf-8"), "public/code/\n")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -77,7 +77,7 @@ def load_config() -> dict:
     cfg.setdefault("budget", {})
     cfg["budget"].setdefault("packets_per_run", 8)
     cfg["budget"].setdefault("repo_notes_threshold", 0.2)
-    for key in ("projects", "visibility", "overrides"):
+    for key in ("projects", "visibility", "overrides", "ignore"):
         cfg[key] = {k.lower(): v for k, v in (cfg.get(key) or {}).items()}
     cfg["exclude"] = {name.lower() for name in cfg.get("exclude", [])}
     return cfg
@@ -314,6 +314,36 @@ def _repo_args(name, cfg, info_visibility):
     return visibility, mode
 
 
+MANAGED_START = "# >>> managed by tools/clarity/publish.config.json (rewritten before each sync) >>>"
+MANAGED_END = "# <<< managed <<<"
+
+
+def write_clarityignore(root: Path, checkout: Path, cfg: dict, name: str) -> int:
+    """Write this repository's ignore patterns into the checkout's .clarityignore (never committed).
+
+    Patterns live in publish.config.json under "ignore", so they work without changing the repository.
+    Anything the repository already has in its own .clarityignore is kept; only the managed block is rewritten.
+    The portfolio's own checkout is left alone because its .clarityignore is a tracked file.
+    """
+    patterns = cfg.get("ignore", {}).get(name.lower(), [])
+    path = checkout / ".clarityignore"
+    if checkout.resolve() == root.resolve():
+        return 0
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    if MANAGED_START in text:
+        head, _, rest = text.partition(MANAGED_START)
+        text = head + (rest.split(MANAGED_END, 1)[1].lstrip("\n") if MANAGED_END in rest else "")
+    text = text.rstrip("\n")
+    if patterns:
+        block = "\n".join([MANAGED_START, ".clarityignore", *patterns, MANAGED_END])
+        text = (text + "\n" if text else "") + block
+    if text.strip():
+        path.write_text(text + "\n", encoding="utf-8")
+    elif path.exists():
+        path.unlink()
+    return len(patterns)
+
+
 def cmd_prepare(args) -> int:
     root = site_root()
     cfg = load_config()
@@ -322,6 +352,9 @@ def cmd_prepare(args) -> int:
         print(f"Could not find or clone {args.repo}. Attach it to the routine, or check the name.")
         return 1
     slug = slug_for(args.repo)
+    ignored = write_clarityignore(root, checkout, cfg, args.repo)
+    if ignored:
+        print(f"  Ignore list: {ignored} patterns written to the checkout's .clarityignore.")
     merged = bring_notes_in(root, checkout, slug)
     code, out = run_clarity(checkout, "sync")
     print(out.strip())
