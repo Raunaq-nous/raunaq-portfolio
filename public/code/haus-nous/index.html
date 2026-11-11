@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en" data-mode="calm">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code explorer: Haus-Nous</title>
+<!--
+  Code explorer template (clarity kit v1.1), styled to match raunaq-nous.github.io/raunaq-portfolio:
+  the same calm and nerd modes, type, greys and grain. `clarity.py build` replaces the data
+  placeholder near the end with the repository's notes and code. The page works offline; the web
+  fonts load when online and fall back to system fonts otherwise.
+-->
+<script>
+  // Use the mode chosen on the portfolio (same storage key), before first paint, to avoid a flash.
+  (function () { try { var m = localStorage.getItem('site-mode'); document.documentElement.setAttribute('data-mode', m === 'nerd' ? 'nerd' : 'calm'); } catch (e) {} })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+<style>
+:root, [data-mode='calm'] {
+  --ink: 241 240 236; --ink-2: 233 231 226; --ink-3: 224 222 216; --paper: 14 14 13;
+  --grey-1: 58 57 54; --grey-2: 92 91 87; --grey-3: 126 124 119; --grey-4: 168 166 161; --line: 212 210 204;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-body: 'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Newsreader', Georgia, serif;
+  --display-track: -0.025em; --gutter: clamp(20px, 3.2vw, 48px); --nav-h: 56px;
+  color-scheme: light;
+}
+[data-mode='nerd'] {
+  --ink: 9 9 9; --ink-2: 16 16 16; --ink-3: 22 22 22; --paper: 241 240 236;
+  --grey-1: 185 183 177; --grey-2: 140 138 133; --grey-3: 98 97 93; --grey-4: 60 59 56; --line: 38 38 36;
+  --font-body: var(--font-mono); --font-display: var(--font-mono); --display-track: -0.06em;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: rgb(var(--ink)); color: rgb(var(--paper)); -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: rgb(var(--ink)); color: rgb(var(--paper)); font: 15px/1.6 var(--font-body);
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; transition: background-color .35s ease, color .35s ease; }
+::selection { background: rgb(var(--paper)); color: rgb(var(--ink)); }
+:focus-visible { outline: 1px solid rgb(var(--paper)); outline-offset: 3px; }
+a { color: inherit; text-decoration: none; }
+code { font-family: var(--font-mono); font-size: .88em; background: rgb(var(--ink-2)); padding: 1px 5px; border-radius: 3px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: -999px; top: 8px; background: rgb(var(--ink)); padding: 8px 12px; z-index: 80; }
+.skip:focus { left: 8px; }
+.grain { position: fixed; inset: 0; z-index: 60; pointer-events: none; opacity: .07; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.label { font-family: var(--font-mono); font-size: 10.5px; line-height: 1.4; letter-spacing: .14em; text-transform: uppercase; }
+.display { font-family: var(--font-display); font-weight: 400; letter-spacing: var(--display-track); line-height: .95; margin: 0; overflow-wrap: anywhere; }
+[data-mode='nerd'] .display { font-weight: 500; line-height: 1; }
+.calm-only { display: inline; } .nerd-only { display: none; }
+[data-mode='nerd'] .calm-only { display: none; } [data-mode='nerd'] .nerd-only { display: inline; }
+.link-quiet { position: relative; transition: color .3s ease; }
+.link-quiet::after { content: ''; position: absolute; left: 0; right: 0; bottom: -3px; height: 1px; background: currentColor;
+  transform: scaleX(0); transform-origin: right; transition: transform .45s cubic-bezier(.2,.7,.1,1); }
+.link-quiet:hover::after, .link-quiet:focus-visible::after { transform: scaleX(1); transform-origin: left; }
+.u { text-decoration: underline; text-decoration-color: rgb(var(--grey-4)); text-underline-offset: 3px; }
+.u:hover { text-decoration-color: rgb(var(--paper)); }
+
+/* Top bar */
+.top { position: sticky; top: 0; z-index: 50; height: var(--nav-h); display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 0 var(--gutter); background: rgb(var(--ink) / .92); border-bottom: 1px solid rgb(var(--line));
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.crumbs { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; color: rgb(var(--grey-2)); min-width: 0; }
+.crumbs a:hover { color: rgb(var(--paper)); }
+.crumbs .here { color: rgb(var(--paper)); }
+.mode { position: relative; display: flex; align-items: center; width: 128px; height: 32px; border-radius: 999px; flex: none;
+  border: 1px solid rgb(var(--line)); background: rgb(var(--ink-2) / .8); overflow: hidden; cursor: pointer; padding: 0; color: inherit; font: inherit; }
+.mode:hover { border-color: rgb(var(--paper) / .4); }
+.mode .knob { position: absolute; top: 3px; left: 3px; width: calc(50% - 3px); height: calc(100% - 6px); border-radius: 999px;
+  background: rgb(var(--paper) / .1); border: 1px solid rgb(var(--paper) / .3); transition: left .3s ease-out; }
+[data-mode='nerd'] .mode .knob { left: calc(50% + 1px); }
+.mode span.opt { position: relative; z-index: 1; flex: 1; text-align: center; font-family: var(--font-mono); font-size: .6rem;
+  letter-spacing: .05em; color: rgb(var(--grey-3)); transition: color .3s ease; }
+.mode .o-calm { text-transform: uppercase; }
+[data-mode='calm'] .mode .o-calm, [data-mode='nerd'] .mode .o-nerd { color: rgb(var(--paper)); font-weight: 600; }
+
+/* Layout */
+.app { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: calc(100vh - var(--nav-h)); }
+.rail { position: sticky; top: var(--nav-h); height: calc(100vh - var(--nav-h)); overflow: auto; border-right: 1px solid rgb(var(--line));
+  padding: 24px 18px 18px var(--gutter); display: flex; flex-direction: column; gap: 18px; }
+.rail .who { margin: 0; color: rgb(var(--grey-3)); }
+.rail h1 { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; letter-spacing: var(--display-track); margin: 6px 0 0; overflow-wrap: anywhere; }
+.search input { width: 100%; padding: 9px 0; border: 0; border-bottom: 1px solid rgb(var(--line)); background: transparent;
+  color: rgb(var(--paper)); font: 14px var(--font-body); border-radius: 0; }
+.search input::placeholder { color: rgb(var(--grey-3)); }
+.search input:focus { outline: none; border-bottom-color: rgb(var(--paper)); }
+.views { display: grid; gap: 2px; }
+.views a { display: flex; justify-content: space-between; padding: 7px 0; color: rgb(var(--grey-2)); border-bottom: 1px solid transparent; }
+.views a:hover { color: rgb(var(--paper)); }
+.views a[aria-current="page"] { color: rgb(var(--paper)); border-bottom-color: rgb(var(--line)); }
+.tree { flex: 1; }
+.tree-title { color: rgb(var(--grey-3)); margin: 4px 0 8px; }
+.t-area summary { cursor: pointer; list-style: none; display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) auto; align-items: baseline;
+  gap: 6px; padding: 6px 0; border-top: 1px solid rgb(var(--line)); }
+.t-area summary::-webkit-details-marker { display: none; }
+.t-area summary .label { color: rgb(var(--grey-3)); }
+.t-area summary:hover .t-name { color: rgb(var(--paper)); }
+.t-name { color: rgb(var(--grey-1)); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-area[open] .t-name { color: rgb(var(--paper)); }
+.t-count { color: rgb(var(--grey-3)); }
+.t-area ul { list-style: none; margin: 0 0 10px; padding: 0 0 0 2.2rem; }
+.t-area li a { display: grid; grid-template-columns: 14px minmax(0, 1fr); column-gap: 8px; padding: 3px 0; color: rgb(var(--grey-1)); font-size: 13px; }
+.t-area li a:hover, .t-area li a[aria-current="page"] { color: rgb(var(--paper)); }
+.t-area li a[aria-current="page"] .t-base { text-decoration: underline; text-underline-offset: 3px; }
+.t-base { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-dir { grid-column: 2; color: rgb(var(--grey-3)); font-family: var(--font-mono); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dot { color: rgb(var(--grey-2)); font-size: 11px; line-height: 1.8; }
+.t-empty { color: rgb(var(--grey-3)); font-size: 13px; }
+.rail-foot { border-top: 1px solid rgb(var(--line)); padding-top: 12px; color: rgb(var(--grey-3)); }
+
+main { padding: 44px var(--gutter) 120px; max-width: 1360px; outline: none; min-width: 0; }
+.head-meta { display: flex; flex-wrap: wrap; gap: 6px 20px; color: rgb(var(--grey-2)); margin: 0 0 22px; }
+.head-meta .em { color: rgb(var(--paper)); }
+h1.display { font-size: clamp(48px, 8vw, 132px); }
+h2.display { font-size: clamp(36px, 5vw, 76px); }
+.punch { font-size: 19px; line-height: 1.45; color: rgb(var(--grey-1)); max-width: 62ch; margin: 26px 0 0; }
+.path { margin: 12px 0 0; font-family: var(--font-mono); font-size: 13px; color: rgb(var(--grey-2)); overflow-wrap: anywhere; }
+.sec { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 9fr); gap: 20px 28px; border-top: 1px solid rgb(var(--line)); padding-top: 26px; margin-top: 56px; }
+.sec > .label { color: rgb(var(--grey-3)); }
+.sec-body { min-width: 0; }
+.hint { color: rgb(var(--grey-2)); font-size: 14px; max-width: 64ch; margin: 0 0 16px; }
+.pending { color: rgb(var(--grey-3)); font-style: italic; }
+[data-mode='nerd'] .pending { font-style: normal; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 32px; margin: 30px 0 0; }
+.pair dt, .facts dt { color: rgb(var(--grey-3)); }
+.pair dd { margin: 6px 0 0; max-width: 58ch; color: rgb(var(--grey-1)); }
+.stats { display: flex; flex-wrap: wrap; gap: 10px 32px; margin: 0; padding: 0; list-style: none; }
+.stats li { display: grid; gap: 4px; }
+.stats .n { font-family: var(--font-display); font-size: 34px; line-height: 1; letter-spacing: var(--display-track); }
+.stats .label { color: rgb(var(--grey-3)); }
+
+/* Mind map */
+.mm-wrap { overflow-x: auto; border: 1px solid rgb(var(--line)); padding: 14px; background: rgb(var(--ink)); }
+.mm-wrap svg { display: block; }
+.mm-wrap text { font: 13px var(--font-body); }
+.mm-edge { stroke: rgb(var(--paper)); fill: none; stroke-width: 1; }
+.mm-root rect { fill: rgb(var(--paper)); }
+.mm-root text { fill: rgb(var(--ink)); font-weight: 600; }
+.mm-node { cursor: pointer; }
+.mm-node:focus { outline: none; }
+.mm-node:focus-visible rect.box { stroke: rgb(var(--paper)); stroke-width: 2; stroke-opacity: 1; }
+.mm-area rect.box { fill: rgb(var(--ink)); stroke: rgb(var(--paper)); stroke-opacity: .5; }
+.mm-area text { fill: rgb(var(--paper)); }
+.mm-area .mm-num, .mm-area .mm-count { fill: rgb(var(--grey-3)); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .14em; }
+.mm-area:hover rect.box { stroke-opacity: 1; }
+.mm-area.is-open rect.box { fill: rgb(var(--paper)); stroke-opacity: 1; }
+.mm-area.is-open text, .mm-area.is-open .mm-num, .mm-area.is-open .mm-count { fill: rgb(var(--ink)); }
+.mm-area.is-dim { opacity: .45; }
+.mm-file rect.box { fill: rgb(var(--ink-2)); stroke: rgb(var(--line)); }
+.mm-file text { fill: rgb(var(--paper)); }
+.mm-file .mm-glyph { fill: rgb(var(--grey-2)); }
+.mm-file:hover rect.box { stroke: rgb(var(--paper)); }
+.mm-more rect.box { fill: none; stroke: rgb(var(--grey-3)); stroke-dasharray: 4 3; }
+.mm-more text { fill: rgb(var(--grey-1)); }
+.mm-detail { margin-top: 16px; max-width: 70ch; min-height: 1.5em; }
+.mm-detail h3 { font-family: var(--font-display); font-weight: 400; font-size: 26px; letter-spacing: var(--display-track); margin: 0 0 6px; }
+.mm-detail p { margin: 0 0 8px; color: rgb(var(--grey-1)); }
+.legend { color: rgb(var(--grey-3)); }
+
+/* Lists */
+.rows-list { list-style: none; margin: 0; padding: 0; }
+.rows-list li { border-bottom: 1px solid rgb(var(--line)); }
+.rows-list a.rowlink, .rows-list .rowstatic { display: grid; grid-template-columns: 3rem minmax(0, 1fr) auto; gap: 4px 16px; align-items: baseline; padding: 16px 0; }
+.rows-list .num { color: rgb(var(--grey-3)); }
+.rows-list .name { font-size: 20px; letter-spacing: -.01em; transition: transform .5s cubic-bezier(.2,.7,.1,1); }
+.rows-list a.rowlink:hover .name { transform: translateX(8px); }
+.rows-list .sub { grid-column: 2 / 4; color: rgb(var(--grey-2)); font-size: 14px; max-width: 70ch; }
+.rows-list .dirp { color: rgb(var(--grey-3)); font-family: var(--font-mono); font-size: 11px; margin-left: 10px; }
+
+/* Facts */
+.facts { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 14px 24px; margin: 0; }
+.facts dt { padding-top: 3px; }
+.facts dd { margin: 0; max-width: 70ch; color: rgb(var(--grey-1)); }
+.facts dd a, .note a.ref, .glossary a, .rows-list .sub a { text-decoration: underline; text-decoration-color: rgb(var(--grey-4)); text-underline-offset: 3px; }
+.reasons { margin: 8px 0 0; padding-left: 18px; }
+.terms, .glossary { display: grid; grid-template-columns: minmax(130px, max-content) minmax(0, 1fr); gap: 10px 22px; margin: 0; }
+.terms dt, .glossary dt { color: rgb(var(--paper)); font-weight: 500; }
+.terms dd, .glossary dd { margin: 0; color: rgb(var(--grey-1)); max-width: 68ch; }
+.glossary .used { color: rgb(var(--grey-3)); font-size: 13px; margin-top: 2px; }
+.banner { margin: 24px 0 0; padding: 12px 16px; border: 1px solid rgb(var(--line)); color: rgb(var(--grey-1)); max-width: 80ch; }
+.banner.warn { border-color: rgb(var(--paper)); color: rgb(var(--paper)); }
+
+/* Code with notes */
+.rows { border: 1px solid rgb(var(--line)); }
+.row { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, 1fr); border-top: 1px solid rgb(var(--line)); }
+.row:first-child { border-top: 0; }
+.row.sel { box-shadow: inset 2px 0 0 rgb(var(--paper)); }
+.row.sel .note { background: rgb(var(--ink-2)); }
+.code { background: rgb(var(--ink-2)); overflow-x: auto; min-width: 0; }
+.row:nth-child(even) .code { background: rgb(var(--ink-3)); }
+.code pre { margin: 0; padding: 12px 0; font: 12.5px/1.65 var(--font-mono); tab-size: 4; }
+.code code { background: none; padding: 0; font-size: inherit; border-radius: 0; }
+.ln { display: block; padding-right: 16px; white-space: pre; }
+.no { display: inline-block; width: 4.4em; padding-right: 14px; text-align: right; color: rgb(var(--grey-3)); user-select: none; }
+.note { padding: 14px 20px 16px; border-left: 1px solid rgb(var(--line)); }
+.note-inner { position: sticky; top: calc(var(--nav-h) + 14px); }
+.note .label { color: rgb(var(--grey-3)); display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 8px; }
+.note .label a:hover { color: rgb(var(--paper)); }
+.note h4 { font-family: var(--font-display); font-weight: 400; font-size: 21px; line-height: 1.15; letter-spacing: var(--display-track); margin: 0 0 8px; }
+[data-mode='nerd'] .note h4 { font-size: 16px; font-weight: 500; }
+.note p { margin: 0 0 9px; max-width: 62ch; color: rgb(var(--grey-1)); }
+.note .k { color: rgb(var(--paper)); font-weight: 600; margin-right: 6px; }
+.no-code { padding: 14px 18px; color: rgb(var(--grey-3)); }
+
+/* Status badges: monochrome, the glyph and the words carry the meaning */
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; white-space: nowrap;
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; border: 1px solid rgb(var(--line)); color: rgb(var(--grey-1)); }
+.b-warn { border-color: rgb(var(--paper)); color: rgb(var(--paper)); }
+.b-bad { background: rgb(var(--paper)); border-color: rgb(var(--paper)); color: rgb(var(--ink)); }
+.b-unk { color: rgb(var(--grey-3)); border-style: dashed; }
+
+.checks { width: 100%; border-collapse: collapse; }
+.checks th, .checks td { text-align: left; vertical-align: top; padding: 14px 14px 14px 0; border-top: 1px solid rgb(var(--line)); }
+.checks th { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; font-weight: 400; color: rgb(var(--grey-3)); border-top: 0; }
+.checks td { color: rgb(var(--grey-1)); }
+.checks td:first-child { color: rgb(var(--paper)); max-width: 34ch; }
+.table-wrap { overflow-x: auto; }
+.card { border-top: 1px solid rgb(var(--line)); padding: 22px 0 6px; }
+.card h3 { font-family: var(--font-display); font-weight: 400; font-size: 26px; letter-spacing: var(--display-track); margin: 0 0 14px; }
+[data-mode='nerd'] .card h3 { font-size: 18px; font-weight: 500; }
+.method { padding-left: 1.4em; max-width: 72ch; margin: 0; }
+.method li { margin-bottom: 10px; color: rgb(var(--grey-1)); }
+.method strong { color: rgb(var(--paper)); font-weight: 600; }
+.filter { padding: 9px 0; border: 0; border-bottom: 1px solid rgb(var(--line)); background: transparent; color: rgb(var(--paper)); font: 14px var(--font-body); width: min(420px, 100%); margin: 0 0 22px; border-radius: 0; }
+.filter:focus { outline: none; border-bottom-color: rgb(var(--paper)); }
+.empty { max-width: 60ch; margin: 14vh auto; padding: 0 var(--gutter); }
+.skipped { margin-top: 44px; color: rgb(var(--grey-3)); font-size: 14px; }
+.skipped summary { cursor: pointer; }
+
+@media (max-width: 960px) {
+  .app { grid-template-columns: 1fr; }
+  .rail { position: static; height: auto; border-right: 0; border-bottom: 1px solid rgb(var(--line)); padding-left: var(--gutter); }
+  .tree { max-height: 46vh; overflow: auto; }
+  main { padding-top: 32px; }
+  .sec { grid-template-columns: 1fr; margin-top: 40px; }
+  .row { grid-template-columns: 1fr; }
+  .note { border-left: 0; border-bottom: 1px dashed rgb(var(--line)); order: -1; }
+  .note-inner { position: static; }
+  .facts { grid-template-columns: 1fr; gap: 2px 0; }
+  .facts dd { margin-bottom: 14px; }
+  .crumbs .hide-sm { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+@media print { .rail, .top, .grain { display: none; } .app { display: block; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="top">
+  <nav class="crumbs label" id="crumbs" aria-label="Breadcrumb"></nav>
+  <button class="mode" id="mode" type="button" aria-label="Switch to nerd mode">
+    <span class="knob" aria-hidden="true"></span>
+    <span class="opt o-calm">calm</span>
+    <span class="opt o-nerd">&lt;nerd/&gt;</span>
+  </button>
+</header>
+<div class="app">
+  <aside class="rail" aria-label="Navigation">
+    <div>
+      <p class="label who"><span class="calm-only">Code explorer</span><span class="nerd-only">~/code</span></p>
+      <h1 id="repo-name">Code explorer</h1>
+    </div>
+    <label class="search">
+      <span class="sr-only">Search files, notes and terms</span>
+      <input id="q" type="search" placeholder="Search files, notes, terms (press /)" autocomplete="off">
+    </label>
+    <nav class="views" aria-label="Views">
+      <a href="#/overview" data-view="overview"><span class="calm-only">Overview and map</span><span class="nerd-only">cd overview</span></a>
+      <a href="#/readiness" data-view="readiness"><span class="calm-only">Is it production-ready?</span><span class="nerd-only">cat readiness</span></a>
+      <a href="#/decisions" data-view="decisions"><span class="calm-only">Why it is built this way</span><span class="nerd-only">cat decisions</span></a>
+      <a href="#/debug" data-view="debug"><span class="calm-only">When something breaks</span><span class="nerd-only">man debug</span></a>
+      <a href="#/glossary" data-view="glossary"><span class="calm-only">Glossary</span><span class="nerd-only">grep glossary</span></a>
+    </nav>
+    <div class="tree" id="tree" aria-label="Files by area"></div>
+    <footer class="rail-foot label" id="built"></footer>
+  </aside>
+  <main id="main" tabindex="-1"></main>
+</div>
+<div class="grain" aria-hidden="true"></div>
+<script id="clarity-data" type="application/json">{"generator":"clarity.py 1.2.0","built_at":"2026-11-11T22:39:21+00:00","repo":{"schema_version":1,"name":"Haus-Nous","commit":"fb4ed45","synced_at":"2026-11-11T22:39:05+00:00","summary":"Haus-Nous is a website, built with Next.js, that presents a set of AI tools and business strategy frameworks. Visitors can browse a catalog of AI tools, open a detail page for each one, and look through a library of 12 strategy frameworks. There are also two screens where a user describes a business challenge and gets a simulated reply: a chat screen and a terminal-style console. The replies are described as simulated, so it is unclear whether any real AI or server sits behind them. The look is dark and techy, with a sidebar for navigation.","who_its_for":"Business people and teams exploring AI tools and strategy ideas for their challenges. It may also be a demo or prototype, but the summaries do not say for certain.","how_it_runs":"It runs as a Next.js website using the commands listed in package.json, and each page is a file inside the app folder. The summaries do not say where it is hosted or whether a database or outside service is used.","start_here":["package.json","app/layout.tsx","app/page.tsx","components/Navigation.tsx","app/tools/page.tsx","app/tools/[id]/page.tsx","app/chat/page.tsx"],"areas":[{"id":"root-files","name":"(root files)","match":["*"],"summary":"Settings files that set up the project: its name and run commands, the TypeScript checker, the build step for styles, the Tailwind colors and fonts, and Next.js options.","why":"They control how the site is built and styled, but rarely hold the content people see.","debug_tips":"If the site will not start or build, or colors and fonts look wrong, check package.json, tailwind.config.ts and tsconfig.json first."},{"id":"app","name":"app","match":["app/*"],"summary":"The home page, the shared outer frame that wraps every page, and the global style sheet with the dark look and moving gradient.","why":"This is the first thing visitors see and it sets the look for the whole site.","debug_tips":"If something looks off on every page, such as the background, fonts or browser tab title, look at app/layout.tsx and app/globals.css."},{"id":"components","name":"components","match":["components/*"],"summary":"Reusable visual pieces: the left sidebar navigation, an animated cat logo, and a set of line-drawing icons for tool cards.","why":"They are shared across pages, so one change shows up in many places.","debug_tips":"If the menu links, logo animation or tool card icons are wrong, check the matching file here."},{"id":"app-tools","name":"app/tools","match":["app/tools/*"],"summary":"The tools catalog, with search and filters by industry, category and customizability, plus a detail page for each tool chosen by its id.","why":"This is the main product showcase of the site.","debug_tips":"If a tool card is missing or a detail page shows the wrong tool, check the id handling in app/tools/[id]/page.tsx and the list in app/tools/page.tsx. Where the tool data itself lives is unclear from the summaries."},{"id":"app-chat","name":"app/chat","match":["app/chat/*"],"summary":"A chat screen where a user types a business challenge and gets a simulated reply with suggested tools.","why":"It gives visitors an interactive way to be pointed toward tools.","debug_tips":"Replies are simulated, so odd answers likely come from the page's own built-in logic in app/chat/page.tsx rather than a real AI."},{"id":"app-console","name":"app/console","match":["app/console/*"],"summary":"A terminal-styled screen where a user describes a strategy challenge and gets a simulated analysis.","why":"It offers a second, more stylized way to try the product idea.","debug_tips":"Check app/console/page.tsx for how the fake analysis is produced. Nothing in the summaries suggests a real backend."},{"id":"app-frameworks","name":"app/frameworks","match":["app/frameworks/*"],"summary":"A library page with a fixed list of 12 business strategy frameworks shown as cards that can be searched and filtered.","why":"It adds educational content that supports the tools.","debug_tips":"If a framework is missing or search misbehaves, look at app/frameworks/page.tsx, since the list is fixed there."},{"id":"lib","name":"lib","match":["lib/*"],"summary":"No file summaries were given for this area, so what it contains is unclear.","why":"Folders with this name usually hold shared helper code, but that is a guess.","debug_tips":"Open the folder directly to see what is inside before relying on it."}],"decisions":[],"readiness":{"overall":"not-ready","summary":"The top three fixes are to add automated tests, to add CI with a documented deploy and rollback process, and to add logging plus clear error handling with input validation on the chat endpoint. Several checks (access, dependencies, data) could not be confirmed without running tools or reading the code.","checked_at":"2026-11-11T22:39:20+00:00","checks":[{"id":"starts","question":"Does the app build and start with one documented command?","status":"partial","evidence":"`package.json` has standard `dev`, `build` and `start` scripts and a `package-lock.json` exists, but the README excerpt shown does not document an install and run command. Not checked: the build was not run.","next_step":"Add a Getting Started section to `README.md` with `npm install`, `npm run dev`, and `npm run build \u0026\u0026 npm start`."},{"id":"tests","question":"Are there automated tests, and do they pass?","status":"fail","evidence":"0 test files found and `package.json` has no test script or test dependency.","next_step":"Add a test runner (Vitest or Jest) with a few tests for key pages and logic, plus an `npm test` script."},{"id":"errors","question":"When something goes wrong, does the app show a clear message instead of crashing or failing silently?","status":"unknown","evidence":"Not checked: no evidence of error boundaries, `error.tsx` or API error handling was provided. No swallowed-error patterns were found, but that is not proof of clear messages.","next_step":"Add `app/error.tsx` and `app/not-found.tsx`, and show friendly errors in the chat UI when a request fails."},{"id":"inputs","question":"Does it check what people type or upload before using it?","status":"partial","evidence":"Only 3 input validation matches in 2 files, so validation is minimal. No schema library such as zod is listed in the scripts and deps excerpt.","next_step":"Validate chat input and any API route bodies with a schema (e.g. zod) and enforce length limits."},{"id":"secrets","question":"Are passwords and API keys kept out of the code and out of git history?","status":"partial","evidence":"No env files are tracked, `.gitignore` mentions `.env`, and 0 secret-looking strings were found in HEAD. Git history was not scanned.","next_step":"Run a history scan (gitleaks or trufflehog) and add a `.env.example` listing required variables."},{"id":"access","question":"Can only the right people see and change things (sign-in and permissions)?","status":"unknown","evidence":"Not checked: 16 auth/session/permission matches in 2 files, but their content was not shown, so it is unclear whether real sign-in or role checks exist.","next_step":"Review those 2 files. If the app has private data or AI usage costs, add real authentication and server-side authorization on API routes."},{"id":"data","question":"Is important data backed up, and are database changes made through migrations?","status":"unknown","evidence":"Not checked: no migrations folder and no database or backup configuration were seen. The app may be static and have no database.","next_step":"State in `README.md` whether any data is stored. If so, add migrations and a backup plan."},{"id":"dependencies","question":"Are third-party packages reasonably up to date and free of known security problems?","status":"unknown","evidence":"Not checked: the dependency audit was not run. `package-lock.json` exists, which helps reproducible installs, but versions and known vulnerabilities were not assessed.","next_step":"Run `npm audit` and `npm outdated`, and add Dependabot or Renovate."},{"id":"logs","question":"If it breaks while people use it, will logs or alerts show what happened?","status":"fail","evidence":"Only 1 logging match in 1 file, and no monitoring or alerting configuration is present.","next_step":"Add structured server-side logging for API routes and connect an error tracker such as Sentry."},{"id":"performance","question":"Does it stay fast with realistic amounts of data and users?","status":"unknown","evidence":"Not checked: no load or performance evidence was provided. The tool and framework catalogues look like static content, which is usually cheap to serve, but this is unverified.","next_step":"Run Lighthouse on key pages and confirm the chat endpoint has rate limiting and timeouts."},{"id":"deploy","question":"Is there a written, repeatable way to deploy it and to roll back a bad release?","status":"fail","evidence":"No CI or deploy files were found and no deploy or rollback steps are documented.","next_step":"Add a CI workflow for lint and build, and document deploy and rollback (e.g. Vercel promote previous deployment) in `README.md`."},{"id":"docs","question":"Could someone new run it and understand it from the docs alone?","status":"partial","evidence":"`README.md` is the only doc. It describes the product, design and tech stack well, but the excerpt shows no setup steps, environment variables or architecture notes.","next_step":"Add setup, environment variable and project structure sections to `README.md`."}],"method":"Static evidence only; tests, build and audit were not run in this pass."},"debug_playbook":[{"symptom":"The site will not start or build","likely_area":"root-files","where_to_look":["package.json","tsconfig.json","next.config.js"],"steps":["Check that the run commands and needed libraries in package.json are present.","Look for strictness or path settings in tsconfig.json that could cause errors.","Check next.config.js for options that might be too strict."]},{"symptom":"Colors, fonts or background look wrong across the whole site","likely_area":"app","where_to_look":["app/globals.css","app/layout.tsx","tailwind.config.ts","postcss.config.js"],"steps":["Confirm the style sheet is loaded in app/layout.tsx.","Check the palette and fonts in tailwind.config.ts.","Make sure postcss.config.js still runs Tailwind."]},{"symptom":"A tool page shows the wrong tool or is blank","likely_area":"app-tools","where_to_look":["app/tools/[id]/page.tsx","app/tools/page.tsx"],"steps":["Compare the id in the card link with the id the detail page looks up.","Check whether the tool exists in the data used by both pages.","Test search and filters in the catalog to see if the card is hidden."]},{"symptom":"Chat or console gives strange or unhelpful answers","likely_area":"app-chat","where_to_look":["app/chat/page.tsx","app/console/page.tsx"],"steps":["Remember the replies are simulated, so look at how each page builds its answer.","Try different inputs to see whether the reply changes at all.","Check the console page the same way if the issue is only there."]},{"symptom":"Sidebar link, logo or icon is missing or broken","likely_area":"components","where_to_look":["components/Navigation.tsx","components/GokuLogo.tsx","components/TechIcons.tsx"],"steps":["Check the four links in Navigation.tsx match real page addresses.","Check the logo file for its timer and hover behavior.","Check that the tool cards use the icon names defined in TechIcons.tsx."]}],"glossary":[{"term":"Next.js","meaning":"The framework that runs this website and turns each page file into a web address."},{"term":"Tailwind","meaning":"A styling tool that lets the site use short class names for colors, spacing and fonts."},{"term":"TypeScript","meaning":"A stricter form of JavaScript that catches mistakes before the site runs."},{"term":"Layout","meaning":"The shared outer frame, such as styles and navigation, that every page sits inside."},{"term":"Component","meaning":"A reusable piece of the screen, like the sidebar or a logo."},{"term":"Simulated reply","meaning":"A made-up answer shown to look like an AI response, not necessarily from a real AI."},{"term":"PostCSS","meaning":"A build step that processes the style sheets, here to run Tailwind and Autoprefixer."},{"term":"Route","meaning":"A web address such as /chat, which matches a page file in the app folder."}],"skipped":[]},"site":{"url":"https://raunaq-nous.github.io/raunaq-portfolio/","owner":"Raunaq Rakesh","slug":"haus-nous","project_name":"Haus-Nous","project":"haus-nous","repo_url":"https://github.com/Raunaq-nous/Haus-Nous","private":true,"index":true,"mode":"notes"},"files":{"app/chat/page.tsx":{"schema_version":1,"path":"app/chat/page.tsx","language":"TypeScript (React)","lines":254,"hash":"sha256:42b2e4edae970135bd916a0e6c5537797ee4aad00ef318a6255772feb56f157d","area":"app","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["Replies are simulated, so the page does not provide real help yet.","Several color names are not defined in the Tailwind config.","Two imported icons are not used.","The greeting says Haus Nos, not Haus Nous.","No tests are visible."]},"terms":[{"term":"React component","meaning":"A reusable block of screen code that shows content and reacts to user actions."},{"term":"State","meaning":"Information the page remembers while it runs, such as the chat history, so the screen updates when it changes."},{"term":"Client component","meaning":"Code that runs in the visitor's browser so it can respond to typing and clicks."},{"term":"Timer (setTimeout)","meaning":"A instruction that runs some code after a set delay, used here to fake a reply delay."}],"depends_on":["react","framer-motion","lucide-react","tailwind.config.ts","app/globals.css"],"used_by":["The /chat address (links are not visible in this packet)"],"sections":[{"start":1,"end":6,"kind":"setup","name":"File setup","id":"s1","hash":"b11611aafd2dd158","title":"Imports and browser marker","what":"Loads the React tools, animation library, and icons the chat screen needs, and marks the page to run in the browser.","why":"Needed because the page responds to typing and clicks, which only happen in the browser.","watch_out":"Two icons, AlertCircle and CheckCircle, are imported but never used on this page."},{"start":7,"end":14,"kind":"type","name":"Message","id":"s2","hash":"f1748080fc93355d","title":"Shape of one chat message","what":"Describes what each chat bubble holds: who sent it, its text, optional suggested tools, and when it was sent.","why":"Gives every bubble the same structure so the page can draw them the same way.","watch_out":"The console page uses a different message shape, so code cannot be shared without changes."},{"start":15,"end":23,"kind":"value","name":"initialMessages","id":"s3","hash":"b001822cfe0993b3","title":"Opening greeting from the assistant","what":"The first message shown when the chat opens. It introduces the AI Console and asks the user to describe a challenge. The text reads Haus Nos, not Haus Nous.","why":"Gives first-time visitors a starting point.","watch_out":"The brand name in the greeting appears misspelled."},{"start":24,"end":29,"kind":"value","name":"mockToolSuggestions","id":"s4","hash":"5a027b26e4c319ff","title":"Fixed list of recommended tools","what":"Three tool names that the chat always shows as recommendations, whatever the user typed.","why":"Likely reason: placeholder data until real recommendations are connected.","watch_out":"Visitors may believe these suggestions were chosen for their question."},{"start":30,"end":79,"kind":"function","name":"ChatPage (part 1)","id":"s5","hash":"aa0617dcbc56ffe2","title":"Page memory and simulated reply","what":"Holds the chat history, the text being typed, and whether a reply is pending. Sending adds the message and then, after 1.5 seconds, adds a canned reply that repeats the question in lower case. It also defines four example prompts shown at the start.","why":"Likely reason: a simulated reply stands in for a real AI service that is not connected yet.","watch_out":"The delayed reply is not cancelled if the visitor leaves the page, so it may try to update a screen that is gone."},{"start":80,"end":127,"kind":"function","name":"ChatPage (part 2)","id":"s6","hash":"e20d8090753c661c","title":"Page frame and chat history display","what":"Draws the header with the AI Console title, then a scrolling area where each message appears in a bubble with an icon. User messages sit on the right and assistant messages on the left, with a short fade and slide when they arrive.","why":"Likely reason: makes the conversation read like a familiar chat window.","watch_out":"Uses color names such as nous-cream and nous-brown that are not defined in the Tailwind config, so those parts may look plain."},{"start":128,"end":163,"kind":"function","name":"ChatPage (part 3)","id":"s7","hash":"6ef315d72d9a69e5","title":"Recommended tools and timestamps","what":"Under assistant messages that include suggestions, shows a Recommended Tools heading and a row of tool chips, then the time each message was sent. The chips do not respond to clicks.","why":"Shows the user what the assistant suggests next.","watch_out":"The chips look clickable but have no action, which may confuse visitors."},{"start":164,"end":223,"kind":"function","name":"ChatPage (part 4)","id":"s8","hash":"31ddd6ae087d493a","title":"Waiting dots and example prompts","what":"Shows three pulsing dots while a reply is pending. When only the greeting is showing, it also shows four example prompt buttons. Clicking an example fills the input box but does not send it.","why":"Shows the assistant is working and helps first-time users begin.","watch_out":"Examples disappear for good once a second message exists, even if the visitor wants them again."},{"start":224,"end":254,"kind":"function","name":"ChatPage (part 5)","id":"s9","hash":"a87c435f7f2a2a73","title":"Input box and send button","what":"The text field and Send button at the bottom of the page. Send is disabled while the box is empty or a reply is pending. A note says human oversight is kept at each step.","why":"Stops empty messages and repeat sends while a reply is pending.","watch_out":"The oversight note is a promise shown to users. Nothing in this file enforces human review."}],"explained_at":"2026-11-11T22:36:40+00:00","explained_by":"haiku","summary":"The chat screen at the chat address, where a user types a business challenge and gets a simulated reply with suggested tools.","purpose":"Lets a visitor describe a challenge in a chat-style window. The replies are placeholders, not real AI output.","why":"Likely reason: a prototype of the chat experience before a real AI service is connected. Reason not stated in the code beyond the simulated reply.","how":"The page starts with one greeting. When the user sends text, the page adds it to the history, clears the input, shows a waiting indicator, waits 1.5 seconds, then adds a fixed reply with three tool names. The page redraws whenever the history changes and scrolls to the newest message.","inputs":"Text typed in the input box, and clicks on example prompts.","outputs":"A list of chat bubbles on screen. Nothing is saved or sent anywhere.","risks":"Replies are fixed and do not depend on the question. The 1.5 second timer is not cancelled if the user leaves the page. Message identifiers come from the clock and could clash in rare cases.","debug":"If a message does not appear, check that the input is not empty and that the page is not already waiting. If the layout looks plain, check for undefined color names. Try sending two messages quickly to test the waiting state.","summary_hash":"sha256:42b2e4edae970135bd916a0e6c5537797ee4aad00ef318a6255772feb56f157d","fresh":true},"app/console/page.tsx":{"schema_version":1,"path":"app/console/page.tsx","language":"TypeScript (React)","lines":262,"hash":"sha256:306952c1f10bff8ab27c72346cfb3ea6987981c012b9bc6708719f1c436a1207","area":"app","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["Output is simulated, so no real analysis happens.","The disclaimer claims outcomes are tracked, but nothing in this file tracks anything.","Several style class names depend on definitions outside this file."]},"terms":[{"term":"Terminal style","meaning":"A look that imitates a command line screen with monospace text and glowing accents."},{"term":"Monospace","meaning":"A font where every character has the same width, typical of code and terminals."},{"term":"Processing indicator","meaning":"The animated dots and label that show the system is working."}],"depends_on":["react","framer-motion","lucide-react","tailwind.config.ts","app/globals.css"],"used_by":["The /console address, linked from the home page"],"sections":[{"start":1,"end":6,"kind":"setup","name":"File setup","id":"s1","hash":"d1d896500bf58919","title":"Imports for the terminal screen","what":"Loads React tools, the animation library, and the Terminal, Cpu, and Zap icons used on this screen.","why":"Needed because the screen reacts to typing and clicks in the browser.","watch_out":""},{"start":7,"end":14,"kind":"type","name":"Message","id":"s2","hash":"357f90d30e06ffae","title":"Shape of one console entry","what":"Describes each entry: whether it came from the user or the system, its text, optional tools, and its time.","why":"Keeps every entry drawn the same way.","watch_out":"Uses the word system where the chat page uses assistant, so the two data shapes differ."},{"start":15,"end":23,"kind":"value","name":"initialMessages","id":"s3","hash":"d6807eddd4ec32e2","title":"Opening boot message","what":"The first entry shown, a line saying the console is initialized and asking for a strategic challenge.","why":"Likely reason: gives the terminal look a startup message.","watch_out":"The version label is typed by hand and will not update with real releases."},{"start":24,"end":29,"kind":"value","name":"mockTools","id":"s4","hash":"6dcb2376c2a91ff7","title":"Fixed list of console tools","what":"Three tool names shown after every submit, whatever the user wrote.","why":"Likely reason: placeholder data until real recommendations exist.","watch_out":"Fixed suggestions can look like real analysis to visitors."},{"start":30,"end":79,"kind":"function","name":"ConsolePage (part 1)","id":"s5","hash":"a1111114983be0e6","title":"Submit logic and simulated analysis","what":"On submit, adds the user's text, clears the box, shows processing for 1.8 seconds, then adds a system message with the same tools and a fixed 2 to 3 week pilot estimate. It also defines four example queries.","why":"Likely reason: a stand-in for a real analysis service.","watch_out":"The pilot length is fixed text and is not calculated from what the user typed."},{"start":80,"end":131,"kind":"function","name":"ConsolePage (part 2)","id":"s6","hash":"d80e68438bebc525","title":"Terminal frame and entry display","what":"Draws the header with the GOKU_CONSOLE title and an ONLINE light, then a scrolling list of entries in monospace text.","why":"Likely reason: gives the page its terminal look.","watch_out":"The left margin assumes a side menu of a fixed width, which is not visible in this file."},{"start":132,"end":168,"kind":"function","name":"ConsolePage (part 3)","id":"s7","hash":"e5c0e79d10833382","title":"Tool chips and second-level timestamps","what":"Lists recommended tools as arrow-prefixed chips and shows each entry's time to the second. Chips have no click action.","why":"Likely reason: shows next steps the user could take.","watch_out":"Chips look like buttons but do nothing when clicked."},{"start":169,"end":202,"kind":"function","name":"ConsolePage (part 4)","id":"s8","hash":"e237028e4f884dfc","title":"Processing indicator","what":"Shows three pulsing green dots and the word PROCESSING while the simulated analysis runs.","why":"Shows that work is happening.","watch_out":"No time limit exists, so a stuck real request would show this forever."},{"start":203,"end":262,"kind":"function","name":"ConsolePage (part 5)","id":"s9","hash":"cbeaa1537c9a3ebe","title":"Example queries, input, and EXECUTE button","what":"Shows example queries only at the start, a text box, an EXECUTE button, and a note that recommendations are validated by experts and outcomes are tracked.","why":"Helps first-time users and fronts the submit action.","watch_out":"The note about tracking and measuring results is not backed by code on this page."}],"explained_at":"2026-11-11T22:36:40+00:00","explained_by":"haiku","summary":"The console screen at the console address, styled like a computer terminal, where a user describes a strategy challenge and gets a simulated analysis.","purpose":"Gives visitors a terminal-style place to submit a strategic challenge and see recommended tools. The analysis is fake.","why":"Likely reason: a prototype of the execution terminal before a real analysis service exists. Reason not stated in the code beyond the simulated output.","how":"The page starts with a boot message. On submit it adds the user's text, clears the box, shows a processing indicator for 1.8 seconds, then adds a fixed system message with the same three tools and a fixed 2 to 3 week estimate. The screen scrolls to the latest entry.","inputs":"Text typed into the input box, and clicks on example queries.","outputs":"A list of terminal-style entries on screen. Nothing is saved or sent.","risks":"The output does not depend on the input. The estimate is fixed text. The processing indicator has no time limit, so a real service that hangs would show it forever. Entry identifiers come from the clock.","debug":"If submit does nothing, check that the input has text and that processing has finished. If the page shifts sideways, check the left margin value, which assumes a side menu. Try submitting twice quickly to see the processing state.","summary_hash":"sha256:306952c1f10bff8ab27c72346cfb3ea6987981c012b9bc6708719f1c436a1207","fresh":true},"app/frameworks/page.tsx":{"schema_version":1,"path":"app/frameworks/page.tsx","language":"TypeScript (React)","lines":447,"hash":"sha256:f1150eae982b3a47bbf4ca79d4890de0bbccd283264e43feb0aafb07dab85f39","area":"app","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["The Learn More buttons have no action.","The header count of 12 does not update.","The Filter icon is imported but not used.","The AI-enhanced claims are fixed text."]},"terms":[{"term":"Framework","meaning":"A named method for analyzing a business problem, such as SWOT Analysis."},{"term":"Filter","meaning":"A control that hides items which do not match a chosen category or level."},{"term":"Component","meaning":"A reusable part of a screen, here each framework card."},{"term":"Sticky header","meaning":"A bar that stays at the top of the screen while the page scrolls."}],"depends_on":["react","framer-motion","lucide-react","app/globals.css","tailwind.config.ts"],"used_by":["The /frameworks address, linked from the home page footer"],"sections":[{"start":1,"end":19,"kind":"setup","name":"File setup","id":"s1","hash":"47cf43c41693fee9","title":"Imports for the library page","what":"Loads React state, the animation library, and icons for each framework and the search and filter controls.","why":"Needed for the interactive filters and the icons shown on cards.","watch_out":"The Filter icon is imported but never used."},{"start":20,"end":32,"kind":"type","name":"Framework","id":"s2","hash":"29b2ad2cde02ea85","title":"Shape of one framework entry","what":"Describes each framework: name, summary, category, difficulty, duration, icon, uses, key parts, and whether it is AI-enhanced.","why":"Keeps every card the same shape.","watch_out":"The icon field accepts any type, so the checker cannot catch a wrong icon."},{"start":33,"end":92,"kind":"value","name":"frameworks, categories, difficulties (part 1)","id":"s3","hash":"d0e2340042fa6534","title":"First five framework records","what":"Records for Porter's Five Forces, BCG Growth-Share Matrix, Ansoff Matrix, McKinsey 7S Framework, and Value Chain Analysis, each with its details.","why":"Likely reason: simple static content stored with the page.","watch_out":"Content must be edited by hand here, and the header count is separate from this list."},{"start":93,"end":152,"kind":"value","name":"frameworks, categories, difficulties (part 2)","id":"s4","hash":"0555863000a93075","title":"Next five framework records","what":"Records for SWOT Analysis, Jobs-to-be-Done, Lean Canvas, OKR Framework, and Blue Ocean Strategy.","why":"Likely reason: same as above, continuing the static list.","watch_out":"Every record must keep the same field layout, or the card may fail to show that field."},{"start":153,"end":182,"kind":"value","name":"frameworks, categories, difficulties (part 3)","id":"s5","hash":"84e684e63aeaa0e1","title":"Last two records and filter lists","what":"Records for Business Model Canvas and Agile Transformation Framework, then the lists of categories and difficulty levels that drive the filter buttons.","why":"Gives the filters the exact values they match against.","watch_out":"Category names must match exactly between records and the filter list, or a framework disappears from its filter."},{"start":183,"end":240,"kind":"function","name":"FrameworksPage (part 1)","id":"s6","hash":"79c8e9bd365fb0ff","title":"Search and filter logic with header","what":"Keeps three settings in memory: chosen category, chosen difficulty, and search text. A framework shows only if it passes all three checks. The header shows an AI label, a count of 12, and the search box.","why":"Lets visitors narrow the list quickly.","watch_out":"Search does not look at key parts, so searching for a part name finds nothing."},{"start":241,"end":295,"kind":"function","name":"FrameworksPage (part 2)","id":"s7","hash":"7c37198c820ff944","title":"Category and difficulty filter buttons","what":"Two rows of buttons. The chosen button is highlighted. Category buttons are blue and difficulty buttons are lime.","why":"Gives visitors a visible way to narrow the list.","watch_out":"The count of 12 in the header is typed by hand and will not change when filters hide frameworks."},{"start":296,"end":353,"kind":"function","name":"FrameworksPage (part 3)","id":"s8","hash":"bc744bc5525e7a78","title":"Framework card grid and difficulty labels","what":"Shows matching frameworks in a two-column grid. Each card has an icon, name, category, colored difficulty label, and an AI badge when enhanced. A message appears when nothing matches.","why":"Gives a quick scan of each framework.","watch_out":"Any difficulty level not listed in the color rules shows in the advanced blue style."},{"start":354,"end":410,"kind":"function","name":"FrameworksPage (part 4)","id":"s9","hash":"3e7ccfd909ff1a7d","title":"Card details and Learn More button","what":"Shows each card's description, uses, up to four key parts with a check mark, a count of any extra parts, the duration, and a Learn More button.","why":"Gives enough detail to decide whether to explore a framework.","watch_out":"The Learn More button has no action, so visitors clicking it see nothing happen."},{"start":411,"end":447,"kind":"function","name":"FrameworksPage (part 5)","id":"s10","hash":"89755a254464aa9f","title":"AI features explainer section","what":"A closing section stating all frameworks are AI-enhanced, with three fixed points about data collection, analysis, and human oversight.","why":"Likely reason: marketing copy that explains the AI approach.","watch_out":"The AI-enhanced claim is repeated as fixed text and per-card flags, so the two can drift apart."}],"explained_at":"2026-11-11T22:36:40+00:00","explained_by":"haiku","summary":"The frameworks library page, where a visitor searches and filters a fixed list of 12 business strategy frameworks shown as cards.","purpose":"Lets visitors browse, search, and filter business frameworks such as Porter's Five Forces and SWOT Analysis.","why":"Gives visitors one place to see the framework list and narrow it by category, difficulty, or text.","how":"The list of frameworks is stored in the file. The page keeps three filter settings in memory. For each framework it checks the category, the difficulty, and the search text, and shows only those that pass all three. Each passing framework is drawn as a card with its details. A closing section describes the AI features.","inputs":"Typing in the search box and clicks on category and difficulty buttons.","outputs":"A filtered grid of framework cards, or a message saying nothing matches.","risks":"The list is hard-coded, so adding a framework means editing this file. The header count is also typed by hand. The Learn More button does nothing. Category names must match exactly.","debug":"If a framework is missing from a filter, compare its category with the category list. If search finds nothing, remember it only checks the name, description, and uses. Try resetting both filters to All.","summary_hash":"sha256:f1150eae982b3a47bbf4ca79d4890de0bbccd283264e43feb0aafb07dab85f39","fresh":true},"app/globals.css":{"schema_version":1,"path":"app/globals.css","language":"CSS","lines":122,"hash":"sha256:14864dcff6f6db294e8e640d7f19b03294d8dc220aa615e91848933c715e0ff5","area":"app","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["Scrollbar rules only target some browsers.","Some colors are hard-coded instead of coming from the palette.","No visual test is visible in this packet."]},"terms":[{"term":"CSS","meaning":"The language that tells a browser how things look, such as colors and spacing."},{"term":"Glassmorphism","meaning":"A design style with semi-transparent panels, blur behind them, and thin light borders."},{"term":"Keyframes","meaning":"A set of steps that describe how an animation changes over time."},{"term":"Webkit","meaning":"The browser engine used by Chrome, Edge, and Safari, which has its own style rules."}],"depends_on":["tailwindcss","tailwind.config.ts"],"used_by":["app/layout.tsx","All pages under app/"],"sections":[{"start":1,"end":59,"kind":"setup","name":"File setup (part 1)","id":"s1","hash":"a715772699102010","title":"Base look and glass panel helpers","what":"Sets up Tailwind, makes the background dark and text light across the site, uses monospace for all headings, and defines glass-panel styles with blur and thin borders in several colors.","why":"Gives the site its dark, layered look in one place.","watch_out":"The color variables at the top are defined here but are not used within this file, so changing them may do nothing."},{"start":60,"end":77,"kind":"setup","name":"File setup (part 2)","id":"s2","hash":"c95c126e3affc69a","title":"Glow, shine, and transition helpers","what":"Adds helper classes for soft colored glows, a thin inner highlight, and a smooth 0.14 second transition used for hover effects.","why":"Gives buttons and cards a consistent feel when hovered.","watch_out":"Glow shadows are also defined in the Tailwind config, so changing one may not change the other."},{"start":78,"end":83,"kind":"rule","name":"::-webkit-scrollbar ","id":"s3","hash":"8388bcb43bbe805c","title":"Scrollbar width","what":"Makes scrollbars 6 pixels thick in browsers that support these rules.","why":"Likely reason: matches the thin, dark look.","watch_out":"Firefox ignores these rules and uses its own scrollbar."},{"start":84,"end":87,"kind":"rule","name":"::-webkit-scrollbar-track ","id":"s4","hash":"a3413fa4dcb39d0c","title":"Scrollbar track color","what":"Colors the groove the scrollbar slides in with a near-black fill.","why":"Likely reason: blends into the dark background.","watch_out":"Uses a fixed color value instead of the palette name, so it will not follow palette changes."},{"start":88,"end":92,"kind":"rule","name":"::-webkit-scrollbar-thumb ","id":"s5","hash":"d0511a5cbbec4b8f","title":"Scrollbar handle color","what":"Colors the draggable part of the scrollbar lime green with rounded ends.","why":"Likely reason: brand accent.","watch_out":""},{"start":93,"end":96,"kind":"rule","name":"::-webkit-scrollbar-thumb:hover ","id":"s6","hash":"b320f272fbb2d45d","title":"Scrollbar handle on hover","what":"Makes the handle a slightly lighter lime when the mouse is over it.","why":"Gives visual feedback that it can be dragged.","watch_out":""},{"start":97,"end":112,"kind":"rule","name":"::selection ","id":"s7","hash":"9a5f8c90fd40d4a4","title":"Text highlight color and moving gradient keyframes","what":"Makes selected text lime with dark letters. Defines a 15 second loop that slides a background gradient back and forth.","why":"Likely reason: adds a subtle sense of motion to backgrounds.","watch_out":"Continuous animation uses processing power, and no way to turn it off is visible here."},{"start":113,"end":122,"kind":"rule","name":".animated-gradient ","id":"s8","hash":"18544f7409d0e48e","title":"Moving blue-to-lime background panel","what":"Applies the gradient animation to any element with this class, used behind hero and section backgrounds on several pages.","why":"Adds visual interest to large areas.","watch_out":"Each use runs its own animation loop, so many uses on one page add work for the browser."}],"explained_at":"2026-11-11T22:36:40+00:00","explained_by":"haiku","summary":"The global style sheet that sets the dark background, monospace headings, glass-panel looks, scrollbars, text selection, and a moving gradient for the whole site.","purpose":"Defines the shared look that every page inherits, plus a few helper classes that pages can add to elements.","why":"Putting shared styles in one place keeps every page consistent.","how":"Tailwind's base rules load first. Then the body and headings get the dark background, light text, and monospace font. Helper classes for glass panels, glows, and transitions are added. Finally, scrollbar, selection, and gradient animation rules apply across the site.","inputs":"Class names used in the page files, and the Tailwind build.","outputs":"The site's global styles in the browser.","risks":"Scrollbar and gradient rules only work in some browsers. Animation runs continuously and uses processing power. Some values are fixed colors rather than palette names.","debug":"If the background or headings look wrong, check the body and headings rules first. If a glass panel looks flat, check that the class name is spelled exactly. Test scrollbars in Chrome and in Firefox, since Firefox ignores the webkit rules.","summary_hash":"sha256:14864dcff6f6db294e8e640d7f19b03294d8dc220aa615e91848933c715e0ff5","fresh":true},"app/layout.tsx":{"schema_version":1,"path":"app/layout.tsx","language":"TypeScript (React)","lines":30,"hash":"sha256:517f1779adfd73d8e1c9c8cb540d7d7aa1e4084128cf0bb45e70bb3ef28b03c6","area":"app","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["The Navigation component is not in this packet, so its behavior cannot be confirmed.","Spacing may be doubled with page margins.","Browser title says goku.ai while the project is named haus-nous."]},"terms":[{"term":"Layout","meaning":"A shared wrapper that surrounds every page in the site."},{"term":"Metadata","meaning":"Hidden page information such as the title and description used by browsers and search engines."},{"term":"Google Fonts","meaning":"A free service that supplies web fonts the browser downloads."},{"term":"Preconnect","meaning":"A hint that tells the browser to set up a connection early to speed up loading."}],"depends_on":["next","app/globals.css","components/Navigation"],"used_by":["Every page under app/"],"sections":[{"start":1,"end":4,"kind":"setup","name":"File setup","id":"s1","hash":"6f8b11a2df030890","title":"Imports for the shared frame","what":"Loads the type definition for page metadata, the global style sheet, and the navigation component.","why":"Needed for the shared frame to style and navigate every page.","watch_out":"The navigation file is outside this packet, so its behavior is unclear here."},{"start":5,"end":9,"kind":"value","name":"metadata","id":"s2","hash":"5064df2025076111","title":"Browser title and description","what":"Sets the title shown in browser tabs and search results to goku.ai, and a short description about shipping strategy pilots.","why":"Shows the brand and purpose to visitors and search tools.","watch_out":"The name goku.ai differs from the project name, so brand names are mixed across the site."},{"start":10,"end":30,"kind":"function","name":"RootLayout","id":"s3","hash":"2aad5a72c5a83bd3","title":"Shared page frame","what":"Loads fonts from Google, places the navigation at the top, and puts each page's content in the main area. The main area has a left margin on medium screens and wider.","why":"Keeps navigation and fonts consistent on every page.","watch_out":"Pages add their own large left margin, so spacing may be doubled on wide screens. This cannot be confirmed from this file alone."}],"explained_at":"2026-11-11T22:36:40+00:00","explained_by":"haiku","summary":"The outer frame that every page sits inside: it loads the styles, fonts, the top navigation, and the page title shown in the browser tab.","purpose":"Provides the shared structure so each page does not have to repeat the navigation and font loading.","why":"Standard Next.js pattern for shared layout. Reason beyond that not stated in the code.","how":"Next.js uses this file to wrap every page. It sets the browser title and description, loads the Google fonts, places the navigation, and then puts the current page's content into the main area.","inputs":"The page content passed in from each route.","outputs":"The full HTML structure of every page.","risks":"Layout spacing may overlap with the margins pages add themselves. If the font link fails, text falls back to system fonts.","debug":"If the navigation is missing or misplaced, check the Navigation import and the main area's classes. If fonts look wrong, check the font link. Try opening the page with the network tab to see if the font loads.","summary_hash":"sha256:517f1779adfd73d8e1c9c8cb540d7d7aa1e4084128cf0bb45e70bb3ef28b03c6","fresh":true},"app/page.tsx":{"schema_version":1,"path":"app/page.tsx","language":"TypeScript (React)","lines":350,"hash":"sha256:17ac8c1cfce67011df9f53cebb2d9e44c2f13bfc01ae6882be1eec48c67981f7","area":"app","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["Performance and accuracy numbers are unsupported by code or data in this packet.","Button inside link structure may confuse keyboard and screen reader users.","Footer year reads 2025."]},"terms":[{"term":"Hero section","meaning":"The large opening area at the top of a home page, usually with a headline and main button."},{"term":"Viewport","meaning":"The visible part of the browser window, used to decide when animations start."},{"term":"Link","meaning":"A clickable item that takes the visitor to another page."},{"term":"Stats","meaning":"Short headline numbers meant to build trust quickly."}],"depends_on":["next/link","framer-motion","lucide-react","components/TechIcons","components/GokuLogo"],"used_by":["The / address, shown first to visitors"],"sections":[{"start":1,"end":8,"kind":"setup","name":"File setup","id":"s1","hash":"9a8b6900feb3ebc2","title":"Imports for the home page","what":"Loads links, animation, icons, the shared decorative icons, and the logo.","why":"Needed for the home page's links, animation, and branding.","watch_out":"Depends on the TechIcons and GokuLogo components, whose files are not in this packet."},{"start":9,"end":66,"kind":"function","name":"Home (part 1)","id":"s2","hash":"c825ad12b33b53be","title":"Hero headline and main buttons","what":"Shows the large headline Custom AI Tools, Your Industry, a short paragraph, and two buttons: Build Custom Tool goes to the console and Browse Tools goes to the tools page.","why":"Likely reason: sends visitors to the main actions right away.","watch_out":"A button sits inside a link, which is not valid HTML and can confuse assistive tools."},{"start":67,"end":110,"kind":"function","name":"Home (part 2)","id":"s3","hash":"affc60ee3220cefe","title":"Headline stats and entry animation","what":"Shows three stats: 2 to 4 week pilots, 6 AI tools, and 100 percent human verified. Each slides in with a short delay.","why":"Likely reason: quick credibility points for visitors.","watch_out":"The 6 AI tools count is typed by hand and is not tied to the tools page."},{"start":111,"end":169,"kind":"function","name":"Home (part 3)","id":"s4","hash":"9d79c7884900dad7","title":"Preview card and floating badges","what":"Shows a fake terminal preview with four progress lines and two metrics, 14 day pilot duration and 97 percent accuracy. Two badges float up and down.","why":"Shows what the product looks like in use.","watch_out":"The 97 percent figure is typed in and not measured. Do not show it to customers without evidence."},{"start":170,"end":226,"kind":"function","name":"Home (part 4)","id":"s5","hash":"0c38c53b6d76621e","title":"Three-step process","what":"Three cards named Describe Challenge, Run Pilot, and Scale Results, each with an icon, step number, and short description.","why":"Explains how the product works in simple steps.","watch_out":"The 2 minute setup claim is text only and is not checked anywhere."},{"start":227,"end":286,"kind":"function","name":"Home (part 5)","id":"s6","hash":"5c4fa3e29d80eb3e","title":"Capability cards","what":"Four cards in alternating lime and blue: Strategy Execution, Process Automation, Data and Analytics, and Risk and Governance. Each slides in from alternating sides.","why":"Likely reason: highlights the range of services with visual rhythm.","watch_out":"Any color value other than lime falls back to blue, so a typo changes the card's color quietly."},{"start":287,"end":325,"kind":"function","name":"Home (part 6)","id":"s7","hash":"45a666d2af311933","title":"Closing call to action","what":"A headline saying Ship a pilot in 2 weeks, a short line describing the steps, and a Start Now button that goes to the console.","why":"Gives visitors one last push to start.","watch_out":"The 2 week promise is repeated across the site and is not backed by code."},{"start":326,"end":350,"kind":"function","name":"Home (part 7)","id":"s8","hash":"f38e7dab52968ad2","title":"Footer links and copyright","what":"Shows the logo, a short brand line, links to Tools, Frameworks, and Console, and a copyright line reading 2025.","why":"Gives quick navigation and a standard legal line.","watch_out":"The copyright year is typed by hand and is already out of date relative to the packet date of 2026."}],"explained_at":"2026-11-11T22:36:40+00:00","explained_by":"haiku","summary":"The home page, which introduces the product with a hero section, a three-step process, capability cards, a closing call to action, and a footer.","purpose":"First impression for visitors. It explains what the product does and sends people to the console, tools, and frameworks pages.","why":"Likely reason: marketing landing page. Reason not stated in the code beyond the sales content.","how":"The page draws a hero with headline, buttons, and stats, then a card preview with floating badges, then three process steps, four capability cards, a closing call to action, and a footer. Animations run as sections appear on screen.","inputs":"Clicks on buttons and links.","outputs":"A marketing screen with links to other pages. No data is saved.","risks":"Many claims such as 97 percent accuracy, 2 minute setup, and 6 AI tools are typed by hand and not measured. A button sits inside a link, which is not valid nesting.","debug":"If a link fails, check the href value and the matching page file. If an animation does not start, check the viewport settings. Look for claims that need evidence before sharing.","summary_hash":"sha256:17ac8c1cfce67011df9f53cebb2d9e44c2f13bfc01ae6882be1eec48c67981f7","fresh":true},"app/tools/[id]/page.tsx":{"schema_version":1,"path":"app/tools/[id]/page.tsx","language":"TypeScript (React)","lines":329,"hash":"sha256:bf7a5afb9953e2793823bcf9ee2f44f34422b27ac41a255e1de00521c529851b","area":"app","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["Only one of the seven tools has detail data, so most links from the tools list fail.","Request Demo and Schedule Consultation buttons have no action.","Results and claims are hardcoded and not backed by anything visible in the code.","No tests are visible in this file."]},"terms":[{"term":"component","meaning":"a reusable building block of a web page, written as a function that describes what to show"},{"term":"dynamic route","meaning":"a web address pattern where one part, here the tool id, changes which content the page shows"},{"term":"props","meaning":"values handed to a component from outside, such as the tool id here"},{"term":"animation library","meaning":"a helper package that makes elements fade or slide smoothly instead of appearing instantly"},{"term":"icon library","meaning":"a package that supplies small standard pictures used on buttons and headings"}],"depends_on":["next/link","react","framer-motion","lucide-react"],"used_by":["The Next.js router, for web addresses starting with /tools/ followed by a tool id (not imported by another file in this packet)"],"sections":[{"start":1,"end":18,"kind":"setup","name":"File setup","id":"s1","hash":"8528faabb11d9933","title":"Imports and browser setup","what":"Loads the animation library, the link helper, and the icons this page uses, and marks the file to run in the visitor's browser.","why":"Likely reason: the page uses animations and clickable links, which need to run in the browser.","watch_out":"Any new icon used on this page must also be added to this import list, or the page will fail to load."},{"start":19,"end":77,"kind":"value","name":"toolDetails","id":"s2","hash":"490654bead7fba45","title":"Built-in data for the AI Strategy Advisor","what":"Holds all the text, features, use cases, method steps, outcomes, and pricing for the AI Strategy Advisor, keyed by its id. It is the only tool with details.","why":"The code comment says this is a stand-in for a database, and says more tools should be added here.","watch_out":"Each new tool needs every field this page displays, or that part of the page will be empty or break; pricing is stored but never shown."},{"start":78,"end":136,"kind":"function","name":"ToolDetailPage (part 1)","id":"s3","hash":"53b5617578088a05","title":"Lookup, not-found message, and header","what":"Finds the tool matching the web address. If none matches, it shows a Tool not found message with a button back to the tools list. Otherwise it draws the top bar with a back link and the tool's icon, category, name, and tagline.","why":"Keeps the page from crashing on an unknown id and gives the visitor a way back.","watch_out":"The lookup uses the raw id from the web address, so a new id in the data must match the address exactly, including capital letters."},{"start":137,"end":184,"kind":"function","name":"ToolDetailPage (part 2)","id":"s4","hash":"4937010fae65f061","title":"Description, buttons, and quick stats","what":"Shows the long description and two buttons: Discuss in AI Console opens the chat page, and Request Demo does nothing yet. Below, three summary tiles show the pilot length, the number of outcomes counted from the list, and a fixed 100 percent Human Oversight figure.","why":"Likely reason: the console button is the main way into a conversation. Reason for the fixed 100 percent figure not stated in the code.","watch_out":"Request Demo has no click action, so a visitor who presses it gets no response."},{"start":185,"end":244,"kind":"function","name":"ToolDetailPage (part 3)","id":"s5","hash":"d17f241b8c808799","title":"Feature cards and use case cards","what":"Lists each key feature in a card with a sparkle icon, then lists each real-world use case with its challenge, solution, and outcome side by side.","why":"Shows repeated items in a consistent card layout, so adding an item to the data adds a card without changing the layout.","watch_out":"Cards are identified by their title text, so two items with the same title would confuse the page."},{"start":245,"end":296,"kind":"function","name":"ToolDetailPage (part 4)","id":"s6","hash":"4cb41eeda1578ccf","title":"Method steps and expected outcomes","what":"Shows the numbered methodology steps in order, then a grid of expected outcomes, each with a check mark.","why":"Gives the visitor a quick picture of how the work is done and what they receive.","watch_out":"Steps and outcomes are identified by their text, so repeated entries in the same list can cause display problems."},{"start":297,"end":329,"kind":"function","name":"ToolDetailPage (part 5)","id":"s7","hash":"e5cadb4c6ccacee5","title":"Closing call to action","what":"Final banner with a Start in AI Console button that opens the chat page, and a Schedule Consultation button that does nothing yet.","why":"Repeats the main next step at the bottom so a visitor who has read everything can act right away.","watch_out":"Schedule Consultation has no click action, the same as Request Demo above it."}],"explained_at":"2026-11-11T22:38:12+00:00","explained_by":"haiku","summary":"Detail page for one AI tool, showing its header, quick stats, features, use cases, method steps, outcomes, and a closing call to action, chosen by the tool id in the web address.","purpose":"Gives a visitor a full description of a single tool. The text and numbers are stored inside this file rather than loaded from a database.","why":"Likely reason: the code comment says the data would normally come from a database or API, so this file is an early stand-in. Reason for the page layout not stated in the code.","how":"Reads the tool id from the web address and looks it up in the built-in list. If nothing matches, it shows a Tool not found message with a link back. If it matches, it draws the page sections from top to bottom, with fade-in animations as the visitor scrolls.","inputs":"The tool id from the web address (params.id), and the toolDetails list defined in this file.","outputs":"A web page: either a not-found message with a Back to Tools button, or the full detail page for the matching tool.","risks":"Only the AI Strategy Advisor has details, but the tools list page has six other tools that link here, so those links show Tool not found. The 15 percent cost reduction and 100 percent Human Oversight figure are fixed text, not measured results. The Request Demo and Schedule Consultation buttons have no click action. The pricing values are defined but never shown.","debug":"If a tool page says not found, check that the id in the web address matches a key in toolDetails exactly. If text is missing from a section, check the matching field in toolDetails. If a button does nothing, that is expected because no action is attached. To confirm the page works, open the address for the ai-strategy-advisor tool.","summary_hash":"sha256:bf7a5afb9953e2793823bcf9ee2f44f34422b27ac41a255e1de00521c529851b","fresh":true},"app/tools/page.tsx":{"schema_version":1,"path":"app/tools/page.tsx","language":"TypeScript (React)","lines":488,"hash":"sha256:351ea5ba7e3600f8d87808dcee46adb5749e72981dfaa3050514eaf301cb46b7","area":"app","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["Most Deploy links lead to a not-found page.","The search only checks name, tagline, and description, not capabilities or outcomes.","No tests are visible in this file."]},"terms":[{"term":"state","meaning":"values a page remembers while it runs, such as which filter is selected"},{"term":"filter","meaning":"a rule that hides items that do not match a chosen value"},{"term":"key","meaning":"a unique label React uses to track each item in a repeated list"},{"term":"route","meaning":"a web address that leads to a page, such as the tools address"},{"term":"AND logic","meaning":"a rule that an item must pass every condition at the same time to be shown"}],"depends_on":["react","next/link","framer-motion","lucide-react","@/components/TechIcons","@/lib/industries"],"used_by":["The Next.js router, for the /tools web address (not imported by another file in this packet)"],"sections":[{"start":1,"end":17,"kind":"setup","name":"File setup","id":"s1","hash":"bd04f80796fd879e","title":"Imports and industry list","what":"Loads React state, animation, links, icons, the custom tech icons, and the shared industry list that the filters use.","why":"Reason not stated in the code. The industry list is imported, which suggests it is shared with other parts of the app.","watch_out":"Industry ids used on each tool must match the ids in the shared industry list, or the filters will miss those tools."},{"start":18,"end":31,"kind":"type","name":"Tool","id":"s2","hash":"b27d56b67ac715f4","title":"Shape of a tool entry","what":"Describes the fields each tool must have: id, name, tagline, description, category, icon, pilot length, outcomes, key capabilities, industries, and whether it can be customized.","why":"Gives every tool the same structure so the page can display all of them in the same way.","watch_out":"The icon field is loosely typed, so a wrong icon will only show up when the page runs, not when the code is written."},{"start":32,"end":91,"kind":"value","name":"tools, categories (part 1)","id":"s3","hash":"85852b174f4f24e4","title":"Tool data, first three tools","what":"Defines ARCHITECT, ORACLE, and PULSE, each with description, outcomes, capabilities, industries, and customization flag.","why":"Acts as the catalog the page filters and displays. No database or fetch is visible in this file.","watch_out":"Each tool id here should match the detail page address it links to, or the Deploy link will fail."},{"start":92,"end":151,"kind":"value","name":"tools, categories (part 2)","id":"s4","hash":"685b66e69be63e73","title":"Tool data, next two tools","what":"Defines SENTINEL, which is marked as not customizable, and PRISM, which answers business questions about data in plain language.","why":"Continues the catalog so the page has all the tools to show.","watch_out":"SENTINEL is marked not customizable, so it disappears when the Customizable Only switch is on."},{"start":152,"end":168,"kind":"value","name":"tools, categories (part 3)","id":"s5","hash":"b92dab1877dfa98d","title":"Last tool and category names","what":"Defines APEX, then the list of category names used for the category filter buttons: All, Strategy, Finance, Research, Operations, and Analytics.","why":"Keeps the category names in one place, since the filter buttons are drawn from this list.","watch_out":"A tool whose category is not in this list cannot be reached by any category button, apart from All."},{"start":169,"end":227,"kind":"function","name":"ToolsPage (part 1)","id":"s6","hash":"9d9a6c0b6f7ffe2e","title":"Filter state and matching rules","what":"Remembers the selected category, industry, search text, and customizable-only switch, then keeps only the tools that pass all four checks. Search ignores capital letters and checks name, tagline, and description.","why":"Each filter narrows the list further, and the list updates the moment a filter changes.","watch_out":"All four checks must pass together, so a combination of filters can hide every tool."},{"start":228,"end":287,"kind":"function","name":"ToolsPage (part 2)","id":"s7","hash":"6ac8a1f95712cb21","title":"Count badge, headline, search box, filter header","what":"Shows a pill with the number of matching tools, the two-line headline and intro text, and the search box. It then opens the sticky filter bar with the Filter by Industry label and the Customizable Only toggle.","why":"Lets a visitor see how many tools match and search from the top of the page.","watch_out":"There is no custom tool promo box in this range. Do not describe one here."},{"start":288,"end":346,"kind":"function","name":"ToolsPage (part 3)","id":"s8","hash":"b15064e5b7e1a556","title":"Industry and category filter bars","what":"Draws the Filter by Industry row with an All Industries button and one button per industry, the Show All or Customizable Only toggle, and the category button row. The filter area sticks to the top while scrolling.","why":"Keeps the filters visible while the visitor scrolls through a long list of tools.","watch_out":"Industry buttons come from the shared list, so a new industry appears here automatically but will show no tools until tools are tagged with it."},{"start":347,"end":394,"kind":"function","name":"ToolsPage (part 4)","id":"s9","hash":"96d93ff04c5ca595","title":"Tool grid and no-match message","what":"Shows a no matches message when the filters remove everything. Otherwise shows a two-column grid of tool cards, each with its icon, name, a Custom badge when allowed, tagline, and category.","why":"Gives a clear message instead of a blank area when nothing matches.","watch_out":"Cards are identified by their tool id, so two tools with the same id would break the grid."},{"start":395,"end":431,"kind":"function","name":"ToolsPage (part 5)","id":"s10","hash":"03f770d7445a537f","title":"Industry tags, description, and capabilities","what":"Shows up to three industry tags, the tool description, and the first three key capabilities with check marks.","why":"Likely reason: keeps each card short while still giving a quick summary.","watch_out":"Each industry tag shows only the first word of the industry name, so two industries that start with the same word look identical."},{"start":432,"end":488,"kind":"function","name":"ToolsPage (part 6)","id":"s11","hash":"0b7c634bb0f16a18","title":"Card footer, Deploy button, and closing banner","what":"Shows the pilot length and a Deploy button on each card that opens that tool's detail page. Then a closing banner invites visitors who are unsure which tool fits to launch the console.","why":"Deploy is the main action on each card. The closing banner gives a path for visitors who are not sure which tool to choose.","watch_out":"Deploy leads to a detail page, but only the AI Strategy Advisor has one, so most Deploy buttons will show a not-found page."}],"explained_at":"2026-11-11T22:38:12+00:00","explained_by":"haiku","summary":"Catalog page that lists the AI tools, lets visitors search and filter them by industry, category, or customizability, and links each card to its detail page.","purpose":"Helps a visitor find a suitable tool for their sector or problem, and move on to its details or to the console.","why":"Reason for the layout not stated in the code. The on-screen text says filters help find tools proven in a sector, which matches the design.","how":"Keeps the tool list and category names in plain data. Stores four filter values: category, industry, search text, and customizable-only. Keeps only the tools that match all four. Then draws the header, the sticky filter bar, the grid of tool cards, and a closing section.","inputs":"Clicks on filter buttons, typing in the search box, and the tool list and category list defined in this file, plus the industry list imported from another file.","outputs":"A filtered grid of tool cards, a count of matching tools, and links to each tool's detail page and to the console.","risks":"Most Deploy buttons lead to detail pages that do not exist, because only one tool has detail data. The tool data is duplicated from the detail page and can drift apart. The icon field is typed as any, so a wrong icon is not caught early. Filters depend on exact matching ids.","debug":"If a filter shows no tools, check the tool's industries or category values against the industry list and the category list. If Deploy shows Tool not found, check the toolDetails list in the detail page file. If the count seems wrong, check the filter logic near the top of the page function.","summary_hash":"sha256:351ea5ba7e3600f8d87808dcee46adb5749e72981dfaa3050514eaf301cb46b7","fresh":true},"components/GokuLogo.tsx":{"schema_version":1,"path":"components/GokuLogo.tsx","language":"TypeScript (React)","lines":120,"hash":"sha256:498c82e9c91c10e1bc80c6f03f6e8a61dce0ef9522b8b7bf4301a8b047ac1092","area":"components","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["No tests are visible for this component.","Short reopen timers are not cleared when the component is removed."]},"terms":[{"term":"SVG","meaning":"a picture format written as shapes and coordinates, so it stays sharp at any size"},{"term":"hover","meaning":"the state when the mouse pointer is resting over an element"},{"term":"timer","meaning":"code that runs again and again at set intervals, here to trigger blinks"},{"term":"clip path","meaning":"a hidden shape that limits which part of another shape is visible, used here to make the eyelids"},{"term":"gradient","meaning":"a smooth blend between colors used for the glowing aura"}],"depends_on":["react"],"used_by":["components/Navigation.tsx"],"sections":[{"start":1,"end":4,"kind":"setup","name":"File setup","id":"s1","hash":"83dbd769113366d2","title":"Imports","what":"Loads the React tools for remembering values and running timed actions, and marks the file to run in the visitor's browser.","why":"The logo blinks and reacts to the mouse, which needs browser code.","watch_out":""},{"start":5,"end":42,"kind":"function","name":"GokuLogo (part 1)","id":"s2","hash":"33984dbbff731888","title":"Hover state, blink timer, and glow setup","what":"Stores whether the mouse is over the logo and whether the eyes are closed. Runs a timer that blinks every three to six seconds, or every two seconds while hovered, and defines the aura and glow effects.","why":"Makes the logo feel alive while staying subtle. The different timing when hovered is visible in the code.","watch_out":"The main timer is cleared when hover changes, but the short timers that reopen the eyes are not cleared, so they can fire after the logo is removed."},{"start":43,"end":99,"kind":"function","name":"GokuLogo (part 2)","id":"s3","hash":"cefa5b1adb785171","title":"Eyelids and aura drawing","what":"Draws the glowing aura behind the cat and the two eyelid shapes that move down to close the eyes during a blink.","why":"Likely reason: a blink is done by moving a hidden shape over the eyes, rather than redrawing the eyes.","watch_out":"Gradient, filter, and clip shape names are shared across the whole page, so placing this logo twice could cause clashes."},{"start":100,"end":120,"kind":"function","name":"GokuLogo (part 3)","id":"s4","hash":"dd47c1d3b6a8a0a8","title":"Cat body, eyes, and tail","what":"Draws the black cat head, ears, and body, the white eyes clipped by the eyelids, and a tail that curves a little further up when hovered.","why":"Likely reason: the tail movement gives visible feedback that the logo is responding to the mouse.","watch_out":""}],"explained_at":"2026-11-11T22:38:12+00:00","explained_by":"haiku","summary":"A small animated cat face logo that blinks on a timer and reacts to the mouse hovering over it.","purpose":"Shows the brand mark next to the site name, with a lively blink and a small tail movement on hover.","why":"Likely reason: to give the brand a friendly, animated feel. Reason not stated in the code.","how":"Tracks whether the mouse is over the logo and whether the eyes are closed. Starts a repeating timer that closes the eyes briefly, faster when hovered. Draws the cat shape with glow and aura effects, and moves eyelid shapes over the eyes during a blink.","inputs":"An optional size class name from the parent component, and mouse enter and leave events.","outputs":"A drawn logo that blinks and changes its tail curve when hovered.","risks":"Shape and effect names are shared across the whole page, so two logos on one page could interfere with each other. Short timers that reopen the eyes are not cleared when the logo leaves the screen.","debug":"If the logo stops blinking, check the hover state and the blink timer in this file. If the browser console warns about updates after removal, look at the timers that are not cleared. If the logo looks wrong in size, check the size class passed in by the parent.","summary_hash":"sha256:498c82e9c91c10e1bc80c6f03f6e8a61dce0ef9522b8b7bf4301a8b047ac1092","fresh":true},"components/Navigation.tsx":{"schema_version":1,"path":"components/Navigation.tsx","language":"TypeScript (React)","lines":97,"hash":"sha256:acc2f14a7ce2c1217a0f704fa0a9204c263109efa01e5dad2f74343813d853b0","area":"components","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["The Frameworks page is not visible in this packet, so the link is unverified.","Highlighting does not work for sub-pages such as a single tool page.","No tests are visible."]},"terms":[{"term":"route","meaning":"a web address that leads to a page"},{"term":"pathname","meaning":"the part of the web address after the site name, used to decide which menu item is current"},{"term":"fixed position","meaning":"a layout where an element stays in place on screen while the rest of the page scrolls"}],"depends_on":["react","next/link","next/navigation","lucide-react","framer-motion","./GokuLogo"],"used_by":["Not visible in this packet"],"sections":[{"start":1,"end":9,"kind":"setup","name":"File setup","id":"s1","hash":"987af63eefc9dd53","title":"Imports","what":"Loads the current-address reader, the link helper, the menu icons, the animation library, and the logo component.","why":"Needed to know the current page and to draw the menu and logo.","watch_out":""},{"start":10,"end":16,"kind":"value","name":"navItems","id":"s2","hash":"1fa5a60ac8a1e003","title":"Menu entries","what":"Lists the four menu items with their address, label, and icon: Index, Console, Tools, and Frameworks.","why":"Keeps the menu in one place, so adding a page means adding one entry.","watch_out":"The Frameworks entry points to a page that is not in this packet, so confirm that page exists before relying on it."},{"start":17,"end":68,"kind":"function","name":"Navigation (part 1)","id":"s3","hash":"3d5d3aae3759b61e","title":"Sidebar, logo, and scroll shading","what":"Draws the fixed left sidebar with the logo and the goku.ai name. Once the page is scrolled past about 40 pixels, the background becomes darker and a shadow appears.","why":"Likely reason: keeps the sidebar readable over content as the visitor scrolls.","watch_out":"The sidebar is fixed at a set width on the left, so page content needs matching left spacing or it will sit underneath."},{"start":69,"end":97,"kind":"function","name":"Navigation (part 2)","id":"s4","hash":"96cdf9028ad36510","title":"Menu buttons and version label","what":"Draws each menu item as a button and highlights the one matching the current address. Shows the typed version label at the bottom.","why":"Shows the visitor where they are. The version label is a fixed piece of text with no logic.","watch_out":"Highlighting uses an exact match, so a single tool page does not highlight the Tools item."}],"explained_at":"2026-11-11T22:38:12+00:00","explained_by":"haiku","summary":"The fixed left sidebar with the site name, logo, and four main page links, plus a version label at the bottom.","purpose":"Lets a visitor move between the main sections of the site and shows which section they are in.","why":"Reason for keeping the sidebar fixed not stated in the code. A fixed menu stays reachable while the page scrolls.","how":"Reads the current web address and listens for scrolling. Draws the logo and site name, then each menu link, highlighting the one that matches the current address. Shows the version label last.","inputs":"The current web address, the scroll position, and the menu list defined in this file.","outputs":"A sidebar on screen. Clicking a link moves the visitor to that page.","risks":"Highlighting uses an exact address match, so sub-pages do not highlight their parent item. The Frameworks link points to a page that is not in this packet, so it may be broken. The version label is typed text that must be edited by hand.","debug":"If the wrong menu item is highlighted, check the address in the menu list and the current address. If the sidebar shading does not change on scroll, check the scroll listener. If page content hides under the sidebar, check the left spacing of the page.","summary_hash":"sha256:acc2f14a7ce2c1217a0f704fa0a9204c263109efa01e5dad2f74343813d853b0","fresh":true},"components/TechIcons.tsx":{"schema_version":1,"path":"components/TechIcons.tsx","language":"TypeScript (React)","lines":75,"hash":"sha256:60dd6ca09ff1bf25680899b51cfe46d2e8ad9c29f272159a7879bd9f3eba9c03","area":"components","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["No tests are visible.","The code is simple, so the risk is low, but no evidence confirms the drawings look right."]},"terms":[{"term":"SVG","meaning":"a picture format written as shapes and coordinates, so it stays sharp at any size"},{"term":"stroke","meaning":"the outline drawn around a shape"},{"term":"currentColor","meaning":"a setting that makes a drawing take the color of the text around it"}],"depends_on":[],"used_by":["app/tools/page.tsx"],"sections":[{"start":1,"end":16,"kind":"function","name":"CircuitIcon","id":"s1","hash":"121004d76857a257","title":"Circuit icon for ARCHITECT","what":"Draws four small squares joined by short lines around a center dot. The tools list uses it for ARCHITECT.","why":"Likely reason: a picture suggesting connected workstreams for the workplan tool.","watch_out":""},{"start":17,"end":30,"kind":"function","name":"NetworkIcon","id":"s2","hash":"f51f586102d414b0","title":"Network icon for PULSE","what":"Draws three dots linked to a central dot, suggesting connected customers or respondents. The tools list uses it for PULSE.","why":"Likely reason: a picture that suggests a network of responses.","watch_out":""},{"start":31,"end":41,"kind":"function","name":"ProcessIcon","id":"s3","hash":"ed4d59d670e4be63","title":"Process icon for SENTINEL","what":"Draws two boxes with an arrow between them, suggesting a step-by-step check. The tools list uses it for SENTINEL.","why":"Likely reason: suggests a step in a quality process.","watch_out":""},{"start":42,"end":52,"kind":"function","name":"AnalyticsIcon","id":"s4","hash":"e69dfc7eab8af84e","title":"Analytics icon for ORACLE","what":"Draws three bars of rising height on a base line, suggesting a chart. The tools list uses it for ORACLE.","why":"Likely reason: a chart picture suits a financial modelling tool.","watch_out":""},{"start":53,"end":65,"kind":"function","name":"AutomationIcon","id":"s5","hash":"7b72e121f0f92d87","title":"Automation icon for APEX","what":"Draws a circle with clock-style hands and short ticks around it. The tools list uses it for APEX.","why":"Likely reason: a clock-like picture suggests measurement or tracking, matching a benchmark tool.","watch_out":""},{"start":66,"end":75,"kind":"function","name":"IntelligenceIcon","id":"s6","hash":"435c52f40a3d9784","title":"Intelligence icon for PRISM","what":"Draws a diamond shape over a circle with two branches below, suggesting insight or discovery. The tools list uses it for PRISM.","why":"Likely reason: a picture that suggests analysis and insight for a data tool.","watch_out":""}],"explained_at":"2026-11-11T22:38:12+00:00","explained_by":"haiku","summary":"Five hand-drawn style icons used on the tool cards, plus a sixth icon for intelligence, all as simple line drawings.","purpose":"Gives each tool a recognizable picture that fits its job.","why":"Reason not stated in the code. Likely reason: a consistent visual identity for the tool cards.","how":"Each icon is a function that returns a small drawing made of boxes, lines, circles, and paths. Each draws in the color of the surrounding text and can be resized by passing a class name.","inputs":"An optional class name that sets the size. Default size is set in each function.","outputs":"A small picture on screen.","risks":"The icons have no text label, so a screen reader gets no description. Changing a coordinate changes the look with no check to catch it.","debug":"If an icon does not appear, check that its name is imported where it is used and that the class name is valid. If an icon has the wrong color, check that it inherits the text color of its parent.","summary_hash":"sha256:60dd6ca09ff1bf25680899b51cfe46d2e8ad9c29f272159a7879bd9f3eba9c03","fresh":true},"next.config.js":{"schema_version":1,"path":"next.config.js","language":"Configuration","lines":6,"hash":"sha256:660f78af355945be56f482c9b697e4892d2ee7da261c8743e75a1c95d3c72c73","area":"root-files","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["The file is correct and minimal, but no build or test result is visible in this packet to confirm it works."]},"terms":[{"term":"Next.js","meaning":"A framework built on React that turns code into a working website, including page routing and a build step."},{"term":"Strict mode","meaning":"A React setting that makes the development version check for common mistakes and warn about them."}],"depends_on":["next"],"used_by":["package.json (the dev and build scripts)"],"sections":[{"start":1,"end":6,"kind":"setup","name":"File setup","id":"s1","hash":"f862029116a4eaaa","title":"Turning on strict development checks","what":"Exports one settings object that switches on React's strict mode. Developers see extra warnings while the site runs locally, and users see no change.","why":"Likely reason: to catch bugs early in development. Reason not stated in the code.","watch_out":""}],"explained_at":"2026-11-11T22:36:40+00:00","explained_by":"haiku","summary":"A short settings file that tells Next.js, the framework that runs this website, to use its stricter development checks.","purpose":"Sets the options Next.js reads when it builds or runs the site. Only one option is set here.","why":"Likely reason: turning on strict mode makes React warn about common mistakes during development. Reason not stated in the code.","how":"Next.js loads this file when you run the development server or a build. It reads the settings object and applies them. Nothing else in this file runs.","inputs":"None from users. It is read by the Next.js tooling when the project starts or builds.","outputs":"Changes how the site behaves in development. Strict mode can cause some effects to run twice in development, which is normal.","risks":"Few. Removing the setting would hide some React warnings but would not break the site.","debug":"If the site behaves oddly in development only, check whether an effect runs twice. Try turning this option off to compare.","summary_hash":"sha256:660f78af355945be56f482c9b697e4892d2ee7da261c8743e75a1c95d3c72c73","fresh":true},"package.json":{"schema_version":1,"path":"package.json","language":"Configuration","lines":30,"hash":"sha256:450773e5c2024fbdcc2c09e2da0a199d8619b6e5edbc6c31d26a56f0594f849a","area":"root-files","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["No test script is defined, so there is no automatic check.","The clsx library is listed but not used in the files shown here.","No lock file is visible in this packet, so exact library versions may vary between machines."]},"terms":[{"term":"npm","meaning":"A tool that downloads and manages the libraries a JavaScript project depends on."},{"term":"Dependency","meaning":"An outside library that the project needs in order to work."},{"term":"Dev dependency","meaning":"A library needed only while building or checking the project, not while the finished site runs."},{"term":"Semver caret","meaning":"The ^ sign before a version number. It means accept any newer version that does not change the first number."},{"term":"Lint","meaning":"An automatic check that finds code style problems and likely mistakes."}],"depends_on":["npm registry (outside libraries)"],"used_by":["next.config.js","postcss.config.js","tailwind.config.ts","tsconfig.json","app/ pages"],"sections":[{"start":1,"end":30,"kind":"setup","name":"File setup","id":"s1","hash":"009771c21dd056fb","title":"Project name, scripts, and libraries","what":"Gives the project its name and version, lists four commands (dev, build, start, lint), and lists the libraries the site uses for pages, animation, icons, and styling tools.","why":"Likely reason: standard setup for a Next.js project so that a developer can start the site with one command.","watch_out":"Adding or removing a library here does not update the installed copy until npm install is run again."}],"explained_at":"2026-11-11T22:36:40+00:00","explained_by":"haiku","summary":"The project's ID card and shopping list: its name, the commands to run it, and the libraries it needs.","purpose":"Tells npm, the package installer, which libraries to download and which commands to offer, such as starting the site or building it.","why":"Every Node.js project needs this file. It lists the exact libraries the site uses so that the same setup can be rebuilt on another computer.","how":"When someone runs npm install, the tool reads the dependencies and downloads them. When someone runs a script such as dev, build, start, or lint, npm runs the matching command for Next.js.","inputs":"The developer's commands in a terminal, such as npm run dev or npm run build.","outputs":"A local development server, a production build, or lint results. Downloaded libraries go into a folder that is not part of the code.","risks":"Version ranges with a caret allow minor updates automatically, which can change behavior. No test command is listed, so changes are not checked automatically.","debug":"If install or build fails, check the Node.js version and whether a lock file exists. Try deleting the downloaded library folder and installing again. Compare the library versions with the error message.","summary_hash":"sha256:450773e5c2024fbdcc2c09e2da0a199d8619b6e5edbc6c31d26a56f0594f849a","fresh":true},"postcss.config.js":{"schema_version":1,"path":"postcss.config.js","language":"JavaScript","lines":6,"hash":"sha256:251ecddd4672c9cf467547e3dc535de00ad2129df26e7e7ae728fa4e5ac45fc5","area":"root-files","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["The file is standard, but there is no visible build check in this packet."]},"terms":[{"term":"PostCSS","meaning":"A tool that transforms CSS style files using a list of plugins."},{"term":"Autoprefixer","meaning":"A plugin that adds browser-specific prefixes to style rules so older browsers still work."},{"term":"Tailwind","meaning":"A styling system where small class names like text-white apply single style rules directly in the page markup."}],"depends_on":["tailwindcss","autoprefixer","postcss"],"used_by":["app/globals.css (through the build)"],"sections":[{"start":1,"end":6,"kind":"setup","name":"File setup","id":"s1","hash":"45129a7abaea669a","title":"Styling tools hooked into the build","what":"Lists two styling tools, Tailwind and Autoprefixer, so that the build runs them on the site's style code. Visitors see the finished styles, not this file.","why":"Likely reason: Tailwind and Autoprefixer only work when PostCSS runs them.","watch_out":"Both plugins must stay installed; removing one silently breaks the matching styles."}],"explained_at":"2026-11-11T22:36:40+00:00","explained_by":"haiku","summary":"A small settings file that tells the build step to run Tailwind and Autoprefixer on the style sheets.","purpose":"Connects the styling tools to the build so that Tailwind class names become real CSS and browser prefixes are added automatically.","why":"Likely reason: Tailwind needs PostCSS to turn its class names into styles. Reason not stated in the code.","how":"During a build or development run, PostCSS reads this file, runs the Tailwind step first, then the Autoprefixer step, and passes the result to the browser.","inputs":"Style files, mainly app/globals.css, and the Tailwind configuration.","outputs":"Finished CSS that the browser can use.","risks":"If a plugin is removed, Tailwind class names such as those in the pages will stop producing styles.","debug":"If styles are missing everywhere, confirm this file is present and the plugin names match installed packages.","summary_hash":"sha256:251ecddd4672c9cf467547e3dc535de00ad2129df26e7e7ae728fa4e5ac45fc5","fresh":true},"tailwind.config.ts":{"schema_version":1,"path":"tailwind.config.ts","language":"Configuration","lines":45,"hash":"sha256:d071d698c83411735f90a853f978c4171d5924120adb9d9cccf993ccc5cfde14","area":"root-files","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["Undefined color names are used in the chat page and the header and footer styling, which means the intended colors are missing.","No visible test or preview checks that the palette matches the design."]},"terms":[{"term":"Tailwind config","meaning":"The settings file that tells Tailwind which colors, fonts, and shadows exist."},{"term":"Class name","meaning":"A word placed on an element in the page markup that picks a style, such as a color or spacing."},{"term":"Glass effect","meaning":"A see-through panel style with blur and a thin border, used on many cards."}],"depends_on":["tailwindcss"],"used_by":["app/globals.css","app/chat/page.tsx","app/console/page.tsx","app/frameworks/page.tsx","app/page.tsx"],"sections":[{"start":1,"end":45,"kind":"setup","name":"File setup","id":"s1","hash":"238ef85f4d05a347","title":"Colors, fonts, and shadows for the brand","what":"Declares the dark background, the lime green and blue accent colors, the mono and sans fonts, glow shadows, glass blur levels, and rounded corner sizes. Pages use these as ready-made class names.","why":"Likely reason: one place for the brand look so all pages match.","watch_out":"Some pages use color names that this file does not define, so those elements will not get the intended color."}],"explained_at":"2026-11-11T22:36:40+00:00","explained_by":"haiku","summary":"Defines the site's color palette, fonts, shadows, and corner rounding so that Tailwind class names can use them.","purpose":"Sets the brand look in one place. Names such as goku-black, lime-robin, and blue-500 point to specific colors used across the pages.","why":"Keeping colors and fonts in one file makes it easier to change the brand look later. Reason not stated in the code beyond that.","how":"Tailwind reads this file at build time. It scans the page and component files for class names, then generates only the styles that are used, using the values defined here.","inputs":"Class names written in page and component files.","outputs":"Generated CSS classes for colors, fonts, shadows, blur, and rounded corners.","risks":"Several pages use class names such as nous-cream, nous-brown, and nous-accent that are not defined here, so those parts may show no intended color. Changing a color here changes it everywhere.","debug":"If a color looks wrong or plain, search the page for the class name and check that it exists in this file. Restart the dev server after edits.","summary_hash":"sha256:d071d698c83411735f90a853f978c4171d5924120adb9d9cccf993ccc5cfde14","fresh":true},"tsconfig.json":{"schema_version":1,"path":"tsconfig.json","language":"Configuration","lines":26,"hash":"sha256:54202f1d6d35ba51c3daea32bf67e8da24568ec0cb0c341fa0b5ed2ceb174f2d","area":"root-files","status":"explained","summary_stale":false,"readiness":{"status":"needs-work","reasons":["The settings are standard, but type checking is not visible as part of a test or build run in this packet.","The page files use the any type in one place, which weakens strict checking."]},"terms":[{"term":"TypeScript","meaning":"JavaScript with type labels that let a checker find some mistakes before the code runs."},{"term":"Strict mode","meaning":"The checker setting that asks for careful, explicit types everywhere."},{"term":"Path alias","meaning":"A shortcut such as @ that stands for a folder, so imports stay short."}],"depends_on":["typescript","next"],"used_by":["app/layout.tsx","app/page.tsx","components/ (imports through @)"],"sections":[{"start":1,"end":26,"kind":"setup","name":"File setup","id":"s1","hash":"7b5bae8aeb38d1bc","title":"Type checking and import shortcuts","what":"Tells the TypeScript checker which language features to allow, how strict to be, and that the @ symbol points to the project root. Visitors do not see this file directly.","why":"Likely reason: stricter checking catches errors early, and the @ shortcut keeps imports tidy.","watch_out":"Changing the paths setting breaks every import that uses @ until it is corrected."}],"explained_at":"2026-11-11T22:36:40+00:00","explained_by":"haiku","summary":"Settings for the TypeScript checker that tell it how strict to be, which browser features to allow, and how to find files with the @ shortcut.","purpose":"Controls how the code is checked for mistakes and how imports are resolved.","why":"Strict checking catches many errors before the site runs. The @ shortcut lets files import from the project root without long relative paths.","how":"The editor and build read this file. The strict option checks types, and the paths option maps the @ symbol to the project root so imports such as components can be found.","inputs":"All TypeScript and TSX files in the project.","outputs":"Type errors or warnings, and resolved import paths. It does not produce output files because no emitting is allowed.","risks":"Turning off strict mode would hide type problems. The include rules scan many files, which can slow checking slightly.","debug":"If an import like components cannot be found, check the paths setting and the file location. If the editor shows type errors, compare with the build output.","summary_hash":"sha256:54202f1d6d35ba51c3daea32bf67e8da24568ec0cb0c341fa0b5ed2ceb174f2d","fresh":true}}}</script>
+<script>
+(function () {
+  "use strict";
+
+  var main = document.getElementById("main");
+  var DATA = null;
+  try { DATA = JSON.parse(document.getElementById("clarity-data").textContent); } catch (error) { DATA = null; }
+
+  // ---- Mode (shared with the portfolio through the same storage key) ----
+  var modeButton = document.getElementById("mode");
+  function currentMode() { return document.documentElement.getAttribute("data-mode") === "nerd" ? "nerd" : "calm"; }
+  function syncModeLabel() { modeButton.setAttribute("aria-label", "Switch to " + (currentMode() === "calm" ? "nerd" : "calm") + " mode"); }
+  modeButton.addEventListener("click", function () {
+    var next = currentMode() === "calm" ? "nerd" : "calm";
+    document.documentElement.setAttribute("data-mode", next);
+    try { localStorage.setItem("site-mode", next); } catch (error) { /* private browsing: fine */ }
+    syncModeLabel();
+  });
+  syncModeLabel();
+
+  if (!DATA || !DATA.repo) {
+    main.innerHTML = '<div class="empty"><p class="label">No notes yet</p><h2 class="display" style="margin-top:14px">This page is empty</h2>' +
+      '<p class="punch">Open the repository in Claude Code and run <code>python3 .claude/clarity/clarity.py build</code> to fill it.</p></div>';
+    return;
+  }
+
+  var REPO = DATA.repo;
+  var SITE = DATA.site || {};
+  var FILES = DATA.files || {};
+  var PATHS = Object.keys(FILES).sort();
+  var TITLE = SITE.project_name || REPO.name || "Repository";
+  var FILE_STATES = {
+    "ready": ["\u2713", "Ready", "ok"], "needs-work": ["!", "Needs work", "warn"],
+    "not-ready": ["\u00D7", "Not ready", "bad"], "unknown": ["?", "Not checked", "unk"]
+  };
+  var CHECK_STATES = {
+    "pass": ["\u2713", "Yes", "ok"], "partial": ["!", "Partly", "warn"], "fail": ["\u00D7", "No", "bad"],
+    "unknown": ["?", "Not checked", "unk"], "ready": ["\u2713", "Ready", "ok"],
+    "needs-work": ["!", "Needs work", "warn"], "not-ready": ["\u00D7", "Not ready", "bad"]
+  };
+  var KIND_LABELS = { "setup": "setup", "function": "function", "class": "class", "method": "method",
+    "type": "data shape", "value": "settings or data", "route": "web address", "export": "export",
+    "statement": "database statement", "block": "block", "rule": "style rule", "entry point": "starting point",
+    "test group": "tests", "event handler": "reacts to an event" };
+
+  function esc(value) {
+    return String(value == null ? "" : value).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function fmt(value) {
+    if (!value) return "";
+    return esc(value).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\n/g, "<br>");
+  }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function trunc(value, n) { value = String(value || ""); return value.length > n ? value.slice(0, n - 1) + "\u2026" : value; }
+  function base(path) { var i = path.lastIndexOf("/"); return i < 0 ? path : path.slice(i + 1); }
+  function dir(path) { var i = path.lastIndexOf("/"); return i < 0 ? "" : path.slice(0, i + 1); }
+  function fileHref(path, section) { return "#/file/" + encodeURIComponent(path) + (section ? "/" + section : ""); }
+  function both(calm, nerd) { return '<span class="calm-only">' + calm + '</span><span class="nerd-only">' + nerd + "</span>"; }
+  function badge(states, status) {
+    var s = states[status] || states.unknown;
+    return '<span class="badge b-' + s[2] + '"><span aria-hidden="true">' + s[0] + "</span>" + esc(s[1]) + "</span>";
+  }
+  function fileBadge(card) { return badge(FILE_STATES, (card.readiness && card.readiness.status) || "unknown"); }
+  function checkBadge(status) { return badge(CHECK_STATES, status || "unknown"); }
+  function explainState(card) {
+    if (!card.fresh) return ["\u25D0", "Code changed after these notes were written"];
+    if (card.status === "explained") return ["\u25CF", "Explained"];
+    if (card.status === "partial") return ["\u25D0", "Partly explained"];
+    return ["\u25CB", "Not explained yet"];
+  }
+  function sec(n, title, nerdTitle, body) {
+    return '<section class="sec"><p class="label">' + pad(n) + " / " + both(esc(title), esc(nerdTitle || title)) +
+      '</p><div class="sec-body">' + body + "</div></section>";
+  }
+
+  // ---- Breadcrumb back into the portfolio -------------------------------
+  var SITE_ROOT = SITE.url ? SITE.url.replace(/\/?$/, "/") : "";
+  var PROJECT_URL = SITE_ROOT && SITE.project ? SITE_ROOT + "work/" + SITE.project + "/" : "";
+  (function () {
+    var crumbs = document.getElementById("crumbs");
+    var parts = [];
+    if (SITE_ROOT) {
+      parts.push('<a class="link-quiet" href="' + esc(SITE_ROOT) + '">' + esc(SITE.owner || "Home") + "</a>");
+      parts.push('<span aria-hidden="true">/</span><a class="link-quiet" href="' + esc(SITE_ROOT + "code/") + '">Code</a>');
+      parts.push('<span aria-hidden="true">/</span><span class="here">' + esc(TITLE) + "</span>");
+    } else {
+      parts.push('<span class="here">' + esc(TITLE) + '</span><span aria-hidden="true">/</span><span>' + both("Code explorer", "./explore") + "</span>");
+    }
+    crumbs.innerHTML = parts.join("");
+    if (PROJECT_URL) {
+      var who = document.querySelector(".rail .who");
+      if (who) who.insertAdjacentHTML("afterend", '<p class="label" style="margin:10px 0 0"><a class="link-quiet" href="' + esc(PROJECT_URL) +
+        '">' + both("See the project page", "cd ../work/" + esc(SITE.project)) + "</a></p>");
+    }
+  })();
+  function lineLink(path, s) {
+    if (!SITE.repo_url || !REPO.commit) return "";
+    var url = SITE.repo_url.replace(/\/$/, "") + "/blob/" + encodeURIComponent(REPO.commit) + "/" +
+      path.split("/").map(encodeURIComponent).join("/") + "#L" + s.start + "-L" + s.end;
+    return '<a class="link-quiet" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer"' +
+      (SITE.private ? ' title="Private repository: opens for the owner after signing in to GitHub"' : "") + ">" +
+      both(SITE.private ? "GitHub (owner only)" : "Open on GitHub", "git show") + "</a>";
+  }
+
+  // ---- Areas -------------------------------------------------------------
+  var AREAS = [];
+  var AREA_BY_ID = {};
+  (function buildAreas() {
+    (REPO.areas || []).forEach(function (a) {
+      if (!AREA_BY_ID[a.id]) { var copy = Object.assign({}, a, { files: [] }); AREAS.push(copy); AREA_BY_ID[a.id] = copy; }
+    });
+    PATHS.forEach(function (p) {
+      var id = FILES[p].area || "other";
+      if (!AREA_BY_ID[id]) {
+        var made = { id: id, name: id === "other" ? "Everything else" : id, summary: "", why: "", debug_tips: "", files: [] };
+        AREAS.push(made); AREA_BY_ID[id] = made;
+      }
+      AREA_BY_ID[id].files.push(p);
+    });
+    AREAS = AREAS.filter(function (a) { return a.files.length > 0; });
+    AREAS.forEach(function (a, i) { a.num = pad(i + 1); });
+  })();
+
+  var START = (REPO.start_here || []).filter(function (p) { return FILES[p]; });
+  function sortFiles(list) {
+    return list.slice().sort(function (a, b) {
+      var sa = START.indexOf(a), sb = START.indexOf(b);
+      if (sa !== sb) return (sa < 0 ? 999 : sa) - (sb < 0 ? 999 : sb);
+      return (FILES[b].lines || 0) - (FILES[a].lines || 0) || a.localeCompare(b);
+    });
+  }
+  function stats() {
+    var out = { files: 0, explained: 0, sections: 0, noted: 0, stale: 0, lines: 0 };
+    PATHS.forEach(function (p) {
+      var f = FILES[p];
+      out.files += 1; out.lines += f.lines || 0;
+      if (f.status === "explained") out.explained += 1;
+      (f.sections || []).forEach(function (s) { out.sections += 1; if (s.what) out.noted += 1; });
+      if (!f.fresh || f.summary_stale) out.stale += 1;
+    });
+    return out;
+  }
+
+  // ---- Sidebar -----------------------------------------------------------
+  document.getElementById("repo-name").textContent = TITLE;
+  document.title = "Code explorer: " + TITLE;
+  var builtBits = [];
+  if (DATA.built_at) builtBits.push("Built " + DATA.built_at.slice(0, 10));
+  if (REPO.commit) builtBits.push("commit " + REPO.commit);
+  if (SITE.mode === "notes") builtBits.push("notes only");
+  document.getElementById("built").textContent = builtBits.join(" / ");
+
+  var tree = document.getElementById("tree");
+  var search = document.getElementById("q");
+  var currentPath = null, currentArea = null, openArea = null;
+
+  function matches(path, q) {
+    var f = FILES[path];
+    if (path.toLowerCase().indexOf(q) >= 0) return true;
+    if ((f.summary || "").toLowerCase().indexOf(q) >= 0) return true;
+    return (f.terms || []).some(function (t) { return (t.term || "").toLowerCase().indexOf(q) >= 0; });
+  }
+  function renderTree() {
+    var q = (search.value || "").trim().toLowerCase();
+    var html = '<p class="label tree-title">' + both("Files by area", "ls -R") + "</p>";
+    var shown = 0;
+    AREAS.forEach(function (a) {
+      var files = sortFiles(a.files).filter(function (p) { return !q || matches(p, q); });
+      if (!files.length) return;
+      var open = q || a.id === currentArea ? " open" : "";
+      html += '<details class="t-area"' + open + ' data-area="' + esc(a.id) + '"><summary><span class="label">' + a.num +
+        '</span><span class="t-name">' + esc(a.name) + '</span><span class="label t-count">' + files.length + "</span></summary><ul>";
+      files.forEach(function (p) {
+        var st = explainState(FILES[p]);
+        var cur = p === currentPath ? ' aria-current="page"' : "";
+        html += '<li><a href="' + fileHref(p) + '"' + cur + ' title="' + esc(p) + '"><span class="dot" title="' + esc(st[1]) +
+          '" aria-label="' + esc(st[1]) + '">' + st[0] + '</span><span class="t-base">' + esc(base(p)) +
+          '</span><span class="t-dir">' + esc(dir(p)) + "</span></a></li>";
+        shown += 1;
+      });
+      html += "</ul></details>";
+    });
+    if (!shown) html += '<p class="t-empty">No files match \u201C' + esc(search.value) + '\u201D.</p>';
+    tree.innerHTML = html;
+  }
+  var timer = null;
+  search.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(renderTree, 120); });
+  search.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter") return;
+    var first = tree.querySelector("li a");
+    if (first) location.hash = first.getAttribute("href");
+  });
+  document.addEventListener("keydown", function (event) {
+    var tag = (document.activeElement && document.activeElement.tagName) || "";
+    if (event.key === "/" && !/input|textarea/i.test(tag)) { event.preventDefault(); search.focus(); }
+  });
+
+  // ---- Mind map ----------------------------------------------------------
+  function edge(x1, y1, x2, y2, opacity) {
+    var mx = (x1 + x2) / 2;
+    return '<path class="mm-edge" d="M' + x1 + " " + y1 + " C" + mx + " " + y1 + ", " + mx + " " + y2 + ", " + x2 + " " + y2 +
+      '" stroke-opacity="' + opacity + '"/>';
+  }
+  function drawMap() {
+    var wrap = document.getElementById("mm");
+    var detail = document.getElementById("mm-detail");
+    if (!wrap) return;
+    if (!AREAS.length) { wrap.innerHTML = '<p class="pending">No source files yet.</p>'; return; }
+    var ROW = 40, H = 30, TOP = 10, X0 = 4, W0 = 200, X1 = 250, W1 = 268, X2 = 566, W2 = 292;
+    var ys = AREAS.map(function (_, i) { return TOP + i * ROW; });
+    var open = AREA_BY_ID[openArea] || null;
+    var fnodes = [];
+    if (open) {
+      var sorted = sortFiles(open.files);
+      var shown = sorted.slice(0, 14);
+      fnodes = shown.map(function (p) { return { kind: "file", path: p }; });
+      if (sorted.length > shown.length) fnodes.push({ kind: "more", n: sorted.length - shown.length });
+    }
+    var oi = open ? AREAS.indexOf(open) : -1;
+    var fTop = open ? Math.max(TOP, ys[oi] - ((fnodes.length - 1) * ROW) / 2) : TOP;
+    var lastA = ys[ys.length - 1];
+    var lastF = fnodes.length ? fTop + (fnodes.length - 1) * ROW : 0;
+    var height = Math.max(lastA, lastF) + H + TOP;
+    var width = (open ? X2 + W2 : X1 + W1) + 6;
+    var rootY = (ys[0] + lastA) / 2;
+    var s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + " " + height + '" width="' + width + '" height="' +
+      height + '" role="group" aria-label="Mind map of ' + esc(TITLE) + '">';
+    AREAS.forEach(function (a, i) { s += edge(X0 + W0, rootY + H / 2, X1, ys[i] + H / 2, open && a !== open ? 0.12 : 0.4); });
+    fnodes.forEach(function (_, j) { s += edge(X1 + W1, ys[oi] + H / 2, X2, fTop + j * ROW + H / 2, 0.4); });
+    s += '<g class="mm-root"><rect x="' + X0 + '" y="' + rootY + '" width="' + W0 + '" height="' + H + '" rx="15"/><text x="' +
+      (X0 + 16) + '" y="' + (rootY + 19) + '">' + esc(trunc(TITLE, 24)) + "</text></g>";
+    AREAS.forEach(function (a, i) {
+      var isOpen = a === open;
+      s += '<g class="mm-node mm-area' + (isOpen ? " is-open" : "") + (open && !isOpen ? " is-dim" : "") + '" tabindex="0" role="button" aria-expanded="' +
+        isOpen + '" aria-label="' + esc(a.name) + ", " + a.files.length + ' files" data-area="' + esc(a.id) + '"><rect class="box" x="' + X1 +
+        '" y="' + ys[i] + '" width="' + W1 + '" height="' + H + '" rx="15"/><text class="mm-num" x="' + (X1 + 14) + '" y="' + (ys[i] + 19) + '">' +
+        a.num + '</text><text x="' + (X1 + 44) + '" y="' + (ys[i] + 19) + '">' + esc(trunc(a.name, 25)) + '</text><text class="mm-count" x="' +
+        (X1 + W1 - 14) + '" y="' + (ys[i] + 19) + '" text-anchor="end">' + a.files.length + "</text></g>";
+    });
+    fnodes.forEach(function (f, j) {
+      var y = fTop + j * ROW;
+      if (f.kind === "more") {
+        s += '<g class="mm-node mm-more" tabindex="0" role="link" aria-label="' + f.n + ' more files in this area" data-more="' + esc(open.id) +
+          '"><rect class="box" x="' + X2 + '" y="' + y + '" width="' + W2 + '" height="' + H + '" rx="4"/><text x="' + (X2 + 14) + '" y="' + (y + 19) +
+          '">' + f.n + " more files in this area</text></g>";
+        return;
+      }
+      var card = FILES[f.path];
+      var st = explainState(card);
+      s += '<g class="mm-node mm-file" tabindex="0" role="link" aria-label="' + esc(f.path) + ", " + esc(st[1]) + '" data-path="' + esc(f.path) +
+        '"><rect class="box" x="' + X2 + '" y="' + y + '" width="' + W2 + '" height="' + H + '" rx="4"/><text x="' + (X2 + 14) + '" y="' + (y + 19) + '">' +
+        esc(trunc(base(f.path), 32)) + '</text><text class="mm-glyph" x="' + (X2 + W2 - 14) + '" y="' + (y + 19) + '" text-anchor="end">' + st[0] +
+        "</text><title>" + esc(f.path) + (card.summary ? ": " + esc(card.summary) : "") + "</title></g>";
+    });
+    wrap.innerHTML = s + "</svg>";
+    if (open) {
+      detail.innerHTML = '<p class="label legend">' + open.num + " / " + both("Area", "dir") + "</p><h3>" + esc(open.name) + "</h3>" +
+        (open.summary ? "<p>" + fmt(open.summary) + "</p>" : '<p class="pending">This area has no plain-English summary yet.</p>') +
+        '<p><a class="u" href="#/area/' + encodeURIComponent(open.id) + '">Read about this area and all ' + open.files.length + " of its files</a></p>";
+    } else {
+      detail.innerHTML = '<p class="label legend">\u25CF explained \u00A0 \u25D0 partly explained or out of date \u00A0 \u25CB not explained yet</p>';
+    }
+  }
+  main.addEventListener("click", function (event) { mapAction(event.target); });
+  main.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    if (mapAction(event.target)) event.preventDefault();
+  });
+  function mapAction(target) {
+    var node = target && target.closest ? target.closest(".mm-node") : null;
+    if (!node) return false;
+    if (node.getAttribute("data-area")) {
+      var id = node.getAttribute("data-area");
+      openArea = openArea === id ? null : id;
+      drawMap();
+      var again = document.querySelector('.mm-area[data-area="' + String(id).replace(/["\\]/g, "\\$&") + '"]');
+      if (again) again.focus();
+    } else if (node.getAttribute("data-path")) {
+      location.hash = fileHref(node.getAttribute("data-path"));
+    } else if (node.getAttribute("data-more")) {
+      location.hash = "#/area/" + encodeURIComponent(node.getAttribute("data-more"));
+    }
+    return true;
+  }
+
+  // ---- Views -------------------------------------------------------------
+  function fact(label, value) { return value ? '<dt class="label">' + esc(label) + "</dt><dd>" + value + "</dd>" : ""; }
+  function linkList(list) {
+    if (!list || !list.length) return "";
+    return list.map(function (item) {
+      return FILES[item] ? '<a href="' + fileHref(item) + '">' + esc(item) + "</a>" : "<code>" + esc(item) + "</code>";
+    }).join(", ");
+  }
+
+  function viewOverview() {
+    var st = stats();
+    var r = REPO.readiness || {};
+    var html = '<p class="label head-meta"><span>' + both("Code explorer", "./explore") + "</span><span>" + st.files + " files</span><span>" +
+      st.lines.toLocaleString("en") + " lines</span><span>" + st.sections + ' sections</span><span class="em">' +
+      ((CHECK_STATES[r.overall] || CHECK_STATES.unknown)[1]) + "</span></p>" +
+      '<h1 class="display">' + esc(TITLE) + "</h1>" +
+      (REPO.summary ? '<p class="punch">' + fmt(REPO.summary) + "</p>" :
+        '<p class="punch pending">No plain-English summary yet. In Claude Code, ask it to explain this repository.</p>') +
+      '<dl class="pair"><div><dt class="label">Who it is for</dt><dd>' + (fmt(REPO.who_its_for) || '<span class="pending">Not written yet.</span>') +
+      '</dd></div><div><dt class="label">How it runs</dt><dd>' + (fmt(REPO.how_it_runs) || '<span class="pending">Not written yet.</span>') + "</dd></div></dl>";
+    var n = 0;
+    html += sec(++n, "How complete these notes are", "coverage",
+      '<ul class="stats"><li><span class="n">' + st.explained + "/" + st.files + '</span><span class="label">files explained</span></li>' +
+      '<li><span class="n">' + st.noted + "/" + st.sections + '</span><span class="label">sections with notes</span></li>' +
+      '<li><span class="n">' + st.stale + '</span><span class="label">notes older than the code</span></li>' +
+      '<li><span class="n"><a class="link-quiet" href="#/readiness">' + checkBadge(r.overall) + '</a></span><span class="label">production-ready?</span></li></ul>');
+    var mapExtra = SITE.map ? '<p class="hint" style="margin-top:14px">' + both("Want every function and link? ", "full graph: ") +
+      '<a class="u" href="' + esc(SITE.map) + '">' + both("Open the technical map", "./map.html") + "</a></p>" : "";
+    html += sec(++n, "How the parts fit together", "tree --areas",
+      '<p class="hint">Pick an area to see its files, then pick a file to read its code with a plain-English note beside every section.</p>' +
+      '<div class="mm-wrap" id="mm"></div><div class="mm-detail" id="mm-detail" aria-live="polite"></div>' + mapExtra);
+    if (START.length) {
+      html += sec(++n, "Read these first", "head -n " + START.length, '<ol class="rows-list">' + START.map(function (p, i) {
+        return '<li><a class="rowlink" href="' + fileHref(p) + '"><span class="label num">' + pad(i + 1) + '</span><span class="name">' +
+          esc(base(p)) + '<span class="dirp">' + esc(dir(p)) + "</span></span>" + fileBadge(FILES[p]) + '<span class="sub">' +
+          fmt(FILES[p].summary || "") + "</span></a></li>"; }).join("") + "</ol>");
+    }
+    var skipped = REPO.skipped || [];
+    if (skipped.length) {
+      html += '<details class="skipped"><summary class="label">' + skipped.length + " files were left out of these notes</summary><ul>" +
+        skipped.slice(0, 200).map(function (s) { return "<li><code>" + esc(s.path) + "</code>: " + esc(s.reason) + "</li>"; }).join("") + "</ul></details>";
+    }
+    return html;
+  }
+
+  function viewArea(id) {
+    var a = AREA_BY_ID[id];
+    if (!a) return notFound("That area does not exist in these notes.");
+    currentArea = id;
+    var html = '<p class="label head-meta"><a class="link-quiet" href="#/overview">' + both("Overview", "cd ..") + "</a><span>" + a.num +
+      " / " + both("Area", "dir") + "</span><span>" + a.files.length + ' files</span></p><h2 class="display">' + esc(a.name) + "</h2>" +
+      (a.summary ? '<p class="punch">' + fmt(a.summary) + "</p>" : "");
+    var n = 0;
+    if (a.why || a.debug_tips) html += sec(++n, "Why it exists", "why", '<dl class="facts">' + fact("Why this area exists", fmt(a.why)) +
+      fact("If something here breaks", fmt(a.debug_tips)) + "</dl>");
+    html += sec(++n, "Files in this area", "ls", '<ul class="rows-list">' + sortFiles(a.files).map(function (p, i) {
+      var f = FILES[p];
+      return '<li><a class="rowlink" href="' + fileHref(p) + '"><span class="label num">' + pad(i + 1) + '</span><span class="name">' + esc(base(p)) +
+        '<span class="dirp">' + esc(dir(p)) + "</span></span>" + fileBadge(f) + '<span class="sub">' +
+        (f.summary ? fmt(f.summary) : '<span class="pending">Not explained yet.</span>') + "</span></a></li>"; }).join("") + "</ul>");
+    return html;
+  }
+
+  function viewFile(path, sectionId) {
+    var f = FILES[path];
+    if (!f) return notFound("There is no file called " + path + " in these notes.");
+    currentPath = path; currentArea = f.area;
+    var a = AREA_BY_ID[f.area];
+    var lines = typeof f.code === "string" ? f.code.split("\n") : null;
+    var html = '<p class="label head-meta"><a class="link-quiet" href="#/overview">' + both("Overview", "cd ~") + "</a>" +
+      (a ? '<a class="link-quiet" href="#/area/' + encodeURIComponent(a.id) + '">' + a.num + " / " + esc(a.name) + "</a>" : "") +
+      "<span>" + esc(f.language || "") + "</span><span>" + (f.lines || 0) + " lines</span>" + fileBadge(f) + "</p>" +
+      '<h2 class="display">' + esc(base(path)) + '</h2><p class="path">' + esc(path) + "</p>";
+    if (!f.fresh) {
+      html += '<p class="banner warn">The code in this file changed after these notes were written. Treat the notes as a guide, and ask Claude to re-explain this file.</p>';
+    } else if (f.status !== "explained") {
+      html += '<p class="banner">Some parts of this file are not explained yet.</p>';
+    }
+    var summary = [f.summary, f.purpose].filter(Boolean).join(" ");
+    var reasons = (f.readiness && f.readiness.reasons) || [];
+    var n = 0;
+    html += sec(++n, "In plain English", "man " + base(path), summary || f.why || f.how ? '<dl class="facts">' +
+      fact("What it does", fmt(summary)) + fact("Why it exists", fmt(f.why)) + fact("How it works", fmt(f.how)) +
+      fact("Takes in", fmt(f.inputs)) + fact("Gives back", fmt(f.outputs)) + fact("Relies on", linkList(f.depends_on)) +
+      fact("Used by", linkList(f.used_by)) + fact("What can go wrong", fmt(f.risks)) + fact("If it breaks", fmt(f.debug)) +
+      fact("Ready for real use?", fileBadge(f) + (reasons.length ? '<ul class="reasons">' + reasons.map(function (r) {
+        return "<li>" + fmt(r) + "</li>"; }).join("") + "</ul>" : "")) + "</dl>" :
+      '<p class="pending">This file has no plain-English summary yet.</p>');
+    if ((f.terms || []).length) {
+      html += sec(++n, "Words used here", "define", '<dl class="terms">' + f.terms.map(function (t) {
+        return "<dt>" + esc(t.term) + "</dt><dd>" + fmt(t.meaning) + "</dd>"; }).join("") + "</dl>");
+    }
+    var rows = (f.sections || []).map(function (s) {
+      var code = "";
+      if (lines) {
+        for (var k = s.start; k <= s.end && k <= lines.length; k++) {
+          code += '<span class="ln"><span class="no">' + k + "</span>" + (esc(lines[k - 1]) || " ") + "</span>";
+        }
+      }
+      var kind = KIND_LABELS[s.kind] || s.kind || "";
+      return '<div class="row' + (s.id === sectionId ? " sel" : "") + '" id="sec-' + esc(s.id) + '">' +
+        (lines ? '<div class="code" role="region" aria-label="Lines ' + s.start + " to " + s.end + '"><pre><code>' + code + "</code></pre></div>" :
+          '<div class="code no-code">' + both(SITE.private ? "This repository is private, so its code is not published here. The owner can open these lines on GitHub from the link beside the note." :
+            "The code is not published for this repository; the notes describe it.", "// source not published") + "</div>") +
+        '<aside class="note"><div class="note-inner"><p class="label"><a href="' + fileHref(path, s.id) + '">Lines ' + s.start + "\u2013" + s.end +
+        "</a>" + (kind ? "<span>" + esc(kind) + "</span>" : "") + '<span class="nerd-only">' + esc(s.name || "") + "</span>" + lineLink(path, s) +
+        "</p><h4>" + esc(s.title || s.name) + "</h4>" +
+        (s.what ? "<p>" + fmt(s.what) + "</p>" : '<p class="pending">Not explained yet.</p>') +
+        (s.why ? '<p><span class="k">Why</span>' + fmt(s.why) + "</p>" : "") +
+        (s.watch_out ? '<p><span class="k">Watch out</span>' + fmt(s.watch_out) + "</p>" : "") + "</div></aside></div>";
+    }).join("");
+    html += sec(++n, "Read it section by section", "cat -n " + base(path),
+      '<p class="hint">Each row pairs a piece of the code with a note. Every line of the file belongs to exactly one row.</p><div class="rows">' + rows + "</div>");
+    return html;
+  }
+
+  function viewReadiness() {
+    var r = REPO.readiness || {};
+    var html = '<p class="label head-meta"><span>' + both("Readiness review", "cat readiness") + "</span>" + (r.checked_at ? "<span>Checked " +
+      esc(String(r.checked_at).slice(0, 10)) + "</span>" : "") + '</p><h2 class="display">Is it production-ready?</h2><p class="punch">' +
+      checkBadge(r.overall) + " " + (r.summary ? fmt(r.summary) : '<span class="pending">No readiness review yet. In Claude Code, ask for a production check.</span>') + "</p>";
+    var n = 0;
+    var checks = r.checks || [];
+    if (checks.length) {
+      html += sec(++n, "Twelve questions", "checks", '<div class="table-wrap"><table class="checks"><thead><tr><th scope="col">Question</th>' +
+        '<th scope="col">Answer</th><th scope="col">Evidence</th><th scope="col">Next step</th></tr></thead><tbody>' + checks.map(function (c) {
+          return "<tr><td>" + esc(c.question) + "</td><td>" + checkBadge(c.status) + "</td><td>" + (fmt(c.evidence) || "") + "</td><td>" +
+            (fmt(c.next_step) || "") + "</td></tr>"; }).join("") + "</tbody></table></div>");
+    }
+    var groups = { "not-ready": [], "needs-work": [] };
+    PATHS.forEach(function (p) { var st = (FILES[p].readiness || {}).status; if (groups[st]) groups[st].push(p); });
+    [["not-ready", "Files that are not ready", "grep not-ready"], ["needs-work", "Files that need work", "grep needs-work"]].forEach(function (g) {
+      var list = groups[g[0]];
+      if (!list.length) return;
+      html += sec(++n, g[1] + " (" + list.length + ")", g[2], '<ul class="rows-list">' + list.map(function (p, i) {
+        var reasons = (FILES[p].readiness.reasons || []).map(fmt).join(" ");
+        return '<li><a class="rowlink" href="' + fileHref(p) + '"><span class="label num">' + pad(i + 1) + '</span><span class="name">' + esc(base(p)) +
+          '<span class="dirp">' + esc(dir(p)) + "</span></span>" + fileBadge(FILES[p]) + '<span class="sub">' + reasons + "</span></a></li>"; }).join("") + "</ul>");
+    });
+    return html;
+  }
+
+  function viewDecisions() {
+    var list = REPO.decisions || [];
+    var html = '<p class="label head-meta"><span>' + both("Decision records", "git log --decisions") + "</span><span>" + list.length +
+      ' recorded</span></p><h2 class="display">Why it is built this way</h2><p class="punch">Each decision records what was chosen, why, what else was considered, and when to revisit it.</p>';
+    if (!list.length) return html + '<p class="pending" style="margin-top:30px">No decisions recorded yet. The plan-first skill adds one whenever there is a real choice to make.</p>';
+    return html + sec(1, "Decisions", "decisions", list.map(function (d) {
+      return '<article class="card"><h3>' + esc((d.id ? d.id + ". " : "") + (d.title || "Decision")) + '</h3><dl class="facts">' +
+        fact("What was decided", fmt(d.decision)) + fact("Why", fmt(d.why)) + fact("Alternatives considered", fmt(d.alternatives)) +
+        fact("Trade-offs", fmt(d.tradeoffs)) + fact("Revisit when", fmt(d.revisit_when)) + fact("Files", linkList(d.files)) + "</dl></article>"; }).join(""));
+  }
+
+  function viewDebug() {
+    var html = '<p class="label head-meta"><span>' + both("Debugging guide", "man debug") + '</span></p><h2 class="display">When something breaks</h2>' +
+      '<p class="punch">A calm method that works for any bug, then the problems this app is most likely to have and where to look.</p>';
+    html += sec(1, "The method", "procedure", '<ol class="method">' +
+      "<li><strong>Make it happen again on purpose.</strong> Write down the exact steps, what you expected and what happened instead.</li>" +
+      "<li><strong>Read the error in plain words.</strong> Copy the full message. Ask Claude what it means before asking it to fix anything.</li>" +
+      "<li><strong>Find the area.</strong> Use the map on the overview to pick the area, then the file, then the section.</li>" +
+      "<li><strong>Prove it with a small test.</strong> Ask Claude for a test that fails because of the bug. A fix without a failing test first is a guess.</li>" +
+      "<li><strong>Fix the cause, not the symptom.</strong> Hiding an error message is not a fix. If two attempts fail, stop and rethink.</li>" +
+      "<li><strong>Keep it fixed.</strong> Keep the test, refresh these notes, and record the problem below if it could happen again.</li></ol>");
+    var list = REPO.debug_playbook || [];
+    html += sec(2, "Known problems", "known issues", list.length ? list.map(function (item) {
+      var area = AREA_BY_ID[item.likely_area];
+      return '<article class="card"><h3>' + esc(item.symptom || "Problem") + '</h3><dl class="facts">' +
+        fact("Likely area", area ? '<a href="#/area/' + encodeURIComponent(area.id) + '">' + area.num + " / " + esc(area.name) + "</a>" : esc(item.likely_area || "")) +
+        fact("Where to look", linkList(item.where_to_look)) +
+        fact("What to try", (item.steps || []).length ? '<ol class="method">' + item.steps.map(function (s) { return "<li>" + fmt(s) + "</li>"; }).join("") + "</ol>" : "") +
+        "</dl></article>"; }).join("") : '<p class="pending">No known problems recorded yet.</p>');
+    return html;
+  }
+
+  function viewGlossary() {
+    var terms = {};
+    (REPO.glossary || []).forEach(function (t) { if (t && t.term) terms[t.term.toLowerCase()] = { term: t.term, meaning: t.meaning, files: [] }; });
+    PATHS.forEach(function (p) {
+      (FILES[p].terms || []).forEach(function (t) {
+        if (!t || !t.term) return;
+        var key = t.term.toLowerCase();
+        if (!terms[key]) terms[key] = { term: t.term, meaning: t.meaning, files: [] };
+        if (terms[key].files.length < 5) terms[key].files.push(p);
+      });
+    });
+    var keys = Object.keys(terms).sort();
+    var html = '<p class="label head-meta"><span>' + both("Glossary", "grep glossary") + "</span><span>" + keys.length +
+      ' terms</span></p><h2 class="display">Glossary</h2><p class="punch">Technical words used in this codebase, in plain English.</p>';
+    if (!keys.length) return html + '<p class="pending" style="margin-top:30px">No terms recorded yet.</p>';
+    return html + sec(1, "Terms", "terms", '<label><span class="sr-only">Filter the glossary</span><input class="filter" id="gfilter" type="search" placeholder="Filter terms"></label>' +
+      '<dl class="glossary" id="glist">' + keys.map(function (k) {
+        var t = terms[k];
+        return '<dt data-k="' + esc(k) + '">' + esc(t.term) + '</dt><dd data-k="' + esc(k) + '">' + fmt(t.meaning) +
+          (t.files.length ? '<div class="used">Used in ' + t.files.map(function (p) { return '<a href="' + fileHref(p) + '">' + esc(base(p)) + "</a>"; }).join(", ") + "</div>" : "") +
+          "</dd>"; }).join("") + "</dl>");
+  }
+
+  function notFound(message) {
+    return '<p class="label head-meta"><span>404</span></p><h2 class="display">Not found</h2><p class="punch">' + esc(message) +
+      '</p><p style="margin-top:24px"><a class="u" href="#/overview">Back to the overview</a></p>';
+  }
+
+  // ---- Router ------------------------------------------------------------
+  function render() {
+    var raw = (location.hash || "#/overview").slice(2);
+    var parts = raw.split("/");
+    var view = parts[0] || "overview";
+    var arg = parts[1] ? decodeURIComponent(parts[1]) : "";
+    var extra = parts[2] ? decodeURIComponent(parts[2]) : "";
+    currentPath = null;
+    var html;
+    if (view === "file") html = viewFile(arg, extra);
+    else if (view === "area") html = viewArea(arg);
+    else if (view === "readiness") html = viewReadiness();
+    else if (view === "decisions") html = viewDecisions();
+    else if (view === "debug") html = viewDebug();
+    else if (view === "glossary") html = viewGlossary();
+    else { view = "overview"; html = viewOverview(); }
+    main.innerHTML = html;
+    document.querySelectorAll(".views a").forEach(function (link) {
+      if (link.getAttribute("data-view") === view) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current");
+    });
+    renderTree();
+    if (view === "overview") drawMap();
+    if (view === "glossary") {
+      var gf = document.getElementById("gfilter");
+      if (gf) gf.addEventListener("input", function () {
+        var q = gf.value.trim().toLowerCase();
+        var text = {};
+        document.querySelectorAll("#glist [data-k]").forEach(function (el) { var k = el.getAttribute("data-k"); text[k] = (text[k] || "") + " " + el.textContent.toLowerCase(); });
+        document.querySelectorAll("#glist [data-k]").forEach(function (el) { var k = el.getAttribute("data-k"); el.style.display = !q || text[k].indexOf(q) >= 0 ? "" : "none"; });
+      });
+    }
+    var target = extra ? document.getElementById("sec-" + extra) : null;
+    if (target && target.scrollIntoView) target.scrollIntoView({ block: "start" });
+    else if (window.scrollTo) { try { window.scrollTo(0, 0); } catch (error) { /* not available */ } }
+    main.focus({ preventScroll: true });
+  }
+  window.addEventListener("hashchange", render);
+  render();
+})();
+</script>
+</body>
+</html>
