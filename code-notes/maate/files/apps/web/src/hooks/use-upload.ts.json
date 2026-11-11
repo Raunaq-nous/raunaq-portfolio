@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "path": "apps/web/src/hooks/use-upload.ts",
+  "language": "TypeScript",
+  "lines": 178,
+  "hash": "sha256:a983b539b95ebaff18affc7a2526617177b8199dcd53a22f30a3ea84e02b953b",
+  "area": "apps-web",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Polling does not stop when the user leaves the page, which can cause repeated requests and state updates after unmount.",
+      "Retry works from a copy of the file list that may be out of date.",
+      "Progress calculation has a fallback that can show wrong values.",
+      "Error handling exists at each step, so the basic failure path is covered."
+    ]
+  },
+  "terms": [
+    {
+      "term": "API",
+      "meaning": "A doorway other programs use to ask this app for data."
+    },
+    {
+      "term": "S3 (signed URL)",
+      "meaning": "A cloud storage address with a temporary permission, so the file can be sent directly to storage without the normal login."
+    },
+    {
+      "term": "OCR",
+      "meaning": "Optical character recognition, the process of reading text from a scanned or photographed document."
+    },
+    {
+      "term": "Polling",
+      "meaning": "Asking the server again and again at a set interval to see if something has finished."
+    },
+    {
+      "term": "Hook",
+      "meaning": "A React function that holds state and logic for a screen to use."
+    },
+    {
+      "term": "Content type",
+      "meaning": "A label such as application/pdf that tells the server or browser what kind of file is being sent."
+    }
+  ],
+  "depends_on": [
+    "axios",
+    "react",
+    "@/lib/api",
+    "@/hooks/use-toast",
+    "@maate/shared-types"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "596536de479f3da3",
+      "title": "File setup and imports",
+      "what": "Marks the file as client code and brings in the tools it needs: state, the HTTP clients, the toast hook, and the document type list.",
+      "why": "Client marking is needed because the upload runs in the browser.",
+      "watch_out": "The file uses both the shared API client and plain axios. The plain one is used only for the storage upload, so auth headers are not sent there."
+    },
+    {
+      "start": 13,
+      "end": 21,
+      "kind": "type",
+      "name": "UploadFile",
+      "id": "s2",
+      "hash": "1f108ede7da33f91",
+      "title": "Upload item shape",
+      "what": "Describes what each upload item holds: id, the file, progress percent, status, error text, and document id.",
+      "why": "Gives the screen one clear record for each file being uploaded.",
+      "watch_out": "The status list must match what the screen expects. Adding a status here needs a matching change in the screen."
+    },
+    {
+      "start": 22,
+      "end": 53,
+      "kind": "function",
+      "name": "getDocumentType",
+      "id": "s3",
+      "hash": "d22e41a190e0f70d",
+      "title": "Document label from file name",
+      "what": "Reads the file name and returns a document category such as prescription, lab report, or other, using keyword matches.",
+      "why": "The category is sent to the server with the upload, so the app can group and describe the document. Keyword matching is a simple way to guess the type without asking the user.",
+      "watch_out": "The rule order matters. For example a name containing both scan and note is labelled imaging. This copy is also duplicated in the test file, so changes must be made in both places."
+    },
+    {
+      "start": 54,
+      "end": 105,
+      "kind": "function",
+      "name": "useUpload (part 1)",
+      "id": "s4",
+      "hash": "5a12653b0704c160",
+      "title": "Upload start and address request",
+      "what": "Marks the file as uploading, labels it, asks the server for a storage address, and sends the file bytes to that address while showing progress.",
+      "why": "Sends the file straight to cloud storage so large files do not pass through the app server, which is the usual pattern for file uploads.",
+      "watch_out": "Progress is calculated from the reported size. When the total size is unknown, the fallback makes the percentage wrong."
+    },
+    {
+      "start": 106,
+      "end": 165,
+      "kind": "function",
+      "name": "useUpload (part 2)",
+      "id": "s5",
+      "hash": "0a3ecdf4f8d7667b",
+      "title": "Confirming upload and checking status",
+      "what": "Marks the file as processing, tells the server the upload is done, stores the document id, then checks the document every 2 seconds. It finishes when the document is ready, fails, or runs out of attempts.",
+      "why": "Reading the document takes time, so the screen waits and updates the user without a manual refresh. The 30 attempts times 2 seconds gives the 60 second limit noted in the code.",
+      "watch_out": "The check interval is not cleared if the user leaves the page, so requests can keep going in the background."
+    },
+    {
+      "start": 166,
+      "end": 178,
+      "kind": "function",
+      "name": "useUpload (part 3)",
+      "id": "s6",
+      "hash": "742da7ea9c96e23e",
+      "title": "Adding, updating, retrying and removing files",
+      "what": "Adds new files to the list and starts uploading each one, updates single items as they change, retries a failed upload, and removes an item from the list. It also reports whether anything is still uploading or processing.",
+      "why": "Gives the screen simple controls for managing a batch of uploads.",
+      "watch_out": "Retry uses the file list from the last render, so calling it quickly after a change may act on an old item."
+    }
+  ],
+  "explained_at": "2026-11-11T20:09:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Handles uploading one or more files from the web app: asks the server for an upload address, sends the file to storage, confirms the upload, then checks every few seconds until the document has been read.",
+  "purpose": "Lets a user drop in medical documents and see each one move through uploading, processing, completed, or error. It is the main path from a file on the user's device to a readable document record.",
+  "why": "Uploads are split into steps because the file goes straight to cloud storage, which needs its own address from the server. Polling is used because reading the document takes time after upload. Reason for the 30 attempt limit is partly visible: the code states it is 60 seconds total.",
+  "how": "First the file is labelled by its name. Then the server gives a storage address. The file is sent to that address while progress is shown. The server is then told the upload is done and returns a document id. The code checks the document status every 2 seconds until it is completed, failed, or too many checks have passed. Each step updates the file's status so the screen can show it.",
+  "inputs": "A list of browser File objects chosen by the user, plus the signed-in session from the API client.",
+  "outputs": "A list of upload items with progress, status, error message, and document id. Also an isUploading flag, and functions to add files, retry, and remove them. A toast appears when processing completes.",
+  "risks": "Polling keeps running if the user leaves the page, because there is no cleanup on unmount. The retry function uses the file list captured when the screen last rendered, so it can act on stale data. Progress falls back to 100 when the total size is unknown, which can show wrong percentages. Random ids are created with an older text method. Uploads are not limited in size or count here.",
+  "debug": "If a file stays on processing, check the document status endpoint and whether the ocrStatus field changes. If a file shows Failed to poll, check the network and the API address. If progress looks wrong, check how the total size is read. If the file never reaches storage, check the upload address and content type. Errors from the server are shown on the file item.",
+  "summary_hash": "sha256:a983b539b95ebaff18affc7a2526617177b8199dcd53a22f30a3ea84e02b953b"
+}

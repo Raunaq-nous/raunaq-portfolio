@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "path": "services/ocr-service/app/main.py",
+  "language": "Python",
+  "lines": 176,
+  "hash": "sha256:8131d68d6eb6cb7bef11aee39a490d07ed60ea1d12d460c5eb75e1754ef3597b",
+  "area": "services-ocr-service",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "The address endpoint fetches any supplied web address with no allow list visible.",
+      "There is no size limit on downloads or uploads.",
+      "The fallback reader can return fixed placeholder text with high confidence."
+    ]
+  },
+  "terms": [
+    {
+      "term": "OCR",
+      "meaning": "optical character recognition, the process of reading text from images"
+    },
+    {
+      "term": "Preprocessing",
+      "meaning": "cleaning up an image, such as adjusting size or contrast, before reading it"
+    },
+    {
+      "term": "Entity extraction",
+      "meaning": "finding named items in text, such as test names and values"
+    },
+    {
+      "term": "Server-side request forgery",
+      "meaning": "a weakness where the server can be tricked into fetching internal addresses for an attacker"
+    },
+    {
+      "term": "HTTP status code",
+      "meaning": "a three-digit number a server returns to say whether a request succeeded"
+    }
+  ],
+  "depends_on": [
+    "services/ocr-service/app/config.py",
+    "services/ocr-service/app/pipeline/preprocessor.py",
+    "services/ocr-service/app/pipeline/ocr_engine.py",
+    "services/ocr-service/app/pipeline/ner_extractor.py",
+    "services/ocr-service/app/pipeline/postprocessor.py",
+    "httpx",
+    "fastapi"
+  ],
+  "used_by": [
+    "Not visible in the packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "84fb4426183a5a0e",
+      "title": "Imports and logger for the OCR service",
+      "what": "Loads the web framework, the pipeline steps, the settings, and the logger. Two more imports appear further down the file.",
+      "why": "Needed to run the pipeline. Reason for the later imports is not stated.",
+      "watch_out": "The pipeline modules load at startup, so an error in any one of them stops the service from starting."
+    },
+    {
+      "start": 20,
+      "end": 42,
+      "kind": "function",
+      "name": "lifespan",
+      "id": "s2",
+      "hash": "608f34e0ba06ce66",
+      "title": "Startup routine and app setup",
+      "what": "Logs when the service starts and stops, and creates the app with cross-origin requests allowed from any origin.",
+      "why": "Likely reason: lets browser clients call the service. Reason for open origins is not stated.",
+      "watch_out": "Open origins let any website call the service from a browser unless another control sits in front of it."
+    },
+    {
+      "start": 43,
+      "end": 50,
+      "kind": "function",
+      "name": "health_check",
+      "id": "s3",
+      "hash": "4fd241fc58e8c39d",
+      "title": "Health check endpoint",
+      "what": "Returns a simple healthy status and the service name.",
+      "why": "Likely reason: lets hosting platforms check that the service is alive.",
+      "watch_out": "It does not test the text reader or storage, so it can report healthy while reading is broken."
+    },
+    {
+      "start": 51,
+      "end": 55,
+      "kind": "class",
+      "name": "OCRExtractRequest",
+      "id": "s4",
+      "hash": "3b01518ede92da72",
+      "title": "Request shape for address-based extraction",
+      "what": "Defines the body needed to download a document by web address: the address, a document identifier, and a document type that defaults to lab report.",
+      "why": "Likely reason: lets a caller send a stored file location rather than uploading the file bytes.",
+      "watch_out": "The address is accepted as any text, so nothing here checks that it points to an allowed storage location."
+    },
+    {
+      "start": 56,
+      "end": 103,
+      "kind": "function",
+      "name": "extract_upload",
+      "id": "s5",
+      "hash": "ec79f18d460c87b1",
+      "title": "Upload extraction endpoint",
+      "what": "Accepts one uploaded file and runs preprocessing, text reading, entity extraction, and structuring. Empty files and unreadable text return client errors, and other failures return server errors.",
+      "why": "Likely reason: lets callers send the file directly without a separate download step. Reason not stated.",
+      "watch_out": "The document type comes from a form field with a default, so a missing value silently uses lab report handling."
+    },
+    {
+      "start": 104,
+      "end": 149,
+      "kind": "function",
+      "name": "extract_document",
+      "id": "s6",
+      "hash": "fd41cb7a9f895f58",
+      "title": "Address-based extraction endpoint",
+      "what": "Downloads the file from the given address, checks that the download succeeded, runs the same pipeline, and returns text, structured data, and a count of entities found. Any failure becomes a server error.",
+      "why": "Likely reason: lets a caller pass a file location. Reason for the broad error handling is not stated.",
+      "watch_out": "A failed download raises a 400 inside the code, but the broad handler converts it to a 500 for the caller, and the address is fetched without any check."
+    },
+    {
+      "start": 150,
+      "end": 176,
+      "kind": "function",
+      "name": "extract_batch",
+      "id": "s7",
+      "hash": "5a84f4a2cfa7b4ce",
+      "title": "Batch extraction endpoint",
+      "what": "Takes up to ten uploaded files, reads each one, and returns a status per file with its confidence and text length. A failed file is reported without stopping the others.",
+      "why": "Likely reason: lets a caller check many documents in one request. Reason for the ten-file limit is not stated.",
+      "watch_out": "Files beyond the first ten are silently dropped with no message, and batch results omit the structured data."
+    }
+  ],
+  "explained_at": "2026-11-11T20:24:19+00:00",
+  "explained_by": "haiku",
+  "summary": "The web entry point of the OCR service. It accepts uploaded or linked documents, runs them through the reading pipeline, and returns text and structured data.",
+  "purpose": "Receives medical documents and returns extracted text, a confidence score, and structured data.",
+  "why": "Likely reason: the reading steps are split into separate pipeline modules. Reason for the ten-file batch limit is not stated.",
+  "how": "First it sets up the app with a startup and shutdown log and cross-origin rules that allow any origin. It has a health check. Then it defines three extraction endpoints: upload one file, fetch one file from an address, and process up to ten uploaded files in a batch. Single-file endpoints run preprocessing, text reading, entity extraction, and structuring. Failures become HTTP error responses.",
+  "inputs": "An uploaded file with a document type, or a JSON body with a web address, a document identifier, and a document type, or a list of uploaded files.",
+  "outputs": "JSON with raw text, structured data, confidence, and engine name for single files, or a per-file status list for batches.",
+  "risks": "The address-based endpoint downloads whatever web address the caller supplies, which can reach internal network addresses. There is no size limit on uploads or downloads. The batch endpoint skips structuring and silently ignores files past the tenth. The fallback reader can return fixed fake text.",
+  "debug": "If a file is rejected as empty or unreadable, check the file type and what the preprocessor does with it. If the address endpoint returns a 500 when a link fails, see the error handling note. Compare confidence values to judge whether the text can be trusted.",
+  "summary_hash": "sha256:8131d68d6eb6cb7bef11aee39a490d07ed60ea1d12d460c5eb75e1754ef3597b"
+}

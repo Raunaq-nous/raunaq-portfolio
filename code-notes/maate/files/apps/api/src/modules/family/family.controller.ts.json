@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/family/family.controller.ts",
+  "language": "TypeScript",
+  "lines": 144,
+  "hash": "sha256:16185ee6f9070df8ec37d0ea9a6194bdaeb02424114b5cd69dbb322d499d4de7",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Response shapes are inconsistent across routes.",
+      "The permissions route field name is misleading.",
+      "No tests for this controller appear in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "RBAC",
+      "meaning": "role-based access control, deciding who may do what based on their role or access level."
+    },
+    {
+      "term": "Caregiver",
+      "meaning": "a person given permission to view or manage another person's records."
+    },
+    {
+      "term": "Shadow user",
+      "meaning": "a record with an id and name but no login details, so records can be linked to a family member who cannot sign in."
+    },
+    {
+      "term": "Access level",
+      "meaning": "how much a caregiver may do, such as view only or full access."
+    },
+    {
+      "term": "Throttle",
+      "meaning": "a limit on how many requests a caller may send in a set time window."
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/modules/family/family.service.ts",
+    "apps/api/src/common/auth/jwt-auth.guard",
+    "@maate/database",
+    "@nestjs/throttler",
+    "@nestjs/swagger",
+    "class-validator"
+  ],
+  "used_by": [
+    "apps/api/src/modules/family/family.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7e711d0011cc8521",
+      "title": "Imports and setup",
+      "what": "Brings in the controller tools, the access level and relationship lists, the field checks, the login identity helper, and the family service.",
+      "why": "Needed by the controller below.",
+      "watch_out": ""
+    },
+    {
+      "start": 31,
+      "end": 47,
+      "kind": "class",
+      "name": "CreateMemberDto",
+      "id": "s2",
+      "hash": "316fe88efde53b00",
+      "title": "Family member request rules",
+      "what": "Describes the fields needed to add a family member. Full name and relationship are required, while date of birth and gender are optional.",
+      "why": "Likely reason: a profile needs at least a name and how the person relates to the account holder.",
+      "watch_out": "The date of birth is only checked to be a date text value, so an implausible date can still reach the service."
+    },
+    {
+      "start": 48,
+      "end": 56,
+      "kind": "class",
+      "name": "ShareAccessDto",
+      "id": "s3",
+      "hash": "6a7b4e5fd504543c",
+      "title": "Caregiver share request rules",
+      "what": "Describes the body for sharing access: an email that must be valid, and an access level from the allowed list.",
+      "why": "Likely reason: asking for an email lets the owner invite a caregiver who already has an account.",
+      "watch_out": "The caregiver must already have an account, so this request cannot grant access to someone without one."
+    },
+    {
+      "start": 57,
+      "end": 109,
+      "kind": "class",
+      "name": "FamilyController (part 1)",
+      "id": "s4",
+      "hash": "ac201601e785fd25",
+      "title": "Add, list, delete and share routes",
+      "what": "Adds a family member (limited to 10 per minute), lists profiles, deletes a profile, and shares access with a caregiver. Each route passes the signed-in user and request details to the service.",
+      "why": "Likely reason: passing the request details lets the service record where each change came from.",
+      "watch_out": "The 10 per minute limit is applied by the throttler, and the key it counts by is not set in this file."
+    },
+    {
+      "start": 110,
+      "end": 144,
+      "kind": "class",
+      "name": "FamilyController (part 2)",
+      "id": "s5",
+      "hash": "208c21a27a04587f",
+      "title": "Caregiver listing, removal and permission check",
+      "what": "Lists the caregivers for a profile, removes one caregiver's access, and returns whether the caller is the owner or has full access to the profile.",
+      "why": "Likely reason: the permission check lets the app show or hide controls. The code does not state this directly.",
+      "watch_out": "The field named isOwner is also true for caregivers with full access, so it must not be read as proof of ownership."
+    }
+  ],
+  "explained_at": "2026-11-11T19:43:24+00:00",
+  "explained_by": "haiku",
+  "summary": "Exposes the family routes: add a family member profile, list profiles, share access with a caregiver, list or remove caregivers, delete a profile, and check permissions.",
+  "purpose": "Lets a user manage the profiles of people they look after and decide who else can see those health records.",
+  "why": "Likely reason: managing dependants and caregivers needs a clear set of routes, with a limit on how often profiles can be created. The reason for the limit value is not stated.",
+  "how": "1) A request arrives and the signed-in user is identified. 2) Adding a member is limited to 10 per minute. 3) The request body is checked against the request classes defined in this file. 4) The matching service call runs with the user and request details. 5) The result is returned, sometimes wrapped with a success flag and a data field.",
+  "inputs": "The signed-in user, the profile id and caregiver id from the web address, and request bodies containing a full name, relationship, optional date of birth and gender, or a caregiver email and access level.",
+  "outputs": "Created profiles, profile lists, caregiver lists, success flags, and a permissions answer.",
+  "risks": "The permissions route returns a field named isOwner, which is also true for caregivers with full access, not only the owner. The routes do not all return the same shape, so front-end code must handle each one separately. The share and revoke checks live in the service, so this file cannot show every check that runs.",
+  "debug": "If a route returns an unexpected shape, check its return line in this file. If a permission answer looks wrong for a caregiver, remember that the field name is misleading. If adding a member fails, check the rate limit and the request fields.",
+  "summary_hash": "sha256:16185ee6f9070df8ec37d0ea9a6194bdaeb02424114b5cd69dbb322d499d4de7"
+}

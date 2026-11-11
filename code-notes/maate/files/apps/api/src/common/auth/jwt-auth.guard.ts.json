@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/common/auth/jwt-auth.guard.ts",
+  "language": "TypeScript",
+  "lines": 207,
+  "hash": "sha256:02902bc8cbba0eca4d5133560a0dfbfe5ac2d754d4e79eaad33d1f77774d3f55",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The family permission guard fails open when permission data is missing.",
+      "Only one test in the suite touches this guard, and it covers only the challenge token case.",
+      "Session revocation is skipped for tokens without a session id."
+    ]
+  },
+  "terms": [
+    {
+      "term": "JWT",
+      "meaning": "A signed login token that proves who a user is."
+    },
+    {
+      "term": "Bearer token",
+      "meaning": "A login token sent in the authorization header with the word Bearer in front."
+    },
+    {
+      "term": "Guard",
+      "meaning": "Code that runs before a route and decides whether the request may continue."
+    },
+    {
+      "term": "Decorator",
+      "meaning": "A label placed on a route or handler that other code reads, such as public or roles."
+    },
+    {
+      "term": "Session",
+      "meaning": "A record of one login that can be deactivated to force a logout."
+    },
+    {
+      "term": "Proxy access",
+      "meaning": "A caregiver acting inside a family member's profile on their behalf."
+    },
+    {
+      "term": "UUID",
+      "meaning": "A long unique identifier in a fixed format."
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/modules/auth/services/token.service.ts",
+    "apps/api/src/common/database/database.module.ts",
+    "apps/api/src/common/audit/audit.service.ts",
+    "@nestjs/jwt",
+    "@nestjs/core"
+  ],
+  "used_by": [
+    "apps/api/src/common/security/compliance-e2e.spec.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "634b07fa57a97131",
+      "title": "Imports and token type",
+      "what": "Brings in the framework tools for guards and decorators, the configuration reader, the database connection, the audit service, and the token payload type from the token service.",
+      "why": "Likely reason: these are needed to verify tokens, check the database, and log access.",
+      "watch_out": "The token payload type is shared with the token service, so changes there affect this guard."
+    },
+    {
+      "start": 26,
+      "end": 85,
+      "kind": "class",
+      "name": "JwtAuthGuard (part 1)",
+      "id": "s2",
+      "hash": "4bbaa89f08d1f907",
+      "title": "Checking the login token and session",
+      "what": "For each request, skips public routes, reads the bearer token, verifies it, rejects challenge tokens meant only for the second login step, and confirms the session is still active.",
+      "why": "The code states that MFA challenge tokens are restricted to the MFA verification step.",
+      "watch_out": "The session check runs only when the token includes a session id, so tokens without one are not checked for revocation."
+    },
+    {
+      "start": 86,
+      "end": 139,
+      "kind": "class",
+      "name": "JwtAuthGuard (part 2)",
+      "id": "s3",
+      "hash": "ed1e0f53cb2db895",
+      "title": "Acting for a family member",
+      "what": "If the patient header names someone other than the logged-in user, checks that the user owns that profile or has a sharing permission. If so, swaps the acting identity to the patient, and writes an audit row.",
+      "why": "The code comment states that it is a compliance trail for caregiver proxy access.",
+      "watch_out": "The swap replaces the identity that all later code sees, and only a side field keeps the caregiver's id."
+    },
+    {
+      "start": 140,
+      "end": 167,
+      "kind": "class",
+      "name": "RolesGuard",
+      "id": "s4",
+      "hash": "1dfd4b7ef61c0924",
+      "title": "Role check",
+      "what": "Lets routes with no required roles through. For other routes, requires the user's role to appear in the allowed list.",
+      "why": "Likely reason: role-based access control, so only certain user types can use certain routes.",
+      "watch_out": "The role comes from the token, so a role change takes effect only when a new token is issued."
+    },
+    {
+      "start": 168,
+      "end": 197,
+      "kind": "class",
+      "name": "FamilyPermissionGuard, Public, Roles",
+      "id": "s5",
+      "hash": "34886c30affc2be3",
+      "title": "Family permission check and labels",
+      "what": "Provides the public, roles, and family permission labels, and the guard that checks view, edit, or manage reminders flags on a request.",
+      "why": "Labels are read by guards, which is how the framework connects them to routes.",
+      "watch_out": "The family permission guard lets a request through when no permission data is attached."
+    },
+    {
+      "start": 198,
+      "end": 200,
+      "kind": "function",
+      "name": "FamilyPermission",
+      "id": "s6",
+      "hash": "0b1736d496950db4",
+      "title": "Family permission label",
+      "what": "A label that requires view, edit, or manage reminders permission on a route.",
+      "why": "Gives a readable name to each family permission requirement.",
+      "watch_out": "Any permission name other than the three listed is denied."
+    },
+    {
+      "start": 201,
+      "end": 207,
+      "kind": "value",
+      "name": "CurrentUser",
+      "id": "s7",
+      "hash": "7e466617c551f460",
+      "title": "Current user shortcut",
+      "what": "Lets route handlers get the logged-in user, or a single field of that user, directly.",
+      "why": "Likely reason: keeps handler code short.",
+      "watch_out": "Returns nothing useful if the guard did not run on that route."
+    }
+  ],
+  "explained_at": "2026-11-11T19:31:29+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks every incoming request for a valid login token and an active session, then applies the role and family permission rules.",
+  "purpose": "Stops anyone without a valid login from reaching protected features, and controls when a caregiver can act for a family member.",
+  "why": "The header calls it production-grade authentication middleware. The reason for logging proxy access is visible in the code.",
+  "how": "1) Skip routes marked public. 2) Read the bearer token from the authorization header. 3) Verify its signature with the JWT secret. 4) Reject MFA challenge tokens. 5) If the token has a session id, confirm the session is still active. 6) If the patient header names a different person, confirm ownership or sharing, switch the acting identity to that person, and log the access. 7) Attach the user to the request. The role guard and family permission guard run separately on protected routes.",
+  "inputs": "The authorization header with the bearer token, the optional patient header, the JWT secret, and the labels set on each route.",
+  "outputs": "Allows or rejects the request, attaches the user to the request, and writes proxy access audit rows.",
+  "risks": "The family permission guard allows a request when no permission data is attached, and nothing in this file attaches that data, so it may allow requests it should block. The session check runs only when the token has a session id. A caregiver's identity is replaced by the patient's identity for later code, and the original is kept only in a side field. The proxy audit write is not awaited, so a failure is only logged.",
+  "debug": "For 401 responses, check that the token is present and not expired, that the JWT secret matches the one used to sign it, and that the session is still active. For 403 responses on the patient header, check the ownership or sharing record and that the header is a valid UUID. If family permissions always pass, find where familyPermissions is set on the request.",
+  "summary_hash": "sha256:02902bc8cbba0eca4d5133560a0dfbfe5ac2d754d4e79eaad33d1f77774d3f55"
+}

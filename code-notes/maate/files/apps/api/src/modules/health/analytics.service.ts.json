@@ -1,0 +1,184 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/health/analytics.service.ts",
+  "language": "TypeScript",
+  "lines": 401,
+  "hash": "sha256:1de79ae7df52633640d5abfcd8740f91d9ea2aeb3a148a0f48844b4eb2ee1136",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Empty results show zero, which can be mistaken for real measurements.",
+      "Dates use the server's time zone rather than the user's.",
+      "The cache is not cleared when new readings are added.",
+      "No tests for this service appear in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Redis",
+      "meaning": "a fast memory store that the app uses as a cache."
+    },
+    {
+      "term": "Cache",
+      "meaning": "a saved copy of a result that is reused for a short time."
+    },
+    {
+      "term": "Vital sign",
+      "meaning": "a body measurement such as heart rate or blood pressure."
+    },
+    {
+      "term": "Aggregation",
+      "meaning": "combining many records into totals or summary figures."
+    },
+    {
+      "term": "Time zone",
+      "meaning": "the regional clock setting that decides which calendar date a moment falls on."
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/common/database/database.module",
+    "apps/api/src/common/redis/redis.service",
+    "apps/api/src/modules/health/dto/health.dto.ts",
+    "@maate/database",
+    "date-fns"
+  ],
+  "used_by": [
+    "apps/api/src/modules/health/analytics.controller.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup, PeriodKey",
+      "id": "s1",
+      "hash": "ecfbaf1dcf0c9168",
+      "title": "Imports and period type",
+      "what": "Brings in the database, the cache service, date helpers, the vital type list and the trends request shape, and defines the allowed period codes.",
+      "why": "Likely reason: a fixed set of period codes keeps the dashboard options consistent.",
+      "watch_out": "The period type is only checked when the code is compiled, so a value from a raw request is not validated here."
+    },
+    {
+      "start": 15,
+      "end": 62,
+      "kind": "class",
+      "name": "AnalyticsService (part 1)",
+      "id": "s2",
+      "hash": "068bfb6973a7a2c2",
+      "title": "Dashboard and trend entry point",
+      "what": "Builds the full dashboard by reading the cache first. On a miss, it runs five summaries in parallel and caches the result for 2 minutes. Also begins the trend function by choosing the period and its date range.",
+      "why": "Likely reason: running the summaries in parallel and caching the result keeps the dashboard responsive.",
+      "watch_out": "The cache is not cleared when new readings arrive, so the dashboard can show figures up to 2 minutes old."
+    },
+    {
+      "start": 63,
+      "end": 96,
+      "kind": "method",
+      "name": "AnalyticsService: if",
+      "id": "s3",
+      "hash": "d7115c318c389d5a",
+      "title": "Single vital trend summary",
+      "what": "When a vital type is requested, reads its readings in the date range and works out the minimum, maximum, average and latest value. Returns a dated list of readings with their status and notes.",
+      "why": "Likely reason: a summary plus a list lets the app draw a chart and show key numbers together.",
+      "watch_out": "With no readings, the minimum, maximum and average all show zero, which a chart may read as a real measurement."
+    },
+    {
+      "start": 97,
+      "end": 127,
+      "kind": "method",
+      "name": "AnalyticsService: if",
+      "id": "s4",
+      "hash": "ac74a7df05b4bd9a",
+      "title": "Lab results for one named test",
+      "what": "When the caller names a lab test, this returns every saved result for that test in the chosen period, oldest first, with date, value, unit, reference range and whether the result was flagged abnormal. This is what a single-test trend chart would show.",
+      "why": "Likely reason: lets the app chart one lab test over time. Reason not stated in the code.",
+      "watch_out": "The name match uses a partial, case-insensitive search, so a query like Sugar could also pull in unrelated tests."
+    },
+    {
+      "start": 128,
+      "end": 163,
+      "kind": "method",
+      "name": "AnalyticsService: getMedicationAdherence",
+      "id": "s5",
+      "hash": "58e15962bb8c1c8c",
+      "title": "Medication adherence summary",
+      "what": "Counts medicine reminders in the period and reports how many were taken, skipped and missed, plus an overall percentage and a day-by-day percentage for a chart. If no reminders exist, the rate is shown as 100.",
+      "why": "Reason not stated in the code. The reminder log is the source of truth for whether a dose was taken.",
+      "watch_out": "A missing reminder counts as a missed dose, and an empty period is shown as 100 percent, which can make a quiet period look perfect."
+    },
+    {
+      "start": 164,
+      "end": 197,
+      "kind": "method",
+      "name": "AnalyticsService: getWaterIntake",
+      "id": "s6",
+      "hash": "b74c10e2acd28a40",
+      "title": "Daily water intake summary",
+      "what": "Counts each water reminder marked as taken as one glass of 250 ml, adds them up per day, and reports the daily average, best day, number of days at or above 2.5 litres, and a per-day chart.",
+      "why": "Likely reason: the app does not store actual volumes, so it assumes a fixed glass size.",
+      "watch_out": "The 250 ml glass size and 2500 ml goal are fixed numbers in this code, so changing one needs a change here."
+    },
+    {
+      "start": 198,
+      "end": 238,
+      "kind": "method",
+      "name": "AnalyticsService: getSleepTrends",
+      "id": "s7",
+      "hash": "a1e53d1d25b6d3b7",
+      "title": "Sleep hours summary",
+      "what": "Reads all sleep records in the period and reports the average, the longest and the shortest sleep, plus a per-record list for a chart.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Averages and best/worst values use every record, so several readings on the same night are each counted."
+    },
+    {
+      "start": 239,
+      "end": 292,
+      "kind": "method",
+      "name": "AnalyticsService: if",
+      "id": "s8",
+      "hash": "64f92ed3d71b1c0f",
+      "title": "Blood pressure, heart rate and sugar trend cards",
+      "what": "Looks at the latest recent readings for blood pressure, heart rate and blood sugar and builds one summary card for each. Each card shows the latest value, the change from the previous reading, a direction arrow, a status and a short history for a sparkline.",
+      "why": "Likely reason: gives the home screen a quick, readable snapshot of vital signs.",
+      "watch_out": "The blood pressure reference range is written as a fixed 120/80 and the status labels use fixed rules, so they will not match a clinician's targets for every patient."
+    },
+    {
+      "start": 293,
+      "end": 352,
+      "kind": "method",
+      "name": "AnalyticsService: if",
+      "id": "s9",
+      "hash": "df51d71a9e44190a",
+      "title": "Lab trend cards and the full trend list",
+      "what": "Builds cards for hemoglobin, cholesterol and creatinine from lab reports (and blood sugar only when no vital sign reading exists). It then returns the complete list of trend cards for the period.",
+      "why": "Likely reason: lab results are kept in reports, so this searches reports by test name to show a trend.",
+      "watch_out": "Test names are matched loosely, and any value that cannot be read as a number is treated as zero, which can draw a false low point on a chart."
+    },
+    {
+      "start": 353,
+      "end": 401,
+      "kind": "class",
+      "name": "AnalyticsService (part 9)",
+      "id": "s10",
+      "hash": "576fad4434b8464a",
+      "title": "Overall health score",
+      "what": "Calculates a 0 to 100 score from three parts: medicine adherence (45 percent), lab and vital sign results (40 percent) and a fixed activity value of 85 (15 percent). Each abnormal lab costs 8 points and each abnormal vital costs 5 points.",
+      "why": "Likely reason: gives one number for a summary screen. The activity part is not measured, it is a fixed 85.",
+      "watch_out": "The activity score is hard-coded, so the overall score never reflects real activity, and the penalty weights are not explained in the code."
+    }
+  ],
+  "explained_at": "2026-11-11T19:53:28+00:00",
+  "explained_by": "haiku",
+  "summary": "Calculates the health dashboard figures for a user: medication adherence, water intake, sleep, health trends and an overall score, with a short-lived cache.",
+  "purpose": "Turns raw readings into summary figures and data points that the app's analytics screens can show.",
+  "why": "Likely reason: these summaries take work to compute, so the dashboard result is cached. The code comment says the cache lasts 2 minutes, but the reason for that length is not stated.",
+  "how": "1) The dashboard checks the cache for this user and period. 2) On a miss, it works out the date range from the period. 3) It runs adherence, water intake, sleep, health trends and score in parallel. 4) It stores the combined result in the cache for 2 minutes. 5) For a single vital trend, it reads the readings in the range and works out the minimum, maximum, average and latest value, then returns a dated list.",
+  "inputs": "The user id, a period key (7D, 1M, 3M, 6M or 1Y), and trend requests that may name a vital type.",
+  "outputs": "A dashboard object with all its sections, or a trend summary with a count, minimum, maximum, average, latest value and data points.",
+  "risks": "The whole dashboard fails if any one of its five parts fails. The cache is not cleared when new readings arrive, so figures can be up to 2 minutes old. Minimum, maximum and average show zero when there are no readings, which a chart may read as a real zero. The second value of a reading, such as blood pressure's second number, is not included in the summary figures. Dates are formatted in the server's time zone, not the user's.",
+  "debug": "If the dashboard looks stale, the 2 minute cache is the likely cause. If one card is missing entirely, one of the parallel parts has failed, so check the logs for it. If trend figures show zero, check whether readings exist for that vital and period. If dates are off by a day, check the server's time zone.",
+  "summary_hash": "sha256:1de79ae7df52633640d5abfcd8740f91d9ea2aeb3a148a0f48844b4eb2ee1136"
+}

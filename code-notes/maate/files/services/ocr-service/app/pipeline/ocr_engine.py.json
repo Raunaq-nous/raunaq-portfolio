@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "path": "services/ocr-service/app/pipeline/ocr_engine.py",
+  "language": "Python",
+  "lines": 60,
+  "hash": "sha256:dbe5ed9d117f5fb84694b472e0b16dd6a162a3fad5534fd4a1db811417a7920a",
+  "area": "services-ocr-service",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "The fallback returns fixed fake text with high confidence when a key is set.",
+      "Tesseract errors become silent empty results.",
+      "The language setting is not applied to Tesseract."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Tesseract",
+      "meaning": "a free, open source engine that reads text from images"
+    },
+    {
+      "term": "Confidence score",
+      "meaning": "the engine's estimate, from zero to one, of how sure it is about the text"
+    },
+    {
+      "term": "Fallback",
+      "meaning": "a second method used when the first one is not good enough"
+    },
+    {
+      "term": "DPI",
+      "meaning": "dots per inch, a measure of image resolution"
+    }
+  ],
+  "depends_on": [
+    "pytesseract",
+    "Pillow",
+    "pandas",
+    "services/ocr-service/app/config.py",
+    "the Tesseract program installed on the system"
+  ],
+  "used_by": [
+    "services/ocr-service/app/main.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ac6baf5b363dbe1e",
+      "title": "Imports and logger for the OCR engine",
+      "what": "Loads the logging helper and the settings object, which holds the Google key and language setting.",
+      "why": "Needed for logging and for reading the Google key setting.",
+      "watch_out": "Settings are read when the file loads, so a changed key only takes effect after a restart."
+    },
+    {
+      "start": 9,
+      "end": 60,
+      "kind": "class",
+      "name": "OCREngine",
+      "id": "s2",
+      "hash": "80c79bf5addcfee2",
+      "title": "Tesseract reading with a placeholder fallback",
+      "what": "Sets a confidence threshold of 0.6. Runs Tesseract first and calculates the average word confidence and the full text. If the result is empty or below the threshold and a Google key exists, it uses the placeholder fallback that returns fixed sample text. If Tesseract fails, it returns empty text with zero confidence.",
+      "why": "Likely reason: the threshold decides when a second engine is worth trying. The 300 DPI setting is stated only as an assumption in a comment.",
+      "watch_out": "The placeholder fallback must be replaced before any Google key is used in production, or fake text will enter the pipeline."
+    }
+  ],
+  "explained_at": "2026-11-11T20:24:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads text from a document image with Tesseract, with a placeholder for a Google Vision fallback that currently returns fixed fake text.",
+  "purpose": "Turns a prepared document image into text plus a confidence score.",
+  "why": "Likely reason: Tesseract is free and runs locally, while Google Vision is a paid fallback for poor scans. The class comment describes this design.",
+  "how": "First it runs Tesseract and takes the average word confidence. If the text is empty or confidence is below 0.6 and a Google key is set, it switches to the fallback. The fallback currently returns fixed sample text with a confidence of 0.92. The result is the text, the confidence, and the name of the engine used.",
+  "inputs": "Preprocessed image bytes and the Google key setting.",
+  "outputs": "The extracted text and a confidence number between zero and one, plus the engine name.",
+  "risks": "When a Google key is set and Tesseract is weak, the code returns fixed sample text with high confidence, which could become a stored medical result. The language setting is not passed to Tesseract. Tesseract errors are hidden as empty text with zero confidence. The pandas library is imported but not used in the shown code.",
+  "debug": "If results read as the sample text, the fallback placeholder is active; check the Google key setting. If text is empty, check that Tesseract is installed and the image is valid. Logs show the confidence and which engine ran.",
+  "summary_hash": "sha256:dbe5ed9d117f5fb84694b472e0b16dd6a162a3fad5534fd4a1db811417a7920a"
+}

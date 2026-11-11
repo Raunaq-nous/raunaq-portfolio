@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "path": "apps/web/src/lib/api.ts",
+  "language": "TypeScript",
+  "lines": 120,
+  "hash": "sha256:4d8bb1f50c6537b3df9158ba3e5e0d62963eb628813c28df4638502d148fcdef",
+  "area": "apps-web",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The refresh and queue logic is not covered by tests.",
+      "Tokens are kept in browser storage, which is a security concern for health data.",
+      "The error path that clears the session and redirects is handled, which is a positive."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Access token",
+      "meaning": "A short-lived key that proves the user is signed in."
+    },
+    {
+      "term": "Refresh token",
+      "meaning": "A longer-lived key used to get a new access token without signing in again."
+    },
+    {
+      "term": "Interceptor",
+      "meaning": "A step that runs on every request or response, letting the app add headers or handle errors in one place."
+    },
+    {
+      "term": "Queue",
+      "meaning": "A waiting line where requests are held while a refresh is in progress."
+    },
+    {
+      "term": "Local storage",
+      "meaning": "A small data store kept in the user's browser that survives page reloads."
+    },
+    {
+      "term": "401 response",
+      "meaning": "A server reply meaning the request was not allowed, usually because the login has expired."
+    }
+  ],
+  "depends_on": [
+    "axios",
+    "@/store/use-auth-store"
+  ],
+  "used_by": [
+    "apps/web/src/hooks/use-auth.ts",
+    "apps/web/src/hooks/use-upload.ts",
+    "apps/web/src/store/use-auth-store.ts",
+    "apps/web/src/lib/api.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup, failedQueue",
+      "id": "s1",
+      "hash": "fdb7096ca927b782",
+      "title": "Client setup and shared settings",
+      "what": "Creates the API client with the server address from an environment variable and a fallback local address. Sets JSON content type and a header for the tunnel warning. Also sets the variables that track whether a refresh is in progress and the list of waiting requests.",
+      "why": "One client with shared settings means every request gets the same base address and headers.",
+      "watch_out": "The local fallback address will be used silently if the environment variable is missing in production."
+    },
+    {
+      "start": 20,
+      "end": 60,
+      "kind": "function",
+      "name": "processQueue (part 1)",
+      "id": "s2",
+      "hash": "ee1077a585d2d4d2",
+      "title": "Queue release and token on every request",
+      "what": "Releases waiting requests after a refresh, either giving them the new token or sending them the error. Before each request, adds the login token from the store or browser storage, and adds the patient id header when a family member's profile is selected.",
+      "why": "The token is added here so screens never have to add it themselves. The patient id lets caregivers view a family member's records.",
+      "watch_out": "The token fallback reads browser storage, so a stale token there could be used if the store is empty."
+    },
+    {
+      "start": 61,
+      "end": 120,
+      "kind": "method",
+      "name": "processQueue: if",
+      "id": "s3",
+      "hash": "4c8a79c937fe151d",
+      "title": "Renewing an expired login",
+      "what": "When a request fails with an expired login, asks the server for a new token using the saved refresh token, saves the new token, and retries the original request. If another request is already refreshing, this one waits in the queue. If the refresh fails, the session is cleared and the user is sent to the login page.",
+      "why": "Lets users stay signed in without being interrupted. Only one refresh runs at a time, so many failing requests do not each ask for a new token. The section title in the outline is process queue, but this block is the refresh step.",
+      "watch_out": "The retry flag stops a second refresh loop for the same request. Removing it could cause endless retries."
+    }
+  ],
+  "explained_at": "2026-11-11T20:09:19+00:00",
+  "explained_by": "haiku",
+  "summary": "The shared web API client. It sends every request with the user's login token, adds the family patient id when needed, and tries to renew an expired login once before sending the user to the login page.",
+  "purpose": "Gives all web screens one way to talk to the server, with login handling built in so individual screens do not have to handle expired sessions.",
+  "why": "Expired logins are common, so the refresh step is placed here once. The file header mentions HIPAA-ready, so the design aims at health data protection, though the code itself only shows part of that.",
+  "how": "Before each request, the client finds the token from the auth store or from browser storage, adds it to the request header, and adds the patient id header if a family member is being viewed. If a response says the login is no longer valid, the client sends a refresh request with the saved refresh token. Requests that arrive during the refresh wait in a queue and are retried with the new token. If the refresh fails, the store is cleared and the user goes to the login page.",
+  "inputs": "Saved tokens from the auth store, browser storage, or cookies. Server responses, including the new tokens returned from the refresh call.",
+  "outputs": "The API client used by the web app, with responses passed back to the caller. The auth store is updated after a successful refresh.",
+  "risks": "Tokens are read from browser storage and cookies, which scripts on the page could also read. The client sends a development header that skips a tunnel warning, which should not matter in production. If the refresh endpoint returns a different shape, the new token is lost. The queue is shared module state, so it can behave unexpectedly if the code is reused in unusual ways.",
+  "debug": "If users are logged out too often, check the refresh endpoint and whether a refresh token is saved. If requests carry the wrong patient, check the selected profile in the auth store. If the page loops to login, check that the refresh call succeeds and returns an access token. The tests in api.test.ts cover the headers only.",
+  "summary_hash": "sha256:4d8bb1f50c6537b3df9158ba3e5e0d62963eb628813c28df4638502d148fcdef"
+}

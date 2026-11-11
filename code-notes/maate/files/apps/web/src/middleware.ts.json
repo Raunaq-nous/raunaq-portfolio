@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "path": "apps/web/src/middleware.ts",
+  "language": "TypeScript",
+  "lines": 46,
+  "hash": "sha256:dc3e7bd7cbba4963167f7a199b0b11f8008fcaeb265578311878e352b795e6a1",
+  "area": "apps-web",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only checks that a cookie exists, so it does not prove the login is valid.",
+      "Public route matching is loose, so unexpected pages may be treated as public.",
+      "No test is visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Middleware",
+      "meaning": "Code that runs before a page is shown, so it can redirect or let the request through."
+    },
+    {
+      "term": "Cookie",
+      "meaning": "A small piece of data the browser stores and sends with each request to the site."
+    },
+    {
+      "term": "Redirect",
+      "meaning": "Sending the browser to a different address."
+    },
+    {
+      "term": "Route",
+      "meaning": "The address path of a page, such as login or dashboard."
+    }
+  ],
+  "depends_on": [
+    "next/server"
+  ],
+  "used_by": [
+    "apps/web/src/hooks/use-auth.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup, PUBLIC_ROUTES, AUTH_ROUTES",
+      "id": "s1",
+      "hash": "c4ab9c9ce93e245b",
+      "title": "Page lists and imports",
+      "what": "Brings in the Next.js request tools and lists the public pages and the pages that signed-in users should not see.",
+      "why": "Keeping the lists in one place makes it easy to see which pages are open to everyone.",
+      "watch_out": "Adding a page to the public list opens it to signed-out users, so review this list carefully."
+    },
+    {
+      "start": 11,
+      "end": 33,
+      "kind": "function",
+      "name": "middleware",
+      "id": "s2",
+      "hash": "2d958856c3afc332",
+      "title": "Login gate and redirects",
+      "what": "Sends signed-in users away from the login and register pages to the dashboard, and sends signed-out users from protected pages to the login page. Everything else continues to the requested page.",
+      "why": "Keeps protected health pages out of sight of people who are not signed in.",
+      "watch_out": "Only the cookie is checked here, so a server check is still needed for real data protection."
+    },
+    {
+      "start": 34,
+      "end": 46,
+      "kind": "value",
+      "name": "config",
+      "id": "s3",
+      "hash": "72f34a1ea9a7f8e8",
+      "title": "Pages this gate applies to",
+      "what": "Sets which requests the gate runs on. It skips API routes, static files, images, the icon, and the app manifest.",
+      "why": "Those requests do not need a login check, and skipping them keeps the app fast.",
+      "watch_out": "If a new protected route type is added, such as a new asset path, check that the pattern still covers it."
+    }
+  ],
+  "explained_at": "2026-11-11T20:09:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs on every web page request and sends users to the right page: signed-in users away from the login pages, and signed-out users away from protected pages.",
+  "purpose": "Acts as the first gate for the web app. It keeps the protected pages from being shown to people without a login cookie and stops signed-in users from seeing sign-in screens again.",
+  "why": "Checking at the edge of the app is fast and happens before any page loads. The file only checks that a token cookie exists, which is a light check.",
+  "how": "Reads the login token cookie. If the user is signed in and visits a login or register page, the user is sent to the dashboard. If the user is signed out and the page is not public, the user is sent to the login page. Public pages include login, register, forgot password, and the home page. Other pages are let through.",
+  "inputs": "The token cookie and the page address the user requested.",
+  "outputs": "Either a redirect to the login page or dashboard, or a pass through to the requested page.",
+  "risks": "The check only confirms that a cookie is present, not that the token is valid, so an invented cookie gets past this gate. The real check must happen on the server for each data request. The public list matches by start of text, so a page name beginning with login or register is also treated as public. The token cookie is set by script, so it is not protected from scripts on the page.",
+  "debug": "If a user is sent to login unexpectedly, check that the token cookie is set on the site and has not expired. If a public page redirects, check its address against the public list. If the redirect loops, compare the signed-in rule with the cookie name in the auth store.",
+  "summary_hash": "sha256:dc3e7bd7cbba4963167f7a199b0b11f8008fcaeb265578311878e352b795e6a1"
+}

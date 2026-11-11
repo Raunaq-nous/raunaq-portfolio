@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/common/storage/storage.service.ts",
+  "language": "TypeScript",
+  "lines": 233,
+  "hash": "sha256:cb958ded3e839d5e5ba1c5d150e4aca7465d046b01165511ced5b2c5525bb4d8",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The multi-part extension check can never pass for nii.gz files.",
+      "The path style setting reads false as true.",
+      "Content type is not checked against the file contents.",
+      "No tests for this file are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "S3",
+      "meaning": "A widely used cloud file storage system. Many other providers copy its interface."
+    },
+    {
+      "term": "Object storage",
+      "meaning": "A place to store files as objects with a key name, rather than in folders on a disk."
+    },
+    {
+      "term": "Presigned URL",
+      "meaning": "A temporary web link that lets someone upload or download one file without logging in."
+    },
+    {
+      "term": "KMS",
+      "meaning": "A cloud service that holds encryption keys used to protect stored data."
+    },
+    {
+      "term": "MIME type",
+      "meaning": "A label such as image/png that says what kind of file it is."
+    },
+    {
+      "term": "SHA-256 checksum",
+      "meaning": "A fingerprint computed from a file's contents, used to confirm a file has not changed."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/common",
+    "@nestjs/config",
+    "@aws-sdk/client-s3",
+    "@aws-sdk/s3-request-presigner",
+    "crypto (Node built-in)"
+  ],
+  "used_by": [
+    "apps/api/src/common/storage/storage.module.ts",
+    "apps/api/src/common/storage/document.processor.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "57cc8a5b658deb81",
+      "title": "Storage service imports",
+      "what": "Brings in the tools for storage requests, presigned links, error types, and random IDs and checksums.",
+      "why": "Likely reason: these are the minimum tools needed to talk to S3 and create secure links.",
+      "watch_out": "The header mentions virus scanning hooks, but this file has no scanning code."
+    },
+    {
+      "start": 15,
+      "end": 20,
+      "kind": "type",
+      "name": "UploadSignedUrlResult",
+      "id": "s2",
+      "hash": "dd03b78925df5bf0",
+      "title": "Upload link result shape",
+      "what": "Defines the reply sent back when an upload is requested: the temporary upload link, the storage key, and how long the link lasts in seconds.",
+      "why": "Likely reason: gives callers one consistent shape to read.",
+      "watch_out": ""
+    },
+    {
+      "start": 21,
+      "end": 25,
+      "kind": "type",
+      "name": "DownloadSignedUrlResult",
+      "id": "s3",
+      "hash": "b9d07bdd7241dfbe",
+      "title": "Download link result shape",
+      "what": "Defines the reply for a temporary download link and how long it lasts.",
+      "why": "Likely reason: gives callers one consistent shape to read.",
+      "watch_out": ""
+    },
+    {
+      "start": 26,
+      "end": 33,
+      "kind": "type",
+      "name": "FileMetadata",
+      "id": "s4",
+      "hash": "7d6893068f278fd3",
+      "title": "Stored file details shape",
+      "what": "Defines the details kept about a stored file: key, size, content type, checksum, and an optional encryption key ID.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 34,
+      "end": 86,
+      "kind": "class",
+      "name": "StorageService (part 1)",
+      "id": "s5",
+      "hash": "64f1f276fb18e6a1",
+      "title": "Storage setup and upload checks start",
+      "what": "Reads the storage settings and creates the storage client. It holds the lists of allowed file types and extensions. The upload request begins by checking the file.",
+      "why": "Likely reason: the allowed types are kept in one place so every upload follows the same rules.",
+      "watch_out": "The path style setting reads any non-empty text as true, so the word false still turns it on."
+    },
+    {
+      "start": 87,
+      "end": 145,
+      "kind": "class",
+      "name": "StorageService (part 2)",
+      "id": "s6",
+      "hash": "3e2f75487cb766cb",
+      "title": "Building file paths and links",
+      "what": "Builds a unique storage path from the user ID, year, month, a random ID, and a cleaned file name. It adds optional encryption and audit details and returns a temporary upload link. It also creates temporary download links that suggest a file name.",
+      "why": "Likely reason: each user's files sit in their own folder, and random IDs keep names from clashing.",
+      "watch_out": "The user ID is part of the storage path, so passing the wrong user ID would put files in another user's folder."
+    },
+    {
+      "start": 146,
+      "end": 198,
+      "kind": "method",
+      "name": "StorageService: getFileBuffer",
+      "id": "s7",
+      "hash": "a4182c265f5f4dd0",
+      "title": "Reading, deleting, and fingerprinting files",
+      "what": "Downloads a whole stored file into memory, reads its details without downloading it, deletes a file, and computes a SHA-256 fingerprint. Detail reads return null when they fail.",
+      "why": "Likely reason: the OCR step needs the whole file at once to send it to the OCR service.",
+      "watch_out": "Whole-file reads use memory in proportion to file size, up to the configured limit, which is 50 MB by default."
+    },
+    {
+      "start": 199,
+      "end": 233,
+      "kind": "method",
+      "name": "StorageService: if",
+      "id": "s8",
+      "hash": "020f36384e98b0ce",
+      "title": "File type and size checks",
+      "what": "Rejects uploads that are too large, empty, have an extension not on the allowed list, or have a content type not on the allowed list. It also replaces unusual characters in file names with underscores and shortens long names.",
+      "why": "Likely reason: blocks unsupported or unsafe files before any upload link is given out.",
+      "watch_out": "The extension check uses only the last part of the name, so the allowed nii.gz extension can never match."
+    }
+  ],
+  "explained_at": "2026-11-11T19:33:57+00:00",
+  "explained_by": "haiku",
+  "summary": "Stores and retrieves medical document files in S3-compatible cloud storage, checks uploads before accepting them, and creates short-lived links so users can upload or download files directly.",
+  "purpose": "Keeps the file storage rules and the storage connection in one place.",
+  "why": "Likely reason: the header describes signed links and encryption, so the service issues temporary links so files do not pass through the app server and checks files before any upload is allowed.",
+  "how": "1. Reads storage settings and creates the storage client. 2. When an upload is requested, checks the file size, extension, and content type. 3. Builds a unique path for the file under the user's folder. 4. Creates a temporary upload link, with optional KMS encryption and audit metadata. 5. Creates temporary download links when needed. 6. Reads whole files into memory, reads file details, deletes files, and computes a SHA-256 fingerprint on request.",
+  "inputs": "User ID, file name, content type, and size when an upload is requested. A file key for download, read, or delete. Settings such as S3_BUCKET, S3_ENDPOINT, S3_REGION, S3_FORCE_PATH_STYLE, S3_USE_KMS, S3_KMS_KEY_ID, UPLOAD_URL_EXPIRY, DOWNLOAD_URL_EXPIRY, and MAX_FILE_SIZE_BYTES.",
+  "outputs": "An upload link and file key, a download link, file bytes, file details or null, and a checksum string.",
+  "risks": "The content type is trusted from the client. The extension check uses only the last part of the file name, so the allowed multi-part extension nii.gz can never match. The application/octet-stream type is allowed, which lets almost any file through if its name ends in an allowed extension. S3_FORCE_PATH_STYLE treats any non-empty text, including the word false, as on. Credentials default to empty text. Reading files loads the entire file into memory. The header mentions virus scanning hooks, but no scan happens in this file.",
+  "debug": "Check the settings first, especially S3_ENDPOINT, S3_BUCKET, and S3_FORCE_PATH_STYLE. Look for log lines starting Upload URL generated and File deleted. A rejected upload shows a message with the reason in the response. If a file is not found, note that getFileMetadata returns null for any error, not only for missing files.",
+  "summary_hash": "sha256:cb958ded3e839d5e5ba1c5d150e4aca7465d046b01165511ced5b2c5525bb4d8"
+}

@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/share/share.controller.ts",
+  "language": "TypeScript",
+  "lines": 87,
+  "hash": "sha256:a928bcf039e1ad7fd357bb4ecf1386a6ef0722fb2eb7931fbbeb5b0b204eacd5",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No controller tests are in the packet.",
+      "The delete route name suggests removal but it only revokes.",
+      "The token is part of the address, which can leak into logs."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Route",
+      "meaning": "A web address and action the app can call."
+    },
+    {
+      "term": "Public route",
+      "meaning": "A route that does not need a signed-in user."
+    },
+    {
+      "term": "Rate limit",
+      "meaning": "A cap on how many requests one client can make in a time period."
+    },
+    {
+      "term": "Token",
+      "meaning": "A long random string that acts as the key to a shared record."
+    },
+    {
+      "term": "Revoke",
+      "meaning": "Cancelling a share so it no longer works, while keeping its record."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/common",
+    "@nestjs/swagger",
+    "@nestjs/throttler",
+    "express",
+    "../../common/auth/jwt-auth.guard",
+    "./dto/share.dto",
+    "./share.service"
+  ],
+  "used_by": [
+    "apps/api/src/modules/share/share.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 24,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "56c9ada55ef1fb34",
+      "title": "Imports for share routes",
+      "what": "Brings in route tools, the rate limiter, the request type, the sign-in helpers, the request rules and the share service.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 25,
+      "end": 72,
+      "kind": "class",
+      "name": "ShareController (part 1)",
+      "id": "s2",
+      "hash": "f7b7a065aa3fd0bc",
+      "title": "Create, list and revoke routes",
+      "what": "Creates a share link, limited to 10 requests a minute. Lists the user's share links. Revokes one by id with a patch route, and a delete route that does the same revoke.",
+      "why": "Likely reason: the delete route may exist for clients that expect a delete action. The code does not say.",
+      "watch_out": "The delete route does not delete anything. It sets the revoked flag, so the record stays."
+    },
+    {
+      "start": 73,
+      "end": 87,
+      "kind": "class",
+      "name": "ShareController (part 2)",
+      "id": "s3",
+      "hash": "13615981c6cb334b",
+      "title": "Public view route",
+      "what": "Open route that shows the shared records for a token, limited to 20 requests a minute. The audit description says each view is recorded.",
+      "why": "Likely reason: doctors need to view records without an account.",
+      "watch_out": "Anyone holding the full token can read the patient's records until it expires or is revoked, and the token is visible in the address."
+    }
+  ],
+  "explained_at": "2026-11-11T19:56:43+00:00",
+  "explained_by": "haiku",
+  "summary": "Exposes the web routes for creating, listing and revoking doctor share links, plus the public route a doctor uses to view shared records.",
+  "purpose": "Lets a patient manage share links, and lets a doctor open a link without having an account.",
+  "why": "Likely reason: the public route exists because doctors do not sign in. Other reasons are not stated in the code.",
+  "how": "Routes for the signed-in user pass their id to the share service. The public route takes the token from the address and returns the shared bundle. Create and view routes have rate limits.",
+  "inputs": "Signed-in user id, share id, the request body for creating a share, the token in the address, and request details used for the audit record.",
+  "outputs": "JSON replies with success and data, a list of shares, or a revoke result.",
+  "risks": "The token is in the web address, so it can be written to server or proxy logs. The delete route only revokes and does not remove the record, despite the name. The public route needs no sign-in, so the token is the only check.",
+  "debug": "For a 404 on the public route, check the token is correct and the share exists. For a 403, check whether it was revoked or expired. For 429 errors, the rate limit was reached. For revoke problems, check the share id belongs to the signed-in user.",
+  "summary_hash": "sha256:a928bcf039e1ad7fd357bb4ecf1386a6ef0722fb2eb7931fbbeb5b0b204eacd5"
+}

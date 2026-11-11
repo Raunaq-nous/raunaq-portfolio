@@ -1,0 +1,296 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/reminder/reminder.controller.ts",
+  "language": "TypeScript",
+  "lines": 684,
+  "hash": "sha256:c93f2e045b905a16e1628784d8d2adbee8ca254093c5a838526e1fc726171528",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Few tests cover these routes.",
+      "The snooze message promises a 15 minute reminder that the visible code does not schedule.",
+      "Timeline recording differs between the two answer routes.",
+      "Date text and paging numbers are not validated.",
+      "The log route does not confirm the reminder belongs to the signed-in user."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Route",
+      "meaning": "A web address and action the app can call, such as save a reminder."
+    },
+    {
+      "term": "DTO",
+      "meaning": "Data transfer object. A set of rules that incoming data must follow before the code uses it."
+    },
+    {
+      "term": "Validation",
+      "meaning": "Checking that incoming data is the right type and format."
+    },
+    {
+      "term": "Adherence",
+      "meaning": "How closely a user follows the prescribed schedule, here measured as the share of logged doses marked taken."
+    },
+    {
+      "term": "Timeline",
+      "meaning": "The ordered history of health events shown to the user."
+    },
+    {
+      "term": "Soft delete",
+      "meaning": "Marking a row as deleted without removing it from the database."
+    },
+    {
+      "term": "Upsert",
+      "meaning": "Update the row if it exists, otherwise create it."
+    },
+    {
+      "term": "Swagger tags",
+      "meaning": "Labels that group routes in the generated API documentation."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/common",
+    "@nestjs/swagger",
+    "class-validator",
+    "@maate/database",
+    "../../common/auth/jwt-auth.guard",
+    "../../common/database/database.module",
+    "../timeline/timeline.service"
+  ],
+  "used_by": [
+    "apps/api/src/modules/reminder/reminder.module.ts",
+    "apps/api/src/modules/reminder/reminder.service.spec.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 43,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "537d734670e49396",
+      "title": "Imports for the reminder routes",
+      "what": "Brings in the web, validation and documentation tools, the reminder enums, and the timeline service.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 44,
+      "end": 52,
+      "kind": "class",
+      "name": "RespondToReminderDto",
+      "id": "s2",
+      "hash": "b1c9d7612bb25276",
+      "title": "Answer request rules",
+      "what": "Defines the checks for an answer: a valid response value, and an optional free-text note.",
+      "why": "Likely reason: limits answers to the allowed set before they reach the database.",
+      "watch_out": "Notes are free text and are copied into timeline titles and descriptions, so display code must treat them as plain text."
+    },
+    {
+      "start": 53,
+      "end": 88,
+      "kind": "class",
+      "name": "CreateMedicineReminderDto",
+      "id": "s3",
+      "hash": "28c6b2cf32ce089e",
+      "title": "New medicine reminder rules",
+      "what": "Checks a new medicine reminder: a required name, a frequency, optional dosage, times in 24 hour format, optional days from 1 to 7, optional meal link and instructions.",
+      "why": "Likely reason: the scheduler matches on these times and days, so bad values would break its matching.",
+      "watch_out": "The list of days is checked item by item but its length is not limited."
+    },
+    {
+      "start": 89,
+      "end": 130,
+      "kind": "class",
+      "name": "UpdateMedicineReminderDto",
+      "id": "s4",
+      "hash": "434391627ba4915f",
+      "title": "Medicine update rules",
+      "what": "Same checks as creation, but every field is optional. Adds an optional on or off flag.",
+      "why": "Likely reason: lets the app change one field without sending the rest.",
+      "watch_out": "Update applies a field only when it is truthy, so an empty name or a zero cannot be saved through this route."
+    },
+    {
+      "start": 131,
+      "end": 164,
+      "kind": "class",
+      "name": "UpsertWaterReminderDto",
+      "id": "s5",
+      "hash": "8f6730740eec94d7",
+      "title": "Water settings rules",
+      "what": "Checks the daily water goal, the reminder interval from 15 to 720 minutes, the active start and end times, an optional glass size, and an optional on or off flag.",
+      "why": "Likely reason: the bounds stop the scheduler creating too many or no water times.",
+      "watch_out": "The goal, interval, start and end are all required, so the app cannot change just one water setting."
+    },
+    {
+      "start": 165,
+      "end": 179,
+      "kind": "class",
+      "name": "CreateMealReminderDto",
+      "id": "s6",
+      "hash": "d5786270755d787f",
+      "title": "Meal creation rules",
+      "what": "Checks the meal type, a 24 hour scheduled time, and optional diet notes.",
+      "why": "Likely reason: the scheduler needs the time in the same format it uses for medicine.",
+      "watch_out": ""
+    },
+    {
+      "start": 180,
+      "end": 200,
+      "kind": "class",
+      "name": "UpdateMealReminderDto",
+      "id": "s7",
+      "hash": "152dbe0af6133a51",
+      "title": "Meal update rules",
+      "what": "Same checks as meal creation, but every field is optional, with an optional on or off flag.",
+      "why": "Likely reason: lets partial updates work the same way as for medicine.",
+      "watch_out": ""
+    },
+    {
+      "start": 201,
+      "end": 254,
+      "kind": "class",
+      "name": "ReminderController (part 1)",
+      "id": "s8",
+      "hash": "f2023e29147fab4d",
+      "title": "Active reminders and answer route start",
+      "what": "Returns the user's active medicine and meal settings, the water setting and today's logs in one reply. Starts the route that records an answer for a reminder by its type and id, and works out today's start and end.",
+      "why": "Likely reason: the home screen needs all reminder data at once.",
+      "watch_out": "Today is based on the server clock, not the user's timezone, so the day boundary is wrong for users in other regions."
+    },
+    {
+      "start": 255,
+      "end": 293,
+      "kind": "class",
+      "name": "ReminderController (part 2)",
+      "id": "s9",
+      "hash": "7fc4b6758d4f4638",
+      "title": "Find or create today's answer log",
+      "what": "Looks for an existing log for this reminder today. Updates it when found, otherwise creates a new log with the response and the current time.",
+      "why": "Likely reason: a user can change an answer for the day without creating duplicate logs.",
+      "watch_out": "New logs use the current time as the scheduled time, not the slot the reminder was meant for."
+    },
+    {
+      "start": 294,
+      "end": 353,
+      "kind": "method",
+      "name": "ReminderController: if",
+      "id": "s10",
+      "hash": "5c708b422d41af40",
+      "title": "Timeline entries for medicine and meal answers",
+      "what": "For a medicine answer, writes a dose taken or dose skipped timeline entry. For a meal answer, writes a meal completed entry when it was taken. Water is not written to the timeline.",
+      "why": "Stated in the comment: water is skipped to avoid spamming the timeline.",
+      "watch_out": "The medicine lookup does not check the owner, so a reminder id from another user would still be used in this user's log and timeline."
+    },
+    {
+      "start": 354,
+      "end": 405,
+      "kind": "class",
+      "name": "ReminderController (part 4)",
+      "id": "s11",
+      "hash": "06b85558ebd76940",
+      "title": "Answer reply and medicine creation",
+      "what": "Returns a message saying the response was recorded or updated. Then creates a medicine reminder, defaulting to every day and any meal link, starting now, and adds a timeline entry for the new medicine.",
+      "why": "Likely reason: a new medicine is shown in the health history so changes stay visible.",
+      "watch_out": "The start date is set to now, so the code cannot record a reminder that began on an earlier date."
+    },
+    {
+      "start": 406,
+      "end": 446,
+      "kind": "class",
+      "name": "ReminderController (part 5)",
+      "id": "s12",
+      "hash": "14dc0763dc2ddf2c",
+      "title": "Medicine update and meal update start",
+      "what": "Finds the user's medicine reminder that is not deleted. Returns a failure reply if it is missing, otherwise saves only the fields sent. Then begins the meal update route by finding the meal for this user.",
+      "why": "Likely reason: the owner check and partial updates keep one user from changing another's reminder.",
+      "watch_out": "A missing reminder returns a normal reply with success set to false, not an error status, so callers must read the success flag."
+    },
+    {
+      "start": 447,
+      "end": 491,
+      "kind": "method",
+      "name": "ReminderController: if",
+      "id": "s13",
+      "hash": "3670705c59e015e9",
+      "title": "Meal update, fallback route and history filters",
+      "what": "Finishes the meal update, which returns a failure reply if the meal is missing. Then the generic update route, which simply calls the medicine update. Then starts the history query, filtering by user, reminder and type.",
+      "why": "Reason for the generic route not stated in the code. It may exist for older callers, but that is a guess.",
+      "watch_out": "The generic update route only works for medicine reminders. Sending a meal id to it returns not found."
+    },
+    {
+      "start": 492,
+      "end": 549,
+      "kind": "method",
+      "name": "ReminderController: if",
+      "id": "s14",
+      "hash": "450f09153851b163",
+      "title": "History paging and water save",
+      "what": "Adds an optional date range, caps the page size at 100 with a default of 50, and returns the logs with total and paging info. Then saves the water setting, creating it or updating it for the user.",
+      "why": "Likely reason: paging keeps responses small, and the upsert saves the app from checking whether the setting exists first.",
+      "watch_out": "Date text is converted with no check, so a bad date may cause a server error. A non-numeric page value is not handled. Every water field is required, so partial changes are not possible."
+    },
+    {
+      "start": 550,
+      "end": 585,
+      "kind": "class",
+      "name": "ReminderController (part 8)",
+      "id": "s15",
+      "hash": "57f49ae254ece0ba",
+      "title": "Meal creation and medicine delete start",
+      "what": "Creates a meal reminder from the type, time and notes. Then starts the delete route, which first tries to soft delete a medicine reminder for this user.",
+      "why": "Likely reason: medicine is the common case, so it is tried first.",
+      "watch_out": "The same route deletes from two tables, and the two deletions work differently: medicine is marked deleted and kept, meal is removed."
+    },
+    {
+      "start": 586,
+      "end": 616,
+      "kind": "method",
+      "name": "ReminderController: if",
+      "id": "s16",
+      "hash": "bb10f367fa38bca6",
+      "title": "Meal delete and answer route start",
+      "what": "Hard deletes a meal reminder for this user if the medicine delete found nothing, otherwise returns not found. Then starts the answer route for a log, which checks the log belongs to this user and then updates it.",
+      "why": "Stated in the comment: meals have no deleted flag, so their delete is permanent.",
+      "watch_out": "Meal deletion cannot be undone, and older logs keep a reminder id that no longer exists."
+    },
+    {
+      "start": 617,
+      "end": 675,
+      "kind": "method",
+      "name": "ReminderController: if",
+      "id": "s17",
+      "hash": "a76977ad762e37ba",
+      "title": "Log answer timeline, snooze and adherence start",
+      "what": "After saving a log answer, writes a taken or skipped timeline entry for medicine logs only. Then the snooze route sets the log response to SNOOZED and returns a 15 minute message. Starts the adherence count.",
+      "why": "Likely reason: the same timeline purpose as the earlier answer route, but for logs by id.",
+      "watch_out": "This answer route writes a timeline entry for every medicine answer, while the other answer route writes only for taken or skipped. Using both routes for one dose can give two entries. The snooze message is not backed by any scheduling here."
+    },
+    {
+      "start": 676,
+      "end": 684,
+      "kind": "class",
+      "name": "ReminderController (part 11)",
+      "id": "s18",
+      "hash": "00a2dd15e0d7d488",
+      "title": "Adherence rate reply",
+      "what": "Returns total logs, taken logs and the adherence percentage. With no logs, the rate is 100.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The rate counts all logs, including water and unanswered ones, and has no date limit. A new user shows 100 percent."
+    }
+  ],
+  "explained_at": "2026-11-11T19:56:43+00:00",
+  "explained_by": "haiku",
+  "summary": "Provides the web routes an app calls to create, change, delete and answer reminders, and to view how often doses were taken (adherence).",
+  "purpose": "Lets a user manage medicine, water and meal reminders and record whether each dose was taken, skipped or snoozed.",
+  "why": "Reason not stated in the code beyond the header calling it adherence tracking.",
+  "how": "Each route reads the signed-in user id, checks the request body against the rule classes, reads or writes the database, and for medicine and meal answers writes a timeline entry. Routes return a small JSON reply with a success flag and either data or a message.",
+  "inputs": "The signed-in user id from the login token, route values such as reminder id and type, request bodies checked by the rule classes, and query values for history filters and paging.",
+  "outputs": "JSON replies with data, meta, success and message fields. Rows in the reminder, reminder log and timeline tables.",
+  "risks": "Replies use different shapes in different routes. Two answer routes record timeline entries differently, so a dose may get two entries or none depending on the route. Snooze says it will remind again in 15 minutes, but nothing in this file schedules that. Adherence counts every log, including water and unanswered ones. Today is worked out on server time, not the user's timezone. Some query values, such as dates and paging numbers, are not checked.",
+  "debug": "Find the route in the logs. For wrong adherence numbers, check the reminder log rows and their response values. For missing timeline entries, compare which answer route was used. For a 400 error, read the validation message in the reply. For a 'not found' reply, check the id and the user.",
+  "summary_hash": "sha256:c93f2e045b905a16e1628784d8d2adbee8ca254093c5a838526e1fc726171528"
+}

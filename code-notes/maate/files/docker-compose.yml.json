@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "path": "docker-compose.yml",
+  "language": "Configuration",
+  "lines": 145,
+  "hash": "sha256:8cf06923b780e3a383c20d71d42c80936778f30ac9edf6d7e85bb271bc8ead9c",
+  "area": "root-files",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Credentials are hardcoded and must never reach a real environment.",
+      "The bucket is publicly downloadable.",
+      "The setup container hides its own failures.",
+      "Debug logging and development settings are on, which is correct only for local use."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Container",
+      "meaning": "an isolated bundle that runs one program"
+    },
+    {
+      "term": "Health check",
+      "meaning": "a test the system repeats to see whether a service is working"
+    },
+    {
+      "term": "MinIO",
+      "meaning": "a self-hosted file storage service that works like Amazon S3"
+    },
+    {
+      "term": "Bucket",
+      "meaning": "a named folder for files in object storage"
+    },
+    {
+      "term": "Port",
+      "meaning": "a numbered door on the computer that a service listens on"
+    }
+  ],
+  "depends_on": [
+    "Docker",
+    "infrastructure/docker/init-db.sql",
+    "services/ocr-service",
+    "services/ai-service",
+    ".env.example"
+  ],
+  "used_by": [
+    "Makefile",
+    "package.json"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 44,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "1518abd1d585916b",
+      "title": "Database and cache containers",
+      "what": "Starts Postgres with vector support and Redis, each with a health check and saved data storage.",
+      "why": "Likely reason: the app needs a database and a fast cache during development.",
+      "watch_out": "Postgres uses a fixed, weak password and should only be reachable from the developer's own machine."
+    },
+    {
+      "start": 45,
+      "end": 104,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "57d9f784dffccbfa",
+      "title": "File storage and OCR service",
+      "what": "Starts MinIO, a one-time bucket setup container, and the OCR service with its source folder mounted so edits show up live.",
+      "why": "Reason not stated in the code beyond the names.",
+      "watch_out": "The bucket is made publicly downloadable and the setup step always reports success. The storage key names here differ from the names in the example environment file."
+    },
+    {
+      "start": 105,
+      "end": 145,
+      "kind": "setup",
+      "name": "File setup (part 3)",
+      "id": "s3",
+      "hash": "991cbb7d50004c35",
+      "title": "AI service and job dashboard",
+      "what": "Starts the AI service with its database and cache addresses and the OpenAI key taken from the environment. Also starts a web dashboard for background jobs.",
+      "why": "Likely reason: the dashboard lets a developer see queued background jobs.",
+      "watch_out": "The AI service hardcodes its database address and password, so changing the environment file will not change them."
+    }
+  ],
+  "explained_at": "2026-11-11T20:28:02+00:00",
+  "explained_by": "haiku",
+  "summary": "Starts the local development stack: a Postgres database, a Redis cache, MinIO file storage, the OCR and AI Python services, and a background job dashboard.",
+  "purpose": "Lets a developer run all supporting services on their own computer with one command.",
+  "why": "Likely reason: keeps the local setup the same for everyone and avoids installing each service by hand.",
+  "how": "Each service is defined with an image or a build folder, its ports, environment settings, and a health check. Services that depend on others wait until those are healthy. A setup container creates the default file bucket.",
+  "inputs": "Environment variables from the shell, the database setup SQL file, and the source folders of the OCR and AI services.",
+  "outputs": "Running containers on ports 5432, 6379, 9000, 9001, 8001, 8002 and 3200.",
+  "risks": "Credentials are fixed and weak, such as postgres with postgres and minioadmin. The MinIO bucket is set to public download, so anyone who can guess a file name can read it. The setup container exits with success even when it fails, which hides errors. Debug logging is on. This file is for local development only.",
+  "debug": "Run the compose status command to see which container failed. Use docker-logs for details. If the bucket is missing, check the minio-setup container output. Check that the ports are not used by something else.",
+  "summary_hash": "sha256:8cf06923b780e3a383c20d71d42c80936778f30ac9edf6d7e85bb271bc8ead9c"
+}

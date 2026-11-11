@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "path": "apps/mobile/src/services/api.ts",
+  "language": "TypeScript",
+  "lines": 70,
+  "hash": "sha256:fb7282005a31632745ac08138f0595b3df3aebe06acad1e44201a3d25f1c3ea1",
+  "area": "apps-mobile",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The login redirect is a TODO, so a failed refresh leaves the user stuck.",
+      "The auth store is not told about a failed refresh."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Token",
+      "meaning": "a short-lived proof of login that the app sends with each request."
+    },
+    {
+      "term": "Refresh token",
+      "meaning": "a longer-lived token used to get a new login token."
+    },
+    {
+      "term": "401",
+      "meaning": "the server's code meaning not logged in or login expired."
+    },
+    {
+      "term": "Timeout",
+      "meaning": "how long a request waits before giving up."
+    }
+  ],
+  "depends_on": [
+    "axios",
+    "expo-secure-store"
+  ],
+  "used_by": [
+    "apps/mobile/src/store/analyticsStore.ts",
+    "apps/mobile/src/store/authStore.ts",
+    "apps/mobile/src/store/chatStore.ts",
+    "apps/mobile/src/store/documentStore.ts",
+    "apps/mobile/src/store/familyStore.ts",
+    "apps/mobile/src/services/NotificationManager.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 32,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "beb32cce3a6c64f9",
+      "title": "Client setup and token attachment",
+      "what": "Creates the shared client with the server address and a 30-second limit. Before every request it adds the saved login token.",
+      "why": "Likely reason: adding the token in one place means no screen has to remember it.",
+      "watch_out": "If the address setting is missing, the app quietly talks to localhost instead of the real server."
+    },
+    {
+      "start": 33,
+      "end": 70,
+      "kind": "method",
+      "name": "File setup: if",
+      "id": "s2",
+      "hash": "2e1f1bce5154bb64",
+      "title": "Renewing an expired login",
+      "what": "When the server says the login has expired, it tries once to get a new token and retries the request. If that fails, it clears the saved tokens.",
+      "why": "Likely reason: keeps users signed in without asking them again each time the token expires.",
+      "watch_out": "After tokens are cleared, the login redirect is not written yet and the signed-in flag is not reset here, so the app may still look signed in."
+    }
+  ],
+  "explained_at": "2026-11-11T20:16:24+00:00",
+  "explained_by": "haiku",
+  "summary": "The shared network client that adds the login token to each request and tries to renew it when it expires.",
+  "purpose": "Lets every screen talk to the backend while keeping the user signed in.",
+  "why": "Likely reason: login handling is written once, in one place.",
+  "how": "Creates the client with a server address and a 30-second limit. Before each request it reads the saved token and attaches it. If the server says the login is not valid (401), it uses the saved refresh token once, saves the new tokens, and retries the request. If that fails, it clears the saved tokens.",
+  "inputs": "The EXPO_PUBLIC_API_URL build setting, and the saved access and refresh tokens.",
+  "outputs": "Server responses for the screens, and changes to the saved tokens.",
+  "risks": "If the address setting is missing, the app uses localhost. After a failed refresh, the user is not sent to the login screen (a TODO) and the signed-in flag elsewhere is not cleared here.",
+  "debug": "If every request fails, check the server address and that the backend is running. If users are signed out unexpectedly, check the refresh endpoint and the saved tokens. If requests loop, check the retry marker on the request.",
+  "summary_hash": "sha256:fb7282005a31632745ac08138f0595b3df3aebe06acad1e44201a3d25f1c3ea1"
+}

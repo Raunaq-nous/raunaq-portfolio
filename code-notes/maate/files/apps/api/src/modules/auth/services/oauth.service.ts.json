@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/auth/services/oauth.service.ts",
+  "language": "TypeScript",
+  "lines": 234,
+  "hash": "sha256:09be8763a95e641923d70d0bc4a3d13a6a30426715c2133157628335e87bf60b",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "Google and Apple tokens are decoded but never verified.",
+      "Accounts are merged by email alone, based on unverified tokens.",
+      "No tests are visible in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ID token",
+      "meaning": "a note signed by Google or Apple saying who the user is"
+    },
+    {
+      "term": "signature",
+      "meaning": "a checksum that only the real provider can make, proving a token is genuine"
+    },
+    {
+      "term": "decode",
+      "meaning": "read the contents of a token without checking that it is genuine"
+    },
+    {
+      "term": "lockout",
+      "meaning": "a temporary block on signing in after too many failed tries"
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/modules/auth/services/token.service.ts",
+    "apps/api/src/common/database/database.module.ts",
+    "@nestjs/config",
+    "@nestjs/common"
+  ],
+  "used_by": [
+    "apps/api/src/modules/auth/auth.service.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d2978f14818a7bd2",
+      "title": "Imports for social sign-in",
+      "what": "Brings in error types, configuration access, a hashing helper, the database and the token service.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 13,
+      "end": 20,
+      "kind": "type",
+      "name": "OAuthProfile",
+      "id": "s2",
+      "hash": "ac8ee5c7e9d6b539",
+      "title": "Shape of a provider profile",
+      "what": "Defines the details kept from a Google or Apple account: the provider's user ID, email, display name, picture and full raw data.",
+      "why": "Likely reason: a common shape lets Google and Apple go through the same steps.",
+      "watch_out": "The full raw profile is stored as received, which can hold more personal data than the app needs."
+    },
+    {
+      "start": 21,
+      "end": 58,
+      "kind": "class",
+      "name": "OAuthService (part 1)",
+      "id": "s3",
+      "hash": "52b66c34f3228fbe",
+      "title": "Google token reading",
+      "what": "Creates the OAuth service and reads a Google sign-in token by decoding its middle section to get the user details. It does not check the signature or audience.",
+      "why": "Reason not stated in the code. Comments show a checking library was planned for production.",
+      "watch_out": "The Google token is decoded without checking its signature or audience, so a forged token could claim any email."
+    },
+    {
+      "start": 59,
+      "end": 108,
+      "kind": "method",
+      "name": "OAuthService: verifyAppleToken",
+      "id": "s4",
+      "hash": "bd63eaddba394f7e",
+      "title": "Apple token reading",
+      "what": "Reads an Apple sign-in token the same way as Google, decoding the middle section to get the user ID and email. It does not check the signature.",
+      "why": "Reason not stated in the code. Comments show a checking library was planned for production.",
+      "watch_out": "Like Google, no signature is checked, so a forged Apple token could sign in to an account that has that email."
+    },
+    {
+      "start": 109,
+      "end": 144,
+      "kind": "method",
+      "name": "OAuthService: if",
+      "id": "s5",
+      "hash": "084d32c506f91723",
+      "title": "Returning a user who signed in before",
+      "what": "If this provider account is already linked, refreshes the stored avatar and profile, records the login, opens a session and issues tokens.",
+      "why": "Likely reason: a known provider account should sign in directly without linking again.",
+      "watch_out": "A successful social sign-in clears any password lockout and failed-attempt count for that user."
+    },
+    {
+      "start": 145,
+      "end": 202,
+      "kind": "method",
+      "name": "OAuthService: if",
+      "id": "s6",
+      "hash": "99ed18466b268428",
+      "title": "Linking to an email account or creating one",
+      "what": "If no linked account exists but an account with the same email does, attaches the provider to it and marks the email as verified. Otherwise creates a new user with the provider linked.",
+      "why": "Likely reason: one person should keep one account even when they use both password and social sign-in.",
+      "watch_out": "Accounts are matched by email alone, and that email comes from an unchecked token, so a forged email could attach to someone else's account."
+    },
+    {
+      "start": 203,
+      "end": 234,
+      "kind": "class",
+      "name": "OAuthService (part 5)",
+      "id": "s7",
+      "hash": "8ebd6df21d4b0b8a",
+      "title": "Result and helper functions",
+      "what": "Returns the user, tokens and an isNewUser flag. Holds small helpers for creating sessions, updating login tracking and hiding secret fields.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "isNewUser is based on the onboarding flag, not on whether the account was just created, so it can disagree with the first-login path."
+    }
+  ],
+  "explained_at": "2026-11-11T19:36:51+00:00",
+  "explained_by": "haiku",
+  "summary": "Signs users in with Google or Apple by reading their sign-in token, then finds, links or creates the matching Maate account.",
+  "purpose": "Handles social sign-in for the auth module.",
+  "why": "Reason not stated in the code. The comments say a proper checking library is planned for production but is not in place.",
+  "how": "Read the provider token and decode its details. Look for a linked provider account. If none, look for an account with the same email and link it. Otherwise create a new user. Then record the login, open a session and issue tokens.",
+  "inputs": "Provider name (google or apple), the ID token, an optional full name, device name, IP address and user agent.",
+  "outputs": "User details without secret fields, access and refresh tokens, and an isNewUser flag. Writes to the OAuth account, user and session tables.",
+  "risks": "Neither token's signature is checked, so a forged token could claim any email. Accounts are merged by email alone. A social sign-in clears a password lockout. The full provider profile is stored as received.",
+  "debug": "If a sign-in is refused, the error names Google or Apple as an invalid token, and the logs show the underlying error. If an account looks wrong, check the OAuth account rows linked to that user and whether the email matched.",
+  "summary_hash": "sha256:09be8763a95e641923d70d0bc4a3d13a6a30426715c2133157628335e87bf60b"
+}

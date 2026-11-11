@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "path": "apps/mobile/src/store/documentStore.ts",
+  "language": "TypeScript",
+  "lines": 157,
+  "hash": "sha256:686e98719558d126f34f1fe576bb8c1ef526c5f8f257db3e81c8625f1dcd5350",
+  "area": "apps-mobile",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The upload response is not checked.",
+      "Reading stops after about 20 seconds.",
+      "Archive errors are hidden from callers.",
+      "No tests seen."
+    ]
+  },
+  "terms": [
+    {
+      "term": "OCR",
+      "meaning": "reading printed or written text from a photo or scan."
+    },
+    {
+      "term": "Presigned URL",
+      "meaning": "a temporary web address that lets the phone upload straight to storage without extra sign-in."
+    },
+    {
+      "term": "Polling",
+      "meaning": "asking the server again and again until a result is ready."
+    },
+    {
+      "term": "Archive",
+      "meaning": "removing a document from the list."
+    }
+  ],
+  "depends_on": [
+    "zustand",
+    "expo-file-system",
+    "apps/mobile/src/services/api",
+    "@maate/shared-types"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "85f01e99e270e149",
+      "title": "Setup for document handling",
+      "what": "Brings in the store library, file system tools, the API client and the shared data types for uploads and reading results.",
+      "why": "Standard setup at the top of the file.",
+      "watch_out": ""
+    },
+    {
+      "start": 17,
+      "end": 20,
+      "kind": "type",
+      "name": "UploadProgress",
+      "id": "s2",
+      "hash": "7e60f6edc9e78d12",
+      "title": "Upload progress record",
+      "what": "Keeps a progress fraction between zero and one for each file being uploaded.",
+      "why": "Lets a screen show a progress bar per file.",
+      "watch_out": "An entry is removed only after success, so a failed upload can leave its entry behind."
+    },
+    {
+      "start": 21,
+      "end": 34,
+      "kind": "type",
+      "name": "DocumentState",
+      "id": "s3",
+      "hash": "affe99e36459cd9b",
+      "title": "What the document store holds",
+      "what": "Lists the uploading flag, progress records, saved documents, the latest reading result, and the actions to fetch, upload, read, confirm and archive.",
+      "why": "Keeps all document state in one place.",
+      "watch_out": "There is only one slot for the reading result, so reading a second document replaces the first."
+    },
+    {
+      "start": 35,
+      "end": 93,
+      "kind": "value",
+      "name": "useDocumentStore (part 1)",
+      "id": "s4",
+      "hash": "6133cc93cd23ea78",
+      "title": "Loading the list and starting an upload",
+      "what": "Starts empty. Loading the list fetches the documents and logs any failure. Uploading checks the file exists, asks the server for an upload address based on the file size, then sends the file there while tracking progress.",
+      "why": "Likely reason: sending straight to storage avoids pushing large files through the app server.",
+      "watch_out": "If the list fails to load, the old list stays on screen with no message."
+    },
+    {
+      "start": 94,
+      "end": 146,
+      "kind": "value",
+      "name": "useDocumentStore (part 2)",
+      "id": "s5",
+      "hash": "7455537906d42944",
+      "title": "Finishing uploads and reading results",
+      "what": "After sending, tells the server the file arrived, refreshes the list, clears the progress entry and returns the new document ID. Reading results are polled up to 10 times, two seconds apart. Confirming a prescription sends the reviewed data to the server and then refreshes the list.",
+      "why": "Likely reason: reading takes time, so the app keeps checking in the background.",
+      "watch_out": "Polling gives up after about 20 seconds, so a slow reading shows a timeout error even though it may still finish."
+    },
+    {
+      "start": 147,
+      "end": 157,
+      "kind": "value",
+      "name": "useDocumentStore (part 3)",
+      "id": "s6",
+      "hash": "9938c93173ab2870",
+      "title": "Archiving a document",
+      "what": "Asks the server to remove a document, then removes it from the list on screen. Failures are logged but not passed back to the caller.",
+      "why": "Likely reason: keeps the list simple to update.",
+      "watch_out": "Because failures are not passed back, the screen can show a document as removed when the server did not remove it."
+    }
+  ],
+  "explained_at": "2026-11-11T20:16:24+00:00",
+  "explained_by": "haiku",
+  "summary": "Manages document uploads, reading of prescriptions (OCR), confirming medicines from them, and archiving documents.",
+  "purpose": "Lets the user add a medical document, review what the app read from it, and remove documents.",
+  "why": "Likely reason: the file goes straight to storage, so large files do not pass through the app server.",
+  "how": "Uploads by asking the server for a temporary upload address, sending the file there while tracking progress, then confirming with the server. Reading results are polled up to 10 times, two seconds apart. Confirming a prescription creates medicines and reminders from the reviewed data.",
+  "inputs": "The file path, file name, file type, document type, document IDs, and reviewed prescription data.",
+  "outputs": "Server requests, the document list, per-file progress values, and the reading result.",
+  "risks": "The upload response status is not checked, so a failed upload may still be confirmed. Reading times out after about 20 seconds even if it would finish later. Archive failures are hidden from the caller. A failed upload can leave its progress entry behind. Only one reading result is held at a time.",
+  "debug": "If an upload finishes but the document is missing, check the confirm step and the list refresh. If the review never appears, check the reading status and the 'OCR processing timed out' message. If a progress bar sticks, check for a leftover progress entry.",
+  "summary_hash": "sha256:686e98719558d126f34f1fe576bb8c1ef526c5f8f257db3e81c8625f1dcd5350"
+}

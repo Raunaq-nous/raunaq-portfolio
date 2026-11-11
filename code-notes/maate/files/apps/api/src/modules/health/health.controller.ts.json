@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/health/health.controller.ts",
+  "language": "TypeScript",
+  "lines": 75,
+  "hash": "sha256:9534074d89b48b48214bc639bff186d33beecfc107d87c012b0fece67ca2aa7d",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Error messages and the user count are returned publicly.",
+      "Failures are caught, so the route still answers even when services are down, which is useful but should be tested."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Redis",
+      "meaning": "a fast in-memory store the app uses for short-lived data such as caching"
+    },
+    {
+      "term": "Liveness check",
+      "meaning": "a simple test that tells a monitoring tool whether the service is running"
+    },
+    {
+      "term": "Latency",
+      "meaning": "how long a request takes to finish"
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/common/auth/jwt-auth.guard.ts",
+    "apps/api/src/common/database/database.module.ts",
+    "apps/api/src/common/redis/redis.service.ts"
+  ],
+  "used_by": [
+    "apps/api/src/modules/health/health.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e12359912023d7a2",
+      "title": "Imports and setup",
+      "what": "Brings in the route tools, the public marker, the database access and the cache service.",
+      "why": "Needed to run the database and cache checks.",
+      "watch_out": ""
+    },
+    {
+      "start": 12,
+      "end": 56,
+      "kind": "class",
+      "name": "HealthController (part 1)",
+      "id": "s2",
+      "hash": "d8b3a351f866658d",
+      "title": "Checking database and cache",
+      "what": "Runs a test query on the database and counts users, then writes and reads a short test key in Redis. Each check records whether it worked and how long it took.",
+      "why": "Likely reason: confirms the two services the API cannot run without.",
+      "watch_out": "The check writes a test key to Redis every time, so frequent polling adds small load."
+    },
+    {
+      "start": 57,
+      "end": 75,
+      "kind": "class",
+      "name": "HealthController (part 2)",
+      "id": "s3",
+      "hash": "d8132e0ca1c0bce9",
+      "title": "Building the health response",
+      "what": "Combines the two checks into one answer. It says healthy only when both pass, otherwise degraded, and includes uptime, total time and details for each service.",
+      "why": "Gives monitoring tools one simple answer plus details for debugging.",
+      "watch_out": "The response contains detailed error text and the total user count, which should be reviewed before exposing this route publicly."
+    }
+  ],
+  "explained_at": "2026-11-11T19:53:28+00:00",
+  "explained_by": "haiku",
+  "summary": "Provides a public health check that reports whether the database and Redis cache are reachable.",
+  "purpose": "Lets hosting tools and operators see whether the API and its main dependencies are working.",
+  "why": "Likely reason: monitoring systems need a simple endpoint to decide if the service is healthy.",
+  "how": "Runs a trivial database query and counts users, then writes and reads a test value in Redis. It measures the time each check takes and returns overall healthy or degraded with details.",
+  "inputs": "No inputs. The route is open to anyone.",
+  "outputs": "A status object with overall status, time, uptime, latency and details for the database and Redis.",
+  "risks": "The route is public and reports the number of users and raw error messages, which can reveal internal details to anyone.",
+  "debug": "If the status is degraded, read the database and redis fields for the error text. A slow response points to database or cache latency.",
+  "summary_hash": "sha256:9534074d89b48b48214bc639bff186d33beecfc107d87c012b0fece67ca2aa7d"
+}

@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/common/security/cross-user-isolation.spec.ts",
+  "language": "TypeScript",
+  "lines": 240,
+  "hash": "sha256:9172a2a439910a27aea105cacbf90e03f07d2512310764e2afa89a0bef82151f",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Checks fake call arguments rather than real results.",
+      "Some tests confirm only that a call happened."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Data isolation",
+      "meaning": "Keeping each user's records invisible and unchangeable to other users."
+    },
+    {
+      "term": "Not found response",
+      "meaning": "Replying as if a record does not exist, so the caller cannot tell whether it exists for someone else."
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/modules/document/document.service.ts",
+    "apps/api/src/modules/timeline/timeline.service.ts",
+    "apps/api/src/modules/chat/chat.service.ts",
+    "apps/api/src/modules/family/family.service.ts",
+    "apps/api/src/modules/share/share.service.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "254f930598243da0",
+      "title": "Imports of the services under test",
+      "what": "Brings in the error types and the five services whose privacy rules are tested.",
+      "why": "Likely reason: these services hold the data being protected.",
+      "watch_out": ""
+    },
+    {
+      "start": 8,
+      "end": 62,
+      "kind": "test group",
+      "name": "Cross-User Data Isolation (Security & HIPAA Partitioning) (part 1)",
+      "id": "s2",
+      "hash": "b0b932c674e6f2a4",
+      "title": "Fake database and test users",
+      "what": "Defines two fixed user identities and fake query functions for each table the services use.",
+      "why": "Likely reason: lets the tests check two users without a real database.",
+      "watch_out": "Fake queries return nothing by default, so a test might pass only because nothing was found."
+    },
+    {
+      "start": 63,
+      "end": 116,
+      "kind": "test group",
+      "name": "Cross-User Data Isolation (Security & HIPAA Partitioning) (part 2)",
+      "id": "s3",
+      "hash": "aae6ef2bf3b7b2bd",
+      "title": "Building services with fakes",
+      "what": "Creates fake storage, job queue, audit, and push services, then constructs each service with those fakes.",
+      "why": "Likely reason: keeps each service isolated during testing.",
+      "watch_out": "Services built by hand skip the framework's injection, so a new constructor parameter breaks these tests."
+    },
+    {
+      "start": 117,
+      "end": 174,
+      "kind": "test group",
+      "name": "Cross-User Data Isolation (Security & HIPAA Partitioning) (part 3)",
+      "id": "s4",
+      "hash": "1d938657af3a1621",
+      "title": "Document and timeline checks",
+      "what": "Checks that the second user gets not found for the first user's document, that listing returns only the first user's documents, that the second user cannot archive them, and that the timeline returns only the first user's events.",
+      "why": "The test names state the isolation rule for documents and the timeline.",
+      "watch_out": "The archive check confirms the query shape but does not assert the count returned."
+    },
+    {
+      "start": 175,
+      "end": 228,
+      "kind": "test group",
+      "name": "Cross-User Data Isolation (Security & HIPAA Partitioning) (part 4)",
+      "id": "s5",
+      "hash": "758250c574bed17a",
+      "title": "Pin, chat, and family checks",
+      "what": "Checks that the second user cannot pin the first user's timeline event, gets an empty chat history for a session they do not own, gets not found when deleting that chat, and gets forbidden when deleting the first user's family member.",
+      "why": "The test names state the isolation rules for those areas.",
+      "watch_out": "An empty history for a non-owner looks the same as a real empty chat, so the user cannot tell the difference."
+    },
+    {
+      "start": 229,
+      "end": 240,
+      "kind": "test group",
+      "name": "Cross-User Data Isolation (Security & HIPAA Partitioning) (part 5)",
+      "id": "s6",
+      "hash": "d24447ecad42d12b",
+      "title": "Doctor share check",
+      "what": "Checks that the second user gets not found when trying to revoke the first user's doctor share.",
+      "why": "The test name states the isolation rule for doctor sharing.",
+      "watch_out": "Family deletion returns forbidden while share revocation returns not found, so the two replies reveal different information."
+    }
+  ],
+  "explained_at": "2026-11-11T19:31:29+00:00",
+  "explained_by": "haiku",
+  "summary": "A test suite that checks one user cannot read or change another user's documents, timeline, chat, family profiles, or doctor shares.",
+  "purpose": "Verifies the most important privacy rule: each user's data is kept separate.",
+  "why": "The title states security and HIPAA data partitioning, and the comments label the second user as an unauthorized user.",
+  "how": "1) Create fake database tables for two users. 2) Build each service by hand with the fakes. 3) Each test asks the service to act as the second user on the first user's data. 4) The test checks that the service refuses or returns nothing.",
+  "inputs": "Two fixed user identities and sample records.",
+  "outputs": "Pass or fail results.",
+  "risks": "The tests check the arguments passed to the fake queries, not what a real database would return, so a bug in the real query could still pass. Some tests only confirm that a call was made.",
+  "debug": "When a test fails, read the expectation message to see which argument differed. Confirm the service's queries still filter by the user identity.",
+  "summary_hash": "sha256:9172a2a439910a27aea105cacbf90e03f07d2512310764e2afa89a0bef82151f"
+}

@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/auth/services/totp.service.ts",
+  "language": "TypeScript",
+  "lines": 231,
+  "hash": "sha256:d8abe28acd002b4fca0c0f75655341d3105b98618d637e195d4dbba019bdba80",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The spec file covers the math, encryption and backup codes well, and invalid input is handled.",
+      "Decryption failure returns the stored text as if it were a valid secret.",
+      "A missing key outside production silently falls back to a fixed key from the source code.",
+      "Replay protection is not enforced in this file, and the code that enforces it is not visible in this packet.",
+      "Backup codes are hashed without a salt and have limited randomness."
+    ]
+  },
+  "terms": [
+    {
+      "term": "TOTP",
+      "meaning": "Time-based one-time password: a six-digit code that changes every 30 seconds and is computed from a shared secret and the current time."
+    },
+    {
+      "term": "RFC 6238",
+      "meaning": "The public standard that defines how TOTP codes are computed, including published test values."
+    },
+    {
+      "term": "Base32",
+      "meaning": "A way of writing binary data using only letters A to Z and digits 2 to 7, so authenticator apps can type it easily."
+    },
+    {
+      "term": "HMAC-SHA1",
+      "meaning": "A keyed scrambling method used to turn the secret and the time step into the raw bytes of a code."
+    },
+    {
+      "term": "AES-256-GCM",
+      "meaning": "A strong encryption method that also detects tampering, used here to protect the stored secret."
+    },
+    {
+      "term": "Encryption key",
+      "meaning": "The secret value that locks and unlocks the stored secrets. Anyone with it can read them."
+    },
+    {
+      "term": "IV (initial value)",
+      "meaning": "A random value used once per encryption so that the same secret never produces the same stored text twice."
+    },
+    {
+      "term": "Authentication tag",
+      "meaning": "A short check value created during encryption that proves the stored text was not changed."
+    },
+    {
+      "term": "Time step",
+      "meaning": "The 30-second slot a code belongs to, found by dividing the current time by the step length."
+    },
+    {
+      "term": "Window or drift tolerance",
+      "meaning": "The number of neighbouring time steps also accepted, which allows for small clock differences."
+    },
+    {
+      "term": "Timing-safe comparison",
+      "meaning": "A way of comparing two values that takes the same time whether or not they match, so attackers cannot learn from timing."
+    },
+    {
+      "term": "Backup code",
+      "meaning": "A one-time recovery code for when the authenticator app is lost."
+    },
+    {
+      "term": "SHA-256 hash",
+      "meaning": "A one-way scrambling of text. The original cannot be recovered, only compared."
+    },
+    {
+      "term": "Environment variable",
+      "meaning": "A setting passed to the program from outside its code, such as a secret key or the mode name."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/common",
+    "@nestjs/config",
+    "Node.js crypto module"
+  ],
+  "used_by": [
+    "apps/api/src/modules/auth/services/totp.service.spec.ts (test file)",
+    "Callers in the auth module are not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "9fc0837497701ea8",
+      "title": "Setup and shared imports",
+      "what": "Brings in the NestJS tools for injection and config, the Node crypto library, and sets the Base32 alphabet of 32 characters used by authenticator apps.",
+      "why": "Likely reason: the file needs these tools for encryption, codes and configuration, and the alphabet is a fixed standard.",
+      "watch_out": "Changing the alphabet order would make every secret and code invalid."
+    },
+    {
+      "start": 14,
+      "end": 18,
+      "kind": "type",
+      "name": "TotpVerificationResult",
+      "id": "s2",
+      "hash": "9f6ba7ca4e1a47dc",
+      "title": "Result shape for code checks",
+      "what": "Defines the answer returned when a code is checked: a valid or invalid flag and the matched time step, or nothing if it did not match.",
+      "why": "Likely reason: returning the time step lets the caller remember which step was used, which supports blocking reuse.",
+      "watch_out": "The caller must store the returned step. This file does not store it."
+    },
+    {
+      "start": 19,
+      "end": 67,
+      "kind": "class",
+      "name": "TotpService (part 1)",
+      "id": "s3",
+      "hash": "fa3a43f2d65d832a",
+      "title": "Setting up the encryption key",
+      "what": "The constructor reads the encryption key from configuration or the environment and turns it into a 32-byte key. It accepts 64 hex characters, base64 text that decodes to 32 bytes, or any other text, which is hashed into a 32-byte key. Production refuses to start without a key. Other environments use a fixed key from the source code. The second part of this section also starts the encryption function, which mixes a random starting value with the secret and returns three colon-separated parts.",
+      "why": "Likely reason: the key must be exactly 32 bytes for the encryption method, and development needs to run without setup.",
+      "watch_out": "If NODE_ENV is not set to production in a real deployment, a missing key silently falls back to the fixed development key."
+    },
+    {
+      "start": 68,
+      "end": 113,
+      "kind": "method",
+      "name": "TotpService: if",
+      "id": "s4",
+      "hash": "62edaa91f4003069",
+      "title": "Decrypting stored secrets and Base32 start",
+      "what": "Reads a stored secret. Text without three parts is treated as an old unencrypted secret and returned unchanged. If decryption fails, a warning is logged and the stored text is returned as is. The section also starts the Base32 encoder, which turns bytes into the letter-and-digit text used by authenticator apps.",
+      "why": "Likely reason: the fallback lets secrets stored before encryption was added still work.",
+      "watch_out": "Returning the stored text on failure means a wrong key produces a broken secret that looks usable, and the failure appears only in the log."
+    },
+    {
+      "start": 114,
+      "end": 171,
+      "kind": "method",
+      "name": "TotpService: for",
+      "id": "s5",
+      "hash": "324297354b5c1563",
+      "title": "Decoding Base32 and making codes",
+      "what": "Converts Base32 text back to bytes and rejects any character outside the alphabet. Makes a new random secret of 20 bytes. Computes a code from a counter value using HMAC-SHA1, reduces it to the chosen digit count, and converts the current time into the matching 30-second step.",
+      "why": "Likely reason: these steps follow the TOTP standard exactly, so authenticator apps produce the same codes.",
+      "watch_out": "The default of 20 random bytes is what the standard recommends, so reducing it would weaken secrets."
+    },
+    {
+      "start": 172,
+      "end": 231,
+      "kind": "class",
+      "name": "TotpService (part 4)",
+      "id": "s6",
+      "hash": "073a6c0d8ab80952",
+      "title": "Checking codes, setup links and backup codes",
+      "what": "Rejects input that is not six to eight digits. Compares the typed code with codes for the current step and the neighbouring steps allowed by the window, returning the first match. Builds the otpauth setup link. Makes eight-character backup codes, stores only their hashes, and removes a used code from the hash list.",
+      "why": "Likely reason: checking neighbouring steps allows for clock differences, and hashing backup codes means a database leak does not reveal them.",
+      "watch_out": "Backup code hashes are unsalted SHA-256 over short codes, so a leaked list could be checked quickly."
+    }
+  ],
+  "explained_at": "2026-11-11T19:39:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Creates and checks the six-digit one-time codes used for two-factor sign-in, encrypts the stored secrets, and makes single-use backup codes.",
+  "purpose": "Provides the security math behind two-factor sign-in: making a secret, computing the code for a moment in time, checking a typed code, building the setup link for authenticator apps, and making and checking backup codes.",
+  "why": "Likely reason: the code is written with no outside security library, so it can be read and audited directly. The header says it is compatible with Google Authenticator, 1Password and Authy.",
+  "how": "1. When the service starts, it reads the encryption key from configuration or the environment. In production, it refuses to start if the key is missing. 2. When a user sets up two-factor, a random secret is made and stored in encrypted form. 3. For setup, a link is built from the secret, and the authenticator app reads it. 4. At sign-in, the stored secret is decrypted, codes are computed for the current time step and one step either side, and the typed code is compared with each one. 5. The result says whether the code is valid and which time step matched. 6. Backup codes are made in a batch. Only their hashes are kept, and a used code is removed from the list.",
+  "inputs": "The typed six to eight digit code, the stored secret text, the current time in milliseconds, the time step length, the digit count, the window size, the encryption key from MFA_ENCRYPTION_KEY, and backup code text entered by the user.",
+  "outputs": "A valid or invalid result with the matched time step, encrypted secret text, decrypted secret text, generated codes, the setup link, backup code hashes, and the list of backup code hashes that remain after one is used.",
+  "risks": "Changing or losing MFA_ENCRYPTION_KEY makes every stored secret unreadable, locking users out of two-factor. If decryption fails, the service returns the stored text unchanged, so a wrong key produces a bad secret without a clear error to the user. A missing key outside production silently uses a fixed key written in the source code. The file does not track which time steps were used, so reuse must be blocked elsewhere. Backup codes are hashed with plain SHA-256 and no salt, and each code has about 32 bits of randomness, so a leaked hash list could be cracked quickly.",
+  "debug": "Check the server log for warnings that start with Failed to decrypt MFA secret, which point to a wrong or changed key. Confirm MFA_ENCRYPTION_KEY and NODE_ENV in the running app. If every code fails, compare the server clock with real time, since a drifting clock shifts the time step. If startup fails with a FATAL message, set the key. Run the spec file to check the math against the published values.",
+  "summary_hash": "sha256:d8abe28acd002b4fca0c0f75655341d3105b98618d637e195d4dbba019bdba80"
+}

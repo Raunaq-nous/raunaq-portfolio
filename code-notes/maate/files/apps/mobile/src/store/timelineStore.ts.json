@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "path": "apps/mobile/src/store/timelineStore.ts",
+  "language": "TypeScript",
+  "lines": 74,
+  "hash": "sha256:01730bb68386472d593d6a95b04ae84b27a0dc74bb6f37c95c5b24f4f3c98eea",
+  "area": "apps-mobile",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are only logged, so the user is not told when loading or pinning fails.",
+      "No test for this store is visible.",
+      "Changing the filter without a reset can mix event types in one list."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Zustand",
+      "meaning": "a small library that keeps shared app state in one place that screens can read and update"
+    },
+    {
+      "term": "Store",
+      "meaning": "a named container of data and the actions that change that data"
+    },
+    {
+      "term": "Pagination",
+      "meaning": "loading a long list in fixed-size pages instead of all at once"
+    },
+    {
+      "term": "API client",
+      "meaning": "the shared helper that sends requests from the app to the server"
+    }
+  ],
+  "depends_on": [
+    "apps/mobile/src/services/api",
+    "@maate/database"
+  ],
+  "used_by": [
+    "Not visible in the packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "5c32bbfc1ac2eb7c",
+      "title": "Imports for the timeline store",
+      "what": "Brings in the state library, the shared API client, and the list of timeline event types from the database package. It has no behavior of its own.",
+      "why": "Needed so the store can talk to the server and use the same event type names as the database.",
+      "watch_out": "The event type list comes from the database package, so a renamed type there can break the types in this file."
+    },
+    {
+      "start": 10,
+      "end": 19,
+      "kind": "type",
+      "name": "TimelineEvent",
+      "id": "s2",
+      "hash": "4fdae91137116316",
+      "title": "Shape of one timeline event",
+      "what": "Describes one history entry: an identifier, a type, a title, an optional description and extra data, the time it happened, and whether it is pinned.",
+      "why": "Gives the rest of the app a fixed shape so screens know which fields exist.",
+      "watch_out": "The metadata field is typed as any, so its contents are not checked and can vary by event type."
+    },
+    {
+      "start": 20,
+      "end": 29,
+      "kind": "type",
+      "name": "TimelineState",
+      "id": "s3",
+      "hash": "e98d36b363ced85c",
+      "title": "What the timeline store holds",
+      "what": "Lists the data and actions the store offers: the events, a loading flag, the next page number, a more-pages flag, a loader that accepts a reset flag and a type filter, and a pin action.",
+      "why": "Gives screens one agreed set of values to read and actions to call.",
+      "watch_out": "The type filter is plain text and is sent to the server without any check here, so a misspelled type silently returns nothing."
+    },
+    {
+      "start": 30,
+      "end": 74,
+      "kind": "value",
+      "name": "useTimelineStore",
+      "id": "s4",
+      "hash": "457b7c50e88458fa",
+      "title": "Loading and pinning timeline events",
+      "what": "Loads one page of events, skipping the request if a load is already running, and adds them to the list unless it is a reset. It also sends pin or unpin requests and updates the matching event on screen once the server accepts the change.",
+      "why": "Likely reason: the server is the source of truth, so the store waits for a successful reply before changing a pin. Reason for the page size of 20 is not stated.",
+      "watch_out": "The more-pages flag only becomes true when a full page of 20 comes back, so a server change to the page size would stop further loading."
+    }
+  ],
+  "explained_at": "2026-11-11T20:24:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the user's health history timeline and lets the app load it page by page, filter it by event type, and pin or unpin events.",
+  "purpose": "Keeps the timeline events, the current page, and the loading state in one place so the timeline screen can show them and stay in sync.",
+  "why": "Likely reason: a long history is loaded in pages of 20 so the app does not fetch everything at once. Reason for the shared store is only described in the header comment.",
+  "how": "First the file loads the shared event type list and the API client. Then it defines the shape of one event and the state the store holds. When a screen asks for events, the store skips the request if one is already running, asks the server for the next page (or page 1 when reset is set), adds the new events to the list, and moves the page counter forward. Pinning sends the change to the server and updates the local copy of that event only after the server accepts it.",
+  "inputs": "From screens: a reset flag and an optional event type for loading, and an event identifier with a true or false pin status for pinning. From the server: a list of events in the data field of the reply.",
+  "outputs": "An updated list of events, the current page number, a flag saying whether more pages exist, and a loading flag. Errors are only written to the console.",
+  "risks": "If a screen changes the filter without requesting a reset, events of the new type are added to the old list. Failed pin changes are not shown to the user. Requests made while a load is running are dropped silently.",
+  "debug": "Check the console for messages saying the timeline or pin failed. Confirm the screen passes reset when the filter changes. If the list stops after 20 events, check whether the server returns fewer events per page than requested, since the more-pages flag depends on a full page.",
+  "summary_hash": "sha256:01730bb68386472d593d6a95b04ae84b27a0dc74bb6f37c95c5b24f4f3c98eea"
+}

@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/timeline/timeline.service.ts",
+  "language": "TypeScript",
+  "lines": 231,
+  "hash": "sha256:d58b50ef336e4bcd259b98000b501d65a2559d94c7bc499bc9441ff3eca0af84",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Limit has no maximum.",
+      "The total count ignores some filters.",
+      "Cache freshness depends on code not visible in this packet.",
+      "No tests are in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Cache",
+      "meaning": "A stored copy of a result kept for fast reuse."
+    },
+    {
+      "term": "Redis",
+      "meaning": "A fast in-memory store often used for caches and job queues."
+    },
+    {
+      "term": "Pagination",
+      "meaning": "Splitting a long list into numbered pages."
+    },
+    {
+      "term": "Timeline event",
+      "meaning": "One entry in the health history, such as a dose taken or a medicine added."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/common",
+    "../../common/database/database.module",
+    "@maate/database",
+    "../../common/redis/redis.service"
+  ],
+  "used_by": [
+    "apps/api/src/modules/timeline/timeline.controller.ts",
+    "apps/api/src/modules/timeline/timeline.module.ts",
+    "apps/api/src/modules/reminder/reminder.controller.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "60395029ad890758",
+      "title": "Imports and setup",
+      "what": "Brings in the logger, the database, the timeline and severity types, and the Redis service.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 11,
+      "end": 19,
+      "kind": "type",
+      "name": "TimelineFilters",
+      "id": "s2",
+      "hash": "dd3ba6f3452a5491",
+      "title": "Timeline filter shape",
+      "what": "Defines the filter options the timeline accepts: page, limit, event type, date range and pinned state.",
+      "why": "Likely reason: one shared shape for the controller and the service.",
+      "watch_out": "This is only a type. Values from the web address are not checked at runtime."
+    },
+    {
+      "start": 20,
+      "end": 74,
+      "kind": "class",
+      "name": "TimelineService (part 1)",
+      "id": "s3",
+      "hash": "b4640fa91d35b2ce",
+      "title": "Reading the timeline page",
+      "what": "Works out the page and limit with defaults, returns a cached result if one exists, otherwise queries the events and the total count, skipping hidden events and applying the filters.",
+      "why": "Likely reason: the cache saves database reads on repeated views.",
+      "watch_out": "The limit has no upper cap, so a very large value is accepted."
+    },
+    {
+      "start": 75,
+      "end": 111,
+      "kind": "class",
+      "name": "TimelineService (part 2)",
+      "id": "s4",
+      "hash": "cfad63ca582297c5",
+      "title": "Saving the page and pinning events",
+      "what": "Builds the reply with page info, saves it to the cache for 2 minutes, and returns it. Pinning updates one event for the user, clears that user's cached timeline pages, and reports whether an event was updated.",
+      "why": "Likely reason: clearing the cache after a pin makes the change appear straight away.",
+      "watch_out": "The total count ignores the date and pin filters, so the total can differ from the events shown for those filters."
+    },
+    {
+      "start": 112,
+      "end": 146,
+      "kind": "class",
+      "name": "TimelineService (part 3)",
+      "id": "s5",
+      "hash": "ba2c87dc0d16c040",
+      "title": "Recording a new timeline event",
+      "what": "Saves one new entry to a user's health timeline, such as an uploaded document or a change to their records, then clears that user's cached timeline so the next view is fresh. Other parts of the app call this when their own data changes.",
+      "why": "Likely reason: keeps the timeline in step with the source data and avoids showing a stale cached copy. The comment confirms other services call it.",
+      "watch_out": "The cache is cleared by a key prefix, so if the cache key naming changes, old timelines can keep showing."
+    },
+    {
+      "start": 147,
+      "end": 202,
+      "kind": "method",
+      "name": "TimelineService: getSummary",
+      "id": "s6",
+      "hash": "1511ce98ba7a4a1b",
+      "title": "Building the timeline summary numbers",
+      "what": "Produces the figures for the timeline header: total visible events, events in the last 30 days, critical or severe events, the date of the latest event, and a count for each event type. It runs five database queries together.",
+      "why": "Likely reason: returns all the summary figures in one request so the page loads faster. Otherwise reason not stated in the code.",
+      "watch_out": "Every count filters out hidden events. A new count that forgets this filter would disagree with the list shown to the user."
+    },
+    {
+      "start": 203,
+      "end": 231,
+      "kind": "class",
+      "name": "TimelineService (part 5)",
+      "id": "s7",
+      "hash": "61580d06da1d3f0a",
+      "title": "Copying older documents into the timeline",
+      "what": "Meant to copy a user's past uploaded documents into the timeline, for a one-time migration or a consistency check. Only documents are handled so far; medications and lab results are a placeholder comment.",
+      "why": "The doc comment says it is for a one-time migration or consistency check.",
+      "watch_out": "The upsert looks for a record by an id it never sets when creating, so every run can add duplicate timeline entries. Do not run it on real data until this is fixed."
+    }
+  ],
+  "explained_at": "2026-11-11T19:59:20+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the health history: reads timeline events in pages with filters, caches each result for 2 minutes, and lets a user pin or unpin an event.",
+  "purpose": "Makes the health history quick to load and lets users keep important events at the top.",
+  "why": "Stated in the comments: the timeline is read-optimized and cached for two minutes.",
+  "how": "Reads the page, limit and filters, checks the cache, and if nothing is cached, queries the events and the total count. It builds the reply with page info and saves it to the cache. Pinning updates one event for the user and clears that user's cached timeline pages.",
+  "inputs": "User id, filter values, event id and pin flag.",
+  "outputs": "A page of events with meta, and a success flag for pinning.",
+  "risks": "The limit has no maximum, so very large requests can strain the database. The total count ignores the date and pin filters, so totals can disagree with the page. The cache can be up to 2 minutes stale if new events are not cleared. Filters are not checked at runtime.",
+  "debug": "If the list looks old, check the user's cache entry and its 2 minute expiry. If totals look wrong, compare the filters used. If pinning does nothing, a success value of false means no event matched the user.",
+  "summary_hash": "sha256:d58b50ef336e4bcd259b98000b501d65a2559d94c7bc499bc9441ff3eca0af84"
+}

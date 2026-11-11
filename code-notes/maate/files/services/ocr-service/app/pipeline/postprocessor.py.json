@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "path": "services/ocr-service/app/pipeline/postprocessor.py",
+  "language": "Python",
+  "lines": 105,
+  "hash": "sha256:8a289ace147f5a5184da61d3d03aabe3b7713f92d7f7b5abaf5dec8dedfa27f3",
+  "area": "services-ocr-service",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Unit fixes are covered by tests.",
+      "Missing label or metadata fields are not handled and will raise an error.",
+      "The prescription path has no tests.",
+      "Pattern rules cover only a few unit shapes and have not been checked against real scans."
+    ]
+  },
+  "terms": [
+    {
+      "term": "OCR",
+      "meaning": "reading printed or handwritten text out of a picture, done by a program"
+    },
+    {
+      "term": "Entity",
+      "meaning": "one item the extraction step found, such as a lab result or a medication"
+    },
+    {
+      "term": "Lookup table",
+      "meaning": "a fixed list where each key maps to one correct answer"
+    },
+    {
+      "term": "Regex",
+      "meaning": "a short pattern language used to match the shape of text"
+    },
+    {
+      "term": "Metadata",
+      "meaning": "the extra details attached to an item, such as its name, value and unit"
+    }
+  ],
+  "depends_on": [
+    "re (Python standard library)",
+    "typing (Python standard library)"
+  ],
+  "used_by": [
+    "services/ocr-service/tests/test_normalizer.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 51,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "52aa3ced4b289a9d",
+      "title": "Lookup table for misread units",
+      "what": "Holds a fixed dictionary of misspelled unit strings and the correct unit each one should become, grouped by unit family.",
+      "why": "Likely reason: the same OCR errors repeat, so a table is a fast and predictable fix.",
+      "watch_out": "All keys are lowercase, so a new entry must also be lowercase or it will never match."
+    },
+    {
+      "start": 52,
+      "end": 105,
+      "kind": "class",
+      "name": "PostProcessor",
+      "id": "s2",
+      "hash": "dfa2791401301e6d",
+      "title": "Class with unit and structuring methods",
+      "what": "Cleans a single unit string by trimming it, swapping look-alike characters, checking the table, and then trying two pattern rules. It also picks the output shape based on the document type.",
+      "why": "Reason not stated in the code beyond the docstrings, which describe repairing OCR misreads.",
+      "watch_out": "Digits are swapped for letters before the table lookup, so a legitimate unit containing a 1 would be changed."
+    }
+  ],
+  "explained_at": "2026-11-11T20:28:02+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns the raw items found by the text-reading step into clean, typed data, and repairs common misread medical units such as mgidl into mg/dL.",
+  "purpose": "Takes the extracted items and shapes them into a list of lab tests or a list of medications that the rest of the app can store and show.",
+  "why": "OCR often reads the slash in a unit as the letter i, the letter l, or the digit 1. A fixed lookup table and simple pattern rules repair the most common mistakes before the data is saved.",
+  "how": "First the unit text is trimmed, lowercased, and has look-alike characters swapped. That result is checked against a fixed table. If it is not in the table, two pattern rules try to rebuild the slash. Then the document type decides whether lab results or medications are collected into a list with a count.",
+  "inputs": "A list of items, each with a label and a metadata dictionary, plus a document type string such as lab_report or prescription. Unit text may be empty or missing.",
+  "outputs": "For lab reports, a dictionary with a tests list and a count. For prescriptions, a dictionary with a medications list and a count. Other document types return the raw items unchanged.",
+  "risks": "A wrong entry in the lookup table silently changes medical units. A unit that truly contains a digit 1 would be altered. Items missing a label or metadata field raise an error instead of being skipped, which can stop the whole list.",
+  "debug": "If a unit looks wrong in the app, first check the raw unit text in the OCR output. Then check the lookup table and the pattern rules in normalize_unit. Run the tests in test_normalizer to see what the function returns for the same input.",
+  "summary_hash": "sha256:8a289ace147f5a5184da61d3d03aabe3b7713f92d7f7b5abaf5dec8dedfa27f3"
+}

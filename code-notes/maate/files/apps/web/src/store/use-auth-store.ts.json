@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "path": "apps/web/src/store/use-auth-store.ts",
+  "language": "TypeScript",
+  "lines": 120,
+  "hash": "sha256:38ac3991dc5d6d9ae8b0584706c1f6f8fdc158a55e20ca242c66877ada2f7acc",
+  "area": "apps-web",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Tokens are kept in browser storage and a readable cookie, which is a security concern for health data.",
+      "The same token is saved in several places, which can drift out of sync.",
+      "Profile loading failures are silent to the user and not sent to the central logger."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Zustand",
+      "meaning": "A small library for sharing state across the app."
+    },
+    {
+      "term": "Persist",
+      "meaning": "Saving the store to browser storage so it survives a page reload."
+    },
+    {
+      "term": "Local storage",
+      "meaning": "A small data store in the browser that survives page reloads."
+    },
+    {
+      "term": "Cookie",
+      "meaning": "A small piece of data the browser stores and sends with each request to the site."
+    },
+    {
+      "term": "Access token",
+      "meaning": "A short-lived key that proves the user is signed in."
+    },
+    {
+      "term": "Caregiver",
+      "meaning": "A person who manages health records for a family member."
+    }
+  ],
+  "depends_on": [
+    "zustand",
+    "@maate/shared-types",
+    "@/lib/api"
+  ],
+  "used_by": [
+    "apps/web/src/lib/api.ts",
+    "apps/web/src/lib/api.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "901c659b46bfcf13",
+      "title": "Store imports and file setup",
+      "what": "Brings in the state library, its save helper, and the shared type definitions for profiles.",
+      "why": "These are the tools needed to build the shared session store.",
+      "watch_out": "Nothing special here."
+    },
+    {
+      "start": 9,
+      "end": 15,
+      "kind": "type",
+      "name": "User",
+      "id": "s2",
+      "hash": "c526e760fd7e63c5",
+      "title": "Who is signed in",
+      "what": "Defines the user record, containing id, email, name, and role.",
+      "why": "Gives the app one clear shape for the signed-in person.",
+      "watch_out": "Changing these fields affects every screen that reads the user."
+    },
+    {
+      "start": 16,
+      "end": 24,
+      "kind": "type",
+      "name": "Profile",
+      "id": "s3",
+      "hash": "2c87baac5d0bf2b4",
+      "title": "Family profile shape",
+      "what": "Defines a profile with id, name, relationship, and optional gender, birth date, and avatar.",
+      "why": "Lets the app show and switch between the user and their family members.",
+      "watch_out": "Date fields can be text or date values, so screens must handle both."
+    },
+    {
+      "start": 25,
+      "end": 38,
+      "kind": "type",
+      "name": "AuthState",
+      "id": "s4",
+      "hash": "e77edf1366948611",
+      "title": "Store contents and actions",
+      "what": "Lists the values held in the store, such as the user, tokens, and viewed profile, and the actions that change them.",
+      "why": "Gives other code a single, clear list of what the session contains and what can change it.",
+      "watch_out": "The refresh token is part of the store, so it is exposed to any component."
+    },
+    {
+      "start": 39,
+      "end": 97,
+      "kind": "value",
+      "name": "useAuthStore (part 1)",
+      "id": "s5",
+      "hash": "98a9d14b93f20d9b",
+      "title": "Sign in, sign out and browser saving",
+      "what": "Starts the store empty. Setting the auth data saves the user and tokens to the store, browser storage, and a cookie, and makes the user's own profile the one being viewed. Logout clears all of these. Profile setting actions are also here.",
+      "why": "Keeps the session in sync everywhere it is needed, so refreshes and other screens see the same signed-in state.",
+      "watch_out": "Logout removes the stored token but the cookie clear depends on an exact string, so changing the cookie setting could leave it behind."
+    },
+    {
+      "start": 98,
+      "end": 120,
+      "kind": "value",
+      "name": "useAuthStore (part 2)",
+      "id": "s6",
+      "hash": "75420ea864e1838d",
+      "title": "Loading family profiles",
+      "what": "Asks the server for the owned and shared family profiles, adds the user's own profile to the front, and saves the list. If the viewed profile is no longer in the list, it switches back to the user's own profile. Errors are printed to the console only.",
+      "why": "Lets a caregiver switch between family members. Falling back to the user's own profile avoids showing a profile the user can no longer access.",
+      "watch_out": "The error is only logged to the console, so the user is not told the family list failed to load."
+    }
+  ],
+  "explained_at": "2026-11-11T20:09:19+00:00",
+  "explained_by": "haiku",
+  "summary": "The shared store that holds who is signed in, their login tokens, the family profile being viewed, and the list of profiles. It saves this in the browser so a refresh keeps the user signed in.",
+  "purpose": "Gives every web screen the current user and session, and provides actions to sign in, sign out, switch profiles, and load family profiles.",
+  "why": "Keeping the session in one shared store means screens and the API client always agree on who is signed in. Saving it in the browser lets the session survive page reloads.",
+  "how": "The store starts empty. Setting the auth data saves the user, tokens, and the viewed profile to the store, browser storage, and a cookie. Logout clears all of them. Fetching profiles asks the server for the owned and shared family profiles, adds the user's own profile, and keeps the viewed profile valid.",
+  "inputs": "User details and tokens after login or refresh, the chosen profile id, and the server profile list.",
+  "outputs": "The current session values and actions, available to any component that reads the store.",
+  "risks": "Tokens are stored in browser storage and in a cookie that scripts can read. The same token is stored in several places, so they can get out of sync. The cookie is set without an expiry check, and clearing it relies on a specific string. Profile loading errors are only printed to the console, so the screen shows no error.",
+  "debug": "If a user appears signed out after a refresh, check the saved storage key and whether the token is still stored. If the wrong family profile is shown, check the selected profile id. If profiles are missing, check the server response and the console for the profile error.",
+  "summary_hash": "sha256:38ac3991dc5d6d9ae8b0584706c1f6f8fdc158a55e20ca242c66877ada2f7acc"
+}

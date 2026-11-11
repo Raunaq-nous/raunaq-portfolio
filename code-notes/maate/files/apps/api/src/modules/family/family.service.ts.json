@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/family/family.service.ts",
+  "language": "TypeScript",
+  "lines": 370,
+  "hash": "sha256:4e4dc43f5b0aeb78c6afb55d53a14d5a075b47b0289e4743df6aa82ff68e2810",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The email lookup reveals which accounts exist to any signed-in user.",
+      "An unknown required access level passes the permission check.",
+      "Tests cover only success paths."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Permission matrix",
+      "meaning": "a table that sets out who may do what to which records."
+    },
+    {
+      "term": "Shadow user",
+      "meaning": "a record with an id and name but no login details, used to link data to a family member who cannot sign in."
+    },
+    {
+      "term": "Audit trail",
+      "meaning": "a saved, dated record of each change and who made it."
+    },
+    {
+      "term": "Push notification",
+      "meaning": "a message sent to the person's phone app."
+    },
+    {
+      "term": "Access level",
+      "meaning": "how much a caregiver may do. The order from lowest to highest is EMERGENCY, VIEW, EDIT, FULL."
+    },
+    {
+      "term": "Transaction",
+      "meaning": "a group of database writes that all succeed together or are all undone."
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/common/database/database.module",
+    "apps/api/src/common/audit/audit.service",
+    "apps/api/src/modules/notification/notification.service",
+    "@maate/database",
+    "@nestjs/common",
+    "express"
+  ],
+  "used_by": [
+    "apps/api/src/modules/family/family.controller.ts",
+    "apps/api/src/modules/family/family.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3b419844f2a859c0",
+      "title": "Imports for family service",
+      "what": "Brings in the error types, logger, database, audit and notification services, the access and relationship lists, and the request type.",
+      "why": "Needed by the service below.",
+      "watch_out": ""
+    },
+    {
+      "start": 18,
+      "end": 67,
+      "kind": "class",
+      "name": "FamilyService (part 1)",
+      "id": "s2",
+      "hash": "15610e979fb67b8c",
+      "title": "Creating a family member profile",
+      "what": "Creates a profile for a family member and, in the same transaction, a matching login-free user record with the same id. The user record has no phone, email or password.",
+      "why": "Likely reason: the code comment says the shadow user is for data links only, so the family member's records can point to a user id without the person being able to sign in.",
+      "watch_out": "The profile and the shadow user must be created together, so any change here must keep them in the same transaction."
+    },
+    {
+      "start": 68,
+      "end": 105,
+      "kind": "class",
+      "name": "FamilyService (part 2)",
+      "id": "s3",
+      "hash": "d3b128d1d7fc1fbe",
+      "title": "Audit entry and caregiver lookup",
+      "what": "Writes an audit entry recording that a profile was created. Then starts sharing access by finding the caregiver account by email and checking that the caller owns the profile.",
+      "why": "Likely reason: every change to access is recorded for accountability.",
+      "watch_out": "The caregiver lookup runs before the ownership check, so the response reveals to any signed-in user whether an email has an account."
+    },
+    {
+      "start": 106,
+      "end": 159,
+      "kind": "method",
+      "name": "FamilyService: if",
+      "id": "s4",
+      "hash": "87e3f4baf600e83b",
+      "title": "Saving caregiver access and audit",
+      "what": "Creates or updates the caregiver's permission for the profile at the requested level, records it in the audit log, then sends an alert to the owner. Notice failures are logged rather than raised.",
+      "why": "Likely reason: a failed notice should not undo access that was already saved.",
+      "watch_out": "The code does not stop a user from sharing a profile with their own account, so the owner can be the grantee."
+    },
+    {
+      "start": 160,
+      "end": 216,
+      "kind": "class",
+      "name": "FamilyService (part 4)",
+      "id": "s5",
+      "hash": "4aa7b19ba45f1c1b",
+      "title": "Caregiver invitation and listing caregivers",
+      "what": "Sends the caregiver an invitation notice, logging any failure, then returns the saved permission. Also lists the caregivers for a profile with their names, emails and avatars, after confirming the caller owns the profile.",
+      "why": "Likely reason: the caregiver is told about the access so they know to look for the profile.",
+      "watch_out": "The caregiver list includes email addresses and avatars, so it must only be returned to the profile owner, which this check enforces."
+    },
+    {
+      "start": 217,
+      "end": 262,
+      "kind": "class",
+      "name": "FamilyService (part 5)",
+      "id": "s6",
+      "hash": "e87582cf98e3a7e9",
+      "title": "Revoking caregiver access",
+      "what": "Confirms ownership, removes the caregiver's permission for the profile, and if one was removed, writes a warning-level audit entry and alerts the owner. Returns whether anything was removed.",
+      "why": "Likely reason: revoking is a sensitive change, so it is logged at warning level.",
+      "watch_out": "If no permission existed, the function returns a success flag of false without raising an error, so callers must check that flag."
+    },
+    {
+      "start": 263,
+      "end": 313,
+      "kind": "class",
+      "name": "FamilyService (part 6)",
+      "id": "s7",
+      "hash": "adca067c20bd1b37",
+      "title": "Revoke notices and deleting a profile",
+      "what": "Sends the revoked caregiver a notice, logging any failure. Then deletes a profile, its permissions and its shadow user together, and writes a warning-level audit entry with the old name and relationship.",
+      "why": "Likely reason: deleting everything in one transaction keeps the profile and its permissions consistent.",
+      "watch_out": "The deletion removes the shadow user, but this file does not show what happens to health records linked to that user, so check the database rules."
+    },
+    {
+      "start": 314,
+      "end": 370,
+      "kind": "method",
+      "name": "FamilyService: getAuthorizedProfiles",
+      "id": "s8",
+      "hash": "50b3bfa17bdcd054",
+      "title": "Listing profiles and checking permission",
+      "what": "Returns the profiles the user owns and the profiles shared with them, with the access level. Also answers whether a user may act on a profile at a required level, always yes for the owner.",
+      "why": "Likely reason: one permission check with a fixed level order keeps the rule in one place.",
+      "watch_out": "An unknown required level makes the check pass because its position is not found, so only levels from the defined list should be passed in."
+    }
+  ],
+  "explained_at": "2026-11-11T19:43:24+00:00",
+  "explained_by": "haiku",
+  "summary": "Core logic for family access: creating managed family member profiles, sharing and revoking caregiver access, listing who has access, deleting profiles, and checking permission levels.",
+  "purpose": "Decides who may see or change each family member's health records, and keeps the audit trail and notices in step with each change.",
+  "why": "Likely reason: caregiver access to health records is sensitive, so every change is checked, audited and notified. The file header calls it a permission matrix.",
+  "how": "1) Adding a member creates the profile and a login-free shadow user together, then writes an audit entry. 2) Sharing finds the caregiver by email, confirms the caller owns the profile, saves the access level, audits it, and notifies both sides. 3) Listing caregivers and revoking use the same ownership check. 4) Revoking removes the permission and, if something was removed, audits and notifies. 5) Deleting removes the permissions, the profile and the shadow user together, then audits. 6) Listing profiles returns owned and shared ones. 7) The permission check says yes to the owner, and otherwise compares the caregiver's level with the required level.",
+  "inputs": "The signed-in user id, member id, grantee id or email, full name, relationship, optional date of birth and gender, requested access level, and request details for the audit.",
+  "outputs": "Created profiles, saved permission records, caregiver lists, success flags, profile lists split into owned and shared, and true or false for permission checks.",
+  "risks": "Sharing looks up the email before checking ownership, so any signed-in user can learn whether an email has an account. The permission check treats an unknown required level as passing, because its position in the list is not found. Deleting a profile removes the shadow user, but this file does not show what happens to records linked to that user. Revoking returns a success flag of false, without an error, when no permission existed.",
+  "debug": "If a caregiver is denied, check their permission record and the access level order in the permission check. If a notice is missing, search the logs for the warning text, since notice failures are logged rather than raised. If records remain after a profile delete, check the database relations for the shadow user. If an email shows as not found, confirm the stored email matches exactly.",
+  "summary_hash": "sha256:4e4dc43f5b0aeb78c6afb55d53a14d5a075b47b0289e4743df6aa82ff68e2810"
+}

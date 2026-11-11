@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/auth/auth.controller.ts",
+  "language": "TypeScript",
+  "lines": 274,
+  "hash": "sha256:3c133b1a61837738e8e5e826a709d8c44efe95778605bc7803e98021c35b44e4",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The development OTP route depends entirely on environment settings being correct.",
+      "No tests for this controller are visible.",
+      "Rate limits use the IP the request reports, which may be a shared proxy address."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Controller",
+      "meaning": "The part of the code that receives web requests at given addresses and hands them to services."
+    },
+    {
+      "term": "Rate limit (throttle)",
+      "meaning": "A cap on how many times an address can be called in a time window, which slows repeated guessing."
+    },
+    {
+      "term": "Access token (JWT)",
+      "meaning": "A signed code that proves who a logged-in user is for a short time."
+    },
+    {
+      "term": "MFA",
+      "meaning": "Multi-factor authentication: an extra check, such as an app code, beyond a password."
+    },
+    {
+      "term": "TOTP",
+      "meaning": "A time-based one-time code, such as the six-digit codes shown in an authenticator app."
+    },
+    {
+      "term": "Decorator",
+      "meaning": "A label written above a function that tells the framework how to treat it, such as marking a route public."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/common",
+    "@nestjs/swagger",
+    "@nestjs/throttler",
+    "express",
+    "apps/api/src/modules/auth/auth.service.ts",
+    "apps/api/src/modules/auth/dto/auth.dto.ts",
+    "apps/api/src/modules/auth/dto/mfa.dto.ts",
+    "apps/api/src/common/auth/jwt-auth.guard.ts",
+    "apps/api/src/modules/auth/services/token.service.ts"
+  ],
+  "used_by": [
+    "apps/api/src/modules/auth/auth.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 20,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "78b1680b8fa78557",
+      "title": "Imports for auth endpoints",
+      "what": "Brings in the tools for routes, API docs, rate limits, the request type, the auth service, the request shapes, and the public and current-user helpers.",
+      "why": "Likely reason: the header says every endpoint is rate-limited, documented, and validated, and these imports provide those features.",
+      "watch_out": ""
+    },
+    {
+      "start": 21,
+      "end": 76,
+      "kind": "class",
+      "name": "AuthController (part 1)",
+      "id": "s2",
+      "hash": "70c2175ee4dfdb62",
+      "title": "Sign-up, login, and one-time codes",
+      "what": "Handles email and password sign-up and login, sending a one-time code, and verifying that code for tokens. Sign-up is limited to 5 per minute and login to 10 per minute, with similar limits on the others.",
+      "why": "Likely reason: the rate limits slow down password guessing and code abuse.",
+      "watch_out": "The IP address comes from the request itself, so behind a proxy many users may appear to share one address."
+    },
+    {
+      "start": 77,
+      "end": 130,
+      "kind": "class",
+      "name": "AuthController (part 2)",
+      "id": "s3",
+      "hash": "ef425e8dfdbc754f",
+      "title": "Dev OTP, social, and biometric login",
+      "what": "Provides a development-only route that returns the latest one-time code for an email. It also handles sign-in with Google or Apple and sign-in with a device's biometric signature. Registering a biometric device requires a logged-in user.",
+      "why": "The development route exists for testing, as its name and summary say. The reason for the others is not stated in the code.",
+      "watch_out": "The development route is public and returns live codes, and it only refuses when ENABLE_DEV_TOOLS is not true or NODE_ENV is production, so a staging server with the flag on exposes codes."
+    },
+    {
+      "start": 131,
+      "end": 182,
+      "kind": "class",
+      "name": "AuthController (part 3)",
+      "id": "s4",
+      "hash": "a22ef3ccdda156ae",
+      "title": "Two-step login (MFA) endpoints",
+      "what": "Creates a TOTP secret and eight backup codes, enables MFA with a first valid code, verifies a code or backup code during login, disables MFA with the password, and reports MFA status.",
+      "why": "Likely reason: an authenticator app adds a second check so a stolen password alone is not enough.",
+      "watch_out": "The MFA verify route is public, so its 5-per-minute limit is what slows guessing of codes."
+    },
+    {
+      "start": 183,
+      "end": 235,
+      "kind": "class",
+      "name": "AuthController (part 4)",
+      "id": "s5",
+      "hash": "3c4a8a4a8f50371e",
+      "title": "Token refresh and password endpoints",
+      "what": "Exchanges a refresh token for new tokens, starts password reset by email, resets a password with a token, and lets a logged-in user change their password.",
+      "why": "Reason not stated in the code beyond the route names and summaries.",
+      "watch_out": "The refresh and reset routes are public, so their protection depends entirely on checks inside the auth service."
+    },
+    {
+      "start": 236,
+      "end": 274,
+      "kind": "class",
+      "name": "AuthController (part 5)",
+      "id": "s6",
+      "hash": "ae7c042c596e7a07",
+      "title": "Sessions, logout, and account deletion",
+      "what": "Lists active sessions, revokes one session, logs out the current session or all sessions, and deletes the account. The deletion is labeled as GDPR and DPDP compliance.",
+      "why": "The summary text says the deletion supports GDPR and DPDP privacy rules. The other reasons are not stated in the code.",
+      "watch_out": "Account deletion asks for no password or confirmation in this file, so its safety depends on the auth service."
+    }
+  ],
+  "explained_at": "2026-11-11T19:33:57+00:00",
+  "explained_by": "haiku",
+  "summary": "The entry point for all login, sign-up, code, password, two-step login, and session endpoints. It checks rate limits and input, then passes each request to the auth service.",
+  "purpose": "Maps web addresses to the matching auth actions, so the app's login features can be reached.",
+  "why": "Likely reason: the controller only handles requests and responses, and the auth service holds the actual rules. The header says all endpoints are rate-limited, documented, and validated.",
+  "how": "1. A request arrives at an auth address. 2. Rate limits and input checks run. 3. The controller passes the user, IP address, and user agent to the auth service. 4. The service's reply is returned. The development OTP route is the one exception: it returns a code only when the dev tools flag is on and the environment is not production.",
+  "inputs": "Request bodies described by DTO files, the user ID from the access token, the IP address, and the user agent header.",
+  "outputs": "Whatever the auth service returns, such as tokens, session lists, or status results. The development route returns a one-time code.",
+  "risks": "The development OTP route is public and returns live codes if the dev flag is on outside production. Biometric login is public and relies on the service to check signatures. Refresh and reset endpoints are public, so their safety depends on the service. Account deletion asks for nothing extra in this file.",
+  "debug": "A 429 response means a rate limit was hit, so wait for the window to pass. A 401 on a public route suggests the public marker is missing. Check ENABLE_DEV_TOOLS and NODE_ENV if the dev OTP route behaves oddly. Read the auth service for the rule behind any error message.",
+  "summary_hash": "sha256:3c133b1a61837738e8e5e826a709d8c44efe95778605bc7803e98021c35b44e4"
+}

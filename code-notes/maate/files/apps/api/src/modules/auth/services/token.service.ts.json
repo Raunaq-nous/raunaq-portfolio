@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/auth/services/token.service.ts",
+  "language": "TypeScript",
+  "lines": 205,
+  "hash": "sha256:e75220c4dc8058f6ee26842aadb9d835cae29af3720ff9bff16851b55283192c",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Access tokens cannot be revoked before they expire.",
+      "Reuse detection may sign out users after network retries.",
+      "Cleanup scheduling is not visible in this packet.",
+      "No tests are visible in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "access token",
+      "meaning": "a short-lived token sent with each request to prove who is asking"
+    },
+    {
+      "term": "refresh token",
+      "meaning": "a longer-lived token used only to get a new access token"
+    },
+    {
+      "term": "JWT",
+      "meaning": "a signed token that carries a short list of facts about the user"
+    },
+    {
+      "term": "rotation",
+      "meaning": "replacing a refresh token with a new one each time it is used"
+    },
+    {
+      "term": "family",
+      "meaning": "a group of refresh tokens that all came from one sign-in"
+    },
+    {
+      "term": "SHA-256",
+      "meaning": "a one-way scrambling method used to store tokens without revealing them"
+    }
+  ],
+  "depends_on": [
+    "@nestjs/jwt",
+    "@nestjs/config",
+    "apps/api/src/common/database/database.module.ts",
+    "@maate/database"
+  ],
+  "used_by": [
+    "apps/api/src/modules/auth/auth.service.ts",
+    "apps/api/src/modules/auth/services/oauth.service.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "51469fe17d653c70",
+      "title": "Imports for tokens and hashing",
+      "what": "Brings in JWT signing, configuration, random bytes, hashing, the database and the revoke reason labels.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 15,
+      "end": 24,
+      "kind": "type",
+      "name": "JwtPayload",
+      "id": "s2",
+      "hash": "950cc4bf64acee06",
+      "title": "Shape of the access token contents",
+      "what": "Describes the facts stored inside an access token: user ID, email, phone, role and session ID, plus timing fields.",
+      "why": "Likely reason: the app reads the user and session from the token without a database lookup on each request.",
+      "watch_out": "The access token carries email and phone in readable form, so it must stay out of logs."
+    },
+    {
+      "start": 25,
+      "end": 82,
+      "kind": "class",
+      "name": "TokenService (part 1)",
+      "id": "s3",
+      "hash": "59741e3eaf09a720",
+      "title": "Making a token pair",
+      "what": "Creates a signed access token and a random refresh token. The refresh token is stored only as a hash, grouped into a family, and expires after a set number of days.",
+      "why": "Likely reason: storing a hash means a leaked database cannot be used to sign in.",
+      "watch_out": "The raw refresh token is returned only once, so a client that loses it must sign in again."
+    },
+    {
+      "start": 83,
+      "end": 127,
+      "kind": "method",
+      "name": "TokenService: refreshAccessToken",
+      "id": "s4",
+      "hash": "12cdefd4a99f4ec8",
+      "title": "Refreshing with reuse detection",
+      "what": "Looks up a presented refresh token by its hash, and rejects unknown, expired or revoked tokens with messages that depend on why they were revoked. If a rotated token is reused, it revokes the whole family as a theft response.",
+      "why": "Likely reason: a reused old token suggests it was stolen, so the whole family is cut off.",
+      "watch_out": "A legitimate client that retries a refresh after a network drop would trigger this and lose the whole family."
+    },
+    {
+      "start": 128,
+      "end": 185,
+      "kind": "method",
+      "name": "TokenService: if",
+      "id": "s5",
+      "hash": "bfb3ed85f9bc9fac",
+      "title": "Rotating refresh tokens, checking access, revoking all",
+      "what": "Checks the user is still active, marks the used refresh token as rotated, updates the latest session's last-active time, and issues a new pair in the same family. Also checks access tokens against the JWT secret and revokes all of a user's refresh tokens.",
+      "why": "Likely reason: rotation keeps each refresh token one-time use, and revoke-all supports logout and account deletion.",
+      "watch_out": "Revoking tokens does not invalidate access tokens already issued, which stay valid until they expire."
+    },
+    {
+      "start": 186,
+      "end": 205,
+      "kind": "method",
+      "name": "TokenService: revokeTokenFamily",
+      "id": "s6",
+      "hash": "f71689c3b3b8d7c0",
+      "title": "Revoking one family and cleaning up",
+      "what": "Revokes all refresh tokens in one family. A cleanup method deletes expired refresh tokens and revoked ones older than seven days.",
+      "why": "Likely reason: the cleanup stops the token table from growing forever.",
+      "watch_out": "Cleanup deletes revoked tokens by creation date after seven days, which removes the reuse evidence for those tokens."
+    }
+  ],
+  "explained_at": "2026-11-11T19:36:51+00:00",
+  "explained_by": "haiku",
+  "summary": "Creates, rotates, checks and revokes sign-in tokens, and detects reuse of a refresh token that was already rotated.",
+  "purpose": "Keeps users signed in with short access tokens and longer refresh tokens.",
+  "why": "Likely reason: short-lived access tokens with rotating refresh tokens limit the damage if one token leaks. The header names this as a theft guard.",
+  "how": "Creates a signed access token and a random refresh token. Stores only a hash of the refresh token, grouped into a family. On refresh, checks the token, revokes it, and issues a new pair in the same family. If a rotated token is reused, revokes the whole family. Logout and deletion revoke all tokens. A cleanup method deletes expired tokens and old revoked ones.",
+  "inputs": "User details, session IDs, refresh token strings, user IDs, revoke reasons, and settings JWT_REFRESH_DAYS, JWT_ACCESS_EXPIRY_SECONDS and JWT_SECRET.",
+  "outputs": "Access token, refresh token and expiry in seconds. Decoded token contents. Changed refresh token rows in the database. Log lines for reuse and cleanup.",
+  "risks": "A network retry that sends an old refresh token can trigger reuse detection and sign the user out of the family. Signing does not pass the secret explicitly, so it relies on the JWT module setup. Revoking does not stop access tokens already issued. Cleanup removes revoked tokens after seven days, which ends the reuse history.",
+  "debug": "If a user is signed out early, check their refresh token rows for revokedReason and family, and look for a reuse warning in the logs. For expiry, check expiresAt. For cleanup, the log prints how many rows were removed. Confirm the scheduled job that calls the cleanup method (not in this file).",
+  "summary_hash": "sha256:e75220c4dc8058f6ee26842aadb9d835cae29af3720ff9bff16851b55283192c"
+}

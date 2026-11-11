@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "path": "services/ai-service/app/main.py",
+  "language": "Python",
+  "lines": 132,
+  "hash": "sha256:6afc3d3035245ff7be92f16a9d3752aa3df25c6835ab65b9b69dfceeaac4c2c4",
+  "area": "services-ai-service",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No authentication is visible in this file.",
+      "Cross-origin rules allow every origin.",
+      "Internal error text is sent back to callers.",
+      "No tests are visible for these endpoints."
+    ]
+  },
+  "terms": [
+    {
+      "term": "FastAPI",
+      "meaning": "a Python framework for building web endpoints"
+    },
+    {
+      "term": "Endpoint",
+      "meaning": "a web address that performs a specific action when called"
+    },
+    {
+      "term": "CORS",
+      "meaning": "a browser rule that controls which websites may call this service"
+    },
+    {
+      "term": "Pydantic model",
+      "meaning": "a class that defines and checks the fields of a request"
+    },
+    {
+      "term": "Lifespan",
+      "meaning": "startup and shutdown steps that run once per server run"
+    }
+  ],
+  "depends_on": [
+    "fastapi",
+    "pydantic",
+    "services/ai-service/app/summarizer/engine.py",
+    "services/ai-service/app/chatbot/engine.py",
+    "services/ai-service/app/embeddings/engine.py",
+    "services/ai-service/app/config.py"
+  ],
+  "used_by": [
+    "Not visible in the packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7ee7ecc2fab3d972",
+      "title": "Imports and logger for the AI service",
+      "what": "Loads the web framework, the three engines, the settings, and the logger.",
+      "why": "Needed to connect the endpoints to the engines. Reason beyond this is not stated.",
+      "watch_out": "The engines are imported at startup, so a broken import in any of them stops the whole service from starting."
+    },
+    {
+      "start": 20,
+      "end": 47,
+      "kind": "function",
+      "name": "lifespan",
+      "id": "s2",
+      "hash": "b5eccef150722e77",
+      "title": "Startup routine and app setup",
+      "what": "On startup, tries to pre-load the embedding model so the first search is quick, and logs a warning if that fails while still starting the service. It then creates the app and allows requests from any origin.",
+      "why": "Likely reason: the code comment says pre-loading makes the first request fast. Reason for open origins is not stated.",
+      "watch_out": "A failed model pre-load is only a warning, so the service can start and then fail on its first embedding request."
+    },
+    {
+      "start": 48,
+      "end": 55,
+      "kind": "class",
+      "name": "SummarizeRequest",
+      "id": "s3",
+      "hash": "e5fbc328c01ee574",
+      "title": "Summary request shape",
+      "what": "Defines what a summary request must contain: a document identifier and type, optional structured data or raw text, and a locale that defaults to Indian English.",
+      "why": "Likely reason: lets the server reject malformed requests before any work starts. Reason for the default locale is not stated.",
+      "watch_out": "The document type is free text, and anything unrecognized falls back to lab report handling in the summarizer."
+    },
+    {
+      "start": 56,
+      "end": 59,
+      "kind": "class",
+      "name": "EmbeddingsRequest",
+      "id": "s4",
+      "hash": "65689952550a2916",
+      "title": "Embeddings request shape",
+      "what": "Defines an embeddings request as a list of texts.",
+      "why": "Likely reason: the embeddings endpoint works on a batch of texts at once.",
+      "watch_out": "The list has no size limit here, so a very large batch can use a lot of memory or time."
+    },
+    {
+      "start": 60,
+      "end": 70,
+      "kind": "class",
+      "name": "ChatRequest",
+      "id": "s5",
+      "hash": "11624baf05b05eb5",
+      "title": "Chat request shape",
+      "what": "Defines a chat request: session, user, message, optional recent history, optional retrieved excerpts and health profile, and a context type and reference that default to general and empty.",
+      "why": "Likely reason: lets the chatbot answer with the patient's records in view. Reason for the context fields is not stated.",
+      "watch_out": "The context type and reference are accepted but never passed to the chatbot in this file, so setting them has no effect."
+    },
+    {
+      "start": 71,
+      "end": 75,
+      "kind": "function",
+      "name": "health_check",
+      "id": "s6",
+      "hash": "b9f40dcbc8fdd6d4",
+      "title": "Health check endpoint",
+      "what": "Returns the service name, a healthy status, and the embedding model name. It lets someone confirm the service is running.",
+      "why": "Likely reason: a standard way for hosting platforms or monitoring tools to check the service. Reason not stated.",
+      "watch_out": "It does not test the model or the outside API keys, so it can report healthy while those are broken."
+    },
+    {
+      "start": 76,
+      "end": 94,
+      "kind": "function",
+      "name": "generate_embeddings",
+      "id": "s7",
+      "hash": "2f6ab2553c9d152c",
+      "title": "Embeddings endpoint",
+      "what": "Takes a list of texts and returns one vector for each, along with the count, the number of dimensions, and the model name. Any failure becomes a server error with its message.",
+      "why": "Likely reason: other services need vectors for search. Reason for the error wrapping is not stated.",
+      "watch_out": "The error reply includes internal exception text, which can reveal details to callers."
+    },
+    {
+      "start": 95,
+      "end": 114,
+      "kind": "function",
+      "name": "summarize_document",
+      "id": "s8",
+      "hash": "7c1c4980f83261ed",
+      "title": "Summary endpoint",
+      "what": "Passes the structured data to the summarizer, adds the raw text if no test list is present, and returns the summary. Any failure becomes a server error.",
+      "why": "Likely reason: the summarizer does the AI work and this function only connects it. Reason for the raw text fallback is not stated.",
+      "watch_out": "The structured data dictionary is changed in place when raw text is added, which can surprise any later use of that same data."
+    },
+    {
+      "start": 115,
+      "end": 132,
+      "kind": "function",
+      "name": "chat",
+      "id": "s9",
+      "hash": "c9f50df228f85495",
+      "title": "Chat endpoint",
+      "what": "Passes a chat message and its context to the chatbot and returns the reply. Two web addresses lead to this same function. Any failure becomes a server error.",
+      "why": "Likely reason: the second address may exist for an older caller. The code does not say.",
+      "watch_out": "The context type and reference from the request are not forwarded, so the chatbot cannot use them."
+    }
+  ],
+  "explained_at": "2026-11-11T20:24:19+00:00",
+  "explained_by": "haiku",
+  "summary": "The web entry point of the AI service. It starts the server and defines endpoints for health checks, embeddings, document summaries, and chat.",
+  "purpose": "Receives requests from other services and passes each one to the right engine.",
+  "why": "Likely reason: a standard FastAPI layout with one endpoint per task. Reason for allowing every origin is not stated.",
+  "how": "First it sets up the app with a startup routine that pre-loads the embedding model, then allows cross-origin requests from any origin. It defines the shape of each request body. Then it defines a health check and three working endpoints: embeddings, summary, and chat. Each calls the matching engine and wraps the reply in a data field. Failures become server errors that carry the error message.",
+  "inputs": "JSON request bodies: texts for embeddings, structured data or raw text for summaries, and session, user, message, history, and excerpts for chat.",
+  "outputs": "JSON replies in a data field, or a server error with a message.",
+  "risks": "No login check is visible in this file, so access control must come from somewhere else. Any browser origin may call the service. Error messages include internal details. The chat endpoint is registered under two web addresses.",
+  "debug": "Start with the health endpoint to confirm the server is running. If a request is rejected with a validation error, compare the body with the matching request shape. Server logs contain the full stack trace for each failure.",
+  "summary_hash": "sha256:6afc3d3035245ff7be92f16a9d3752aa3df25c6835ab65b9b69dfceeaac4c2c4"
+}

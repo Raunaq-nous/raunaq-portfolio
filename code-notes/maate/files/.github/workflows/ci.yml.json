@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "path": ".github/workflows/ci.yml",
+  "language": "Automation workflow",
+  "lines": 158,
+  "hash": "sha256:640692a92194487505ce1e46e1abd04ea7219a05b15010e2ca2e8ffd4491190a",
+  "area": "github",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The security audit can never fail the build.",
+      "The Python tests have no supporting services.",
+      "No run results were reviewed here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "GitHub Actions",
+      "meaning": "GitHub's automation service that runs jobs defined in a YAML file"
+    },
+    {
+      "term": "Job",
+      "meaning": "a group of steps that run together on one machine"
+    },
+    {
+      "term": "Pull request",
+      "meaning": "a request to merge changes from one branch into another"
+    },
+    {
+      "term": "Frozen lockfile",
+      "meaning": "an install mode that refuses to change the exact dependency versions"
+    }
+  ],
+  "depends_on": [
+    "package.json",
+    "pnpm",
+    "services/ocr-service/requirements.txt",
+    "services/ai-service/requirements.txt",
+    "apps/api/Dockerfile"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 34,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "8559605ac34f929c",
+      "title": "Quality checks job",
+      "what": "Installs packages, then runs lint, typecheck and the format check.",
+      "why": "Stops style and type errors early.",
+      "watch_out": ""
+    },
+    {
+      "start": 35,
+      "end": 93,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "c4ee731294c8ce1d",
+      "title": "Unit tests and Python setup",
+      "what": "Starts Postgres and Redis for the Node test suite and runs it. Also sets up Python for the Python test job.",
+      "why": "Some tests need real services running.",
+      "watch_out": "The Python test job has no database or Redis, so it can fail if its tests need them."
+    },
+    {
+      "start": 94,
+      "end": 141,
+      "kind": "setup",
+      "name": "File setup (part 3)",
+      "id": "s3",
+      "hash": "ddb6c9b008c1160a",
+      "title": "Python tests, security scan, and build",
+      "what": "Installs the OCR and AI requirements and runs their tests. Runs a security audit that reports but never fails. Builds all packages after the others pass.",
+      "why": "Holds the build behind the tests.",
+      "watch_out": "The audit step ignores its own failures, so high-risk findings do not block a merge."
+    },
+    {
+      "start": 142,
+      "end": 158,
+      "kind": "setup",
+      "name": "File setup (part 4)",
+      "id": "s4",
+      "hash": "f1fa70ecbddaeb72",
+      "title": "Docker image build on main",
+      "what": "On the main branch only, builds the API container image without pushing it anywhere.",
+      "why": "Confirms the image still builds.",
+      "watch_out": "Images are not pushed, so this job does not produce anything deployable."
+    }
+  ],
+  "explained_at": "2026-11-11T20:28:02+00:00",
+  "explained_by": "haiku",
+  "summary": "GitHub Actions workflow that runs checks on pushes and pull requests: lint, types, format, unit tests, Python tests, a security scan, a build, and a Docker build on main.",
+  "purpose": "Catches broken code before it is merged.",
+  "why": "Likely reason: automatic checks keep the main branch healthy.",
+  "how": "The quality job runs first. Unit tests and the security scan wait for it. Python tests run in their own job. The build waits for the tests, Python tests and security scan. The Docker build runs only on main, after the build.",
+  "inputs": "Pushes to main or develop, pull requests to main, and the repository code.",
+  "outputs": "A pass or fail result for each job in GitHub.",
+  "risks": "The security audit ends with a step that ignores failures, so it never blocks. The Python test job has no database or cache, so tests that need them may fail. The Docker build does not push images.",
+  "debug": "Open the failing job in GitHub Actions and read the first failed step. Reproduce it locally with the matching make command.",
+  "summary_hash": "sha256:640692a92194487505ce1e46e1abd04ea7219a05b15010e2ca2e8ffd4491190a"
+}

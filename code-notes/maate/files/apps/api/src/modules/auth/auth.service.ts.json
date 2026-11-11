@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/auth/auth.service.ts",
+  "language": "TypeScript",
+  "lines": 662,
+  "hash": "sha256:2b8a93adcaa3b85dd9585a3e8a6791ba5a5361d4a48eb7d3f789357cfaf1ab76",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "One-time codes are written to logs in plain text.",
+      "Biometric sign-in never checks the signature, so a session ID alone can sign in.",
+      "Disabling two-factor does not check the optional code.",
+      "Password reset emails and text messages are still to-dos.",
+      "A spec file exists, but it covers only some of these paths."
+    ]
+  },
+  "terms": [
+    {
+      "term": "API",
+      "meaning": "a doorway other programs use to ask this app for data or actions"
+    },
+    {
+      "term": "JWT",
+      "meaning": "a signed token that carries a short list of facts, such as who the user is"
+    },
+    {
+      "term": "access token",
+      "meaning": "a short-lived token sent with each request to prove who is asking"
+    },
+    {
+      "term": "refresh token",
+      "meaning": "a longer-lived token used only to get a new access token"
+    },
+    {
+      "term": "OTP",
+      "meaning": "a one-time code, here six digits, that expires quickly and works once"
+    },
+    {
+      "term": "TOTP",
+      "meaning": "a code from an authenticator app that changes every 30 seconds"
+    },
+    {
+      "term": "audit log",
+      "meaning": "a record of who did what and when"
+    },
+    {
+      "term": "Prisma",
+      "meaning": "the tool the code uses to read and write the database"
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/modules/auth/services/otp.service.ts",
+    "apps/api/src/modules/auth/services/token.service.ts",
+    "apps/api/src/modules/auth/services/password.service.ts",
+    "apps/api/src/modules/auth/services/oauth.service.ts",
+    "apps/api/src/modules/auth/services/totp.service.ts",
+    "apps/api/src/modules/auth/dto/mfa.dto.ts",
+    "apps/api/src/modules/notification/mail.service.ts",
+    "apps/api/src/common/database/database.module.ts",
+    "@nestjs/common",
+    "@nestjs/jwt",
+    "@maate/database"
+  ],
+  "used_by": [
+    "Auth controller files, not in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6dafcf3dcc0edec3",
+      "title": "Imports and building blocks",
+      "what": "Brings in the NestJS error types, JWT signing, the database layer, and the OTP, token, password, OAuth, mail and two-factor helpers. Also brings in the two-factor input shapes.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 26,
+      "end": 76,
+      "kind": "class",
+      "name": "AuthService (part 1)",
+      "id": "s2",
+      "hash": "6ce978e4191ab2eb",
+      "title": "Setup and start of email sign-up",
+      "what": "Defines the AuthService and its helpers, then starts email and password sign-up. It rejects an existing email or phone, hashes the password, creates the user and opens a session.",
+      "why": "Reason not stated in the code. The steps follow a common order: create the account, open a session, then issue tokens.",
+      "watch_out": ""
+    },
+    {
+      "start": 77,
+      "end": 128,
+      "kind": "method",
+      "name": "AuthService: for",
+      "id": "s3",
+      "hash": "67f6a52c7f3bddd8",
+      "title": "Recording consent and sending a welcome code",
+      "what": "Saves one consent record for each purpose the user agreed to, with the IP and device. Then emails a six-digit verification code to the new user.",
+      "why": "Likely reason: privacy rules require a record of what the user agreed to, and the code confirms the email address.",
+      "watch_out": "The verification code is written to the logs in plain text, and the consent list comes from the client without checking its values."
+    },
+    {
+      "start": 129,
+      "end": 188,
+      "kind": "method",
+      "name": "AuthService: if",
+      "id": "s4",
+      "hash": "40c7af2afc11520c",
+      "title": "Password login checks and the two-factor gate",
+      "what": "Checks the account is active and not locked, verifies the password, and records failed tries. If two-factor is on, it returns a short-lived challenge instead of signing the user in.",
+      "why": "Likely reason: a password alone should not be enough when two-factor is switched on.",
+      "watch_out": "The lock check runs before the password check, so anyone who knows an email can learn whether that account is locked."
+    },
+    {
+      "start": 189,
+      "end": 241,
+      "kind": "class",
+      "name": "AuthService (part 4)",
+      "id": "s5",
+      "hash": "5f0ce152503cfed8",
+      "title": "Finishing login and sending a code by email",
+      "what": "Finishes password login by opening a session and issuing tokens. Sends a one-time code by email, while sending by text message is still a to-do. A development helper returns the live code.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The development helper getDevLastOtp returns the live code, so it must not be reachable in production."
+    },
+    {
+      "start": 242,
+      "end": 295,
+      "kind": "method",
+      "name": "AuthService: if",
+      "id": "s6",
+      "hash": "2147073bd1a3ea73",
+      "title": "First-time code login and biometric setup",
+      "what": "Creates an account for an unknown phone or email, marks that contact as verified, and issues tokens. Also stores a device biometric key as a new session.",
+      "why": "Likely reason: one-time code sign-in also works as sign-up, so new users need no separate step.",
+      "watch_out": "Biometric setup stores whatever key text it receives without checking that it is a valid public key."
+    },
+    {
+      "start": 296,
+      "end": 351,
+      "kind": "method",
+      "name": "AuthService: biometricLogin",
+      "id": "s7",
+      "hash": "e674ceaf40fe42d5",
+      "title": "Biometric sign-in and password reset",
+      "what": "Signs a user in from a stored device session without using the signature it receives. Password reset creates a token and returns the same message either way, but the reset email is still a to-do.",
+      "why": "Likely reason: the same reset message for every request stops people learning which emails have accounts.",
+      "watch_out": "The signature is never checked, so anyone who has an active biometric session ID can sign in."
+    },
+    {
+      "start": 352,
+      "end": 401,
+      "kind": "method",
+      "name": "AuthService: refreshToken",
+      "id": "s8",
+      "hash": "602aacdf920f4239",
+      "title": "Token refresh, sessions and sign-out",
+      "what": "Passes refresh requests to the token service, lists active sessions, ends one session, or ends all sessions.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Signing out one session also revokes every refresh token the user has, so signing out one device signs out all of them."
+    },
+    {
+      "start": 402,
+      "end": 450,
+      "kind": "method",
+      "name": "AuthService: setupMfa",
+      "id": "s9",
+      "hash": "6d6331da79dd2bde",
+      "title": "Starting two-factor setup",
+      "what": "Creates an encrypted authenticator secret and eight backup codes, storing only scrambled backup codes. Returns the plain secret, a setup link and the plain backup codes once, and leaves two-factor off until it is confirmed.",
+      "why": "Likely reason: two-factor only switches on after the user proves the app generates matching codes.",
+      "watch_out": "The plain secret and backup codes are sent back in the response and must never be logged or stored in plain text."
+    },
+    {
+      "start": 451,
+      "end": 493,
+      "kind": "method",
+      "name": "AuthService: if",
+      "id": "s10",
+      "hash": "4c4fa3114b66f6b8",
+      "title": "Switching on two-factor and the challenge check",
+      "what": "Confirms a six-digit code against the saved secret, blocks reuse of the same code, then turns two-factor on. Also checks that the challenge token from password login is genuine and meant for two-factor.",
+      "why": "Likely reason: a code that was just used must not be accepted again, so a stolen code cannot be replayed.",
+      "watch_out": "The reuse block depends on the stored last-used step number, so that value must be saved with every accepted code."
+    },
+    {
+      "start": 494,
+      "end": 552,
+      "kind": "method",
+      "name": "AuthService: if",
+      "id": "s11",
+      "hash": "012c8d9cad91436b",
+      "title": "Checking a two-factor code or backup code",
+      "what": "Accepts an authenticator code unless it was already used, otherwise tries a backup code, which works only once. Then records the login and issues tokens. Also starts the step that turns two-factor off by checking the password.",
+      "why": "Likely reason: backup codes let users in when their phone is lost.",
+      "watch_out": "No failed-attempt counter or lockout applies to two-factor codes here, so resistance to guessing depends on limits elsewhere."
+    },
+    {
+      "start": 553,
+      "end": 599,
+      "kind": "method",
+      "name": "AuthService: if",
+      "id": "s12",
+      "hash": "fc2f8f22fcd4206c",
+      "title": "Turning off two-factor and reading its status",
+      "what": "Turns off two-factor after the password is confirmed, keeping the saved secret and backup codes. Reports whether two-factor is on and how many backup codes remain. Also starts account deletion by removing the user's documents and their extracted data.",
+      "why": "Likely reason: keeping the secret means turning two-factor back on later needs no new setup.",
+      "watch_out": "The optional code in the disable request is never checked, so the password alone turns off two-factor."
+    },
+    {
+      "start": 600,
+      "end": 656,
+      "kind": "method",
+      "name": "AuthService: if",
+      "id": "s13",
+      "hash": "d3ebb739bb206407",
+      "title": "Erasing clinical data and anonymizing the account",
+      "what": "Deletes the user's chat history, timeline, vitals, symptoms, conditions, medicines, doctor notes, reminders, shares, family links, consents and two-factor setup. Replaces the name, email and phone with placeholders and marks the account inactive, then ends all sessions and tokens. Also holds a helper that hides password and lock fields before data is returned.",
+      "why": "Likely reason: privacy rules require personal and clinical data to be erased while the account record is kept.",
+      "watch_out": "Consent records are deleted here, so proof of past consent is gone after erasure, which may matter for audits."
+    },
+    {
+      "start": 657,
+      "end": 662,
+      "kind": "method",
+      "name": "AuthService: logAudit",
+      "id": "s14",
+      "hash": "156ffda6e4e33ed6",
+      "title": "Writing the audit trail",
+      "what": "Writes one audit log row for each important action, with the user, action, related record, IP and device. A failed write is logged as an error but does not stop the action.",
+      "why": "Likely reason: records who did what for compliance review, and failures are kept from blocking the main action.",
+      "watch_out": "Because a failed audit write does not stop the action, an action can succeed with no audit record."
+    }
+  ],
+  "explained_at": "2026-11-11T19:36:51+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the main sign-in, sign-up, one-time code, two-factor, session and account deletion logic for the Maate API.",
+  "purpose": "Central place where the auth module does its work. Other parts of the API call its methods.",
+  "why": "The file header says it is the full business logic for password, code, Google and Apple, biometric and session handling. Reason beyond that not stated in the code.",
+  "how": "First, check the request against stored users and rules. For password login, check the lockout, then the password, then the two-factor gate. Next, create a session and issue access and refresh tokens. Last, write an audit entry. Separate methods handle codes, Google and Apple sign-in, biometric sign-in, password reset, session management, two-factor setup and checks, and account erasure.",
+  "inputs": "Request data such as email, password, phone, one-time codes, provider ID tokens, two-factor codes, challenge tokens, session IDs and device details. The IP address and user agent are passed in with each call.",
+  "outputs": "User details without secret fields, access and refresh tokens, a flag for new users, challenge information, session lists and short success messages. Changes rows in the database and stores codes through the OTP service.",
+  "risks": "One-time codes are written to logs. Biometric sign-in ignores the signature. Disabling two-factor needs only the password. Signing out one session revokes every token the user has. Account erasure removes clinical and consent data permanently. Password reset emails and text messages are not sent yet. A development helper can return the live code. Audit write failures are only logged.",
+  "debug": "Start with the audit log table: each action writes a row with the action name, user and IP. For sign-in failures, check the user row for failedAttempts and lockedUntil. For two-factor problems, check the userMfa row for isEnabled and lastUsedStep. For code problems, check the Redis entry with the otp prefix. The logs show messages from this file, including the code printed at sign-up and during code sends.",
+  "summary_hash": "sha256:2b8a93adcaa3b85dd9585a3e8a6791ba5a5361d4a48eb7d3f789357cfaf1ab76"
+}

@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/main.ts",
+  "language": "TypeScript",
+  "lines": 140,
+  "hash": "sha256:d37f32ca678550331773be82568cd3f94e0323994f5f0404403d6f82fae8bf71",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The secret check is skipped when NODE_ENV is missing.",
+      "The placeholder list is short, so other weak secrets pass.",
+      "No tests for startup behavior are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Environment variable",
+      "meaning": "A named setting supplied outside the code, such as a secret key or port number."
+    },
+    {
+      "term": "CORS",
+      "meaning": "A browser rule about which websites may call this API. Setting it controls which sites can use the app."
+    },
+    {
+      "term": "Helmet",
+      "meaning": "A library that adds security headers to web responses."
+    },
+    {
+      "term": "Validation pipe",
+      "meaning": "A step that checks incoming data against its rules and removes or rejects unexpected fields."
+    },
+    {
+      "term": "Graceful shutdown",
+      "meaning": "A way to stop the server that finishes current work before exiting."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/common",
+    "@nestjs/config",
+    "@nestjs/core",
+    "@nestjs/swagger",
+    "helmet",
+    "nestjs-pino",
+    "apps/api/src/app.module.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "bdbd4193fc54f794",
+      "title": "Imports and BigInt JSON support",
+      "what": "Loads the framework, security headers, logger, and root module. It also makes big whole numbers, such as file sizes, convertible into JSON.",
+      "why": "The header comment says this is for database file sizes that are stored as big numbers.",
+      "watch_out": "This patch is global, so it changes how every big-number value is written in every response, and very large values can lose precision."
+    },
+    {
+      "start": 19,
+      "end": 59,
+      "kind": "function",
+      "name": "bootstrap",
+      "id": "s2",
+      "hash": "531c42fd720ebaa4",
+      "title": "Startup secret safety check",
+      "what": "Reads the port, and outside development checks that the JWT, refresh, and MFA secrets are each at least 32 characters and not template placeholders. If one fails, the app stops with an error naming it.",
+      "why": "Likely reason: stops the app from running in shared or live environments with weak or sample secrets.",
+      "watch_out": "The check is skipped when NODE_ENV is missing, because that value defaults to development."
+    },
+    {
+      "start": 60,
+      "end": 108,
+      "kind": "route",
+      "name": "use (part 1)",
+      "id": "s3",
+      "hash": "9f3e107735c3735a",
+      "title": "Security, CORS, and validation setup",
+      "what": "Adds security headers, sets which website origins may call the API, and adds the api prefix and version 1 to routes. It also applies strict input checks that remove unexpected fields and reject them.",
+      "why": "Likely reason: protects against unsafe requests from browsers and malformed data.",
+      "watch_out": "Requests with no origin header are always allowed, and an empty CORS_ORIGINS setting blocks every browser."
+    },
+    {
+      "start": 109,
+      "end": 140,
+      "kind": "route",
+      "name": "use (part 2)",
+      "id": "s4",
+      "hash": "1e09b8103fe6b31b",
+      "title": "API docs, shutdown, and server start",
+      "what": "Publishes an API documentation page at api/docs only in development with ENABLE_DEV_TOOLS set to true. It turns on graceful shutdown, starts listening on the port, and prints the addresses.",
+      "why": "Likely reason: the documentation page should not be public on live systems.",
+      "watch_out": "Turning on ENABLE_DEV_TOOLS in production has no effect, because both conditions must hold."
+    }
+  ],
+  "explained_at": "2026-11-11T19:33:57+00:00",
+  "explained_by": "haiku",
+  "summary": "The starting point of the API server. It checks the secret keys, sets up security and validation rules, and starts listening for requests.",
+  "purpose": "Starts the whole backend in a safe, consistent way.",
+  "why": "Likely reason: all global rules, such as security headers, origin checks, and input validation, must apply before any request is handled, so they are set here once.",
+  "how": "1. Builds the app from the root module. 2. Reads the port and environment. 3. Outside development, checks that three secret settings are at least 32 characters and not template placeholders. 4. Sets the logger, security headers, allowed website origins, the api prefix with version 1, and the strict input validation. 5. Adds API docs only in development when ENABLE_DEV_TOOLS is true. 6. Turns on graceful shutdown and starts listening.",
+  "inputs": "Settings: NODE_ENV, APP_PORT, JWT_SECRET, JWT_REFRESH_SECRET, MFA_ENCRYPTION_KEY, CORS_ORIGINS, and ENABLE_DEV_TOOLS. Incoming HTTP requests.",
+  "outputs": "A running web server with its address printed to the console. The API docs page when enabled. Startup errors that stop the app when a secret is weak.",
+  "risks": "The secret check runs only when NODE_ENV is not development, and a missing NODE_ENV defaults to development, so the check can be skipped. An empty CORS_ORIGINS setting blocks every browser origin. The BigInt patch changes how big numbers are written in every response. The secret check looks only for listed placeholder text, so a different weak value passes.",
+  "debug": "If the app refuses to start, read the FATAL message to see which secret setting failed. For browser CORS errors, check CORS_ORIGINS. If API docs do not appear, confirm NODE_ENV is development and ENABLE_DEV_TOOLS is true.",
+  "summary_hash": "sha256:d37f32ca678550331773be82568cd3f94e0323994f5f0404403d6f82fae8bf71"
+}

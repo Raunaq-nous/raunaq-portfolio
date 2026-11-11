@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/chat/chat.service.ts",
+  "language": "TypeScript",
+  "lines": 278,
+  "hash": "sha256:ad85549045293f3433672bba45939d52a9b410d791a872dabfa79e7daed1cc9b",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "Sending a message can reuse a session that belongs to another user, because the session lookup does not check the user.",
+      "The history query returns the oldest messages rather than the most recent ones, so the AI may lack recent context.",
+      "No tests for this service are visible in the packet.",
+      "Document search is scoped to the user, which is a good safeguard, and consent is checked first."
+    ]
+  },
+  "terms": [
+    {
+      "term": "RAG (retrieval-augmented generation)",
+      "meaning": "A method where relevant passages are found first and given to the AI, so its answer is based on them."
+    },
+    {
+      "term": "Embedding",
+      "meaning": "A list of numbers that represents the meaning of a piece of text, used to find similar text."
+    },
+    {
+      "term": "pgvector",
+      "meaning": "An add-on for the PostgreSQL database that stores embeddings and searches them by similarity."
+    },
+    {
+      "term": "Vector search",
+      "meaning": "Finding stored items whose embeddings are closest to the question's embedding."
+    },
+    {
+      "term": "Upsert",
+      "meaning": "A database action that updates a record if it exists or creates it if it does not."
+    },
+    {
+      "term": "Consent (DPDP)",
+      "meaning": "A recorded yes from the user for a specific use of their data, required by India's Digital Personal Data Protection Act."
+    },
+    {
+      "term": "Fallback",
+      "meaning": "A safe backup response used when the main step fails."
+    },
+    {
+      "term": "PHI",
+      "meaning": "Protected health information: personal medical details."
+    },
+    {
+      "term": "Session",
+      "meaning": "One ongoing conversation, holding a list of messages."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/common",
+    "@nestjs/config",
+    "@nestjs/axios",
+    "rxjs",
+    "apps/api/src/common/database/database.module.ts",
+    "apps/api/src/modules/chat/dto/chat.dto.ts",
+    "apps/api/src/modules/consent/consent.service.ts",
+    "apps/api/src/modules/consent/dto/consent.dto.ts",
+    "Node.js crypto module",
+    "Separate AI service (AI_SERVICE_URL)"
+  ],
+  "used_by": [
+    "apps/api/src/modules/chat/chat.controller.ts",
+    "apps/api/src/modules/chat/chat.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4db214b17e66abbc",
+      "title": "Setup and shared imports",
+      "what": "Brings in the NestJS tools, configuration, HTTP client, the database access layer, the message shape, the consent service and purposes, and the random id generator.",
+      "why": "Likely reason: the service needs these to check consent, store data, call the AI service and create session ids.",
+      "watch_out": ""
+    },
+    {
+      "start": 16,
+      "end": 25,
+      "kind": "type",
+      "name": "RetrievedChunk",
+      "id": "s2",
+      "hash": "b3cbb555385c28ee",
+      "title": "Shape of a retrieved passage",
+      "what": "Defines what one retrieved document passage looks like: its id, source document, title, type, date, text and similarity score.",
+      "why": "Likely reason: the AI service needs a consistent structure for each passage it receives.",
+      "watch_out": ""
+    },
+    {
+      "start": 26,
+      "end": 83,
+      "kind": "class",
+      "name": "ChatService (part 1)",
+      "id": "s3",
+      "hash": "5f5f29e0579c80b8",
+      "title": "Consent check and session setup",
+      "what": "Checks that the user has agreed to AI chat use, and refuses the request if not. Then creates or reuses the session and saves the user's message after reading recent history.",
+      "why": "Likely reason: consent is checked first so no data is processed without agreement, and history is read before saving so the new message is not counted twice.",
+      "watch_out": "The session is found by its id alone, so a session id that belongs to another user can receive this user's message."
+    },
+    {
+      "start": 84,
+      "end": 137,
+      "kind": "class",
+      "name": "ChatService (part 2)",
+      "id": "s4",
+      "hash": "817aead12d62077f",
+      "title": "Finding relevant document passages",
+      "what": "Asks the AI service for an embedding of the question, with a five-second limit. If that works, searches the user's own document passages by similarity and keeps the top five with their scores.",
+      "why": "Likely reason: limiting the search to the user's own documents prevents one user's answers from using another user's records.",
+      "watch_out": "If the embedding request fails, the chat continues with no document passages, and the answer may be less grounded."
+    },
+    {
+      "start": 138,
+      "end": 193,
+      "kind": "class",
+      "name": "ChatService (part 3)",
+      "id": "s5",
+      "hash": "0c80951f51c96cf2",
+      "title": "Gathering health facts and calling the AI",
+      "what": "Reads active conditions, active medications, the latest four vitals and allergies, then sends the question, history, passages and health facts to the AI service.",
+      "why": "Likely reason: giving the AI the user's current health facts helps it answer safely and specifically.",
+      "watch_out": "The four latest vitals are not chosen per type, so a burst of one reading can hide others."
+    },
+    {
+      "start": 194,
+      "end": 244,
+      "kind": "class",
+      "name": "ChatService (part 4)",
+      "id": "s6",
+      "hash": "edce49b2c1f0d74e",
+      "title": "Saving the AI reply or fallback",
+      "what": "Saves the AI's answer with its sources, suggestions and emergency flag, then returns it. If the AI call fails, it saves and returns a fixed message asking the user to try again. The section also starts the history reader.",
+      "why": "Likely reason: saving every reply keeps a full record, and the fallback keeps the user from getting an error.",
+      "watch_out": "The user's question is already saved when the AI fails, so the history will show a question with only a generic reply."
+    },
+    {
+      "start": 245,
+      "end": 278,
+      "kind": "method",
+      "name": "ChatService: if",
+      "id": "s7",
+      "hash": "678c13c899c85046",
+      "title": "Reading history and archiving sessions",
+      "what": "Returns a session's messages in time order only when the session belongs to the user. Lists up to 20 active sessions, newest first. Archiving checks ownership and marks the session inactive, returning a success message.",
+      "why": "Likely reason: checking ownership before reading or archiving keeps sessions private, and archiving keeps data without showing it.",
+      "watch_out": "Archiving does not delete messages, so they remain stored until a separate process removes them."
+    }
+  ],
+  "explained_at": "2026-11-11T19:39:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the health chat: it saves the user's message, finds matching passages from the user's own documents, gathers health facts, asks the AI service for an answer, and saves that answer.",
+  "purpose": "Handles one chat turn from start to finish, and also reads a session's history, lists active sessions and archives a session.",
+  "why": "Likely reason: this is retrieval-augmented generation, a method where the AI answers using the user's own records found by search, which keeps answers grounded in real data.",
+  "how": "1. Checks the user has agreed to AI chat use. 2. Finds or creates the chat session. 3. Reads recent history and saves the user's message. 4. Asks the AI service for an embedding of the question. 5. Searches the user's own document passages by similarity. 6. Gathers conditions, medications, latest vitals and allergies. 7. Sends everything to the AI service and receives an answer. 8. Saves the answer with sources and suggestions. If the AI call fails, a fallback message is saved and returned.",
+  "inputs": "The user id from the login token, the message text, an optional session id, the context type and reference id, and the consent record for AI chat. It also depends on the AI service address from configuration.",
+  "outputs": "An object with the answer, suggestions, sources, the message id, the session id and an emergency flag. History returns a list of messages. Listing returns up to 20 active sessions. Archiving returns a success message.",
+  "risks": "Session lookup during sending uses only the session id, not the user, so a session belonging to another user may be used. The history query sorts oldest first and keeps six, so it returns the oldest six messages instead of the most recent six, which the code comment says it intends. Health data is sent to the external AI service. The latest vitals query returns four records of any type, so one vital type can crowd out others. If the embedding or search fails, the answer is generated without document context.",
+  "debug": "Check the log for Query embedding failed, pgvector retrieval failed, or AI Chat completion failed to see which step broke. For missing consent errors, check the consent record for the AI chat purpose. For wrong answers, check the history order and the retrieved chunks. For session problems, check that the session's user id matches.",
+  "summary_hash": "sha256:ad85549045293f3433672bba45939d52a9b410d791a872dabfa79e7daed1cc9b"
+}

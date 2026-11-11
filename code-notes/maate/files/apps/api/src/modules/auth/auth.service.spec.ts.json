@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/auth/auth.service.spec.ts",
+  "language": "TypeScript",
+  "lines": 430,
+  "hash": "sha256:514787fd65a9a85da819d0b870f945f976f2c5a4836655937bd811c0b19982d0",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The database and services are faked, so real queries are not tested.",
+      "The MFA enable test has no visible check on its result.",
+      "The file is cut off in the visible code, so later tests are unknown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Unit test",
+      "meaning": "A test that checks one piece of code by itself, with the rest replaced by stand-ins."
+    },
+    {
+      "term": "Mock",
+      "meaning": "A fake stand-in for a real service or database, returning chosen values."
+    },
+    {
+      "term": "Refresh token family",
+      "meaning": "A group of refresh tokens linked to one login, so reuse of an old one can revoke the whole group."
+    },
+    {
+      "term": "MFA challenge token",
+      "meaning": "A short token issued after a correct password when a second factor is still needed."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/testing",
+    "@nestjs/common",
+    "@nestjs/jwt",
+    "@nestjs/config",
+    "@maate/database",
+    "apps/api/src/modules/auth/auth.service.ts",
+    "apps/api/src/modules/auth/services/token.service.ts",
+    "apps/api/src/modules/auth/services/totp.service.ts",
+    "apps/api/src/common/database/database.module.ts",
+    "jest (test runner)"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c844f7e542f8b33b",
+      "title": "Test file imports",
+      "what": "Brings in the testing tools, error types, the auth services and their helpers, the revoke reason list, and the database service.",
+      "why": "Likely reason: the tests need the real services and the fake versions to replace.",
+      "watch_out": ""
+    },
+    {
+      "start": 16,
+      "end": 75,
+      "kind": "test group",
+      "name": "Auth & Token Management (part 1)",
+      "id": "s2",
+      "hash": "4665b2a0fd4fe771",
+      "title": "Fake database and test setup",
+      "what": "Sets up a fake database with empty tables and default results for sessions, refresh tokens, audit logs, and many delete calls for account cleanup.",
+      "why": "Likely reason: lets the tests run without a real database or network.",
+      "watch_out": "Because the database is faked, these tests cannot catch mistakes in real database queries."
+    },
+    {
+      "start": 76,
+      "end": 130,
+      "kind": "test group",
+      "name": "Auth & Token Management (part 2)",
+      "id": "s3",
+      "hash": "853c176c32bd8174",
+      "title": "Fake services and test module",
+      "what": "Creates fake JWT, settings, password, one-time code, and mail services. It then builds a test module that uses the real token, TOTP, and auth services with these fakes.",
+      "why": "Likely reason: tests the real auth logic while controlling the outside parts.",
+      "watch_out": "The fake settings return only a few keys, so any other setting the code reads will come back empty in tests."
+    },
+    {
+      "start": 131,
+      "end": 183,
+      "kind": "test group",
+      "name": "Auth & Token Management (part 3)",
+      "id": "s4",
+      "hash": "eaa8012da9463659",
+      "title": "Token creation and rotation tests",
+      "what": "Checks that creating a token pair returns an access token with a 900 second expiry and saves a refresh token with the user agent and IP. Also checks that using a valid refresh token revokes it, issues a new one in the same family, and returns new tokens.",
+      "why": "The test group title names rotation and theft detection. Rotation lets the service spot a token that was copied and reused.",
+      "watch_out": "The tests fix the expiry at 900 seconds, so a change to the expiry default must also update these tests."
+    },
+    {
+      "start": 184,
+      "end": 240,
+      "kind": "test group",
+      "name": "Auth & Token Management (part 4)",
+      "id": "s5",
+      "hash": "283faa3f5741552f",
+      "title": "Theft, logout, and expiry tests",
+      "what": "Checks that reusing a rotated refresh token counts as theft and revokes every token in its family. Also checks that a logged-out token gets a session-ended message and an expired token is rejected.",
+      "why": "Likely reason: reuse of an old token is a sign it was stolen, so the whole login is closed.",
+      "watch_out": "These tests check exact error messages, so reworded text will fail them even if the behavior is correct."
+    },
+    {
+      "start": 241,
+      "end": 295,
+      "kind": "test group",
+      "name": "Auth & Token Management (part 5)",
+      "id": "s6",
+      "hash": "6f1bd6cb771cbfeb",
+      "title": "Sign-up and duplicate email tests",
+      "what": "Checks that a new user gets tokens, and that the returned user has no password hash. Also checks that signing up with an existing email gives a conflict error.",
+      "why": "Likely reason: stops password hashes from leaking in replies and stops duplicate accounts.",
+      "watch_out": "The sign-up tests cover only the success path and the duplicate case, so other sign-up failures are untested."
+    },
+    {
+      "start": 296,
+      "end": 354,
+      "kind": "test group",
+      "name": "Auth & Token Management (part 6)",
+      "id": "s7",
+      "hash": "e57c42e2c3e4bfbb",
+      "title": "MFA login and setup tests",
+      "what": "Checks that a user with MFA enabled gets an MFA challenge instead of full tokens. Checks that MFA setup returns a secret, an authenticator link, and eight backup codes, and that enabling MFA starts with a valid app code.",
+      "why": "Likely reason: full tokens should not be issued until the second factor is checked.",
+      "watch_out": "The enable test has no visible check on its result, so confirm the rest of that test before trusting it."
+    },
+    {
+      "start": 355,
+      "end": 411,
+      "kind": "test group",
+      "name": "Auth & Token Management (part 7)",
+      "id": "s8",
+      "hash": "7b741f2d138377db",
+      "title": "Tests for enabling two-factor and login with code",
+      "what": "Checks that enabling two-factor reports success. Also checks that a correct authenticator code at login returns the user, tokens and a new session.",
+      "why": "Likely reason: confirms the two-factor sign-in path works at the service level.",
+      "watch_out": "The tests replace the database and token service with stand-ins, so they prove the logic but not the real database or real token signing."
+    },
+    {
+      "start": 412,
+      "end": 430,
+      "kind": "test group",
+      "name": "Auth & Token Management (part 8)",
+      "id": "s9",
+      "hash": "9980c1c8d5d2b83d",
+      "title": "Test for full account deletion",
+      "what": "Checks that deleting an account renames the user, clears the phone, marks the account inactive, records a deletion time, ends sessions and revokes tokens.",
+      "why": "Likely reason: keeps the account erasure requirement under test, as the test name refers to DPDP and HIPAA rules.",
+      "watch_out": "The test checks the user row and sessions but not that every clinical table is emptied, so a newly added table could be missed without failing the test."
+    }
+  ],
+  "explained_at": "2026-11-11T19:36:51+00:00",
+  "explained_by": "haiku",
+  "summary": "Automated tests for token creation and rotation, password login with MFA, sign-up, and MFA setup. They run against fake databases and fake services.",
+  "purpose": "Catches changes that break the auth rules before they reach real users.",
+  "why": "Reason not stated in the code. The test names show the goal is to check token theft detection, sign-up safety, and MFA behavior.",
+  "how": "1. Builds fake database tables and fake services in setup. 2. Creates a test module that uses the real token, TOTP, and auth services. 3. Runs each test to set up inputs, call a method, and check the results.",
+  "inputs": "Test values such as a sample email, password, user ID, and fake database results. No real users or data.",
+  "outputs": "Pass or fail results from the Jest test runner.",
+  "risks": "Because the database is faked, these tests cannot find mistakes in real database queries. Some tests use fixed values such as a 900 second expiry. The last visible test has no check on its result, so it can pass even if enabling MFA fails.",
+  "debug": "Run this file alone and read the failing expectation line. Check that each fake returns the value its test expects. If a message check fails, compare the exact wording in the service.",
+  "summary_hash": "sha256:514787fd65a9a85da819d0b870f945f976f2c5a4836655937bd811c0b19982d0"
+}

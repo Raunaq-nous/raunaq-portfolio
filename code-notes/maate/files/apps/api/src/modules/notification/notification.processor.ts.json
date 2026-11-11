@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/notification/notification.processor.ts",
+  "language": "TypeScript",
+  "lines": 76,
+  "hash": "sha256:a3740ce1433fc52463ea1f19210c669fdcddeb4f7c5624964a0b2aa7e354b2be",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Notifications marked sent only track the send ticket, not the final delivery receipt.",
+      "The worker does not check the receipt later, so a device that cannot receive pushes may not be caught."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Expo",
+      "meaning": "a service that forwards push messages to phones running the app"
+    },
+    {
+      "term": "Ticket",
+      "meaning": "the answer Expo gives when it accepts a push message, before delivery is confirmed"
+    },
+    {
+      "term": "Worker",
+      "meaning": "a background process that takes jobs from a queue and runs them"
+    }
+  ],
+  "depends_on": [
+    "expo-server-sdk",
+    "bull",
+    "apps/api/src/common/database/database.module.ts"
+  ],
+  "used_by": [
+    "apps/api/src/modules/notification/notification.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ea54810d379eab1f",
+      "title": "Imports and setup",
+      "what": "Brings in the job runner, logging, the Expo client and database access.",
+      "why": "Needed to send messages and record results.",
+      "watch_out": ""
+    },
+    {
+      "start": 12,
+      "end": 69,
+      "kind": "class",
+      "name": "NotificationProcessor (part 1)",
+      "id": "s2",
+      "hash": "5e6b2fc5eae829ed",
+      "title": "Delivering one push message",
+      "what": "Checks the token is a valid Expo token, builds the message with high priority and sends it. When the ticket is ok, the notification is marked sent. When Expo reports an error, the device is deactivated if it is not registered, and the error is thrown so the queue retries.",
+      "why": "Likely reason: retries handle temporary failures, while dead tokens are removed so they are not tried again.",
+      "watch_out": "Some errors are thrown again only after the device is deactivated, so a retry will not reach that device again."
+    },
+    {
+      "start": 70,
+      "end": 76,
+      "kind": "method",
+      "name": "NotificationProcessor: markTokenAsInactive",
+      "id": "s3",
+      "hash": "c394c123ce95b462",
+      "title": "Deactivating a token",
+      "what": "Marks every device record with the given push token as inactive so it is no longer used.",
+      "why": "Keeps the device list clean so future notifications are not wasted.",
+      "watch_out": "Matching by token value affects every user who has that token."
+    }
+  ],
+  "explained_at": "2026-11-11T19:53:28+00:00",
+  "explained_by": "haiku",
+  "summary": "A background worker that sends one push notification to one phone through the Expo push service, and marks the notification sent or the device inactive.",
+  "purpose": "Actually delivers push messages after they are queued.",
+  "why": "Likely reason: keeps slow network calls out of the user's request and allows retries.",
+  "how": "Takes a queued job, checks the push token is valid and marks it inactive if not. Builds the message, sends it to Expo, and marks the notification sent on success. If Expo reports the device is not registered, it deactivates the token. Any failure is rethrown so the queue retries.",
+  "inputs": "Job data with the notification id, push token, title, body and extra data.",
+  "outputs": "Updates to the notification record and the device record in the database.",
+  "risks": "Invalid tokens are deactivated by matching the token value, which is safe. A failed send that is not retried will leave the notification pending.",
+  "debug": "If notifications stay pending, read the logged error for the token. If many devices are deactivated, check Expo error details. Look at the queue for jobs that failed all retries.",
+  "summary_hash": "sha256:a3740ce1433fc52463ea1f19210c669fdcddeb4f7c5624964a0b2aa7e354b2be"
+}

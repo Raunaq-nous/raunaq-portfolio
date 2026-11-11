@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/chat/chat.controller.ts",
+  "language": "TypeScript",
+  "lines": 86,
+  "hash": "sha256:b75f1632560fbb60906ccfc9105baf3e1d636a3495100061f5d966073441d347",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for this controller is visible in the packet.",
+      "Errors are passed through from the service, and the behaviour depends on ChatService, which has issues noted in its own file.",
+      "Audit writes can fail after the main action has already completed."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Controller",
+      "meaning": "The part of the app that receives web requests for a feature and sends them to the right service."
+    },
+    {
+      "term": "Route",
+      "meaning": "The web address and method, such as posting to the chat message path, that triggers a controller function."
+    },
+    {
+      "term": "Rate limit (throttle)",
+      "meaning": "A cap on how many times a caller can use an endpoint in a set time."
+    },
+    {
+      "term": "Audit log",
+      "meaning": "A record of who did what to sensitive data and when. It supports privacy and security reviews."
+    },
+    {
+      "term": "PHI",
+      "meaning": "Protected health information: medical details tied to a person that privacy rules protect."
+    },
+    {
+      "term": "Bearer token",
+      "meaning": "A login token sent with each request to prove who is calling."
+    },
+    {
+      "term": "DTO",
+      "meaning": "Data transfer object: a defined shape for request data, with checks on each field."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/common",
+    "@nestjs/swagger",
+    "@nestjs/throttler",
+    "express",
+    "apps/api/src/common/audit/audit.service.ts",
+    "apps/api/src/common/auth/jwt-auth.guard.ts",
+    "apps/api/src/modules/chat/chat.service.ts",
+    "apps/api/src/modules/chat/dto/chat.dto.ts"
+  ],
+  "used_by": [
+    "apps/api/src/modules/chat/chat.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3a78e85ff7435e47",
+      "title": "Imports and setup",
+      "what": "Brings in the NestJS tools for routes, documentation tags, rate limiting, the request type, the audit service, the sign-in user helper, the chat service and the message shape.",
+      "why": "Likely reason: each import supports one job in the routes below.",
+      "watch_out": ""
+    },
+    {
+      "start": 17,
+      "end": 68,
+      "kind": "class",
+      "name": "ChatController (part 1)",
+      "id": "s2",
+      "hash": "78dccf530e2651b3",
+      "title": "Send, list and read history routes",
+      "what": "Defines the send message route with a 10-per-minute limit, which records an audit entry after the AI reply is ready. Defines the list sessions route with no audit. Defines the history route, which checks the session belongs to the user and records an audit entry.",
+      "why": "Likely reason: the send limit protects the AI service from overuse, and audits cover the viewing of health chat content.",
+      "watch_out": "Only the send route is rate limited, so the other routes can be called as often as a client likes."
+    },
+    {
+      "start": 69,
+      "end": 86,
+      "kind": "class",
+      "name": "ChatController (part 2)",
+      "id": "s3",
+      "hash": "8c526d44f0cf0897",
+      "title": "Archive route",
+      "what": "Defines the route that archives a session by its id, records a deletion audit entry, and returns the service's success message.",
+      "why": "Likely reason: archiving is a privacy action, so it is logged under a deletion action name.",
+      "watch_out": "Archiving only marks the session inactive. The messages stay in the database until other processes remove them."
+    }
+  ],
+  "explained_at": "2026-11-11T19:39:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Provides the chat endpoints that let a signed-in user send a message, list their chat sessions, read a session's history, and archive a session.",
+  "purpose": "Receives HTTP requests for the chat feature, passes them to ChatService, and writes an audit record each time health chat content is viewed or archived.",
+  "why": "Likely reason: chat messages contain health information, so each view and deletion is logged. The audit action names PHI_VIEW and PHI_DELETE suggest a health-privacy audit rule.",
+  "how": "1. A request arrives with a signed-in user id taken from the login token. 2. For sending a message, the request is limited to 10 per minute. 3. The controller calls ChatService with the user id and the request details. 4. For sending, history and deletion, the controller writes an audit record after the service finishes. 5. The result is returned to the caller. Listing sessions does not write an audit record.",
+  "inputs": "The signed-in user id from the token, the message body with text and optional session id, context type and reference id, and the session id in the address for history and archive.",
+  "outputs": "The AI answer with sources, suggestions and emergency flag, a list of sessions, a message history, or a success message after archiving.",
+  "risks": "The message endpoint is rate limited, but the other endpoints are not. Listing sessions is not audited. The audit write happens after the service call, so if it fails the caller gets an error even though the message or archive already happened.",
+  "debug": "A 429 response means the 10-per-minute limit was reached. For missing audit entries, check AuditService and whether the request reached the audit line. A 404 on archive means the service could not find a session owned by this user.",
+  "summary_hash": "sha256:b75f1632560fbb60906ccfc9105baf3e1d636a3495100061f5d966073441d347"
+}

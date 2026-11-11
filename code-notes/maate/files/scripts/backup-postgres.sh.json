@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "path": "scripts/backup-postgres.sh",
+  "language": "Shell script",
+  "lines": 47,
+  "hash": "sha256:17c829a63fc94e3a99f593b1007397a091e06fb2e8494af59773c5433f117532",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "The final line makes a successful backup exit with an error.",
+      "Health data is stored unencrypted in a temporary folder.",
+      "Environment loading breaks on values with spaces.",
+      "No test is shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "pg_dump",
+      "meaning": "Postgres's built-in tool that writes the whole database to a file"
+    },
+    {
+      "term": "R2",
+      "meaning": "Cloudflare's file storage service, which works with the Amazon S3 interface"
+    },
+    {
+      "term": "AWS CLI",
+      "meaning": "Amazon's command line tool, used here to talk to R2"
+    },
+    {
+      "term": "gzip",
+      "meaning": "a tool that compresses a file to make it smaller"
+    }
+  ],
+  "depends_on": [
+    "docker compose",
+    "pg_dump",
+    "gzip",
+    "AWS CLI",
+    "Cloudflare R2"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 47,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e6df4bb0ac841ac8",
+      "title": "Nightly database backup job",
+      "what": "Dumps the staging database, compresses it, uploads it to R2, and cleans up old local files.",
+      "why": "Protects staging data from loss.",
+      "watch_out": "Health data is stored unencrypted in a shared temporary folder, and the stray final line makes a successful run exit with an error."
+    }
+  ],
+  "explained_at": "2026-11-11T20:28:02+00:00",
+  "explained_by": "haiku",
+  "summary": "Nightly script that dumps the staging database, compresses it, uploads it to Cloudflare R2 storage, and deletes old local copies.",
+  "purpose": "Keeps off-site copies of staging data so it can be restored after a failure.",
+  "why": "Likely reason: nightly backups protect against data loss. The schedule and the storage target are not set in this file.",
+  "how": "Loads staging settings, runs pg_dump inside the Postgres container, compresses the output, uploads it with the AWS command line tool if that tool is installed, and deletes local dumps older than three days.",
+  "inputs": "The .env.staging file, the docker-compose.staging.yml file, and the R2 settings.",
+  "outputs": "A compressed SQL dump in the temporary backup folder, and an uploaded copy in R2 under the backups folder.",
+  "risks": "The dump holds health data and is stored unencrypted in a shared temporary folder. The last line contains stray text that makes a successful run report an error. Without the AWS tool, the backup stays only on the local machine. The method used to load the environment file breaks on values containing spaces.",
+  "debug": "Read the end of the script output. If the run fails right after the completion message, the stray last line is the cause. Check the R2 settings and that the Postgres container is running. Check the size of the dump file.",
+  "summary_hash": "sha256:17c829a63fc94e3a99f593b1007397a091e06fb2e8494af59773c5433f117532"
+}

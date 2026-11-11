@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/common/storage/file-processing.service.ts",
+  "language": "TypeScript",
+  "lines": 61,
+  "hash": "sha256:7b5aa2a1849987be97f9f0bc4715011c0d3c4cdf51f8b92de8f81ea06867b65c",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests for this file are visible.",
+      "Adding the same document twice may be ignored because of the fixed job ID.",
+      "Queue retry settings are duplicated in the storage module."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Queue",
+      "meaning": "A line of background work items that are processed one after another by a worker."
+    },
+    {
+      "term": "Job",
+      "meaning": "One item in a queue, here one document to process."
+    },
+    {
+      "term": "Exponential backoff",
+      "meaning": "A retry pattern where each wait before the next try is longer than the one before."
+    },
+    {
+      "term": "Dependency injection",
+      "meaning": "A pattern where the framework hands a class the other services it needs, such as the queue, instead of the class creating them."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/common",
+    "@nestjs/bull",
+    "bull"
+  ],
+  "used_by": [
+    "apps/api/src/common/storage/storage.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7676a890e9f0d9f8",
+      "title": "Imports for the queue service",
+      "what": "Brings in the tools for declaring a service, writing logs, and connecting to the Bull job queue.",
+      "why": "Likely reason: the file needs these to be a queue-backed service.",
+      "watch_out": ""
+    },
+    {
+      "start": 10,
+      "end": 19,
+      "kind": "type",
+      "name": "FileProcessingJob",
+      "id": "s2",
+      "hash": "4af10a99ddf3933c",
+      "title": "Shape of a processing job",
+      "what": "Defines the information each document job carries: the document and user IDs, the storage file key, file name and type, an optional document type, and the list of steps to run.",
+      "why": "Likely reason: the worker can do its work from the job alone, without another database lookup first.",
+      "watch_out": "Adding or renaming a field here must match what the caller sends and what the document processor reads."
+    },
+    {
+      "start": 20,
+      "end": 61,
+      "kind": "class",
+      "name": "FileProcessingService",
+      "id": "s3",
+      "hash": "87b0799ba14490a0",
+      "title": "Queueing and checking job status",
+      "what": "Adds a job for a document with three tries and growing waits, and keeps finished jobs. It can also find the job for one document and count jobs in each state.",
+      "why": "The retry settings are visible, but the reason for keeping finished jobs is not stated in the code.",
+      "watch_out": "The job ID is tied to the document ID, so re-processing a document may be blocked by the old job that still exists."
+    }
+  ],
+  "explained_at": "2026-11-11T19:33:57+00:00",
+  "explained_by": "haiku",
+  "summary": "Puts a document processing job into the background queue and lets the rest of the app check on those jobs.",
+  "purpose": "Hands off the slow document work to the queue so uploads return quickly, and reports how many jobs are waiting, running, finished, failed, or delayed.",
+  "why": "Likely reason: the header says this is the BullMQ-based async pipeline, so the queue handles the slow work and its retries.",
+  "how": "1. The caller passes a job describing one document. 2. enqueue adds it to the document-processing queue with the job ID doc followed by the document ID, three tries, and growing waits. 3. getJob finds the job for one document by that same ID. 4. getQueueStatus counts jobs in each state.",
+  "inputs": "A FileProcessingJob object from the caller holding the document ID, user ID, file key, name, type, and list of steps. Document IDs for lookups.",
+  "outputs": "A queued job in the queue, a job record for one document, or a count of jobs in each state.",
+  "risks": "The job ID is fixed to the document ID and finished jobs are kept, so adding the same document again may be ignored because the old job still exists. Queue settings are also repeated in the storage module, so the two can drift apart. Reason for keeping finished jobs is not stated in the code.",
+  "debug": "If a document never processes, call getJob for it and check its state and failure reason. If enqueue silently does nothing for a document, look for an old job with the same doc ID and remove it. Check the logs for the line starting Enqueuing document processing job.",
+  "summary_hash": "sha256:7b5aa2a1849987be97f9f0bc4715011c0d3c4cdf51f8b92de8f81ea06867b65c"
+}

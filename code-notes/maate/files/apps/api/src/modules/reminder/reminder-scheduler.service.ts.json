@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/reminder/reminder-scheduler.service.ts",
+  "language": "TypeScript",
+  "lines": 195,
+  "hash": "sha256:cbbda2c58d55e4b9038c5665e31514e02d0d41f0f366cc09700c76efb8aca813",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests cover timing, timezones or queuing in the visible code.",
+      "Database and queue calls have no error handling in this file.",
+      "Every active reminder is loaded on every tick with no batching.",
+      "Water and meal reminders do not apply the day-of-week rule.",
+      "Job data is not typed, so field mistakes are only found at runtime."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Cron",
+      "meaning": "A timer that runs a function on a fixed schedule. Here it runs every minute."
+    },
+    {
+      "term": "Queue",
+      "meaning": "A line of background tasks that workers pick up one by one."
+    },
+    {
+      "term": "BullMQ (Bull)",
+      "meaning": "The queue library this code uses to store and run jobs, backed by Redis."
+    },
+    {
+      "term": "Job",
+      "meaning": "One task placed on a queue, such as one reminder to send."
+    },
+    {
+      "term": "Delay",
+      "meaning": "How long a job waits in the queue before a worker may run it."
+    },
+    {
+      "term": "Timezone",
+      "meaning": "The local clock rule for a place, so a 8 am reminder means 8 am where the user lives."
+    },
+    {
+      "term": "ISO day",
+      "meaning": "Day numbers where 1 is Monday and 7 is Sunday."
+    },
+    {
+      "term": "Prisma",
+      "meaning": "The tool the code uses to read and write the database."
+    },
+    {
+      "term": "Job id dedupe",
+      "meaning": "Giving a job a fixed id so the queue ignores a second job with the same id."
+    }
+  ],
+  "depends_on": [
+    "../../common/database/database.module",
+    "@maate/database",
+    "@nestjs/schedule",
+    "@nestjs/bull",
+    "bull",
+    "date-fns",
+    "date-fns-tz"
+  ],
+  "used_by": [
+    "apps/api/src/modules/reminder/reminder.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "22e08fdcdce06f00",
+      "title": "Imports and setup",
+      "what": "Brings in the tools for scheduling, the queue, the database, the reminder types and date helpers.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 15,
+      "end": 63,
+      "kind": "class",
+      "name": "ReminderSchedulerService (part 1)",
+      "id": "s2",
+      "hash": "e06bdcf95b2d0829",
+      "title": "Every-minute scan entry point",
+      "what": "Sets up the scheduler class and the main job that runs every minute and checks medicine, water and meal reminders in turn. It also has a manual trigger used for tests and immediate sync.",
+      "why": "Likely reason: one fixed-interval job keeps reminders checked, and the manual trigger lets tests run the scan on demand.",
+      "watch_out": "The start and end times are only passed to the medicine query. Water and meal checks use the current minute, so changing the lookahead means changing more than one place."
+    },
+    {
+      "start": 64,
+      "end": 98,
+      "kind": "method",
+      "name": "ReminderSchedulerService: for",
+      "id": "s3",
+      "hash": "90258e3611588e38",
+      "title": "Medicine reminder scan",
+      "what": "For each active medicine reminder, checks that today is an included day in the user's timezone and that each scheduled time falls in the window. Due doses are queued with the medicine name and dosage.",
+      "why": "Likely reason: medicine has the most settings, so it is the only kind that checks the day of week and the end date.",
+      "watch_out": "The day-of-week and end-date rules exist only here. Copying this logic to water or meals would need the same checks added."
+    },
+    {
+      "start": 99,
+      "end": 155,
+      "kind": "method",
+      "name": "ReminderSchedulerService: for",
+      "id": "s4",
+      "hash": "1f101f6ff2420a6b",
+      "title": "Water and meal reminder scans",
+      "what": "Builds water reminder times from the active start, end and interval settings, then checks each one against the window. Meal reminders check their single fixed time the same way. Due items are queued as hydration or meal notifications.",
+      "why": "Likely reason: water is a repeating schedule, so its times are generated instead of stored. Each meal has one fixed time per day.",
+      "watch_out": "Water times come from the interval, so a zero interval would loop forever. The fallback of 90 minutes guards this, so keep a fallback when editing."
+    },
+    {
+      "start": 156,
+      "end": 195,
+      "kind": "method",
+      "name": "ReminderSchedulerService: enqueueReminder",
+      "id": "s5",
+      "hash": "8f62f64ba4b8b5d6",
+      "title": "Queuing one notification and time helpers",
+      "what": "Adds one notification job with a fixed id made from type, reminder id and slot, with three retries and exponential backoff. Finished jobs are removed. Helper functions decide whether a time is in the window, how long to wait, and which slot key to use.",
+      "why": "Likely reason: the fixed job id stops the same reminder being sent twice when the scan sees it again in later minutes.",
+      "watch_out": "The window check compares minutes within the same day against the current time, not against the start and end passed in. Changing the window size needs changes in the helper."
+    }
+  ],
+  "explained_at": "2026-11-11T19:56:43+00:00",
+  "explained_by": "haiku",
+  "summary": "Every minute it finds the medicine, water and meal reminders that are due in the next few minutes for each user and adds a notification job to the reminders queue.",
+  "purpose": "Makes sure users receive reminders on time. The actual sending happens in background workers, not in this scan.",
+  "why": "Likely reason: doing the scan once a minute and sending through a queue keeps the web server free and lets work be spread across workers. The header comment says this, but the code does not prove the scale claim.",
+  "how": "Each minute it looks at the times from now up to about five minutes ahead. For each active reminder it converts the current time into the user's timezone, checks the day of the week when one is set, and checks whether each scheduled time falls in the window. Due reminders are added to the queue with a fixed job id built from the type, reminder id and time slot, so the same slot is not queued twice.",
+  "inputs": "Active medicine, water and meal reminder rows in the database, each user's timezone, and the server clock.",
+  "outputs": "Jobs added to the reminders queue, each carrying the reminder id, user id, type, title, body, delay and slot key. Log messages. No database rows are written here.",
+  "risks": "Every tick loads all active reminders with no paging, so the cost grows with the number of users. Water and meal reminders ignore the day-of-week setting and the deleted flag that medicine uses. Job data is untyped, so wrong field names are not caught. A database error stops the scan for that minute. Times depend on the server clock being correct.",
+  "debug": "Look for the Scanning log line each minute. If reminders do not arrive, check the user's timezone, the HH:MM times, the day-of-week list and the isActive flag. Then check the reminders queue for delayed jobs. If a reminder arrives twice, check the job ids for duplicates.",
+  "summary_hash": "sha256:cbbda2c58d55e4b9038c5665e31514e02d0d41f0f366cc09700c76efb8aca813"
+}

@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/document/document.controller.ts",
+  "language": "TypeScript",
+  "lines": 143,
+  "hash": "sha256:765d7159546ff22fd33fce1df754c9a06b7b8b61effaf1ee14c6d104ddc48ac8",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "The OCR and summary routes may return any user's document data when given a document id, unless a guard outside this file blocks it. This must be verified before release.",
+      "Archive is audited even when no document matches the user and id.",
+      "No tests for this controller appear in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "PHI",
+      "meaning": "protected health information, meaning medical details that privacy law protects."
+    },
+    {
+      "term": "OCR",
+      "meaning": "reading text from a scanned image or photo."
+    },
+    {
+      "term": "JWT",
+      "meaning": "a signed login token that identifies who is making a request."
+    },
+    {
+      "term": "Throttle",
+      "meaning": "a limit on how many requests a caller may send in a set time window."
+    },
+    {
+      "term": "Soft delete",
+      "meaning": "marking a record as removed while keeping it stored."
+    },
+    {
+      "term": "Audit log",
+      "meaning": "a saved record of who accessed or changed what, and when."
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/modules/document/document.service.ts",
+    "apps/api/src/modules/document/dto/document.dto.ts",
+    "apps/api/src/common/audit/audit.service",
+    "apps/api/src/common/auth/jwt-auth.guard",
+    "@nestjs/throttler",
+    "@nestjs/swagger"
+  ],
+  "used_by": [
+    "apps/api/src/modules/document/document.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "64ce0e25c9a6c019",
+      "title": "Imports for document routes",
+      "what": "Brings in the web framework tools, rate limiting, documentation helpers, the audit service, the login identity helper, the document service and the upload request shapes.",
+      "why": "Needed by the controller below.",
+      "watch_out": ""
+    },
+    {
+      "start": 17,
+      "end": 60,
+      "kind": "class",
+      "name": "DocumentController (part 1)",
+      "id": "s2",
+      "hash": "a4a716250ace7dbf",
+      "title": "Upload link, confirm and list routes",
+      "what": "Lets a signed-in user ask for an upload link, which is limited to 15 requests per minute. Confirming an upload creates the document and writes an audit entry. Listing returns the user's documents with paging.",
+      "why": "Reason for the 15 per minute limit is not stated in the code.",
+      "watch_out": "The confirm route writes its audit entry only after the document is created, so a failure in the audit write leaves a document with no matching audit entry."
+    },
+    {
+      "start": 61,
+      "end": 114,
+      "kind": "class",
+      "name": "DocumentController (part 2)",
+      "id": "s3",
+      "hash": "abe78a109549fa4d",
+      "title": "Document detail, OCR and summary routes",
+      "what": "Returns one document, and returns the OCR text and AI summary for a document id. Each read writes a view entry to the audit log with the request details.",
+      "why": "Likely reason: viewing health data must be logged.",
+      "watch_out": "The OCR and summary routes do not pass the user to the service, so this file cannot check that the user owns the document."
+    },
+    {
+      "start": 115,
+      "end": 143,
+      "kind": "class",
+      "name": "DocumentController (part 3)",
+      "id": "s4",
+      "hash": "7831684f8771a07d",
+      "title": "Reprocess and archive routes",
+      "what": "Starts AI processing again for all documents waiting for consent, and archives a document by id as a soft delete. Both routes write audit entries.",
+      "why": "Likely reason: keeping a record hidden rather than erased leaves room for recovery. The code does not say this directly.",
+      "watch_out": "The archive audit entry is written before the service runs, so the log can show a deletion that matched no document."
+    }
+  ],
+  "explained_at": "2026-11-11T19:43:24+00:00",
+  "explained_by": "haiku",
+  "summary": "Exposes the document endpoints: request an upload link, confirm an upload, list documents, view one, read its OCR text and AI summary, reprocess withheld documents, and archive a document.",
+  "purpose": "Connects requests about medical documents to the document service, and writes an audit entry for each access or change.",
+  "why": "Likely reason: health records need an access log of views, uploads, changes and deletes. The reason for the exact route layout is not stated in the code.",
+  "how": "1) A request arrives at one of the document routes. 2) The route reads the signed-in user from the login token. 3) Upload-link requests are limited to 15 per minute. 4) The matching service call runs. 5) Views and changes write an audit entry with the user, the action and the document id. 6) The result goes back to the caller.",
+  "inputs": "The signed-in user from the login token, document ids from the web address, upload details from the request body, and paging values from the query string.",
+  "outputs": "An upload link and file key, a confirmation with the new document id, a page of documents, one document, an OCR result, an AI summary, a reprocess count with the affected ids, or an archive confirmation.",
+  "risks": "The OCR and summary routes pass only the document id to the service, so this file does not check that the signed-in user owns the document. Archive writes its audit entry before it knows whether a document matched. Every view writes an audit entry, so the audit log grows with each read.",
+  "debug": "If a user cannot see a document, compare the owner id on the document with the user in the login token. If an access log entry is missing, check the audit service for that action name. If upload links fail, check the 15 per minute limit before anything else.",
+  "summary_hash": "sha256:765d7159546ff22fd33fce1df754c9a06b7b8b61effaf1ee14c6d104ddc48ac8"
+}

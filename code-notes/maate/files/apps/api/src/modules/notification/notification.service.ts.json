@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/notification/notification.service.ts",
+  "language": "TypeScript",
+  "lines": 108,
+  "hash": "sha256:3d2edba9ff8ddd59442cb7d26468d9c6520985b997e8bc70c83b5198d13f978e",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Moving a token to a new user on registration is not checked, so an old account can lose its device.",
+      "Unregistering an unknown token raises an error that is not handled."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Upsert",
+      "meaning": "an action that updates a record if it exists or creates it if not"
+    },
+    {
+      "term": "Job",
+      "meaning": "one unit of background work placed on the queue"
+    }
+  ],
+  "depends_on": [
+    "@nestjs/bull",
+    "bull",
+    "expo-server-sdk",
+    "apps/api/src/common/database/database.module.ts",
+    "@maate/database"
+  ],
+  "used_by": [
+    "apps/api/src/modules/notification/notification.controller.ts",
+    "other modules that send notifications, not shown in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b3b47bd5c1b41c68",
+      "title": "Imports, setup and device registration",
+      "what": "Brings in the queue, the Expo client and database access. Registering a device saves the token for the user, or updates it and marks it active if it already exists.",
+      "why": "Lets one phone reconnect to a user without creating a duplicate token.",
+      "watch_out": "A token already saved for another user is reassigned to the new user."
+    },
+    {
+      "start": 13,
+      "end": 70,
+      "kind": "class",
+      "name": "NotificationService (part 1)",
+      "id": "s2",
+      "hash": "f77d6a9ed5e07905",
+      "title": "Saving the history record",
+      "what": "Sends a push notification by first saving a history record with pending status, marked as a push, with the given type.",
+      "why": "Keeps a record of every notification for the notification history and analytics.",
+      "watch_out": "The history record is saved before checking devices, so a user with no devices still gets a history entry."
+    },
+    {
+      "start": 71,
+      "end": 108,
+      "kind": "class",
+      "name": "NotificationService (part 2)",
+      "id": "s3",
+      "hash": "b04b660f3b80d06b",
+      "title": "Queuing deliveries and unregistering",
+      "what": "Finds the user's active devices and queues one delivery job for each with retry settings. If none exist it logs a warning. Unregistering marks a token inactive.",
+      "why": "Likely reason: one job per device means one bad phone cannot block the others.",
+      "watch_out": "The unregister call uses a plain update, so an unknown token raises an error that the caller must handle."
+    }
+  ],
+  "explained_at": "2026-11-11T19:53:28+00:00",
+  "explained_by": "haiku",
+  "summary": "Saves a notification to the database, then queues one push delivery job for each active phone the user has, and also stores and updates device push tokens.",
+  "purpose": "The main entry point other parts of the app use to send a push notification.",
+  "why": "Likely reason: a queue job per device lets one failing phone be retried without affecting the others.",
+  "how": "Registering a device saves or updates the token and marks it active. Sending first saves a history record with pending status, finds the user's active devices and queues a delivery job for each. If there are no devices, it logs a warning and returns the record. Unregistering marks the token inactive.",
+  "inputs": "User id, title, body, optional extra data and notification type, plus device token details.",
+  "outputs": "The saved notification record, and queued background jobs.",
+  "risks": "Registration uses the token as the unique key, so a token used by another account is moved to the new user. Unregistering throws an error if the token is unknown.",
+  "debug": "If a user gets no push, check that the notification record exists, that the user has active devices and that jobs are in the queue. If a token seems to belong to the wrong account, check the registration logic.",
+  "summary_hash": "sha256:3d2edba9ff8ddd59442cb7d26468d9c6520985b997e8bc70c83b5198d13f978e"
+}

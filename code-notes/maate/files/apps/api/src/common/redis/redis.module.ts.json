@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/common/redis/redis.module.ts",
+  "language": "TypeScript",
+  "lines": 39,
+  "hash": "sha256:795a391b8591b3e410de880a1367f3b070e2c4a57789ddaeee457f44f48d3b46",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Connection logic is duplicated.",
+      "Behaviour when Redis is down is not tested or documented."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Redis",
+      "meaning": "A fast in-memory data store used for caching and queues."
+    },
+    {
+      "term": "Cache",
+      "meaning": "Temporary stored results that let the app avoid repeating slow work."
+    },
+    {
+      "term": "ioredis",
+      "meaning": "The library the code uses to talk to Redis."
+    },
+    {
+      "term": "Retry strategy",
+      "meaning": "The rule for how long to wait before trying a failed connection again."
+    }
+  ],
+  "depends_on": [
+    "ioredis",
+    "apps/api/src/common/redis/redis.service.ts"
+  ],
+  "used_by": [
+    "apps/api/src/common/common.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "9a4b7f6c9532f66e",
+      "title": "Imports for Redis setup",
+      "what": "Brings in the framework tools, the configuration reader, the Redis client library, and the helper service.",
+      "why": "Likely reason: needed to build the connection and share it.",
+      "watch_out": ""
+    },
+    {
+      "start": 12,
+      "end": 39,
+      "kind": "value",
+      "name": "redisProvider, RedisModule",
+      "id": "s2",
+      "hash": "f6f81f16ddec2bd2",
+      "title": "Building the Redis connection",
+      "what": "Creates the connection from either a full Redis URL or separate settings, with retries that wait longer each time up to 3 seconds, and makes it available to the app.",
+      "why": "Likely reason: supports both a single URL style and separate host settings used in different environments.",
+      "watch_out": "Each request gives up after a few retries, so a Redis outage shows up quickly as errors."
+    }
+  ],
+  "explained_at": "2026-11-11T19:31:29+00:00",
+  "explained_by": "haiku",
+  "summary": "Creates the one shared Redis connection that the API uses for caching and queues.",
+  "purpose": "Connects the app to Redis so features can store short-lived data.",
+  "why": "The header describes it as cache and queue infrastructure, which is the stated purpose.",
+  "how": "1) Build a connection from REDIS_URL if set. 2) Otherwise use the host, port, password, and database settings. 3) Retry failed connections with a growing wait, capped at 3 seconds. 4) Share the connection and the Redis helper service across the app.",
+  "inputs": "REDIS_URL, or REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, and REDIS_DB.",
+  "outputs": "A Redis connection and the RedisService helper.",
+  "risks": "Each command gives up after 3 retries, so features fail when Redis is down. The connection setup is duplicated in the common module. Retry settings are not covered by any test shown.",
+  "debug": "If cache calls fail, check that Redis is running and reachable with the configured settings. If connections keep retrying, check the host, port, and password.",
+  "summary_hash": "sha256:795a391b8591b3e410de880a1367f3b070e2c4a57789ddaeee457f44f48d3b46"
+}

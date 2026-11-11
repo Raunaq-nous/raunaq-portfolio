@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/reminder/reminder.processor.ts",
+  "language": "TypeScript",
+  "lines": 69,
+  "hash": "sha256:434f89ec4362fe17efd9e2b8362f4a3655d8ffd8324882d1c57c290d689040d1",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests for this worker are in the packet.",
+      "Retries create duplicate log rows.",
+      "Delivered time is set before the push is confirmed.",
+      "Job data is not validated."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Worker (consumer)",
+      "meaning": "A background process that takes jobs from a queue and runs them."
+    },
+    {
+      "term": "Push notification",
+      "meaning": "A message sent to a phone app, delivered through Apple or Google push services."
+    },
+    {
+      "term": "Retry and backoff",
+      "meaning": "Trying a failed job again, waiting longer each time."
+    },
+    {
+      "term": "Log row",
+      "meaning": "A database record of one reminder attempt."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/bull",
+    "@nestjs/common",
+    "bull",
+    "../../common/database/database.module",
+    "../notification/notification.service",
+    "@maate/database"
+  ],
+  "used_by": [
+    "apps/api/src/modules/reminder/reminder.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ee6dc95de04415a0",
+      "title": "Imports for the worker",
+      "what": "Brings in the queue and worker tools, the logger, the database, the notification service and the reminder type.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 14,
+      "end": 69,
+      "kind": "class",
+      "name": "ReminderProcessor",
+      "id": "s2",
+      "hash": "31154f5d118a89be",
+      "title": "Worker that delivers one reminder",
+      "what": "Listens on the reminders queue for send-notification jobs. For each one it creates a log row, sends the push, marks the log delivered, and returns the log id. Errors are logged and passed back to the queue.",
+      "why": "Likely reason: rethrowing lets the queue apply its retry plan.",
+      "watch_out": "Each attempt creates a new log row, so retries leave duplicates. The comment says the backoff is set in the scheduler, which is accurate for the job options there."
+    }
+  ],
+  "explained_at": "2026-11-11T19:56:43+00:00",
+  "explained_by": "haiku",
+  "summary": "Background worker that takes each queued reminder, writes a log row, sends a push notification to the user's phone, and marks the log as delivered.",
+  "purpose": "The final step that actually delivers a reminder to the user.",
+  "why": "Likely reason: separating delivery from scanning lets retries happen in the background without slowing the web server.",
+  "how": "Reads the job data, creates a log row, sends a push through the notification service with the type, reminder id and log id, then marks the log as delivered and returns the log id. On any error it logs the failure and rethrows so the queue can retry.",
+  "inputs": "Job data with reminder id, user id, type, title and body, as put on the queue by the scheduler.",
+  "outputs": "Rows in the reminder log table, a push notification, and a return value with the log id.",
+  "risks": "Each retry creates another log row, so a failed send leaves extra rows. The delivered time is set before the push is confirmed, so it can be wrong if the push fails. A comment mentions a PENDING state, but no status field is set. Job data is not checked before use.",
+  "debug": "Look for Failed to deliver messages in the logs and read the failure reason on the job in the queue. Count log rows per reminder to spot duplicates. Confirm the notification service is sending.",
+  "summary_hash": "sha256:434f89ec4362fe17efd9e2b8362f4a3655d8ffd8324882d1c57c290d689040d1"
+}

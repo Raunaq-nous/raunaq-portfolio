@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/document/document.service.ts",
+  "language": "TypeScript",
+  "lines": 217,
+  "hash": "sha256:35f8206aaa5167826795042610f86416a6fb95f7cf13f032d71bfde2f23c3465",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The queue job is created outside the database transaction, so a failure can leave documents stuck.",
+      "The OCR and summary lookups do not check ownership.",
+      "No tests for this service appear in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Transaction",
+      "meaning": "a group of database writes that all succeed together or are all undone."
+    },
+    {
+      "term": "Queue job",
+      "meaning": "a task placed in a line to run later in the background."
+    },
+    {
+      "term": "Archive (soft delete)",
+      "meaning": "hiding a record by flagging it, without erasing it."
+    },
+    {
+      "term": "Timeline event",
+      "meaning": "a dated entry in a patient's history."
+    },
+    {
+      "term": "Storage key",
+      "meaning": "the address of a file inside cloud storage."
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/common/database/database.module",
+    "apps/api/src/common/storage/storage.service",
+    "apps/api/src/common/storage/file-processing.service",
+    "apps/api/src/modules/document/dto/document.dto.ts",
+    "@maate/database",
+    "@nestjs/common"
+  ],
+  "used_by": [
+    "apps/api/src/modules/document/document.controller.ts",
+    "apps/api/src/modules/document/document.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a728e9b8e2b6d021",
+      "title": "Imports for document logic",
+      "what": "Brings in the error types, logger, database, storage, file processing, the document type list and the request shapes.",
+      "why": "Needed by the service below.",
+      "watch_out": ""
+    },
+    {
+      "start": 13,
+      "end": 60,
+      "kind": "class",
+      "name": "DocumentService (part 1)",
+      "id": "s2",
+      "hash": "d79bb89c1b2920b0",
+      "title": "Upload link and start of confirmation",
+      "what": "Returns an upload link from storage, and begins confirming an upload by checking that the file exists in storage before creating the document record.",
+      "why": "Likely reason: checking the file first stops records being created for missing uploads.",
+      "watch_out": "The existence check needs the file to already be in storage, so an upload still in progress is refused with a message to upload first."
+    },
+    {
+      "start": 61,
+      "end": 109,
+      "kind": "class",
+      "name": "DocumentService (part 2)",
+      "id": "s3",
+      "hash": "053a84817b9dd11e",
+      "title": "Upload records, timeline and queue step",
+      "what": "Inside the transaction, also creates the file tracking record and a timeline entry. After the transaction, adds the job to the processing queue listing its steps and returns a confirmation.",
+      "why": "Likely reason: the timeline gives the patient a visible history of uploads, and the queue keeps slow work off the request.",
+      "watch_out": "The queue step runs after the transaction, so a queue failure leaves the document saved with no job to process it."
+    },
+    {
+      "start": 110,
+      "end": 165,
+      "kind": "method",
+      "name": "DocumentService: findByUser",
+      "id": "s4",
+      "hash": "fe79d0fde2202146",
+      "title": "Listing, reading and OCR lookup",
+      "what": "Lists a user's documents newest first, 20 per page and at most 50, leaving out archived and deleted ones. Reads one document only when the user owns it, and reads the OCR text for a document id.",
+      "why": "Likely reason: capping the page size keeps responses small. The reason for the 20 default is not stated.",
+      "watch_out": "The OCR lookup does not filter by owner, so the protection depends on the controller."
+    },
+    {
+      "start": 166,
+      "end": 217,
+      "kind": "method",
+      "name": "DocumentService: if",
+      "id": "s5",
+      "hash": "389ad7e63238c72b",
+      "title": "Summary, reprocessing and archive",
+      "what": "Finishes the summary lookup. Reprocess marks each withheld document pending and queues an AI-only job for it, then returns how many were queued. Archive hides a document by setting its archived flag and deleted time.",
+      "why": "Likely reason: withheld documents wait for consent, so reprocessing lets them continue once consent is granted.",
+      "watch_out": "Archive returns a success message even when no document matched the user and id."
+    }
+  ],
+  "explained_at": "2026-11-11T19:43:24+00:00",
+  "explained_by": "haiku",
+  "summary": "Handles document business logic: starting an upload, creating the records, sending work to the processing queue, listing and reading documents, reprocessing withheld ones, and archiving.",
+  "purpose": "Stores each uploaded document with its file record and timeline entry, then hands it off for virus scan, text reading and AI summary.",
+  "why": "Likely reason: one service keeps the document rules in one place, and background processing keeps uploads quick. The reason for some choices is not stated.",
+  "how": "1) Ask storage for an upload link. 2) After the upload, check that the file exists in storage. 3) In one database transaction, create the document, its file record and a timeline entry. 4) Add a job to the processing queue listing the virus scan, text reading and AI summary steps. 5) Return the document id. For listing and reading, filter by owner, then return the record. For reprocessing, mark withheld documents pending and queue AI-only jobs. For archiving, set the archived flag and the deleted time.",
+  "inputs": "The user id, upload details (file name, content type, size), the file key from storage, the document type, optional title and provider or doctor names, paging values for listing, and document ids.",
+  "outputs": "An upload link, a confirmation with the new document id, a page of documents with paging details, one document, OCR text or its status, an AI summary or its status, a reprocess count with the ids, and an archive message.",
+  "risks": "The queue job is added after the database transaction, so if queueing fails the document stays pending with no job, and a retry creates a second document for the same file. The OCR and summary lookups take only a document id, so they do not check the owner. Archive reports success even when no document matched. Reprocessing sets documents to pending before queueing, so a failure partway leaves some stuck. Reprocessing guesses the file type from the stored file type and treats anything that is not PDF as an image.",
+  "debug": "If an upload stays pending, check whether its file record exists and whether a queue job was created after the transaction. If a withheld document never processes, check whether reprocess was called and what status the document has. If a document is missing from a list, check that it is not archived or deleted. If a summary lookup returns another user's data, see the owner check gap.",
+  "summary_hash": "sha256:35f8206aaa5167826795042610f86416a6fb95f7cf13f032d71bfde2f23c3465"
+}

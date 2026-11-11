@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/share/share.service.ts",
+  "language": "TypeScript",
+  "lines": 301,
+  "hash": "sha256:a61120b5c224eb2e52ac2e7cf6d80a47d118b8b87d45df127db4a997e4dc474d",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Tokens are stored in plain text.",
+      "Resource scoping is coarse and the document list is unbounded.",
+      "The access level is not enforced in this file.",
+      "Scope and unknown-token behavior have no tests.",
+      "Failures in the patient alert are logged and ignored, which is acceptable but should be watched."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Token",
+      "meaning": "A long random string that acts as the key to a shared record."
+    },
+    {
+      "term": "Expiry",
+      "meaning": "The date after which a share link stops working."
+    },
+    {
+      "term": "Revoke",
+      "meaning": "Cancelling a share so it no longer works, while keeping its record."
+    },
+    {
+      "term": "Audit log",
+      "meaning": "A record of who accessed or changed sensitive data and when."
+    },
+    {
+      "term": "PHI",
+      "meaning": "Protected health information. Medical details that identify a person and must be guarded."
+    },
+    {
+      "term": "Scope",
+      "meaning": "The limited set of record types a share is allowed to show."
+    },
+    {
+      "term": "OCR",
+      "meaning": "Optical character recognition. Reading text from a scanned image."
+    },
+    {
+      "term": "Push notification",
+      "meaning": "An alert sent to the user's phone app."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/common",
+    "../../common/database/database.module",
+    "../../common/audit/audit.service",
+    "../notification/notification.service",
+    "./dto/share.dto",
+    "crypto",
+    "express"
+  ],
+  "used_by": [
+    "apps/api/src/modules/share/share.controller.ts",
+    "apps/api/src/modules/share/share.module.ts",
+    "apps/api/src/modules/share/share.service.spec.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3dec32f98c1ae9f4",
+      "title": "Imports and setup",
+      "what": "Brings in the error types, the logger, the database, the audit service, the notification service, the request rules, the random generator and the request type.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 19,
+      "end": 77,
+      "kind": "class",
+      "name": "ShareService (part 1)",
+      "id": "s2",
+      "hash": "4b80db2264e04735",
+      "title": "Creating a share link",
+      "what": "Creates a 64 character random token, sets the expiry from the requested days or 7 by default, sets the default resource list if none is given, and saves the share. Writes an access granted audit entry and returns the share with its relative link.",
+      "why": "Likely reason: a random token that is long and hard to guess is the only access check for the doctor.",
+      "watch_out": "The doctor email and phone are copied into the audit record, so the audit log holds personal data."
+    },
+    {
+      "start": 78,
+      "end": 131,
+      "kind": "class",
+      "name": "ShareService (part 2)",
+      "id": "s3",
+      "hash": "eb168ffb3244c1cf",
+      "title": "Listing and revoking shares",
+      "what": "Lists all of the user's shares, newest first, with an expired flag and each share link. Revokes a share found under this user, sets it as revoked, and writes a revoke audit entry.",
+      "why": "Likely reason: the patient needs to see and cancel links they created.",
+      "watch_out": "The list returns every token, so anyone who can call the list route can copy a working link. Revoking an already revoked share writes another audit entry."
+    },
+    {
+      "start": 132,
+      "end": 191,
+      "kind": "method",
+      "name": "ShareService: viewSharedData",
+      "id": "s4",
+      "hash": "edc35982e75187aa",
+      "title": "Viewing a share by token",
+      "what": "Finds the share by token with basic patient details. Refuses unknown, revoked or expired tokens with different messages. Adds one to the view count and records a view time, then writes a PHI view audit entry.",
+      "why": "Likely reason: the view count and the audit log show the patient how the link was used.",
+      "watch_out": "The view count rises before the audit is written. If the audit write fails, the count is still raised and the view is not recorded."
+    },
+    {
+      "start": 192,
+      "end": 231,
+      "kind": "class",
+      "name": "ShareService (part 4)",
+      "id": "s5",
+      "hash": "30c3b8ee11d2ef12",
+      "title": "Alerting the patient and building the reply",
+      "what": "Builds a display name for the doctor, adding Dr. when the stored name does not start with dr. Sends a patient alert, and any failure is logged without stopping the view. Starts the reply with patient basics and the share details.",
+      "why": "Likely reason: the patient should know when a doctor opened their records, and a failed alert should not block the doctor.",
+      "watch_out": "Any name starting with the letters dr, such as Drew, is shown without the Dr. prefix. A doctor who refreshes sends a new alert each time."
+    },
+    {
+      "start": 232,
+      "end": 286,
+      "kind": "class",
+      "name": "ShareService (part 5)",
+      "id": "s6",
+      "hash": "5125b612b9b0c163",
+      "title": "Adding documents, vitals and medicines",
+      "what": "Adds documents with their text and AI summary when lab reports or documents are shared. Adds the latest 50 vitals when vitals are shared. Adds active medicines when prescriptions or medications are shared.",
+      "why": "Likely reason: each record type is only included when the patient chose it.",
+      "watch_out": "The document list has no limit, and lab reports share all documents, not only lab reports. The access level is not checked here."
+    },
+    {
+      "start": 287,
+      "end": 301,
+      "kind": "class",
+      "name": "ShareService (part 6)",
+      "id": "s7",
+      "hash": "5e4c4439d14669ed",
+      "title": "Adding the timeline and returning the reply",
+      "what": "Adds the latest 50 visible timeline events when the timeline is shared, then returns the whole reply.",
+      "why": "Likely reason: the timeline is the summary view of the health history, so it is shared the same way as other records.",
+      "watch_out": "Hidden events are skipped, so a doctor will not see items the patient hid."
+    }
+  ],
+  "explained_at": "2026-11-11T19:56:43+00:00",
+  "explained_by": "haiku",
+  "summary": "Core logic for doctor share links: creates a random token, lists and revokes links, and returns the patient's chosen records to anyone with a valid token.",
+  "purpose": "Lets a patient share selected medical records with a doctor for a limited time, with an audit trail and an alert to the patient.",
+  "why": "Stated in the header: time limited, revocable and audited. These are common expectations for sharing medical data.",
+  "how": "Creates a 64 character random token and saves the share with a default 7 day expiry and default resource list, then writes an audit entry. For viewing, it finds the share by token, refuses if it is revoked or expired, adds one to the view count, writes an audit entry, alerts the patient, then gathers the documents, vitals, medicines and timeline for the listed resources.",
+  "inputs": "Patient id, share settings from the request, request details for the audit, and the token from the address.",
+  "outputs": "For create: the share with a shareUrl. For list: shares with an expired flag and a shareUrl. For view: patient basics, share info and the scoped records.",
+  "risks": "Tokens are stored as plain text and returned in list replies, so anyone who can read the database or the list can use them. Document, vital and medicine lists are scoped coarsely, and the document list has no limit. The access level is saved but not enforced here. Doctor email is written into the audit record. The view count goes up before the audit is written, so a failed audit leaves the count raised.",
+  "debug": "If a doctor sees an invalid link, check the token, the revoked flag and the expiry date. If the patient gets no alert, look for the failed doctor access notification warning. If records are missing, check the sharedResources list on the share row. If audit entries are missing, check the audit service.",
+  "summary_hash": "sha256:a61120b5c224eb2e52ac2e7cf6d80a47d118b8b87d45df127db4a997e4dc474d"
+}

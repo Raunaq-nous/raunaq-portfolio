@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/health/conditions.controller.ts",
+  "language": "TypeScript",
+  "lines": 187,
+  "hash": "sha256:6b1d04a6addaaf7524a09ebe4530887821bdb69fe86e2474aeb28716d121023d",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or error handling are visible in this file.",
+      "Update only records a timeline event when the status is RESOLVED, so other changes leave no timeline trace."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Controller",
+      "meaning": "the part of the app that receives web requests and sends back answers"
+    },
+    {
+      "term": "Soft delete",
+      "meaning": "marking a record as deleted without actually removing it from the database"
+    },
+    {
+      "term": "Audit record",
+      "meaning": "a saved log entry of who touched health data and when"
+    },
+    {
+      "term": "ICD code",
+      "meaning": "a standard code that names a diagnosis"
+    },
+    {
+      "term": "SNOMED code",
+      "meaning": "a standard medical vocabulary code for clinical terms"
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/common/audit/audit.service.ts",
+    "apps/api/src/common/auth/jwt-auth.guard.ts",
+    "apps/api/src/common/database/database.module.ts",
+    "apps/api/src/modules/timeline/timeline.service.ts",
+    "apps/api/src/modules/health/dto/health.dto.ts"
+  ],
+  "used_by": [
+    "apps/api/src/modules/health/health.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 26,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e7ce8d6e7254d3ca",
+      "title": "Imports and setup",
+      "what": "Brings in the tools this file needs: web route helpers, the audit and timeline services, the database access and the request checks for conditions.",
+      "why": "Needed so the routes can save data, log activity and check input.",
+      "watch_out": ""
+    },
+    {
+      "start": 27,
+      "end": 85,
+      "kind": "class",
+      "name": "ConditionsController (part 1)",
+      "id": "s2",
+      "hash": "10dc02b2ceca8848",
+      "title": "Creating a chronic condition",
+      "what": "Saves a new condition for the signed-in user, defaulting to active and moderate when those are not given. It then writes an audit entry and adds a diagnosis event to the user's timeline.",
+      "why": "Likely reason: every new diagnosis should appear on the timeline and be logged for privacy review.",
+      "watch_out": "The timeline description combines status, severity and notes, so long notes will make that event text long."
+    },
+    {
+      "start": 86,
+      "end": 139,
+      "kind": "class",
+      "name": "ConditionsController (part 2)",
+      "id": "s3",
+      "hash": "552774206703386f",
+      "title": "Listing and updating conditions",
+      "what": "Lists the user's active conditions, newest diagnosis first, optionally filtered by status. The update route changes status, severity, resolved date, notes or plan, and it logs the change.",
+      "why": "Reason not stated in the code. Listing is also logged, which suggests every view of health data is recorded.",
+      "watch_out": "Listing writes an audit entry on every call, so the audit table will grow quickly with heavy use."
+    },
+    {
+      "start": 140,
+      "end": 187,
+      "kind": "class",
+      "name": "ConditionsController (part 3)",
+      "id": "s4",
+      "hash": "7913e7f2e9e29aad",
+      "title": "Resolving and deleting conditions",
+      "what": "When a condition is marked resolved, adds a resolved event to the timeline. Delete hides the condition by setting a deleted date and only logs the deletion if a record was actually hidden.",
+      "why": "Keeps the timeline in step with the condition and keeps old records for history rather than erasing them.",
+      "watch_out": "The resolved event is only added when the status is RESOLVED in the request, so a resolved date sent alone does not create one."
+    }
+  ],
+  "explained_at": "2026-11-11T19:53:28+00:00",
+  "explained_by": "haiku",
+  "summary": "Lets a signed-in user record, list, update and soft-delete their own chronic conditions such as diabetes or hypertension.",
+  "purpose": "Stores a user's long-term health conditions and keeps a matching entry on their health timeline.",
+  "why": "Reason not stated in the code. The soft delete suggests records are kept for history.",
+  "how": "Each route reads the signed-in user from the token. Create saves the condition, writes an audit entry and adds a timeline event. List returns non-deleted conditions, optionally filtered by status. Update checks the condition belongs to the user, saves changes, and adds a resolved timeline event when status becomes RESOLVED. Delete marks the record as deleted and audits it.",
+  "inputs": "Request bodies from CreateConditionDto and UpdateConditionDto, an optional status filter, the condition id from the URL, and the user id from the token.",
+  "outputs": "Objects with success and data, or a not-found message. List returns a data array.",
+  "risks": "Health data is written and read here, so every route must keep the user id check. Errors are not caught, so a failing database call returns a server error.",
+  "debug": "Check the audit records and the timeline table when a change looks missing. If an update returns not found, confirm the condition is not already soft-deleted. Check the database connection if every route fails.",
+  "summary_hash": "sha256:6b1d04a6addaaf7524a09ebe4530887821bdb69fe86e2474aeb28716d121023d"
+}

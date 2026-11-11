@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/common/storage/document.processor.ts",
+  "language": "TypeScript",
+  "lines": 460,
+  "hash": "sha256:102f44a94bc458bb4766739db369c31fc54f71c3482aa8725911df655240555c",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "The virus scan step marks files as clean without scanning them, which is unsafe in real use.",
+      "The consent check is skipped when the consent table is not available, so the AI summary could run without permission.",
+      "Chunk deletion and creation are not in one transaction, so partial results are possible.",
+      "No tests for this file are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Job queue (BullMQ)",
+      "meaning": "A system that holds work items, runs them in the background, and retries them when they fail."
+    },
+    {
+      "term": "OCR",
+      "meaning": "Optical character recognition: reading text out of an image or scanned PDF."
+    },
+    {
+      "term": "DPDP",
+      "meaning": "India's Digital Personal Data Protection law, which requires clear permission before personal data is used."
+    },
+    {
+      "term": "Embedding",
+      "meaning": "A list of numbers that represents the meaning of a piece of text, so similar meanings can be found by comparing numbers."
+    },
+    {
+      "term": "Chunk",
+      "meaning": "A small piece of a longer text, stored separately so it can be searched or sent to an AI model."
+    },
+    {
+      "term": "pgvector",
+      "meaning": "An add-on for the PostgreSQL database that stores and searches embedding numbers."
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/common/database/database.module (PrismaService)",
+    "apps/api/src/common/storage/storage.service.ts",
+    "apps/api/src/common/storage/file-processing.service.ts",
+    "apps/api/src/modules/notification/notification.service.ts",
+    "@nestjs/bull",
+    "@nestjs/axios",
+    "@nestjs/config",
+    "bull",
+    "form-data",
+    "rxjs"
+  ],
+  "used_by": [
+    "apps/api/src/common/storage/storage.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1156be63b39484b0",
+      "title": "Imports and setup",
+      "what": "Brings in the tools this worker needs: the job queue, logging, settings, HTTP calls, file storage, the shared database, and notifications.",
+      "why": "Likely reason: the header says this is the background OCR pipeline, which needs all of these pieces.",
+      "watch_out": "The imports use relative paths, so moving any of these files will break this file."
+    },
+    {
+      "start": 18,
+      "end": 71,
+      "kind": "class",
+      "name": "DocumentProcessor (part 1)",
+      "id": "s2",
+      "hash": "20fb4ec3b52a2a20",
+      "title": "Job entry point and virus scan",
+      "what": "Runs when a document job starts. It reads the OCR and AI service addresses, then runs only the steps listed in the job's pipeline. The virus scan step only marks the file as clean and does not check it.",
+      "why": "Likely reason: each document can need a different set of steps, so the same worker handles all of them.",
+      "watch_out": "The virus scan step is a placeholder that reports clean for every file, so no real protection is in place."
+    },
+    {
+      "start": 72,
+      "end": 117,
+      "kind": "method",
+      "name": "DocumentProcessor: runAiOcr",
+      "id": "s3",
+      "hash": "d1b9391cd0cedd34",
+      "title": "Running OCR text extraction",
+      "what": "Marks the document as processing, downloads its file from storage, and sends it to the OCR service with a 30 second limit. It then reads the data the service returns.",
+      "why": "Likely reason: turns scanned images and PDFs into text and fields the app can show and search.",
+      "watch_out": "A large file that takes longer than 30 seconds will time out and be retried."
+    },
+    {
+      "start": 118,
+      "end": 157,
+      "kind": "class",
+      "name": "DocumentProcessor (part 3)",
+      "id": "s4",
+      "hash": "cccef42c452ae4bf",
+      "title": "Saving OCR results and retry decision",
+      "what": "Saves the text and structured fields from OCR, then marks OCR as completed. If the call failed, it decides whether the failure is final, based on the HTTP status and how many tries are left.",
+      "why": "Likely reason: separates problems that will never succeed, such as a rejected file, from temporary network problems that a retry can fix.",
+      "watch_out": "The retry limit comes from the job settings, so changing that limit also changes when a document is marked failed."
+    },
+    {
+      "start": 158,
+      "end": 188,
+      "kind": "class",
+      "name": "DocumentProcessor (part 4)",
+      "id": "s5",
+      "hash": "3c9c346877d74a9e",
+      "title": "Failure alert and retry trigger",
+      "what": "When OCR has finally failed, it tells the user the document could not be read and asks them to upload a clearer file. For a temporary error, it logs a warning and re-throws the error so the queue retries the job.",
+      "why": "Likely reason: the user is told only once the failure is final, so they are not alerted during automatic retries.",
+      "watch_out": "If the notification call fails, the failure is only logged, so the user may never learn that their upload was not read."
+    },
+    {
+      "start": 189,
+      "end": 248,
+      "kind": "method",
+      "name": "DocumentProcessor: runAiSummary",
+      "id": "s6",
+      "hash": "162b96c3906d4b18",
+      "title": "AI summary consent gate",
+      "what": "Before any summary is made, checks that the user has granted permission for AI summaries and has not withdrawn it. If not, it marks the summary as withheld, tells the user, and stops. It also checks that OCR text exists before continuing.",
+      "why": "The code comment says this is for DPDP compliance, the Indian personal data law.",
+      "watch_out": "If the consent table is not available on the database client, this check is skipped and the summary runs without a consent check."
+    },
+    {
+      "start": 249,
+      "end": 307,
+      "kind": "class",
+      "name": "DocumentProcessor (part 6)",
+      "id": "s7",
+      "hash": "c1f668efc1f014c7",
+      "title": "Calling the AI summary service",
+      "what": "Sends the OCR text and structured data to the AI service and receives a summary, key findings, risk flags, and recommendations. It saves these with the model name, then marks the summary completed and rebuilds the document's chunks.",
+      "why": "Likely reason: stores the AI answer so the app can show it later without asking the AI again.",
+      "watch_out": "Missing fields in the AI reply are filled with blank defaults, so a poor reply can be saved and still look like a completed summary."
+    },
+    {
+      "start": 308,
+      "end": 361,
+      "kind": "class",
+      "name": "DocumentProcessor (part 7)",
+      "id": "s8",
+      "hash": "98e2e817396ec0a4",
+      "title": "Summary ready alert and risk check",
+      "what": "Sends the user a notification when the summary is ready. It picks a more urgent title and type if any risk flag mentions something critical, high, urgent, or severe, or needs verification. If the step fails, it marks the summary as failed.",
+      "why": "Likely reason: makes sure a user sees serious warnings from their documents quickly.",
+      "watch_out": "The urgency check looks for certain words in the text, so a risk flag worded differently may not be flagged as urgent."
+    },
+    {
+      "start": 362,
+      "end": 421,
+      "kind": "class",
+      "name": "DocumentProcessor (part 8)",
+      "id": "s9",
+      "hash": "151222f65d37a94c",
+      "title": "Splitting text into overlapping chunks",
+      "what": "Deletes any existing chunks for the document, then cuts the OCR text into pieces of about 400 characters, each overlapping the one before by 50. It asks the AI service for an embedding for each piece, and continues without embeddings if that call fails.",
+      "why": "The code comments say this prepares the text for later search features (Phase 4 and Phase 8).",
+      "watch_out": "Old chunks are deleted before new ones are saved, with no single transaction, so a crash in the middle leaves the document with missing chunks."
+    },
+    {
+      "start": 422,
+      "end": 460,
+      "kind": "class",
+      "name": "DocumentProcessor (part 9)",
+      "id": "s10",
+      "hash": "d4ac6e9501c66935",
+      "title": "Saving chunks with embeddings",
+      "what": "Saves each chunk to the document_chunks table. A chunk with an embedding is saved with a raw SQL insert that stores the vector. A chunk without one is saved as a normal row marked as waiting for an embedding provider.",
+      "why": "Likely reason: the text is still kept when the AI service is down, so embeddings can be added later.",
+      "watch_out": "All errors in this step are caught and only logged, so a document can look finished while having no chunks at all."
+    }
+  ],
+  "explained_at": "2026-11-11T19:33:57+00:00",
+  "explained_by": "haiku",
+  "summary": "Background worker that takes an uploaded medical document and runs it through a virus check step, text recognition (OCR), an AI summary that respects the user's consent, and a step that splits the text into searchable pieces.",
+  "purpose": "Does the slow work after a user uploads a document, so the upload request does not have to wait for it.",
+  "why": "Likely reason: the work calls other services and can take a long time or fail, so it runs in a job queue with retries. The code comments say the chunking step prepares text for later search features.",
+  "how": "1. The worker receives a job from the document-processing queue. 2. If the job's pipeline includes virus_scan, it marks the file as scanned and clean. 3. If it includes ocr, it downloads the file, sends it to the OCR service, and saves the text and fields it returns. 4. If it includes ai_summary, it checks the user's consent, sends the text to the AI service, saves the summary, notifies the user, and splits the text into chunks with embeddings where possible.",
+  "inputs": "A queue job holding the document ID, user ID, storage file key, file name, content type, document type, and the list of steps to run. It also reads the AI and OCR service addresses from settings, with localhost defaults.",
+  "outputs": "Updated rows for OCR results, AI summaries, document status fields, and document chunks. Push notifications to the user when OCR fails, when a summary is withheld, and when a summary is ready.",
+  "risks": "The virus scan step does not scan anything. It marks the file as clean without checking it. The consent check is skipped if the consent table is not present in the database client. Chunks are deleted and rebuilt in separate steps with no single transaction, so a crash can leave few or no chunks. Defaults such as an empty summary can hide a bad reply from the AI service. Document text is sent to the OCR and AI services at configured addresses, and the code does not say who hosts them.",
+  "debug": "Search the logs for the prefixes Virus scan, AI OCR, AI summary, and Created document chunks. Check the document row fields ocrStatus and aiSummaryStatus to see where a document stopped. Check the job in the queue for its attempt count and error. If OCR fails in local runs, confirm the OCR service is running at the OCR_SERVICE_URL address. If chunks are missing, check the document_chunks table and that the pgvector extension is installed.",
+  "summary_hash": "sha256:102f44a94bc458bb4766739db369c31fc54f71c3482aa8725911df655240555c"
+}

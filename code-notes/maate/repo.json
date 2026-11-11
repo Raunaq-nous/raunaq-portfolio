@@ -1,0 +1,346 @@
+{
+  "schema_version": 1,
+  "name": "Maate",
+  "commit": "328ef9b",
+  "synced_at": "2026-11-11T20:28:45+00:00",
+  "summary": "Maate is a health records app that helps people keep their medical information in one place. Users can upload documents such as lab reports and prescriptions, which are read automatically and summarized in plain language by AI. It also offers reminders for medicines, water and meals, a health timeline, a chat assistant, family profiles, and secure sharing with doctors. The code covers a server (API), a website, a phone app, two Python helper services (text reading and AI), and shared packages. Privacy and consent are a strong theme, including data export and account deletion under India's DPDP rules.",
+  "who_its_for": "People who want to manage their own or their family's health records, and caregivers or doctors who are given access. For developers, it is a multi-part project that needs some technical background to run.",
+  "how_it_runs": "A local setup starts a database, a cache, file storage, and the two Python services using Docker (see docker-compose.yml and the Makefile). The API, website and mobile app are run separately and talk to each other over the network. Exactly how production is deployed is only partly clear: there is an API Docker recipe, a Vercel config for the website, and a nightly backup script for a staging database.",
+  "start_here": [
+    "package.json",
+    "Makefile",
+    "docker-compose.yml",
+    ".env.example",
+    "apps/api/src/main.ts",
+    "apps/api/src/app.module.ts",
+    "packages/shared-types/src/index.ts"
+  ],
+  "areas": [
+    {
+      "id": "apps-api",
+      "name": "apps/api",
+      "match": [
+        "apps/api/*"
+      ],
+      "summary": "The main server. It handles login, documents, chat, reminders, family access, doctor sharing, consent, notifications and data export or deletion, and it records an audit trail of who touched health data.",
+      "why": "Every other part of the product depends on it for data and rules.",
+      "debug_tips": "Start with the module for the feature that misbehaves, then check the login guard and consent checks, since they can silently block requests. The health check route shows whether the database and Redis are reachable."
+    },
+    {
+      "id": "apps-web",
+      "name": "apps/web",
+      "match": [
+        "apps/web/*"
+      ],
+      "summary": "The website built with Next.js, with sign-in pages, a dashboard, reports, timeline, reminders, chat, family pages and a public page for doctors. Some dashboard cards show fixed sample data rather than real results.",
+      "why": "It is the main way most users reach the product from a computer.",
+      "debug_tips": "Check apps/web/src/lib/api.ts for request and token problems and middleware.ts for unexpected redirects. If a number looks wrong, confirm whether the widget uses sample data."
+    },
+    {
+      "id": "apps-mobile",
+      "name": "apps/mobile",
+      "match": [
+        "apps/mobile/*"
+      ],
+      "summary": "The phone app built with Expo, with sign-in (including fingerprint or face), tabs for home, chat, reminders, timeline and profile, document upload, family and settings. A few document screens show fixed demo content.",
+      "why": "It is how people get reminders and push notifications on their phones.",
+      "debug_tips": "Look at src/services/api.ts for network and login renewal issues and the store files for stale data. For missing notifications, see NotificationManager.ts."
+    },
+    {
+      "id": "packages-database",
+      "name": "packages/database",
+      "match": [
+        "packages/database/*"
+      ],
+      "summary": "The database package that gives the rest of the code its database client and shared value lists. It also holds two one-off developer scripts for looking up and deleting a user.",
+      "why": "It defines how data is stored and accessed everywhere else.",
+      "debug_tips": "The scratch scripts permanently change data, so use them with care. The actual table definitions are not visible in these summaries, so that part is unclear."
+    },
+    {
+      "id": "services-ai-service",
+      "name": "services/ai-service",
+      "match": [
+        "services/ai-service/*"
+      ],
+      "summary": "A Python service that writes document summaries, answers chat questions, and creates embeddings for search. It includes safety rules such as emergency phrase detection and checks for impossible lab values.",
+      "why": "It produces the AI features users see, so its safety behavior matters.",
+      "debug_tips": "Run the tests in tests/test_plausibility_and_emergency.py first. Check config.py and the .env settings if the AI model cannot be reached."
+    },
+    {
+      "id": "services-ocr-service",
+      "name": "services/ocr-service",
+      "match": [
+        "services/ocr-service/*"
+      ],
+      "summary": "A Python service that reads text from images and PDFs with Tesseract, pulls out lab values and medicine names, and cleans up common misread units. The Google Vision fallback is only a placeholder returning fake text.",
+      "why": "It turns uploaded photos into data the rest of the app can use.",
+      "debug_tips": "Poor results usually come from the image preparation step (preprocessor.py) or the simple pattern matching in ner_extractor.py, which only knows five lab tests and a short medicine list."
+    },
+    {
+      "id": "root-files",
+      "name": "(root files)",
+      "match": [
+        "*"
+      ],
+      "summary": "Top-level project files: the command shortcuts, the Docker stack, the environment template, lint rules and the root package file.",
+      "why": "They define how the whole project is set up and run.",
+      "debug_tips": "If setup fails, compare your environment file with .env.example and confirm Docker services are running."
+    },
+    {
+      "id": "packages-eslint-config",
+      "name": "packages/eslint-config",
+      "match": [
+        "packages/eslint-config/*"
+      ],
+      "summary": "Shared code style rules for backend, React and general TypeScript code.",
+      "why": "It keeps code consistent across the project.",
+      "debug_tips": "Only relevant when lint checks fail in CI or the editor; fix the flagged code or adjust the rule here."
+    },
+    {
+      "id": "packages-shared-types",
+      "name": "packages/shared-types",
+      "match": [
+        "packages/shared-types/*"
+      ],
+      "summary": "One file describing the shape of data sent between the API and the apps, such as sign-in, documents, reminders, family and chat.",
+      "why": "It keeps the server and apps in agreement about data formats.",
+      "debug_tips": "If an app and the API disagree on a field, check this file first."
+    },
+    {
+      "id": "scripts",
+      "name": "scripts",
+      "match": [
+        "scripts/*"
+      ],
+      "summary": "A nightly script that backs up the staging database to Cloudflare R2, and a smoke test that runs ten checks against a live staging API.",
+      "why": "They protect data and quickly confirm that a deployment works end to end.",
+      "debug_tips": "Run the smoke test to find which step fails first. For backup trouble, check the storage credentials and the database address."
+    },
+    {
+      "id": "github",
+      "name": ".github",
+      "match": [
+        ".github/*"
+      ],
+      "summary": "The automated checks that run on every push and pull request: lint, types, formatting, tests, a security scan, and builds.",
+      "why": "It catches problems before changes are merged.",
+      "debug_tips": "Open the failing step in the GitHub Actions log and rerun the same command locally."
+    },
+    {
+      "id": "other",
+      "name": "Everything else",
+      "match": [],
+      "summary": "",
+      "why": "",
+      "debug_tips": ""
+    }
+  ],
+  "decisions": [],
+  "readiness": {
+    "overall": "needs-work",
+    "summary": "Top fixes: scan git history for secrets and run the test and dependency audits, since a health platform claiming HIPAA compliance needs those verified; add documented backups and a rollback procedure; and add a clear quick start in the README with error tracking and alerting.",
+    "checked_at": "2026-11-11T20:29:02+00:00",
+    "checks": [
+      {
+        "id": "starts",
+        "question": "Does the app build and start with one documented command?",
+        "status": "partial",
+        "evidence": "`package.json` has `dev`, `build` and `db:migrate` scripts, plus `docker-compose.yml` and a pinned `packageManager`. The README excerpt shown does not include a visible single start command, and the `dev:web` script filters to `@maate/doctor-portal` rather than the web app. Not run, so build success is unverified.",
+        "next_step": "Add a Quick Start section to `README.md` with the exact install, db setup and start commands, and fix the `dev:web` filter."
+      },
+      {
+        "id": "tests",
+        "question": "Are there automated tests, and do they pass?",
+        "status": "unknown",
+        "evidence": "Not checked: tests were not run in this pass. 15 test files exist, including `apps/api/src/modules/auth/auth.service.spec.ts`, `apps/api/src/common/security/cross-user-isolation.spec.ts` and `validation.spec.ts`, and `.github/workflows/ci.yml` exists. Whether they pass is unknown.",
+        "next_step": "Run `pnpm test:ci` and confirm CI is green. Add tests for the web app and the Python services."
+      },
+      {
+        "id": "errors",
+        "question": "When something goes wrong, does the app show a clear message instead of crashing or failing silently?",
+        "status": "partial",
+        "evidence": "The scan found 0 swallowed errors, which is a good sign. No evidence of a global exception filter or user-facing error pages was provided. 5 TODO/FIXME markers exist in 4 files.",
+        "next_step": "Confirm a global NestJS exception filter and Next.js `error.tsx` boundaries exist, and review the TODOs."
+      },
+      {
+        "id": "inputs",
+        "question": "Does it check what people type or upload before using it?",
+        "status": "partial",
+        "evidence": "Validation code matches in 25 files, and `apps/api/src/common/security/validation.spec.ts` tests it. Upload checks (file type, size, malware scanning) are not confirmed from the evidence, and coverage of every endpoint is unknown.",
+        "next_step": "Verify a global validation pipe with whitelist is enabled and that document uploads enforce type and size limits."
+      },
+      {
+        "id": "secrets",
+        "question": "Are passwords and API keys kept out of the code and out of git history?",
+        "status": "partial",
+        "evidence": "Zero secret-looking strings were found in tracked files at HEAD, and `.gitignore` mentions `.env`. Only `.example` and template env files are tracked. Git history was not scanned.",
+        "next_step": "Run a history scan (gitleaks or trufflehog) and rotate any key that turns up."
+      },
+      {
+        "id": "access",
+        "question": "Can only the right people see and change things (sign-in and permissions)?",
+        "status": "partial",
+        "evidence": "Auth, session and permission code appears in 56 files, with `apps/api/src/modules/auth/auth.service.spec.ts` and `apps/api/src/common/security/cross-user-isolation.spec.ts` covering it. Time-limited share tokens with revocation are described, and a `add_token_revoke_reason` migration exists. Guard coverage on every route was not verified.",
+        "next_step": "Audit that every controller route has an auth guard by default and an explicit public allowlist."
+      },
+      {
+        "id": "data",
+        "question": "Is important data backed up, and are database changes made through migrations?",
+        "status": "partial",
+        "evidence": "Prisma migrations exist under `packages/database/prisma/migrations` (3 found), so schema changes are versioned. No backup or restore procedure was found in the evidence for a health-data database. The migration folder dates look odd (2026-05, 2026-08) but are not a problem in themselves.",
+        "next_step": "Document and schedule database backups with a tested restore, and note it in `DEPLOY.md`."
+      },
+      {
+        "id": "dependencies",
+        "question": "Are third-party packages reasonably up to date and free of known security problems?",
+        "status": "unknown",
+        "evidence": "Not checked: the dependency audit was not run in this pass. `pnpm-lock.yaml` and the Python `requirements.txt` files are present, so versions are pinned. Currency and known vulnerabilities are unknown.",
+        "next_step": "Run `pnpm audit` and `pip-audit`, and enable Dependabot or Renovate."
+      },
+      {
+        "id": "logs",
+        "question": "If it breaks while people use it, will logs or alerts show what happened?",
+        "status": "partial",
+        "evidence": "Logging code appears in 58 files. No evidence of centralized log shipping, error tracking (such as Sentry) or alerting was found in the data provided.",
+        "next_step": "Add structured logging with request IDs, error tracking and an uptime alert."
+      },
+      {
+        "id": "performance",
+        "question": "Does it stay fast with realistic amounts of data and users?",
+        "status": "unknown",
+        "evidence": "Not checked: no load testing or profiling was run, and the static evidence does not show pagination, caching or indexing. pgvector is used for retrieval, but index setup was not seen.",
+        "next_step": "Confirm list endpoints are paginated and the database has indexes, then run a basic load test."
+      },
+      {
+        "id": "deploy",
+        "question": "Is there a written, repeatable way to deploy it and to roll back a bad release?",
+        "status": "partial",
+        "evidence": "`DEPLOY.md`, `.github/workflows/ci.yml`, `apps/web/vercel.json`, `docker-compose.prod.yml`, `docker-compose.staging.yml` and Dockerfiles for the API and both services exist. A rollback procedure was not confirmed from the evidence.",
+        "next_step": "Add an explicit rollback section to `DEPLOY.md`, covering Vercel redeploy and database migration rollback."
+      },
+      {
+        "id": "docs",
+        "question": "Could someone new run it and understand it from the docs alone?",
+        "status": "partial",
+        "evidence": "The README has an overview, architecture tree and live links, and many phase documents exist (`PHASE2_AUTH.md` and others, plus `DEPLOY.md`). They read as build logs rather than a newcomer guide, and setup steps and env var explanations were not visible.",
+        "next_step": "Add a setup guide covering prerequisites, env vars, seeding and running tests."
+      }
+    ],
+    "method": "Static evidence only; tests, build and audit were not run in this pass."
+  },
+  "debug_playbook": [
+    {
+      "symptom": "A user cannot sign in or keeps getting logged out",
+      "likely_area": "apps-api",
+      "where_to_look": [
+        "apps/api/src/modules/auth/services/token.service.ts",
+        "apps/api/src/common/auth/jwt-auth.guard.ts",
+        "apps/web/src/lib/api.ts"
+      ],
+      "steps": [
+        "Check whether the login token is being renewed correctly in the app's API client.",
+        "Look at token and session checks in the API for rejected or reused tokens.",
+        "Confirm Redis is running, since codes and sessions depend on it."
+      ]
+    },
+    {
+      "symptom": "An uploaded document never finishes processing or has no summary",
+      "likely_area": "services-ocr-service",
+      "where_to_look": [
+        "apps/api/src/common/storage/document.processor.ts",
+        "services/ocr-service/app/main.py",
+        "services/ai-service/app/summarizer/engine.py"
+      ],
+      "steps": [
+        "Check that the OCR and AI services are running and reachable.",
+        "Look at the background processing worker for the step that failed.",
+        "If the summary is withheld, check whether the user has given AI consent."
+      ]
+    },
+    {
+      "symptom": "The chat gives no answer or a wrong one",
+      "likely_area": "services-ai-service",
+      "where_to_look": [
+        "apps/api/src/modules/chat/chat.service.ts",
+        "services/ai-service/app/chatbot/engine.py",
+        "services/ai-service/app/config.py"
+      ],
+      "steps": [
+        "Confirm the AI service is reachable from the API.",
+        "Check consent for AI use and that the user has processed documents.",
+        "Run the AI service tests to see whether safety rules are intercepting the question."
+      ]
+    },
+    {
+      "symptom": "Reminders or push notifications do not arrive",
+      "likely_area": "apps-api",
+      "where_to_look": [
+        "apps/api/src/modules/reminder/reminder-scheduler.service.ts",
+        "apps/api/src/modules/notification/notification.processor.ts",
+        "apps/mobile/src/services/NotificationManager.ts"
+      ],
+      "steps": [
+        "Check that the scheduler is adding jobs each minute and Redis is up.",
+        "Confirm the phone's push token is registered and the device is active.",
+        "Look at the notification worker for delivery errors."
+      ]
+    },
+    {
+      "symptom": "The local setup will not start",
+      "likely_area": "root-files",
+      "where_to_look": [
+        ".env.example",
+        "docker-compose.yml",
+        "Makefile"
+      ],
+      "steps": [
+        "Copy the environment template to a real file and fill in the secrets.",
+        "Start the stack with the Make commands and check each Docker service is healthy.",
+        "Run the smoke test or the health check route to see what is unreachable."
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Monorepo",
+      "meaning": "One repository holding several apps and packages together."
+    },
+    {
+      "term": "API",
+      "meaning": "The server that the website and phone app ask for data and actions."
+    },
+    {
+      "term": "OCR",
+      "meaning": "Software that reads text from a photo or scan of a document."
+    },
+    {
+      "term": "JWT / token",
+      "meaning": "A digital pass proving a user is signed in."
+    },
+    {
+      "term": "MFA / TOTP",
+      "meaning": "Two-step login using a six-digit code that changes every so often."
+    },
+    {
+      "term": "OTP",
+      "meaning": "A one-time code sent to confirm identity, valid for five minutes here."
+    },
+    {
+      "term": "Redis",
+      "meaning": "A fast temporary data store used for caching, codes and job queues."
+    },
+    {
+      "term": "Embeddings",
+      "meaning": "Lists of numbers that let the AI find text with similar meaning."
+    },
+    {
+      "term": "DPDP",
+      "meaning": "India's data protection law, behind the consent, export and deletion features."
+    },
+    {
+      "term": "Docker",
+      "meaning": "A way to run each part of the system in its own packaged container."
+    }
+  ],
+  "skipped": []
+}

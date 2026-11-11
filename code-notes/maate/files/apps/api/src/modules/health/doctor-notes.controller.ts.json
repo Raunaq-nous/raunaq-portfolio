@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/health/doctor-notes.controller.ts",
+  "language": "TypeScript",
+  "lines": 171,
+  "hash": "sha256:a2df0fa62b5c16aa51441b7c447b66af2ef73fd2a499ca329fec7211c1035a73",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "The isConfidential flag is stored but not enforced when notes are listed or read.",
+      "Creating a note for another patient is allowed by this code. Whether a guard elsewhere blocks it is not visible here.",
+      "No tests or error handling are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SOAP note",
+      "meaning": "a standard visit note with four parts: subjective (what the patient says), objective (measurements), assessment (what the clinician thinks) and plan"
+    },
+    {
+      "term": "CPT code",
+      "meaning": "a standard code that names a billed medical procedure or visit"
+    },
+    {
+      "term": "Soft delete",
+      "meaning": "marking a record as deleted without actually removing it"
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/common/audit/audit.service.ts",
+    "apps/api/src/common/auth/jwt-auth.guard.ts",
+    "apps/api/src/common/database/database.module.ts",
+    "apps/api/src/modules/timeline/timeline.service.ts",
+    "apps/api/src/modules/health/dto/health.dto.ts"
+  ],
+  "used_by": [
+    "apps/api/src/modules/health/health.module.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 24,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "883bc9a14d1732b1",
+      "title": "Imports and setup",
+      "what": "Brings in the route helpers, audit and timeline services, database access and the note input format.",
+      "why": "Needed so the routes can save notes, log activity and add timeline entries.",
+      "watch_out": ""
+    },
+    {
+      "start": 25,
+      "end": 84,
+      "kind": "class",
+      "name": "DoctorNotesController (part 1)",
+      "id": "s2",
+      "hash": "5398b62fbea3d802",
+      "title": "Creating a doctor note",
+      "what": "Saves a clinical note for a patient, using the given patient id or the signed-in user, and records the signed-in user as author. It logs the creation and adds a visit event to the patient's timeline.",
+      "why": "Likely reason: a clinician can write a note for a patient, so the author and the patient are stored separately.",
+      "watch_out": "The timeline entry uses the assessment, then the subjective text, then the plan, so the event text may not show the whole note."
+    },
+    {
+      "start": 85,
+      "end": 143,
+      "kind": "class",
+      "name": "DoctorNotesController (part 2)",
+      "id": "s3",
+      "hash": "77ce5b97cc21dc28",
+      "title": "Listing and reading notes",
+      "what": "Returns all non-deleted notes for the signed-in patient, newest first, with the author's name and picture. The single-note route returns one note only when it belongs to that patient.",
+      "why": "Reason not stated in the code. Each view is audited, which suggests it is treated as sensitive.",
+      "watch_out": "Confidential notes are returned just like other notes, since the isConfidential flag is not checked here."
+    },
+    {
+      "start": 144,
+      "end": 171,
+      "kind": "class",
+      "name": "DoctorNotesController (part 3)",
+      "id": "s4",
+      "hash": "a5d38f076eda2dc7",
+      "title": "Deleting a note",
+      "what": "Hides a note by setting a deleted date, only when it belongs to the signed-in patient. It logs the deletion only when something was actually hidden.",
+      "why": "Keeps the clinical record for history rather than erasing it.",
+      "watch_out": "Only the patient can delete the note here, so the author has no visible way to remove a mistake."
+    }
+  ],
+  "explained_at": "2026-11-11T19:53:28+00:00",
+  "explained_by": "haiku",
+  "summary": "Lets a signed-in user or clinician create, list, read and soft-delete clinical doctor notes about a patient.",
+  "purpose": "Stores structured visit notes (subjective, objective, assessment, plan) and places each one on the patient timeline.",
+  "why": "Reason not stated in the code. The soft delete suggests clinical records are kept for history.",
+  "how": "Create takes the patient id from the request or uses the signed-in user, saves the note with the signed-in user as author, audits it and adds a visit event. List and single-read return notes for the patient, with author name. Delete hides the note and audits it.",
+  "inputs": "CreateDoctorNoteDto fields, the note id from the URL, and the user id from the token.",
+  "outputs": "Objects with success and data, or a not-found message. List returns a data array with author details.",
+  "risks": "Notes can be created for any patient id sent in the request, and the code does not check that the author is allowed to do so. The isConfidential flag is saved but is not checked when notes are listed or read, so confidential notes appear to the patient.",
+  "debug": "If a note is missing from the list, check that deletedAt is empty and that patientId matches the signed-in user. If a confidential note is visible to the wrong person, check how isConfidential is used elsewhere. Check audit records for who created or viewed a note.",
+  "summary_hash": "sha256:a2df0fa62b5c16aa51441b7c447b66af2ef73fd2a499ca329fec7211c1035a73"
+}

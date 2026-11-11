@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "path": "services/ai-service/app/chatbot/engine.py",
+  "language": "Python",
+  "lines": 240,
+  "hash": "sha256:26d7eac2d3fbe86c4993646a66ac9834d32d86120be3ee4465bcd8dedd1d6a11",
+  "area": "services-ai-service",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Emergency detection relies on phrase matching that can miss or over-trigger.",
+      "Only two behaviors are tested: emergency intercept and an ordinary question.",
+      "The ordinary-question test calls the real model when a key is set, so its result depends on the environment.",
+      "The OpenAI temperature setting is ignored here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "RAG",
+      "meaning": "retrieval augmented generation, where relevant documents are found and given to the AI along with the question"
+    },
+    {
+      "term": "Grounding",
+      "meaning": "keeping answers tied to the facts that were supplied, rather than the AI's general knowledge"
+    },
+    {
+      "term": "LLM",
+      "meaning": "large language model, the AI system that writes the reply text"
+    },
+    {
+      "term": "System prompt",
+      "meaning": "standing instructions given to the AI before the conversation starts"
+    },
+    {
+      "term": "Chunk",
+      "meaning": "a piece of a larger document, used so the AI reads only the relevant part"
+    },
+    {
+      "term": "Citation",
+      "meaning": "a reference naming the document a fact came from"
+    }
+  ],
+  "depends_on": [
+    "services/ai-service/app/config.py",
+    "openai"
+  ],
+  "used_by": [
+    "services/ai-service/app/main.py",
+    "services/ai-service/tests/test_plausibility_and_emergency.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "52337d863090b335",
+      "title": "Imports and the AI safety rules",
+      "what": "Loads the libraries and settings, then defines a long set of standing instructions. The instructions tell the AI to stay within the patient's records, avoid diagnosing or prescribing, cite sources, and write warmly.",
+      "why": "Likely reason: keeps the AI within clinical safety limits. The rules are written in the prompt itself.",
+      "watch_out": "Changing these rules changes the safety behavior of every reply, so review edits carefully."
+    },
+    {
+      "start": 31,
+      "end": 87,
+      "kind": "class",
+      "name": "ChatbotEngine (part 1)",
+      "id": "s2",
+      "hash": "97f7128d9ba33e80",
+      "title": "Emergency phrase check",
+      "what": "Holds the list of urgent phrases, such as chest pain and trouble breathing, and defines the chatbot class with its main reply method. If a message contains any listed phrase, the reply is a fixed message telling the patient to call 112, and the AI is never called.",
+      "why": "Likely reason: a fixed safety response for urgent cases that does not depend on the AI being available.",
+      "watch_out": "The check is a plain text search, so spelling variations and other languages can slip past while words that merely contain a phrase can trigger it."
+    },
+    {
+      "start": 88,
+      "end": 144,
+      "kind": "class",
+      "name": "ChatbotEngine (part 2)",
+      "id": "s3",
+      "hash": "894c9e2df947a308",
+      "title": "Building the records context and choosing a provider",
+      "what": "Turns the health profile and retrieved document excerpts into labelled text for the AI, and records a source entry for each excerpt so the reply can cite them. It then selects Groq if its key is set, or OpenAI if not.",
+      "why": "Likely reason: the AI can only ground its answer in what is passed to it. Reason for the snippet length of 160 characters is not stated.",
+      "watch_out": "Sources show a short snippet but the AI receives the full excerpt text, so long records increase cost and response time."
+    },
+    {
+      "start": 145,
+      "end": 194,
+      "kind": "class",
+      "name": "ChatbotEngine (part 3)",
+      "id": "s4",
+      "hash": "8a0311587861c23c",
+      "title": "Template reply and message assembly",
+      "what": "If no AI key is set, returns a template reply that shows the start of the records text with a note that the service is in demonstration mode. Otherwise it builds the message list with recent history and the question with the records attached.",
+      "why": "Likely reason: lets the app run in demonstration mode without an AI key. The reason is stated in the note text.",
+      "watch_out": "The template reply shows the first 300 characters of raw record text, which may expose sensitive details on screen."
+    },
+    {
+      "start": 195,
+      "end": 240,
+      "kind": "class",
+      "name": "ChatbotEngine (part 4)",
+      "id": "s5",
+      "hash": "2a41aef97bb2d548",
+      "title": "Calling the AI and suggestion chips",
+      "what": "Sends the messages to the chosen model with low randomness and a length cap, then returns the reply with sources and follow-up suggestions picked by keyword. If the call fails, it returns a safe apology instead of an error.",
+      "why": "Likely reason: a failed model call should not break the chat screen. The apology text is written in the code.",
+      "watch_out": "The apology is returned as a normal reply, so the app cannot tell a failure from a real answer without checking the logs."
+    }
+  ],
+  "explained_at": "2026-11-11T20:24:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Writes the AI's replies to patient questions about their records, using a keyword check for emergencies and rules that keep answers within the patient's own documents.",
+  "purpose": "Handles one chat message. It returns a fixed emergency message when needed, otherwise it builds context from the patient's records and asks an AI model for a reply.",
+  "why": "Likely reason: patient safety. The emergency check runs before any AI call so urgent messages are never sent to the model. The reason for the grounding rules is stated in the prompt.",
+  "how": "First it checks the message for emergency phrases and returns a fixed emergency message if any match. Otherwise it builds text from the health profile and retrieved document excerpts and records a source entry for each excerpt. It then picks Groq if its key is set, or OpenAI if not. If no key is set, it returns a template reply. Otherwise it sends the rules, recent history, and the question with the records to the model, and returns the reply, sources, and follow-up suggestions. Any model error returns a safe apology.",
+  "inputs": "A user identifier, the message text, a session identifier, optional recent history, retrieved document excerpts, and a health profile with conditions, medications, vitals, and allergies.",
+  "outputs": "A dictionary with the reply text and metadata: an emergency flag, sources, suggested follow-up questions, and the model name.",
+  "risks": "Emergency detection is simple phrase matching. It can miss wording that is not on the list and can trigger on words that contain a listed phrase. The temperature is fixed in code. The no-key template reply includes the start of raw record text. The fallback apology hides the real cause of a failure.",
+  "debug": "If an emergency reply does not appear, check the phrase list against the message. If replies ignore records, check that excerpts and the health profile reach this function. Logs record when a model call fails and why.",
+  "summary_hash": "sha256:26d7eac2d3fbe86c4993646a66ac9834d32d86120be3ee4465bcd8dedd1d6a11"
+}

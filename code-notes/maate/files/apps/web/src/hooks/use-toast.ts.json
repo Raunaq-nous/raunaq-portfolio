@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "path": "apps/web/src/hooks/use-toast.ts",
+  "language": "TypeScript",
+  "lines": 191,
+  "hash": "sha256:d0e7bddbac24a3a17c3bd53a3ecbe1e665c5497c065946f784775a9e1a374b88",
+  "area": "apps-web",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The removal delay looks much longer than intended, which keeps closed messages in memory.",
+      "The reducer has a side effect (starting timers), which makes behavior harder to predict and test.",
+      "No test for this file is visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Toast",
+      "meaning": "A small message that pops up on screen for a short time, then goes away."
+    },
+    {
+      "term": "Reducer",
+      "meaning": "A function that takes the old state and an action and returns the new state."
+    },
+    {
+      "term": "Dispatch",
+      "meaning": "Sending an action to the reducer so the state changes and listeners are told."
+    },
+    {
+      "term": "Hook",
+      "meaning": "A React function that lets a screen read shared state and re-draw when it changes."
+    },
+    {
+      "term": "Timeout",
+      "meaning": "A timer that runs a piece of code after a set delay."
+    }
+  ],
+  "depends_on": [
+    "@/components/ui/toast",
+    "react"
+  ],
+  "used_by": [
+    "apps/web/src/hooks/use-upload.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d5e48cf6d4862a4e",
+      "title": "File setup and fixed limits",
+      "what": "Sets up the file as a client component and defines the message limit of one and the removal delay.",
+      "why": "The limit keeps the screen to a single message at a time. The delay controls how long a closed message stays in memory before it is removed.",
+      "watch_out": "The removal delay value is very large, so changing the number means checking how long closed messages stay in memory."
+    },
+    {
+      "start": 14,
+      "end": 20,
+      "kind": "type",
+      "name": "ToasterToast",
+      "id": "s2",
+      "hash": "53014ab972d43215",
+      "title": "Message shape",
+      "what": "Describes what a message contains: an id, optional title, description, action button, and the open state from the base toast settings.",
+      "why": "Gives every message a consistent shape so pages and the reducer agree on the fields.",
+      "watch_out": "The id is added by the code, so callers should not rely on setting their own id."
+    },
+    {
+      "start": 21,
+      "end": 29,
+      "kind": "value",
+      "name": "actionTypes",
+      "id": "s3",
+      "hash": "d1f96c4f394676ec",
+      "title": "Action names",
+      "what": "Lists the four actions a message can go through: add, update, dismiss, and remove.",
+      "why": "Using named constants avoids typing mistakes in action names across the file.",
+      "watch_out": "Adding a new action means updating this list and the reducer together."
+    },
+    {
+      "start": 30,
+      "end": 36,
+      "kind": "function",
+      "name": "genId, ActionType",
+      "id": "s4",
+      "hash": "0713c70f92f662d4",
+      "title": "Unique message ids",
+      "what": "Creates a new id for each message by counting up and turning the count into text.",
+      "why": "Each message needs a unique id so updates and dismissals hit the right message.",
+      "watch_out": "The counter is shared and lives only in memory, so ids restart when the page reloads."
+    },
+    {
+      "start": 37,
+      "end": 54,
+      "kind": "type",
+      "name": "Action",
+      "id": "s5",
+      "hash": "2eedadefff51203a",
+      "title": "Possible actions",
+      "what": "Defines the shape of each action, including which fields each one carries.",
+      "why": "Gives the reducer a clear, checked list of the things that can happen to messages.",
+      "watch_out": "Dismiss and remove allow an optional id, so an action with no id applies to all messages."
+    },
+    {
+      "start": 55,
+      "end": 60,
+      "kind": "type",
+      "name": "State, toastTimeouts",
+      "id": "s6",
+      "hash": "4c55046a6ddd80f8",
+      "title": "Stored state and removal timers",
+      "what": "Defines the shape of the stored state (a list of messages) and creates a map that tracks each pending removal timer.",
+      "why": "The timer map prevents the same message from getting two removal timers.",
+      "watch_out": "The timer map lives outside React, so it survives screen changes but is cleared on a full page reload."
+    },
+    {
+      "start": 61,
+      "end": 76,
+      "kind": "function",
+      "name": "addToRemoveQueue",
+      "id": "s7",
+      "hash": "aba9b940809021a9",
+      "title": "Scheduling removal",
+      "what": "Starts a timer for a dismissed message and removes it from the list when the timer ends. It does nothing if a timer already exists for that message.",
+      "why": "Lets the close animation finish before the message is removed from the list.",
+      "watch_out": "The delay is in milliseconds, so the very large value here means a long wait before removal."
+    },
+    {
+      "start": 77,
+      "end": 134,
+      "kind": "function",
+      "name": "reducer, memoryState",
+      "id": "s8",
+      "hash": "ce2289c5ee7e870a",
+      "title": "Message state changes",
+      "what": "Decides how the message list changes for each action: adding a message keeps only the newest one, updating merges new fields into one message, dismissing marks messages as closed and schedules their removal, and removing deletes them.",
+      "why": "Keeps all message changes in one place so the behavior is easy to follow.",
+      "watch_out": "Dismiss schedules timers from inside the reducer, which is a side effect. Calling the reducer in tests will start timers."
+    },
+    {
+      "start": 135,
+      "end": 141,
+      "kind": "function",
+      "name": "dispatch",
+      "id": "s9",
+      "hash": "9c1f6a37ac883439",
+      "title": "Sending actions to the screens",
+      "what": "Applies an action to the current state, saves the new state, and tells every screen that is listening.",
+      "why": "This is the single entry point that keeps every screen showing the same messages.",
+      "watch_out": "If a listener is removed while this runs, the list is updated from a copy, so this is safe, but any new listener must be added through the hook."
+    },
+    {
+      "start": 142,
+      "end": 170,
+      "kind": "function",
+      "name": "toast",
+      "id": "s10",
+      "hash": "34d2aca2ba925ebc",
+      "title": "Creating a message",
+      "what": "Creates a new message with a unique id, opens it, and returns controls to update or close it later.",
+      "why": "Lets any part of the app show a message with one call and keep a handle to it.",
+      "watch_out": "The returned update and dismiss functions only work for this message's id, so they cannot change other messages."
+    },
+    {
+      "start": 171,
+      "end": 191,
+      "kind": "function",
+      "name": "useToast",
+      "id": "s11",
+      "hash": "da8849838637fb03",
+      "title": "Hook for screens",
+      "what": "Gives a screen the current list of messages, a way to show a new message, and a way to close messages. It subscribes the screen to changes and unsubscribes when the screen is removed.",
+      "why": "Lets any component read and control messages while staying in sync with other components.",
+      "watch_out": "The subscription is set up again whenever the stored state changes, which works but is more work than needed."
+    }
+  ],
+  "explained_at": "2026-11-11T20:09:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Manages the small pop-up messages (toasts) shown in the web app, including adding, updating, closing, and removing them.",
+  "purpose": "Lets any part of the web app show a short message to the user and lets a screen read the current messages. It keeps the messages in memory and shares them with every screen that uses the hook.",
+  "why": "Likely reason: a shared store means any component can trigger a message without passing props around. The Inspired by shadcn comment suggests the design follows a common UI library pattern.",
+  "how": "A toast call creates a new message with an id and opens it. Actions such as update, dismiss, and remove go through one dispatch step, which runs the reducer to produce the new list and then notifies every listening screen. When a message is dismissed, a timer is started to remove it from the list later.",
+  "inputs": "Message title, description, optional action button, and variant, passed from pages or other hooks. Dismiss and update calls use the message id.",
+  "outputs": "A list of current messages with the functions to update or dismiss them, returned by the useToast hook. A standalone toast function also returns the id and controls for that message.",
+  "risks": "The limit is set to one visible message, so a new message replaces the old one. The removal delay is about 1000000 milliseconds, roughly 16 minutes, which is far longer than a typical toast. Closed messages stay in memory for that time. The reducer also starts timers, which goes against the usual rule that a reducer should only compute new state.",
+  "debug": "If messages do not appear, check that a component renders the toast output and that the hook is used inside a client component. If old messages linger, look at the removal delay constant and the timer map. If a message disappears too soon or never, check the dismiss and remove calls.",
+  "summary_hash": "sha256:d0e7bddbac24a3a17c3bd53a3ecbe1e665c5497c065946f784775a9e1a374b88"
+}

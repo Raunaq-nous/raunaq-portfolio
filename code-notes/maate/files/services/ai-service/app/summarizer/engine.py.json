@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "path": "services/ai-service/app/summarizer/engine.py",
+  "language": "Python",
+  "lines": 233,
+  "hash": "sha256:c360e40dcddbac3036f96f45b7a756a4a773e103b8df18fc535fd0e4c3c87313",
+  "area": "services-ai-service",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Any failure silently returns mock output.",
+      "The safety check covers only five parameters.",
+      "Only the safety check has tests; the AI call and the mock fallback have none visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "OCR",
+      "meaning": "optical character recognition, the process of reading text from scanned images"
+    },
+    {
+      "term": "Plausibility check",
+      "meaning": "a test that a measured number is possible for a human body"
+    },
+    {
+      "term": "Mock",
+      "meaning": "fake placeholder output used when the real service is unavailable"
+    },
+    {
+      "term": "Token",
+      "meaning": "a small unit of text that AI providers count for billing"
+    },
+    {
+      "term": "JSON",
+      "meaning": "a structured text format that programs can read reliably"
+    }
+  ],
+  "depends_on": [
+    "openai",
+    "services/ai-service/app/config.py"
+  ],
+  "used_by": [
+    "services/ai-service/app/main.py",
+    "services/ai-service/tests/test_plausibility_and_emergency.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 60,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "0be773ea0037fa47",
+      "title": "AI rules and report prompt templates",
+      "what": "Holds the instructions the AI must follow: no diagnosis, no prescribing, summarize only the extracted data, and flag impossible values for verification. It also defines the required reply format.",
+      "why": "Likely reason: keeps the AI within clinical and regulatory limits, as the rule list states.",
+      "watch_out": "Prompt wording shapes safety behavior, so edits can change how values are flagged even though the code check still runs."
+    },
+    {
+      "start": 61,
+      "end": 85,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "d9176955a4471524",
+      "title": "Document templates and plausible ranges",
+      "what": "Adds the prompt templates for prescriptions and discharge summaries, and the table of plausible value ranges and units for hemoglobin, creatinine, glucose, HbA1c, and cholesterol.",
+      "why": "Likely reason: the code check needs fixed numeric limits that the AI cannot change.",
+      "watch_out": "The ranges are reference values set in code, so a wrong limit either hides a real problem or flags a valid result."
+    },
+    {
+      "start": 86,
+      "end": 142,
+      "kind": "class",
+      "name": "SummarizerEngine (part 1)",
+      "id": "s3",
+      "hash": "2e7d2cb5c5960a27",
+      "title": "Code check for impossible values",
+      "what": "Checks each finding against its range. Values that are out of range, or that look like a dropped decimal point, are marked needs verification with a fixed note. Matching risk flags are also changed to needs verification with a recommendation to check the physical report.",
+      "why": "Likely reason: the prompt alone cannot guarantee the AI follows the rule, so a code check runs after it. The file description says so.",
+      "watch_out": "Only parameters in the table are checked, and the leading-zero rule catches only two-character values, so other recognition errors pass through."
+    },
+    {
+      "start": 143,
+      "end": 197,
+      "kind": "class",
+      "name": "SummarizerEngine (part 2)",
+      "id": "s4",
+      "hash": "7e15ba2b106e96b3",
+      "title": "Calling the AI and running the safety check",
+      "what": "Chooses the provider, builds the prompt, and asks for JSON output at low randomness. It parses the reply and then applies the code check.",
+      "why": "Likely reason: the same provider choice is used by the chatbot. Reason for the low randomness is not stated here, though a similar setting appears in the config file.",
+      "watch_out": "If no key is set, the function returns mock output, and the caller only sees that in the is_mock flag or a log line."
+    },
+    {
+      "start": 198,
+      "end": 233,
+      "kind": "class",
+      "name": "SummarizerEngine (part 3)",
+      "id": "s5",
+      "hash": "21a09b8076de16f6",
+      "title": "Final result and mock fallback",
+      "what": "Returns the summary fields with the model name, token counts, a fixed disclaimer, and a scope note. If the AI call fails, it returns labelled placeholder data with zero token counts.",
+      "why": "Likely reason: keeps the app working when the AI is unavailable and marks the results as fake. Reason beyond the is_mock flag is not stated.",
+      "watch_out": "Mock results contain a simulated finding, so any screen that does not check is_mock could show it to a patient as real."
+    }
+  ],
+  "explained_at": "2026-11-11T20:24:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Asks an AI model to write a patient-friendly summary of extracted lab, prescription, or discharge data, then checks lab values against human ranges and downgrades impossible ones.",
+  "purpose": "Produces a structured summary with findings, risk flags, and recommendations, with a code-based safety check on the numbers.",
+  "why": "Likely reason: text recognition errors can turn values into impossible numbers, so a code check stops false alarms from reaching patients. The prompt rules describe this concern.",
+  "how": "First it defines strict instructions for the AI, a prompt template for each document type, and a table of plausible ranges for five common tests. It picks the provider: Groq first, then OpenAI, otherwise mock output. It fills the template with the data and asks for JSON. Then it runs a code check on each finding against the ranges and rewrites suspicious findings as needing verification, and it softens matching risk flags. Last it returns the summary fields with model details. Any failure returns mock output.",
+  "inputs": "Structured lab data or raw text, the document type, and a locale.",
+  "outputs": "Summary text, a plain-language summary, key findings with a status, risk flags, recommendations, model name, token counts, a disclaimer, and a scope note.",
+  "risks": "Any AI error silently returns mock output marked as mock, so a screen that ignores that flag might show placeholder text. The code check covers only five parameters and matches names exactly. The temperature is fixed in code. Values are compared as text, so units are not converted.",
+  "debug": "If results are always mock, check the API key settings and the error log for the failed call. If an impossible value was not flagged, check that its parameter name matches the table. If the JSON parse fails, the AI returned invalid output; check the log.",
+  "summary_hash": "sha256:c360e40dcddbac3036f96f45b7a756a4a773e103b8df18fc535fd0e4c3c87313"
+}

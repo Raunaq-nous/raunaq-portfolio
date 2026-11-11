@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/compliance/compliance.service.ts",
+  "language": "TypeScript",
+  "lines": 397,
+  "hash": "sha256:04d174e560e3f14fb4269dc1797f08c13311b543ff544f59056ae70c67d283a4",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Password checks, ownership checks on downloads, and audit logging are in place.",
+      "There is no transaction, so a failure during erasure can leave data partly removed.",
+      "Storage deletion failures are ignored, so files can outlive their records.",
+      "Accounts without a stored password skip the password check.",
+      "No test covers documents, family members or file deletion in the visible spec."
+    ]
+  },
+  "terms": [
+    {
+      "term": "DPDP Act",
+      "meaning": "India's Digital Personal Data Protection Act, which sets rules on personal data, including access and erasure."
+    },
+    {
+      "term": "HIPAA",
+      "meaning": "A United States law on protecting medical records. The code follows some of its audit rules."
+    },
+    {
+      "term": "Right to access or portability",
+      "meaning": "A user's right to receive a copy of their own data in a usable form."
+    },
+    {
+      "term": "Right to erasure",
+      "meaning": "A user's right to have their personal data deleted."
+    },
+    {
+      "term": "Anonymize",
+      "meaning": "Replacing identifying details with placeholder values so the record no longer identifies a person."
+    },
+    {
+      "term": "Soft delete",
+      "meaning": "Marking a record as deleted without removing the row from the database."
+    },
+    {
+      "term": "Shadow user",
+      "meaning": "An internal user record created for a family member profile that does not log in on its own."
+    },
+    {
+      "term": "Refresh token",
+      "meaning": "A long-lived login credential that lets an app get new short-term logins without the password."
+    },
+    {
+      "term": "Session",
+      "meaning": "A record of an active login."
+    },
+    {
+      "term": "Transaction",
+      "meaning": "A group of database changes that either all succeed or all roll back together."
+    },
+    {
+      "term": "OCR",
+      "meaning": "Optical character recognition: reading text from scanned images."
+    },
+    {
+      "term": "PII",
+      "meaning": "Personally identifiable information: details that identify a person, such as name or email."
+    },
+    {
+      "term": "Audit log",
+      "meaning": "A stored record of important actions, kept for privacy and security reviews."
+    }
+  ],
+  "depends_on": [
+    "@nestjs/common",
+    "apps/api/src/common/database/database.module.ts",
+    "apps/api/src/modules/auth/services/password.service.ts",
+    "apps/api/src/modules/auth/services/token.service.ts",
+    "apps/api/src/common/storage/storage.service.ts",
+    "apps/api/src/modules/compliance/dto/compliance.dto.ts",
+    "@maate/database"
+  ],
+  "used_by": [
+    "apps/api/src/modules/compliance/compliance.controller.ts",
+    "apps/api/src/modules/compliance/compliance.module.ts",
+    "apps/api/src/modules/compliance/compliance.service.spec.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ba4c5dc332d915a0",
+      "title": "Imports and setup",
+      "what": "Brings in the NestJS tools, error types, the database layer, password and token checks, file storage, the request shapes, and database value types.",
+      "why": "Likely reason: the service needs each of these for the export and erasure steps.",
+      "watch_out": ""
+    },
+    {
+      "start": 20,
+      "end": 78,
+      "kind": "class",
+      "name": "ComplianceService (part 1)",
+      "id": "s2",
+      "hash": "1144b068c0acd3db",
+      "title": "Starting an export and listing requests",
+      "what": "Creates a request record marked processing, gathers all the user's data, then marks the request complete with a seven-day expiry and a download link. Writes an audit entry. Also returns the user's past export requests, newest first.",
+      "why": "Likely reason: keeps a record of each export for the user and for audit.",
+      "watch_out": "If gathering the data fails, the request is left in processing with no error recorded."
+    },
+    {
+      "start": 79,
+      "end": 121,
+      "kind": "method",
+      "name": "ComplianceService: getExportData",
+      "id": "s3",
+      "hash": "b99d07c89b33c5ab",
+      "title": "Checking a download request",
+      "what": "Finds the export request only if it belongs to the user. Refuses anything not complete or past its seven-day window. Gathers the data again and writes a download audit entry.",
+      "why": "Likely reason: ownership and expiry checks make sure only the owner gets the data, and only while it is valid.",
+      "watch_out": "The download rebuilds the data each time, so it may differ from the original export and can be slow."
+    },
+    {
+      "start": 122,
+      "end": 162,
+      "kind": "method",
+      "name": "ComplianceService: if",
+      "id": "s4",
+      "hash": "0d5e90261e137c25",
+      "title": "Password check and document removal",
+      "what": "Starts erasure by loading the user. When the account has a password, checks the password and refuses if it is wrong or missing. Then removes each document's stored file, logging but ignoring failures, and deletes the document's text chunks, text recognition results, summaries and document rows.",
+      "why": "Likely reason: the password check stops accidental or unauthorized erasure, and removing files and text records is the data removal part.",
+      "watch_out": "A failed file deletion is only logged, so the file can stay in storage after its record is gone."
+    },
+    {
+      "start": 163,
+      "end": 192,
+      "kind": "method",
+      "name": "ComplianceService: if",
+      "id": "s5",
+      "hash": "1f234e54289b1b82",
+      "title": "Chat and health record removal",
+      "what": "Deletes chat messages and sessions, then the user's clinical and care records: timeline, vitals, symptoms, conditions, medications, prescriptions, doctor notes, meal and medicine and water reminders, reminder logs, notifications, doctor shares, devices, consents, export requests and two-factor settings. Also collects family member ids.",
+      "why": "Likely reason: removes the personal health records that erasure must cover.",
+      "watch_out": "These deletions run one after another with no shared transaction, so a failure part way leaves some data removed and the account still active."
+    },
+    {
+      "start": 193,
+      "end": 248,
+      "kind": "method",
+      "name": "ComplianceService: if",
+      "id": "s6",
+      "hash": "d7472b0b6d1f872e",
+      "title": "Family removal and account anonymizing",
+      "what": "Removes access permissions, family member rows and their shadow user rows. Replaces the user's name, email, phone, emergency contact, allergies, avatar and device tokens with placeholders, marks the account inactive and deleted, and removes sessions and refresh tokens. Writes an erasure audit entry and logs a warning.",
+      "why": "Likely reason: anonymizing and soft-deleting the user keeps the account row for record keeping while removing identity.",
+      "watch_out": "Family member ids are also used to delete user rows, so the link between these tables must be exact or a real account could be removed."
+    },
+    {
+      "start": 249,
+      "end": 308,
+      "kind": "method",
+      "name": "ComplianceService: compileUserData",
+      "id": "s7",
+      "hash": "c21da502046f104c",
+      "title": "Gathering the user's data",
+      "what": "Starts a private helper that collects the user's profile, vitals, symptoms, conditions, doctor notes, medications, prescriptions, reminders, timeline, and documents with their AI summaries and text recognition results. All queries run at the same time.",
+      "why": "Likely reason: one place defines what counts as the user's data, so exports stay complete and consistent.",
+      "watch_out": "The profile selection leaves out the password hash. Any new sensitive column added to the profile selection could leak into exports."
+    },
+    {
+      "start": 309,
+      "end": 345,
+      "kind": "class",
+      "name": "ComplianceService (part 7)",
+      "id": "s8",
+      "hash": "71f253ab8a2528e4",
+      "title": "Chat history, sharing and consent collection",
+      "what": "Continues collecting the user's data: chat sessions with all their messages, family members with permissions, doctor shares, and consent history.",
+      "why": "Likely reason: these are personal records covered by the export right.",
+      "watch_out": "Nothing limits how much is collected, so a user with a long history gets a very large package."
+    },
+    {
+      "start": 346,
+      "end": 397,
+      "kind": "class",
+      "name": "ComplianceService (part 8)",
+      "id": "s9",
+      "hash": "3b6de226d4f10768",
+      "title": "Export package and audit writing",
+      "what": "Arranges the collected records into one package with a schema version tag, export time, profile, clinical data, care plan, timeline, documents, chat history, sharing and consent history. Also provides a helper that writes an audit entry and logs any failure without stopping the caller.",
+      "why": "Likely reason: a fixed layout makes the package predictable for the user. The helper keeps a failed audit write from blocking the user's request.",
+      "watch_out": "Because audit write failures are only logged, a missing audit entry can go unnoticed unless someone checks the logs."
+    }
+  ],
+  "explained_at": "2026-11-11T19:39:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the DPDP data export and account erasure: it gathers all of a user's data into a package, and on request, removes or anonymizes the user's personal and health data after a password check.",
+  "purpose": "Lets a user get a full copy of their data and close their account. It also keeps a record of each export and each erasure in the audit log.",
+  "why": "Likely reason: DPDP grants users rights to access and erase their data, and the code notes that audit logs are kept for HIPAA compliance.",
+  "how": "1. An export request is recorded as processing. 2. All of the user's records are gathered into one package. 3. The request is marked complete with a seven-day expiry and a download link, and an audit entry is written. For erasure: 4. The account password is checked when the account has one. 5. Stored files and their text records are removed. 6. Chat, health, reminder, sharing, consent and export records are deleted. 7. Family member rows and their shadow user rows are removed. 8. The user row is anonymized and marked deleted. 9. Sessions and refresh tokens are removed, and an erasure audit entry is written.",
+  "inputs": "The user id, the export format, the erasure confirmation and password, and the browser and network address for the audit record. It also depends on the database, password check, token service and file storage.",
+  "outputs": "An export request record and the full data package, the list of past requests, the package for a download, or a success message after erasure.",
+  "risks": "The erasure steps run one after another without a transaction, so a failure part way leaves some data deleted and the account still active. File deletion errors are logged and ignored, so files can remain. Accounts without a stored password skip the password check, so erasure is not confirmed by password for them. An export that fails while gathering data stays in processing with no error note. The package includes chat history and documents, so it can be very large. Audit write failures are logged only.",
+  "debug": "Check the audit log for DATA_EXPORT_REQUESTED, DATA_EXPORT_DOWNLOADED and ACCOUNT_ERASURE entries. Search the logs for Failed to delete S3 file and Failed to log compliance audit. Look for export requests stuck in processing. If erasure stops partway, check which tables still hold rows for the user. Confirm the storage service is available.",
+  "summary_hash": "sha256:04d174e560e3f14fb4269dc1797f08c13311b543ff544f59056ae70c67d283a4"
+}

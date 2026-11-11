@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "path": "apps/api/src/modules/consent/consent.service.ts",
+  "language": "TypeScript",
+  "lines": 139,
+  "hash": "sha256:9037bc6f691888686dab71f7a59240e97a645993040413b3a5985bdf5f0a8d58",
+  "area": "apps-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Purpose names are not checked against the approved list.",
+      "Duplicate records could give conflicting answers because grant and revoke do not order their lookup.",
+      "Audit failures are silent to the caller.",
+      "The parts of the test file shown here cover revoke and the check, but not grant."
+    ]
+  },
+  "terms": [
+    {
+      "term": "DPDP",
+      "meaning": "India's Digital Personal Data Protection law, which sets rules for how personal data is used and how consent works."
+    },
+    {
+      "term": "Purpose",
+      "meaning": "one named reason for using a person's data, such as AI summaries."
+    },
+    {
+      "term": "Audit log",
+      "meaning": "a saved record of who did what and when."
+    },
+    {
+      "term": "Prisma",
+      "meaning": "the library the app uses to read and write its database."
+    }
+  ],
+  "depends_on": [
+    "apps/api/src/common/database/database.module",
+    "apps/api/src/modules/consent/dto/consent.dto.ts",
+    "@nestjs/common"
+  ],
+  "used_by": [
+    "apps/api/src/modules/consent/consent.service.spec.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b416503ccc9c09c2",
+      "title": "Imports for consent service",
+      "what": "Brings in the framework tools for injection and logging, the database connection, and the grant and revoke request shapes.",
+      "why": "Needed by the service below.",
+      "watch_out": ""
+    },
+    {
+      "start": 9,
+      "end": 65,
+      "kind": "class",
+      "name": "ConsentService (part 1)",
+      "id": "s2",
+      "hash": "7eb45f96d96af2ca",
+      "title": "Recording a consent grant",
+      "what": "Creates or updates the consent record for one user and purpose so it is granted. Keeps any IP address or device details already on file when the new request has none, writes an audit entry, and returns the record.",
+      "why": "Likely reason: keeping one current record per user and purpose makes the current answer easy to find.",
+      "watch_out": "The lookup has no ordering, so if duplicate records exist the wrong one may be updated."
+    },
+    {
+      "start": 66,
+      "end": 106,
+      "kind": "class",
+      "name": "ConsentService (part 2)",
+      "id": "s3",
+      "hash": "cee5e486082a970e",
+      "title": "Withdrawing consent and listing records",
+      "what": "Marks the record for a purpose as not granted and stamps a withdrawal time. If no record exists, it creates one that is already withdrawn. Then it writes an audit entry. It also returns every consent record for a user, newest first.",
+      "why": "Likely reason: a withdrawal always leaves a record behind so the history can be shown.",
+      "watch_out": "A withdrawal can create a record even when the user never granted consent, so the stored history may show a withdrawal with no earlier grant."
+    },
+    {
+      "start": 107,
+      "end": 139,
+      "kind": "method",
+      "name": "ConsentService: hasConsent",
+      "id": "s4",
+      "hash": "dee2506a01e50538",
+      "title": "Checking active consent and audit helper",
+      "what": "Answers yes only when the newest record for a user and purpose is granted and has no withdrawal time. Also contains a private helper that writes audit entries and logs an error instead of failing if the write goes wrong.",
+      "why": "Likely reason: one yes or no check keeps the rule for using data in a single place.",
+      "watch_out": "The check reads the newest record while grant and revoke may update a different one, so the answers can disagree."
+    }
+  ],
+  "explained_at": "2026-11-11T19:43:24+00:00",
+  "explained_by": "haiku",
+  "summary": "Records whether a user has agreed to each specific use of their data, such as AI summaries, and lets the user grant or withdraw that agreement.",
+  "purpose": "Keeps one consent record per user and purpose, and gives other parts of the app a simple yes or no check before they use data for that purpose.",
+  "why": "Likely reason: privacy rules such as India's DPDP law expect consent that is specific to a purpose and can be withdrawn. The exact design choices are not stated in the code.",
+  "how": "1) Grant: find the existing record for this user and purpose, then update it to granted or create one, then write an audit entry. 2) Revoke: use the same lookup, set the record to not granted with a withdrawal time, then write an audit entry. 3) List: return every consent record for a user, newest first. 4) Check: read the newest record for a user and purpose and return true only if it is granted and not withdrawn.",
+  "inputs": "A user id, a purpose name of up to 100 characters, and optionally an IP address and a user agent string. Grant and revoke take the IP address and user agent from the request body first, then from the request details.",
+  "outputs": "The saved consent record for grant and revoke, a list of consent records for listing, and a true or false answer for the check.",
+  "risks": "The purpose is free text, so a typo creates a separate purpose that the rest of the app will never check. Grant and revoke update the first matching record in no set order, while the check reads the newest one, so duplicate records could give different answers. Audit failures are logged but do not stop the action, so a consent change can happen without an audit entry. The IP address and user agent can come from the request body, so a client can record any value.",
+  "debug": "If a user says a feature still works after withdrawing, look at that user's consent records for the purpose, then check for duplicate records. Search the logs for the phrase 'Failed to log audit' to find missing audit entries. Confirm the purpose name matches exactly what the rest of the app checks.",
+  "summary_hash": "sha256:9037bc6f691888686dab71f7a59240e97a645993040413b3a5985bdf5f0a8d58"
+}
