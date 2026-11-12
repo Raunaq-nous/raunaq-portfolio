@@ -1,0 +1,345 @@
+{
+  "schema_version": 1,
+  "path": "packages/value/pipeline.py",
+  "language": "Python",
+  "lines": 621,
+  "hash": "sha256:66e3e6783959d96ae051e23f7e15dc8e8d7fa9670f9fa1bfc6e02b9961dfa188",
+  "area": "packages-value",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only lines 1 to 140 were reviewed. The remaining compute, run cost, dedupe wiring and assumption stages were not explained.",
+      "No test for this file is visible in the packet, although the header says a purity test checks the import graph.",
+      "Error handling in the later stages could not be assessed."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Engine",
+      "meaning": "The code that performs the calculation from inputs to results."
+    },
+    {
+      "term": "Stage",
+      "meaning": "One step in the calculation, run in a fixed order."
+    },
+    {
+      "term": "Confidence widening",
+      "meaning": "Making a range wider when less evidence supports it."
+    },
+    {
+      "term": "Adoption ramp",
+      "meaning": "The gradual rise in a process's benefit after delivery starts."
+    },
+    {
+      "term": "Sensitivity",
+      "meaning": "How much the result moves when one input changes."
+    },
+    {
+      "term": "Reconciliation",
+      "meaning": "Checking results against a client's own stated figures."
+    },
+    {
+      "term": "Run cost",
+      "meaning": "The yearly cost of operating the redesigned process."
+    },
+    {
+      "term": "SDK",
+      "meaning": "A vendor's software kit for talking to an AI model. The value layer is designed to import none."
+    }
+  ],
+  "depends_on": [
+    "packages/schema",
+    "packages/value/adoption.py",
+    "packages/value/attribution.py",
+    "packages/value/bridge.py",
+    "packages/value/cost_basis.py",
+    "packages/value/dedupe.py",
+    "packages/value/phasing.py",
+    "packages/value/reconciliation.py",
+    "packages/value/results.py",
+    "packages/value/run_cost.py",
+    "packages/value/sensitivity.py",
+    "packages/value/weighting.py",
+    "packages/value/bands.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 60,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "1a89b98c5f1bb923",
+      "title": "Order of the value stages",
+      "what": "Lists the order in which the engine works: confidence widening, dependency waves, enabler de-duplication, adoption ramp, phasing, gross benefit, run cost, net bridge, sensitivity and baseline reconciliation. It also lists two things the engine never does.",
+      "why": "Stated in the docstring: the order matters. De-duplicating after phasing could count one capability in two waves, and applying the ramp after totals creates a step change.",
+      "watch_out": "The order is load-bearing. Reordering stages changes the answer without raising any error."
+    },
+    {
+      "start": 61,
+      "end": 106,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "4b518d18a1e9af08",
+      "title": "Assumed constants for prerequisites and cost bands",
+      "what": "Sets the default build effort for each prerequisite kind, the low and high multipliers on cost lines, and the build effort per point of change burden. These are assumptions to challenge, and they are shown alongside results.",
+      "why": "Stated in the docstring: a visible rough number is better than an absent cost that makes benefit look free. The cost band is uneven because build estimates are more often too low than too high.",
+      "watch_out": "The build effort for a process prerequisite is zero on purpose, because that process's cost is already counted as its implementation. Adding a value there would count it twice."
+    },
+    {
+      "start": 107,
+      "end": 112,
+      "kind": "function",
+      "name": "_estimate_band",
+      "id": "s3",
+      "hash": "40f28b4270bf18cf",
+      "title": "Turning a cost into a range",
+      "what": "Takes one cost estimate and returns a range whose low and high ends come from the cost band, with the base equal to the estimate itself.",
+      "why": "Stated in the docstring: showing one number in range form would falsely claim precision.",
+      "watch_out": "Depends on the cost band constant, so changing that constant changes every cost line in every bridge."
+    },
+    {
+      "start": 113,
+      "end": 122,
+      "kind": "class",
+      "name": "DeclaredPrerequisite",
+      "id": "s4",
+      "hash": "cfbab4086d84341d",
+      "title": "A prerequisite record for the engine",
+      "what": "A small fixed record describing one prerequisite: its reference, its kind, which processes need it, and the evidence behind it.",
+      "why": "Likely reason: it gives the engine one simple, unchangeable form of prerequisite data.",
+      "watch_out": "The kind is plain text here rather than a fixed list, so a misspelled kind may not match the build effort table, and its cost could go missing."
+    },
+    {
+      "start": 123,
+      "end": 140,
+      "kind": "class",
+      "name": "EngineInputs",
+      "id": "s5",
+      "hash": "35cbeae945dc00ff",
+      "title": "Everything the engine receives",
+      "what": "Bundles every input the engine needs: process records, cost bases, currency and client for each process, client baselines, run cost settings, the depth tier, prerequisite links, instance counts and build effort per prerequisite kind. None of it is something the engine asks a model for.",
+      "why": "Stated in the docstring: the engine is given everything in advance, so it cannot ask a model to fill a gap.",
+      "watch_out": "Missing entries in these mappings are a common source of failures or silent zeros, so each mapping should cover every process."
+    },
+    {
+      "start": 141,
+      "end": 148,
+      "kind": "function",
+      "name": "released_effort",
+      "id": "s6",
+      "hash": "bab7c89aca5598a5",
+      "title": "Released effort before overlaps",
+      "what": "Works out the effort a process could save before any overlap with other processes is removed. It combines the baseline effort with the automatable share and the assisted share scaled by its efficiency gain, one band end at a time.",
+      "why": "The docstring cites section 6.3 of the specification as the source of the formula.",
+      "watch_out": "Each band end is combined with the same end of the other inputs. The helper functions that do the arithmetic are not visible here, so their exact behaviour is unclear."
+    },
+    {
+      "start": 149,
+      "end": 180,
+      "kind": "function",
+      "name": "declared_prerequisites",
+      "id": "s7",
+      "hash": "14d11c5711738999",
+      "title": "Collecting declared prerequisites",
+      "what": "Gathers every prerequisite the portfolio declares, from two sources: the estimator's dependency list and the architect's assumptions. Each distinct prerequisite is listed once, with the processes that need it and the evidence behind it.",
+      "why": "The docstring says one platform build named by four processes is one build. Counting it four times would overstate cost.",
+      "watch_out": "Prerequisites are matched on kind and reference. Two spellings of the same reference would be treated as two separate prerequisites."
+    },
+    {
+      "start": 181,
+      "end": 192,
+      "kind": "function",
+      "name": "_weighted_effort",
+      "id": "s8",
+      "hash": "4709ef82f9f96834",
+      "title": "Confidence-adjusted effort",
+      "what": "Widens each process's released effort according to the confidence in its value parameters, so weakly evidenced processes get a wider range.",
+      "why": "The docstring cites section 6.4 of the specification. Weak evidence widens the range rather than removing the process.",
+      "watch_out": "It reads the value parameters confidence for each process. A missing entry there would stop the run for that process."
+    },
+    {
+      "start": 193,
+      "end": 206,
+      "kind": "class",
+      "name": "Deduplicated",
+      "id": "s9",
+      "hash": "68cd25c7df2e0b91",
+      "title": "Container for deduplication results",
+      "what": "Holds the outputs of deduplication at all three band ends: credited effort per process, pool sizes per shared capability, weights, and the gross and deduplicated totals.",
+      "why": "The docstring explains every band end is kept, because the largest claimant can differ between the low and high cases.",
+      "watch_out": "The pools are nested three levels deep. Reading the wrong level gives a wrong total without any error."
+    },
+    {
+      "start": 207,
+      "end": 245,
+      "kind": "function",
+      "name": "_dedupe_bands",
+      "id": "s10",
+      "hash": "301a0ae4575a1f92",
+      "title": "Deduplicating each band end",
+      "what": "Runs deduplication separately at the low, base and high ends, then packages the results. It stops with an error if the base case deduplicates to zero, because that would mean the inputs are wrong.",
+      "why": "The error message says a low bound of zero is a real downside case, but a base case of zero means the input data is faulty.",
+      "watch_out": "Only the base case is checked. A zero at another end passes without comment."
+    },
+    {
+      "start": 246,
+      "end": 260,
+      "kind": "function",
+      "name": "_ramped",
+      "id": "s11",
+      "hash": "c141f5beeb5697f2",
+      "title": "Effort realised within the horizon",
+      "what": "Reduces each process's effort to the part that is realised inside the planning horizon, based on when its wave starts and how fast it adopts. The low case uses the slowest adoption pace.",
+      "why": "The docstring says optimistic benefit should not be paired with optimistic adoption, because that stops a downside case from being a downside.",
+      "watch_out": "The pairing of low benefit with slow adoption is deliberate. Matching low with low would break the downside case."
+    },
+    {
+      "start": 261,
+      "end": 265,
+      "kind": "function",
+      "name": "pool_delivery_wave",
+      "id": "s12",
+      "hash": "883a468df3c84220",
+      "title": "Delivery wave for shared capabilities",
+      "what": "Chooses the wave in which a shared capability must be built: the earliest wave of any process that needs it.",
+      "why": "A shared capability is built once, so it must be ready for the first process that depends on it.",
+      "watch_out": "A process missing from the wave map would cause an error here."
+    },
+    {
+      "start": 266,
+      "end": 317,
+      "kind": "function",
+      "name": "compute (part 1)",
+      "id": "s13",
+      "hash": "d484146f2356c10a",
+      "title": "Starting the valuation run",
+      "what": "Begins the main calculation. It refuses an empty input, builds lookup tables, weights effort by confidence, plans waves, deduplicates, then works out realised effort for each process on its own schedule.",
+      "why": "The docstring of compute says the sensitivity flag stops the calculation from calling itself forever. The per-process schedule was chosen because a blended schedule was tried and was worse, according to a comment.",
+      "watch_out": "An empty list of records stops the run immediately with an error."
+    },
+    {
+      "start": 318,
+      "end": 372,
+      "kind": "function",
+      "name": "compute (part 2)",
+      "id": "s14",
+      "hash": "401ed385e6e60b96",
+      "title": "Pricing processes and prerequisites",
+      "what": "Prices each process's realised effort in its currency and records per-process figures such as confidence and realised fraction. It then prices each shared prerequisite and places its cost in the wave before its first user.",
+      "why": "A comment says a prerequisite priced in the same wave as the process that needs it is not really a prerequisite.",
+      "watch_out": "A prerequisite with no claimant in the current set is skipped without a message."
+    },
+    {
+      "start": 373,
+      "end": 423,
+      "kind": "function",
+      "name": "compute (part 3)",
+      "id": "s15",
+      "hash": "b243b520951bf302",
+      "title": "Implementation, run cost, bridges and final result",
+      "what": "Works out implementation cost from the change burden scores, takes the run cost for the estate, builds one bridge per currency from gross benefit to net, and assembles the complete portfolio result.",
+      "why": "Implementation cost is read from scores already given in the scorecard, so it is not estimated a second time.",
+      "watch_out": "The duplication ratio divides gross effort by deduplicated effort. Earlier checks prevent a zero divisor, but a change to those checks could expose it."
+    },
+    {
+      "start": 424,
+      "end": 448,
+      "kind": "function",
+      "name": "_run_costs",
+      "id": "s16",
+      "hash": "a86d5050051422ca",
+      "title": "Run cost per currency",
+      "what": "Builds one run cost breakdown for each currency, counting the designed agents and the yearly calls for that currency's processes.",
+      "why": "A comment says the estate runs every instance of a process, so cost follows volume, not the model used for the analysis.",
+      "watch_out": "Yearly instances fall back to the annual volume base when no override is given. A wrong volume changes the run cost directly."
+    },
+    {
+      "start": 449,
+      "end": 481,
+      "kind": "function",
+      "name": "_enabler_pools",
+      "id": "s17",
+      "hash": "93488f41a3600a92",
+      "title": "Shared capability rows",
+      "what": "Produces one row per shared capability, showing its value counted once, who claims it, each claimant's credit, and the wave in which it is delivered.",
+      "why": "The docstring explains that a capability two processes share is built once and must be ready when the earlier one needs it.",
+      "watch_out": "The pool size is the largest single claim, not the sum. Adding rows together will not give the portfolio total."
+    },
+    {
+      "start": 482,
+      "end": 512,
+      "kind": "function",
+      "name": "_waves",
+      "id": "s18",
+      "hash": "22353c9815b38564",
+      "title": "Totals by delivery wave",
+      "what": "Groups processes by delivery wave and reports each wave's realised effort, gross money by currency and evidenced share.",
+      "why": "Likely reason: it gives a phased view of value for planning. The code does not state this.",
+      "watch_out": "Each wave's figures are only a slice of the total. Adding waves must not double count shared capabilities."
+    },
+    {
+      "start": 513,
+      "end": 536,
+      "kind": "function",
+      "name": "_evidenced_share",
+      "id": "s19",
+      "hash": "785611363bcf93b7",
+      "title": "Share of value backed by evidence",
+      "what": "Calculates the share of realised effort whose value parameters cite evidence, weighted by effort rather than by number of processes. It returns zero when there is no realised effort.",
+      "why": "The docstring says weighting by value gives the honest figure, and zero avoids showing a perfect score on nothing.",
+      "watch_out": "A process counts as evidenced if it has any parameter evidence id, even one citation."
+    },
+    {
+      "start": 537,
+      "end": 542,
+      "kind": "function",
+      "name": "_net_by_currency",
+      "id": "s20",
+      "hash": "6a79a37a7419a9a7",
+      "title": "Base-case net per currency",
+      "what": "Returns the base-case net benefit for each currency, which the sensitivity step compares across runs.",
+      "why": "It runs the full calculation with sensitivity switched off, which stops the calculation from calling itself.",
+      "watch_out": "Any change to compute also changes the sensitivity results."
+    },
+    {
+      "start": 543,
+      "end": 602,
+      "kind": "function",
+      "name": "_assumptions (part 1)",
+      "id": "s21",
+      "hash": "6211bd868504aa21",
+      "title": "Assumptions list, first part",
+      "what": "Builds the named assumptions shown beside the results: horizon, wave length, implementation factor, attribution, production model, cache share, prerequisite build effort and cost per FTE by currency.",
+      "why": "The docstring says a number without its assumptions cannot be defended or updated.",
+      "watch_out": "Each cost per FTE line shows its source, and a missing source reference appears as no reference given rather than being hidden."
+    },
+    {
+      "start": 603,
+      "end": 621,
+      "kind": "function",
+      "name": "_assumptions (part 2)",
+      "id": "s22",
+      "hash": "d4f3706c0b208c0e",
+      "title": "Assumptions list, second part",
+      "what": "Adds the cost estimate band, which states how coarse the estimates are and that they are asymmetric. It then adds the list of sensitivity drivers and returns the full list.",
+      "why": "The code says build estimates are more often wrong on the low side, which is why the band is asymmetric.",
+      "watch_out": "The asymmetric band is a stated judgement, not a measured result. Its numbers are set elsewhere and are not visible here."
+    }
+  ],
+  "explained_at": "2026-11-12T01:23:04+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the value calculation in a fixed order, from estimated parameters through to a per-currency net bridge, with no model calls. This review covered only the opening of the file.",
+  "purpose": "The main path from process parameters to a portfolio value, reported per currency, with sensitivity and client baseline checks.",
+  "why": "Stated in the docstring: the order of the stages protects against double counting and against step changes that no single process shows. Code-only design means the same inputs always give the same answer.",
+  "how": "The header lists the stages in order: confidence widening, dependency waves, enabler de-duplication, adoption ramp, phasing, gross benefit, run cost, net bridge, sensitivity, and baseline reconciliation. The inputs bundle is defined first. Cost bands, prerequisite build effort and the wave length are fixed as named constants.",
+  "inputs": "An engine inputs bundle: process records, cost bases, client baselines, run cost settings, depth tier, prerequisite links, instance counts and build effort per prerequisite kind.",
+  "outputs": "Not visible in the reviewed part. The portfolio result is produced by the later compute stages, which were not reviewed.",
+  "risks": "Reordering stages silently changes results without any error. Missing entries in the input mappings cause errors or silent zeros. The cost bands and wave length drive results heavily.",
+  "debug": "Start at the inputs bundle and check that each mapping covers every process. For a wrong total, check the stage order and the named assumptions for prerequisites, cost bands and waves. The later compute stages were not reviewed, so look there for the calculation itself.",
+  "summary_hash": "sha256:66e3e6783959d96ae051e23f7e15dc8e8d7fa9670f9fa1bfc6e02b9961dfa188"
+}

@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "path": "packages/knowledge/confidence.py",
+  "language": "Python",
+  "lines": 214,
+  "hash": "sha256:7de3aab6c6bc68110d678b14a466918961505df535f4bf721b59c43e46331696",
+  "area": "packages-knowledge",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The formula and its reasons are documented in detail.",
+      "The packet names a reproduction check (check_confidence_reproduces in evals/run.py), but this file's own unit tests are not visible.",
+      "Agreement is unmeasured in this build, so scores describe a narrower claim.",
+      "Citation ids that are not in the pack are dropped without an error."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Coverage",
+      "meaning": "A measure that rises quickly for the first few sources and then levels off."
+    },
+    {
+      "term": "Recency",
+      "meaning": "A factor that halves for every eighteen months of evidence age."
+    },
+    {
+      "term": "Half-life",
+      "meaning": "The time after which a value has fallen to half of its starting value."
+    },
+    {
+      "term": "Agreement",
+      "meaning": "How far independent sources agree with each other on a claim."
+    },
+    {
+      "term": "Load-bearing gap",
+      "meaning": "An assumption a block depends on that no evidence supports."
+    },
+    {
+      "term": "Critic strike",
+      "meaning": "An item a reviewing step removed because it does not support the claim."
+    },
+    {
+      "term": "Multiplicative",
+      "meaning": "Combined by multiplying, so a zero in one factor makes the whole result zero."
+    },
+    {
+      "term": "Confidence record",
+      "meaning": "The stored result for one block: the score, the counts and the features used."
+    }
+  ],
+  "depends_on": [
+    "packages/schema (BlockName, Confidence, ALWAYS_MEASURABLE, FeatureName)",
+    "packages/knowledge/evidence.py (type references only)",
+    "Python standard library (math, datetime)"
+  ],
+  "used_by": [
+    "Not visible in the packet. evals/run.py has checks named for confidence, but the packet does not show it importing this file."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 59,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "8b9af33fd89c59f4",
+      "title": "What the score means and why agreement is missing",
+      "what": "A long explanation of the formula, three design rules, and why the agreement factor is removed when it cannot be measured. States that age is measured against the pack's retrieval time, not the wall clock.",
+      "why": "The docstring records that an earlier version put a fixed stand-in value into unmeasured agreement, which made an unmeasured feature look measured.",
+      "watch_out": "Scores produced before this change are not comparable with new ones, because the stand-in agreement term applied to every block has been removed."
+    },
+    {
+      "start": 60,
+      "end": 95,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "a422cffdb69dcc7d",
+      "title": "Constants and the undated-age rule",
+      "what": "Sets the coverage scale, the eighteen-month half-life in days, the minimum number of items before agreement can count, and the age given to items with no publication date.",
+      "why": "Each constant has its own docstring. Undated items get a conservative age so a store with poor metadata does not outrank one with good metadata.",
+      "watch_out": "Changing the half-life or the coverage scale changes every confidence figure in every record."
+    },
+    {
+      "start": 96,
+      "end": 101,
+      "kind": "function",
+      "name": "_age_days",
+      "id": "s3",
+      "hash": "17c69703cdbe31ad",
+      "title": "Age of one source",
+      "what": "Returns how many days old an item is compared with the retrieval date. Items with no publication date get the maximum conservative age. Ages never go below zero.",
+      "why": "The docstring says an undated source is not a fresh source. Measuring against retrieval time means re-reading a record later does not change its score.",
+      "watch_out": "A publication date later than the retrieval date is clamped to zero, which makes it look brand new."
+    },
+    {
+      "start": 102,
+      "end": 108,
+      "kind": "function",
+      "name": "coverage",
+      "id": "s4",
+      "hash": "14477c514d4cec92",
+      "title": "Measure of evidence count",
+      "what": "Turns a net evidence count into a value that rises fast at first and then levels off. Returns exactly zero when there is no evidence.",
+      "why": "The docstring says the zero is the gate the whole score depends on, so a claim with no evidence can never score above zero. Levelling off stops repeated retrieval of one document from inflating the score.",
+      "watch_out": "A negative count returns zero, so when gaps outnumber citations the block silently drops to zero coverage."
+    },
+    {
+      "start": 109,
+      "end": 113,
+      "kind": "function",
+      "name": "recency",
+      "id": "s5",
+      "hash": "261bb0d849656072",
+      "title": "Freshness factor",
+      "what": "Turns the mean age in days into a factor between 0 and 1 that halves every eighteen months.",
+      "why": "The docstring says a three-year-old deliverable and last quarter's deliverable should not weigh the same.",
+      "watch_out": "The input is an average, so one very old source can be hidden by several recent ones."
+    },
+    {
+      "start": 114,
+      "end": 129,
+      "kind": "function",
+      "name": "score",
+      "id": "s6",
+      "hash": "09a96026de820b4f",
+      "title": "Combining the measured features",
+      "what": "Multiplies coverage by a recency term that never falls below 0.4 of the base, and multiplies by an agreement term only when one was supplied.",
+      "why": "The docstring says multiplying means no recency or agreement value can lift a claim with zero coverage. Leaving out an unmeasured term is more honest than inserting a neutral value.",
+      "watch_out": "Recency can lower the score by at most 60 percent, so very old evidence still keeps a noticeable score. This is built into the arithmetic."
+    },
+    {
+      "start": 130,
+      "end": 185,
+      "kind": "function",
+      "name": "compute",
+      "id": "s7",
+      "hash": "0a5978867650eedf",
+      "title": "Confidence for one block",
+      "what": "Takes one block's surviving evidence and returns a full confidence record. Subtracts unresolved assumptions from the count, and measures agreement only when it is supplied and at least two items survive.",
+      "why": "The docstring says a thin evidence base and a well-cited design resting on assumptions should not look the same, so the gross count and the gap count are stored separately.",
+      "watch_out": "The mean age is taken over all cited items, even when gaps cancel some of them out, so the stored age describes the evidence that exists."
+    },
+    {
+      "start": 186,
+      "end": 214,
+      "kind": "function",
+      "name": "compute_for_blocks",
+      "id": "s8",
+      "hash": "39e2501a94919226",
+      "title": "Confidence for every block in a record",
+      "what": "Runs the calculation for every block. It removes each block's struck items, applies each block's own gap count, and returns one record per block.",
+      "why": "The docstring says every block gets a record, even with no citations, because a minimum over a partial set would be an accident. Gaps are per block so a problem with the future state cannot reduce the current state.",
+      "watch_out": "Citation ids that are not in the pack are skipped without any error, so a mistyped citation quietly lowers the count."
+    }
+  ],
+  "explained_at": "2026-11-12T01:34:59+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns the evidence behind each block of a process record into a confidence number between 0 and 1, using arithmetic only and no model.",
+  "purpose": "Gives every block a confidence figure that a reader can reproduce from the stored counts. It replaces self-rated confidence from a language model.",
+  "why": "The module docstring states that a model rating its own confidence mostly reflects how fluent its prose was, so no model is asked. Agreement is left out because nothing in this build measures it.",
+  "how": "1. Remove the items a critic struck. 2. Subtract unresolved assumptions from the citation count to get a net count. 3. Compute coverage from the net count. 4. Compute recency from the mean age of the surviving citations, measured against the pack's retrieval time. 5. Multiply coverage by the recency term, and by an agreement term only if agreement was measured. 6. Store the score with the counts and the features used.",
+  "inputs": "The evidence items each block cites, the struck items per block, the count of unresolved assumptions per block, and the evidence pack with its retrieval time.",
+  "outputs": "A Confidence record for every block, including blocks that cite nothing, which score 0.0. Each record stores the score, the gross citation count, the gap count, the mean source age and the features that contributed.",
+  "risks": "Agreement is never measured in this build, so the score reflects recency and coverage only. The docstring says earlier scores were higher and describe a different claim. Citations to items missing from the pack are silently dropped, which lowers the count without any warning.",
+  "debug": "If a score looks too low, check the citation count, the gap count and the mean age on the stored record. A score of 0.0 means no evidence survives the gaps. Recompute by hand using the formula in the module docstring. Confirm that retrieved_at is the run time, not the current date.",
+  "summary_hash": "sha256:7de3aab6c6bc68110d678b14a466918961505df535f4bf721b59c43e46331696"
+}

@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "path": "evals/purity.py",
+  "language": "Python",
+  "lines": 134,
+  "hash": "sha256:0bb4cfa26889cb206d5473d40113e056801bf008571528b65da5a6b0f46aeea2",
+  "area": "other",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "The docstring says both the test and the eval gate use this one implementation.",
+      "The packet does not show the test file itself, so the test's content is not verified here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SDK",
+      "meaning": "Software development kit: a library for calling an outside service."
+    },
+    {
+      "term": "Import graph",
+      "meaning": "The map of which module loads which other module."
+    },
+    {
+      "term": "Syntax tree",
+      "meaning": "The structured form of source code that a program can read."
+    },
+    {
+      "term": "Transitive",
+      "meaning": "Reached through other modules, not only directly."
+    },
+    {
+      "term": "First-party",
+      "meaning": "Code inside this repository."
+    },
+    {
+      "term": "Dotted prefix",
+      "meaning": "The leading part of a dotted name, such as the first two words of a module path."
+    }
+  ],
+  "depends_on": [
+    "Python standard library (ast, pathlib, typing)"
+  ],
+  "used_by": [
+    "evals/run.py (its value purity check), as the docstring says the eval gate needs the same answer. The packet does not show the import itself."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 51,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "be153d53c78a32a7",
+      "title": "Purpose and the forbidden list",
+      "what": "Explains why the check walks the import graph and not the raw text. Lists the module names that would mean a model call can be reached.",
+      "why": "The docstring says a text search missed indirect imports, and that the rule should be the same in the test and the gate.",
+      "watch_out": "Adding names to the list tightens the check. Removing a name would silently allow more imports."
+    },
+    {
+      "start": 52,
+      "end": 65,
+      "kind": "function",
+      "name": "forbidden_root",
+      "id": "s2",
+      "hash": "62a18c35741382a2",
+      "title": "Matching forbidden names",
+      "what": "Returns the forbidden root that a module name falls under, matching whole dotted parts so that a name which only starts with the same letters is not flagged.",
+      "why": "The docstring says a plain substring test would confuse names like anthropic and anthropomorphic.",
+      "watch_out": "Matching is by whole parts, so a forbidden name must be spelled exactly, including its dots, such as google.generativeai."
+    },
+    {
+      "start": 66,
+      "end": 95,
+      "kind": "function",
+      "name": "imported_modules",
+      "id": "s3",
+      "hash": "5eb813344a0c0e74",
+      "title": "Reading a file's imports",
+      "what": "Parses one file and yields every module it imports, including the names pulled out of packages. Works out the full name of relative imports.",
+      "why": "The docstring says yielding only the package would miss a module that imports an SDK one step deeper.",
+      "watch_out": "Only static import statements are read, so an import built from a string at run time is invisible."
+    },
+    {
+      "start": 96,
+      "end": 105,
+      "kind": "function",
+      "name": "module_to_path",
+      "id": "s4",
+      "hash": "b257c72bf07943bd",
+      "title": "From module name to file",
+      "what": "Turns a first-party dotted module name into the file on disk. It checks for a single file first, then for a package folder.",
+      "why": "This is needed so the walk can follow imports from one file into the next.",
+      "watch_out": "A module that exists as neither a file nor a package folder returns nothing, so the walk stops there without reporting it."
+    },
+    {
+      "start": 106,
+      "end": 134,
+      "kind": "function",
+      "name": "walk_import_graph",
+      "id": "s5",
+      "hash": "b05e4a1e9b60ea08",
+      "title": "The walk itself",
+      "what": "Starts from the entry files, reads each file's imports, records each forbidden import against the module that makes it, and follows first-party imports into new files until none remain.",
+      "why": "The docstring says a violation behind any number of first-party steps must be reported against the module that actually performs the import.",
+      "watch_out": "Only imports starting with the packages root are followed, so a module in another top-level folder is never checked."
+    }
+  ],
+  "explained_at": "2026-11-12T01:34:59+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that the value calculation layer cannot reach any model SDK, by walking the import graph of its code.",
+  "purpose": "Protects the guarantee that identical inputs always produce identical outputs, by making sure no model call can happen beneath the value layer.",
+  "why": "The docstring says a text search missed indirect imports, and two separate implementations of one guarantee let the weaker one run in CI. This one is shared by the test and the gate.",
+  "how": "1. Lists the forbidden SDK root names. 2. Reads each file's imports from its syntax tree, including the names of submodules. 3. Resolves only first-party imports to files on disk. 4. Follows them with a queue and a set of files already seen. 5. Returns every importing module and forbidden root pair, sorted.",
+  "inputs": "Entry file paths inside the packages folder, and the repository root.",
+  "outputs": "A sorted list of pairs, each showing which module imports which forbidden root.",
+  "risks": "Imports made at run time by name, such as dynamic imports, are not visible to the walk. Only modules under the packages root are followed, so an SDK import hidden behind another top-level folder would not be found. The forbidden list is designed to only grow.",
+  "debug": "If a pair is reported, the first name is the importing module. Trace its imports to find the route. Matching is by whole dotted parts, so a false alarm is unlikely. If the list is empty but a violation is suspected, look for dynamic imports.",
+  "summary_hash": "sha256:0bb4cfa26889cb206d5473d40113e056801bf008571528b65da5a6b0f46aeea2"
+}

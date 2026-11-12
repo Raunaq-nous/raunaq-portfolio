@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "path": "frontend/src/lib/confidence.ts",
+  "language": "TypeScript",
+  "lines": 154,
+  "hash": "sha256:466169de4505f286e5a49a4ba87f121524347b90091fffadfed774d5a7c8bc8c",
+  "area": "frontend-src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Tests in frontend/src/lib/confidence.test.ts cover the derivation and the invalid record branches.",
+      "The render test in frontend/src/render.test.tsx checks the same figures on the page.",
+      "I did not run these tests in this review."
+    ]
+  },
+  "terms": [
+    {
+      "term": "derivation",
+      "meaning": "the step by step working that turns the inputs into a score"
+    },
+    {
+      "term": "recency",
+      "meaning": "a factor that falls as the sources get older, halving every 540 days"
+    },
+    {
+      "term": "contributing features",
+      "meaning": "the list stored in a record naming which parts went into its score"
+    },
+    {
+      "term": "tolerance",
+      "meaning": "how close two numbers must be to count as equal"
+    },
+    {
+      "term": "record",
+      "meaning": "one stored result, usually a JSON file entry"
+    }
+  ],
+  "depends_on": [
+    "packages/knowledge/confidence.py (the engine this mirrors, referenced in comments, not imported)"
+  ],
+  "used_by": [
+    "frontend/src/lib/confidence.test.ts",
+    "frontend/src/render.test.tsx",
+    "frontend/src/views/Portfolio.tsx (imports standingOf)",
+    "frontend/src/views/Process.tsx (imports Standing and standingOf)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 49,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4173ca889ceada12",
+      "title": "Header and constants for confidence",
+      "what": "The header sets out the formula and why the viewer recalculates it. It sets the coverage scale, the recency half-life and the tolerance used to decide two scores match.",
+      "why": "The constants sit in one place so the formula can be read and checked in one spot.",
+      "watch_out": "The scale and half-life must match the engine, or every recalculated score will disagree."
+    },
+    {
+      "start": 50,
+      "end": 75,
+      "kind": "type",
+      "name": "ConfidenceBlock",
+      "id": "s2",
+      "hash": "af0d31354f3c0663",
+      "title": "Shape of a confidence record",
+      "what": "Describes the fields a confidence record must carry, which optional fields fall back to a default, and that the list of contributing features is required with no default.",
+      "why": "It mirrors the generated contract type so the viewer reads records the same way the producer wrote them.",
+      "watch_out": "This type is written by hand. When the generated type changes, this one must change too, and a test compares them."
+    },
+    {
+      "start": 76,
+      "end": 92,
+      "kind": "type",
+      "name": "Derivation",
+      "id": "s3",
+      "hash": "431410854a5002d9",
+      "title": "Shape of the derived result",
+      "what": "Describes what the viewer gets back after working out a record: each factor, the agreement value, the flags, the recalculated score and whether it matches.",
+      "why": "It gives the pages one place to read each figure, and keeps the stored score separate from the recalculated one.",
+      "watch_out": "Agreement is null when it was not measured. Code that reads it must not treat null as zero."
+    },
+    {
+      "start": 93,
+      "end": 136,
+      "kind": "function",
+      "name": "derive",
+      "id": "s4",
+      "hash": "f4d7806303e14eee",
+      "title": "Working out a confidence score",
+      "what": "Takes one record, works out gaps, effective evidence, coverage and recency, decides from the record whether agreement counts, and returns the recalculated score with a yes or no on whether it matches the stored one.",
+      "why": "Likely reason: agreement is read from the record rather than guessed from the citation count, because the count could not show when agreement was unmeasured.",
+      "watch_out": "The invalid record messages are shown to readers, so keep the checks here in step with the schema rules."
+    },
+    {
+      "start": 137,
+      "end": 145,
+      "kind": "type",
+      "name": "Standing",
+      "id": "s5",
+      "hash": "7253ca6fa2d81e10",
+      "title": "Three levels of evidence standing",
+      "what": "Defines the three states a claim can be in: grounded, declared prerequisite, or unsupported.",
+      "why": "Keeps a claim that depends on enabling work from being shown as fully supported or as having no support at all.",
+      "watch_out": "A new state must be added to the label table and to the styles, or it will show without a label."
+    },
+    {
+      "start": 146,
+      "end": 149,
+      "kind": "function",
+      "name": "standingOf",
+      "id": "s6",
+      "hash": "7c6c3c03f5c05418",
+      "title": "Choosing the standing from citations",
+      "what": "A claim with at least one citation counts as grounded. A claim with an empty or missing citation list counts as unsupported.",
+      "why": "Reason not stated in the code for why this function never returns the declared prerequisite state.",
+      "watch_out": "Callers must handle the declared prerequisite state some other way, because this function never returns it."
+    },
+    {
+      "start": 150,
+      "end": 154,
+      "kind": "value",
+      "name": "STANDING_LABEL",
+      "id": "s7",
+      "hash": "5a045972072f1ffd",
+      "title": "Plain labels for each standing",
+      "what": "Maps each standing to the words shown on the page. The unsupported state is shown as hypothesis.",
+      "why": "Keeps the wording in one place so every page says the same thing.",
+      "watch_out": "The render tests look for some of these words, so changing them breaks those checks."
+    }
+  ],
+  "explained_at": "2026-11-12T01:09:28+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns one stored confidence record into the visible arithmetic that produced its score, and recalculates that score to check it matches.",
+  "purpose": "Lets the viewer show every step behind a confidence number, and flags any record whose stored score or feature list does not agree with the rules.",
+  "why": "The header says a bare number hides how it was made, and that a disagreement with the engine should be shown to the reader rather than hidden. Likely reason for recalculating here: to catch drift between this viewer and the engine.",
+  "how": "Subtracts gaps from the evidence count to get the effective count. Turns that count into coverage, turns source age into a recency factor, reads whether agreement contributed from the record, multiplies the factors together, then compares the result with the stored score within a very small tolerance.",
+  "inputs": "A confidence block from a record: the stored score, evidence count, load-bearing gaps, mean source age in days, source agreement value, and the list of contributing features.",
+  "outputs": "A derivation with each factor, the agreement value or null, a flag saying whether agreement was measured, a message if the record is invalid, the recalculated score, and a yes or no on whether it reproduces the stored score. Also a standing label from standingOf and STANDING_LABEL.",
+  "risks": "The formula is copied from the Python engine, so if either side changes alone the viewer will report a mismatch. A record with no feature list is reported as invalid and not given a default, which is deliberate.",
+  "debug": "If scores stop reproducing, compare the constants here with the Python engine in packages/knowledge/confidence.py, then check the record's rounding. If an invalid record message appears, check the program that wrote the JSON file.",
+  "summary_hash": "sha256:466169de4505f286e5a49a4ba87f121524347b90091fffadfed774d5a7c8bc8c"
+}

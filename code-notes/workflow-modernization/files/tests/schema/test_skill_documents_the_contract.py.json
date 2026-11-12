@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "path": "tests/schema/test_skill_documents_the_contract.py",
+  "language": "Python",
+  "lines": 249,
+  "hash": "sha256:53f1b30d4134cb3d7f0995383a914967feb3da7589b70ec0d8239a23ff880867",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Its checks depend on regular-expression parsing of the documents, which can break on formatting changes.",
+      "The one model class the packet names as undocumented in any file, Edit, is not covered because nothing implements it.",
+      "The exemption tables need a regular review so they do not hide real gaps."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Skill document",
+      "meaning": "a markdown file that tells contributors how a part of the system works and what to read first"
+    },
+    {
+      "term": "Fenced block",
+      "meaning": "a section of a markdown file wrapped in marker lines so it can be shown as code"
+    },
+    {
+      "term": "Regular expression",
+      "meaning": "a text pattern used to find parts of a file, here the code blocks and class lines"
+    },
+    {
+      "term": "Drift",
+      "meaning": "when a document slowly stops matching the code it describes"
+    },
+    {
+      "term": "Data model",
+      "meaning": "a class that describes the shape of a piece of data, with named fields"
+    }
+  ],
+  "depends_on": [
+    "packages.schema",
+    "packages.knowledge.evidence",
+    "packages.value.cost_basis",
+    ".claude/skills/process-schema/SKILL.md",
+    "SPEC.md"
+  ],
+  "used_by": [
+    "the test suite run by pytest"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 35,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "023346bd9c74ebdf",
+      "title": "Purpose and setup for the document check",
+      "what": "Holds the file's purpose, the imports, the expected pair count, and the paths to the skill and specification documents.",
+      "why": "The docstring explains why the file exists: the skill document kept describing an old shape after a version change, and nothing enforced it.",
+      "watch_out": "The expected pair count is a deliberate number. Changing a document's model blocks means changing this count on purpose."
+    },
+    {
+      "start": 36,
+      "end": 78,
+      "kind": "function",
+      "name": "_models_from",
+      "id": "s2",
+      "hash": "2f4a3d34a8049b18",
+      "title": "Collecting model classes from packages",
+      "what": "Gathers every data model class from the schema, evidence and cost packages into one lookup table by name.",
+      "why": "Models are found from the packages rather than listed by hand, so new models are covered automatically. The docstring says the three modules outside the schema package were added because the specification declares their shapes.",
+      "watch_out": "If two modules define classes with the same name, only the first one found is kept."
+    },
+    {
+      "start": 79,
+      "end": 134,
+      "kind": "function",
+      "name": "documented",
+      "id": "s3",
+      "hash": "ffe7f48cbd54f4b5",
+      "title": "Reading the fields a document shows",
+      "what": "Reads the fenced Python blocks of a document and returns the set of field names shown for one class, merging every place the class appears.",
+      "why": "Checking every block, not just the first, means a class shown twice in one document is checked in both places.",
+      "watch_out": "The matching depends on the exact layout of class lines and four-space indentation in the document. A formatting change can make it report a class as missing."
+    },
+    {
+      "start": 135,
+      "end": 163,
+      "kind": "class",
+      "name": "TestTheExemptionsAreLive",
+      "id": "s4",
+      "hash": "a6cfb1fb60fafc8c",
+      "title": "Exemptions must still be needed",
+      "what": "Checks that no field listed as specified-but-not-implemented has in fact been implemented, and that every derived property is really a property on the model.",
+      "why": "An exemption for a field that now exists would quietly stop the check covering it. The comments compare this to a stale anchor in another registry.",
+      "watch_out": "When a field is implemented, its exemption must be removed in the same change or the comparison stops covering it."
+    },
+    {
+      "start": 164,
+      "end": 173,
+      "kind": "class",
+      "name": "TestTheSkillIsReadable",
+      "id": "s5",
+      "hash": "fe4b3a8817ee5d71",
+      "title": "Skill file exists and parses",
+      "what": "Checks that the skill file is present where the contributor instructions point, and that the parser can find fields in it.",
+      "why": "Without the parser check, a broken parse would report agreement with an empty set.",
+      "watch_out": "If the skill file moves, the instructions pointing to it and this path must both change."
+    },
+    {
+      "start": 174,
+      "end": 191,
+      "kind": "function",
+      "name": "every_documented_class",
+      "id": "s6",
+      "hash": "bcb686b7660830ac",
+      "title": "Finding every documented class",
+      "what": "Scans both documents for fenced model classes that exist in the code, and returns each document and class name pair.",
+      "why": "Discovery is used so that a newly documented class is checked without anyone adding it to a list.",
+      "watch_out": "A class name in a document that is not a real model is silently ignored, so a typo in a class name would not be caught here."
+    },
+    {
+      "start": 192,
+      "end": 249,
+      "kind": "class",
+      "name": "TestTheDocumentedShapeMatchesTheModel",
+      "id": "s7",
+      "hash": "7c11af07dc3fb14d",
+      "title": "Documented shape matches the models",
+      "what": "Checks that the discovery finds both documents and the expected number of pairs, then for each pair checks that every real field is documented and every documented field exists, with listed exemptions. It also checks two wording claims in the skill file: that agreement may be unmeasured, and that evidence count is gross, not net.",
+      "why": "Both directions matter. Missing documentation hides fields from a reader, and invented fields teach a shape the model refuses. The wording checks cover the one point where a number could be misread.",
+      "watch_out": "The wording checks look for exact phrases. Rewording those sentences will fail the tests even if the meaning is kept, and a reworded claim that is wrong could pass if it keeps the phrase."
+    }
+  ],
+  "explained_at": "2026-11-12T01:02:34+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that the process-schema skill document and the specification document describe the same model fields as the code, so that a reader is never taught a shape the code refuses.",
+  "purpose": "Stops the skill document and the specification from drifting away from the real data models.",
+  "why": "The skill file was found still describing an older confidence shape after a version change, and that is the exact payload the code now rejects. The file exists so the same drift cannot happen silently again. Some reasons for individual exemptions are stated in the code comments.",
+  "how": "Finds every data model class in the schema, evidence and cost modules that either document names. Reads each fenced Python block in the skill file and the specification, pulls out the field names shown for each class, and compares them with the real model fields in both directions. Checks that the exemption tables still apply, and checks two specific wording claims in the skill file.",
+  "inputs": "The skill markdown file, the specification markdown file, and the model modules in the schema, evidence and cost packages. No outside input.",
+  "outputs": "A pass or fail for each class and document pair, with the names of any missing or invented fields. It also fails if the number of pairs found changes. Nothing is written.",
+  "risks": "Exemption tables can hide a real gap if they grow without reasons. The parser depends on the document layout, so changing how code blocks or class lines are written can make it miss classes. A parser that finds nothing would pass quietly, so the tests guard against that. The check compares field names only, not types or meaning.",
+  "debug": "If a test says a document shows a class without fields, the code gained a field the document does not show. If it says the document shows fields that do not exist, the document still teaches a removed field. Check the exemption tables before changing the document. If the pair count test fails, a fenced block was added or removed, and the expected count should be updated on purpose.",
+  "summary_hash": "sha256:53f1b30d4134cb3d7f0995383a914967feb3da7589b70ec0d8239a23ff880867"
+}

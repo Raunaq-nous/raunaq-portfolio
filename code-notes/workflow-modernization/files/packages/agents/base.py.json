@@ -1,0 +1,270 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/base.py",
+  "language": "Python",
+  "lines": 459,
+  "hash": "sha256:956202a0a19e4425f1305d532890b0bdd1b4ae03500e7da398e289a663b07d8e",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The retry, budget and citation logic is clearly described, but no tests are visible in this packet to confirm it.",
+      "The budget check uses an approximate estimate rather than a true token count.",
+      "The warning capture depends on keeping a synchronous section, which is fragile for future edits."
+    ]
+  },
+  "terms": [
+    {
+      "term": "structured output",
+      "meaning": "Model output forced into a defined shape, so it can be checked by code."
+    },
+    {
+      "term": "Pydantic validation",
+      "meaning": "Automatic checking that data matches its declared shape and rules."
+    },
+    {
+      "term": "token",
+      "meaning": "A small unit of text the model reads and writes. Usage and cost are counted in tokens."
+    },
+    {
+      "term": "prompt caching",
+      "meaning": "Reusing an already-sent block of instructions at lower cost. The cache breakpoint marks where the reused part ends."
+    },
+    {
+      "term": "provenance",
+      "meaning": "A record of which model, prompt version and prompt prefix produced each result."
+    },
+    {
+      "term": "citation",
+      "meaning": "An evidence id attached to a claim, pointing to a source in the evidence pack."
+    },
+    {
+      "term": "coerce",
+      "meaning": "Silently convert or fill in data to make it pass. This code forbids it."
+    },
+    {
+      "term": "concurrent",
+      "meaning": "Running at the same time, here many agent runs in parallel."
+    }
+  ],
+  "depends_on": [
+    "packages/agents/prompt.py",
+    "packages/agents/provenance.py",
+    "packages/agents/routing.py",
+    "packages/knowledge/evidence.py",
+    "packages/schema/current_state.py",
+    "packages/schema/manifest.py",
+    "pydantic"
+  ],
+  "used_by": [
+    "Every specialist agent in packages/agents/ (including current_state_cartographer.py, agent_designer.py and feasibility_assessor.py)",
+    "packages/agents/__init__.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 41,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "2f356aac54e31715",
+      "title": "Purpose of shared agent machinery",
+      "what": "Explains that each agent does one job and returns a checked result, and that the calling, retrying, budget, boundary and citation checks all live in this file. It also imports the helpers it depends on.",
+      "why": "Stated in the docstring: a single shared loop stops agents from differing in retries, spending or checks.",
+      "watch_out": "A change here affects every agent at once, so test across the roster after editing."
+    },
+    {
+      "start": 42,
+      "end": 45,
+      "kind": "class",
+      "name": "AgentError",
+      "id": "s2",
+      "hash": "02526a51be4673ef",
+      "title": "Base error type",
+      "what": "The common parent of every agent failure, so a caller can catch any agent problem in one place.",
+      "why": "Likely reason: it lets callers handle all agent failures together. The code does not state more.",
+      "watch_out": "Catching this broadly can hide a real bug, so catch the specific error types where a distinct response is needed."
+    },
+    {
+      "start": 46,
+      "end": 53,
+      "kind": "class",
+      "name": "BudgetExceeded",
+      "id": "s3",
+      "hash": "9203807ce6f9e93c",
+      "title": "Budget exceeded error",
+      "what": "Raised before a model call when the run would go over its token ceiling. Nothing is spent on a call that cannot be afforded.",
+      "why": "Stated in the docstring: a ceiling that reports overruns only after spending is just a log line.",
+      "watch_out": "The check uses an estimate, so a call close to the limit may be refused or allowed by a small margin."
+    },
+    {
+      "start": 54,
+      "end": 62,
+      "kind": "class",
+      "name": "AgentValidationError",
+      "id": "s4",
+      "hash": "491213965028160f",
+      "title": "Validation failed twice error",
+      "what": "Raised when the model output fails its shape check on both attempts. The output is never repaired, coerced or partly filled.",
+      "why": "Stated in the docstring: a silently repaired record looks healthy, and nothing downstream knows to distrust it.",
+      "watch_out": "Callers must handle this failure, since there is no default output to fall back on."
+    },
+    {
+      "start": 63,
+      "end": 72,
+      "kind": "class",
+      "name": "BoundaryViolation",
+      "id": "s5",
+      "hash": "f821570baadcb936",
+      "title": "Boundary violation error",
+      "what": "Raised when a model writes a field that the agent is not allowed to produce, such as a vendor name or a fix in a description of a broken process.",
+      "why": "Stated in the docstring: the adjacent job is more tempting to a model than its own, so the boundary is stated and enforced.",
+      "watch_out": "Some boundaries are enforced by leaving fields out of the output shape, not by this error, so both mechanisms must be kept in step."
+    },
+    {
+      "start": 73,
+      "end": 80,
+      "kind": "class",
+      "name": "ParsedResponse",
+      "id": "s6",
+      "hash": "1af2a4d167c97eda",
+      "title": "Structured reply shape",
+      "what": "Describes what the model client's parse call returns: a parsed output and a usage record. It is a stand-in type so a test can supply a fake client.",
+      "why": "Stated in the docstring: a stub client can be tested without the vendor software development kit.",
+      "watch_out": "This shape is a description only and is not checked against the real client at run time."
+    },
+    {
+      "start": 81,
+      "end": 86,
+      "kind": "class",
+      "name": "MessagesAPI",
+      "id": "s7",
+      "hash": "d8dd842ab57e106f",
+      "title": "Parse method contract",
+      "what": "States that the client must offer one asynchronous parse method that accepts keyword arguments and returns the structured reply.",
+      "why": "Stated in the docstring: it stops agents from reaching for capabilities the interface does not promise.",
+      "watch_out": "Keyword names are not checked here, so a typo in an argument name shows up only when the real client is called."
+    },
+    {
+      "start": 87,
+      "end": 101,
+      "kind": "class",
+      "name": "ModelClient",
+      "id": "s8",
+      "hash": "8d9f977b885f0eeb",
+      "title": "Model client contract",
+      "what": "States that the client must expose a messages property that offers the parse method. The property is read-only.",
+      "why": "Stated in the docstring: a mutable attribute would wrongly reject realistic clients.",
+      "watch_out": "This is a type description, so it is checked by a type checker, not when the code runs."
+    },
+    {
+      "start": 102,
+      "end": 132,
+      "kind": "class",
+      "name": "BudgetLedger",
+      "id": "s9",
+      "hash": "6a56596c4fc3250e",
+      "title": "Token budget ledger",
+      "what": "Tracks the token ceiling for one run and how many tokens have been spent. It refuses a call that would exceed the remaining budget, and after each call adds the input and output tokens actually used.",
+      "why": "Stated in the docstring: the ceiling is measured in tokens, not money, because cost per token must stay out of agent code.",
+      "watch_out": "A usage record missing its fields counts as zero, so spending can be silently under-counted."
+    },
+    {
+      "start": 133,
+      "end": 191,
+      "kind": "class",
+      "name": "RunContext",
+      "id": "s10",
+      "hash": "23848797948f3143",
+      "title": "Context given to each agent",
+      "what": "Bundles everything an agent may see for one call: a limited view of the run, the evidence pack, the cached prompt prefix, the budget, optional headcount by function, warnings and the shared provenance log. On creation it refuses an evidence pack from a different snapshot than the run pinned.",
+      "why": "Stated in the docstring: a limited view makes cost data unreachable, and the snapshot check keeps replays reproducible.",
+      "watch_out": "Do not bypass the snapshot check. If it is removed, a run can complete on a different corpus with no warning."
+    },
+    {
+      "start": 192,
+      "end": 217,
+      "kind": "class",
+      "name": "AgentResult",
+      "id": "s11",
+      "hash": "7813069b80fd0cbc",
+      "title": "Agent result wrapper",
+      "what": "The package returned from a successful agent run: the checked output, the number of attempts, the soft warnings and the cache token counts. A cache hit is reported when cache reads are above zero.",
+      "why": "Stated in the docstring: the orchestrator needs these details without reaching inside the agent.",
+      "watch_out": "A cache hit requires tokens actually read from cache. Byte-identical prompts alone do not guarantee one, since there is a minimum cacheable length."
+    },
+    {
+      "start": 218,
+      "end": 242,
+      "kind": "class",
+      "name": "Agent",
+      "id": "s12",
+      "hash": "235e000ed755273d",
+      "title": "Agent interface",
+      "what": "Declares the shape every specialist must have: name, model tier, output limit, what it produces, what it must not do, an output type, and an asynchronous run method that returns an AgentResult.",
+      "why": "Stated in the docstring: the orchestrator depends on this shape rather than on the base class, so agents can be swapped in.",
+      "watch_out": "This shape is checked by structure, so a missing member shows up only when a type checker runs or the agent is used."
+    },
+    {
+      "start": 243,
+      "end": 301,
+      "kind": "class",
+      "name": "BaseAgent (part 1)",
+      "id": "s13",
+      "hash": "b112d1487d23fd45",
+      "title": "Base agent class and evidence collection",
+      "what": "Starts the shared base class. It requires each specialist to supply its output shape, its per-call instruction, and how to turn raw output into the final object. It also collects every evidence id found anywhere in the model's output.",
+      "why": "Stated in the docstring: a specialist supplies three things and nothing else, so it cannot forget the shared steps.",
+      "watch_out": "Evidence ids are found by looking at key names ending in evidence_ids or evidence_id. A differently named field would be missed by the citation check."
+    },
+    {
+      "start": 302,
+      "end": 348,
+      "kind": "method",
+      "name": "BaseAgent: _check_citations",
+      "id": "s14",
+      "hash": "f02e3b141c4f2553",
+      "title": "Citation check",
+      "what": "Confirms every evidence id the model cited exists in the evidence pack. Unknown ids raise a validation error, which can be retried once.",
+      "why": "Stated in the docstring: a fabricated id looks like grounding but cannot be followed, and prompts do not reliably prevent it.",
+      "watch_out": "This confirms that ids exist, not that they support the claim they are attached to."
+    },
+    {
+      "start": 349,
+      "end": 408,
+      "kind": "method",
+      "name": "BaseAgent: ctx_budget_check",
+      "id": "s15",
+      "hash": "a5a87562cec5ede2",
+      "title": "Budget check before each call",
+      "what": "Before each model call, estimates the input size from its characters and adds the output limit. It refuses the call if the remaining budget cannot cover the total.",
+      "why": "Stated in the docstring: checking only the output limit ignored the larger input and allowed overspending.",
+      "watch_out": "The input size is a rough character-based estimate, not an exact token count, so the ceiling is approximate."
+    },
+    {
+      "start": 409,
+      "end": 459,
+      "kind": "class",
+      "name": "BaseAgent (part 4)",
+      "id": "s16",
+      "hash": "2f446e62a8519324",
+      "title": "Retry loop and final result",
+      "what": "Runs the call up to two times. Each time it checks citations and converts the output. On a validation error it retries once with the error text. On soft drift warnings it retries once with those warnings. On success it returns the result, and on a second failure it raises an error that says whether the first attempt drifted or both were invalid.",
+      "why": "Stated in the code: one retry is the rule, nothing is coerced, and warnings are captured only around the synchronous conversion so concurrent runs do not mix.",
+      "watch_out": "Warning capture uses process-wide state. Keep the conversion synchronous and do not move the capture across an await point."
+    }
+  ],
+  "explained_at": "2026-11-12T01:15:45+00:00",
+  "explained_by": "haiku",
+  "summary": "The shared engine every specialist agent runs on. It makes one structured model call, checks the output, checks citations and budget, retries once on a fixable problem, and fails loudly otherwise.",
+  "purpose": "Ensure every agent behaves the same way on retries, spending, boundaries and citations, so no agent can quietly skip a check.",
+  "why": "The docstrings say eleven agents would otherwise drift in eleven ways, and that an agent should supply only its instruction, its output shape and how to build its final object.",
+  "how": "1) Define error types for failures and budget overruns. 2) Define a small interface for the model client. 3) Track token spending against a ceiling for one run. 4) Bundle what an agent may see for one call. 5) Run the loop: build messages, call the model with a budget check, record provenance, check citations, convert the output inside a warnings capture, and retry once on validation failure or soft drift. 6) Return an AgentResult on success or raise AgentValidationError on the second failure.",
+  "inputs": "A model client, a RunContext with the evidence pack, the run view, cached prompt, budget and provenance log, and the agent's payload.",
+  "outputs": "An AgentResult with the checked output, the attempt count, soft warnings and cache token counts. Failures raise one of the error types defined here.",
+  "risks": "Budget estimates are approximate character-based counts. Warning capture uses process-wide state, so moving the conversion across an await point could mix warnings between concurrent runs. Citation checks confirm an id exists but not that it supports the claim. Output is never repaired, so callers must handle failures.",
+  "debug": "If an agent fails, read the error class first. A budget error means the run ceiling was reached before the call. A validation error names the field. An inconsistency message means effort shares drifted. For citation errors, compare the cited ids with the evidence pack's known ids. For cost questions, check the budget ledger's spent count.",
+  "summary_hash": "sha256:956202a0a19e4425f1305d532890b0bdd1b4ae03500e7da398e289a663b07d8e"
+}

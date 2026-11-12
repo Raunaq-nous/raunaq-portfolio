@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "path": "tests/agents/test_budget_estimate.py",
+  "language": "Python",
+  "lines": 98,
+  "hash": "sha256:41e551915399470f15c4461b8463c8a0aaacea11a58c629358a51f849c1f9604",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The tests were read but not run during this review.",
+      "The module description explains the reason for the change clearly."
+    ]
+  },
+  "terms": [
+    {
+      "term": "token",
+      "meaning": "a small chunk of text, roughly a word or part of a word, that a model is billed by"
+    },
+    {
+      "term": "ceiling",
+      "meaning": "the maximum token spend a run is allowed"
+    },
+    {
+      "term": "prompt caching",
+      "meaning": "a feature that reuses a large unchanging start of a prompt, so the input side is usually big"
+    },
+    {
+      "term": "ledger",
+      "meaning": "the running record of how many tokens a run has spent and how many remain"
+    }
+  ],
+  "depends_on": [
+    "packages.agents.base",
+    "packages.agents.prompt",
+    "packages.agents.current_state_cartographer",
+    "tests.agents.test_current_state_cartographer",
+    "tests.fixtures",
+    "pytest"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 22,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "831def3bc33f2a65",
+      "title": "Why the estimate changed",
+      "what": "Explains the history: the budget check once used only the output side of a call, so large inputs slipped past the ceiling.",
+      "why": "Records the reason for the two-sided estimate so future changes do not drop one side again.",
+      "watch_out": "The estimate is a ceiling guess, not an exact count, so it will differ slightly from the real bill."
+    },
+    {
+      "start": 23,
+      "end": 43,
+      "kind": "class",
+      "name": "TestTheEstimateCoversBothSides",
+      "id": "s2",
+      "hash": "ce0efcf856f67568",
+      "title": "Estimate counts both sides",
+      "what": "Checks that the estimate counts the fixed prefix text, the message text, and both added together. It also checks that very short text is never estimated as zero and that list-style message content is still counted.",
+      "why": "Counting only one side, or counting zero for short or list content, would let calls through unmeasured.",
+      "watch_out": "If the content counting only handles plain text, multi-block messages will silently count as zero."
+    },
+    {
+      "start": 44,
+      "end": 69,
+      "kind": "class",
+      "name": "TestTheCeilingIsEnforcedAgainstTheWholeCall",
+      "id": "s3",
+      "hash": "f3777608ad140632",
+      "title": "Ceiling checked against the whole call",
+      "what": "Checks that a call whose input alone exceeds the remaining budget is refused, that the refusal message says how much remains, and that spend is booked from both input and output.",
+      "why": "The ledger is the final gate, so it must refuse a call before it happens and must record full spending afterwards.",
+      "watch_out": ""
+    },
+    {
+      "start": 70,
+      "end": 98,
+      "kind": "class",
+      "name": "TestTheAgentPathUsesTheTwoSidedEstimate",
+      "id": "s4",
+      "hash": "05858a5709ecf8e0",
+      "title": "Agent uses the two-sided estimate",
+      "what": "Checks that the cartographer agent refuses a call before any model call is made when the full call would exceed the ceiling, and that a generous ceiling lets the call through once.",
+      "why": "The ledger could be correct while the agent still passes only the output limit. These tests check the wiring between them.",
+      "watch_out": "The chosen ceiling in the test is set so the output side fits and the whole call does not. Changing the output limit or the prompt size changes whether this still tests the right thing."
+    }
+  ],
+  "explained_at": "2026-11-12T00:42:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests that the budget check estimates the whole model call, both the input side and the output side, before the call is made.",
+  "purpose": "Makes sure a run cannot go over its token ceiling by approving a call whose input was never counted.",
+  "why": "The module description explains that the old check counted only the output side. With prompt caching, the input is usually the larger part, so the old check could let a run overshoot, and the overshoot grows with the number of parallel processes.",
+  "how": "The first tests check the estimate arithmetic: prefix and messages are both counted, each is added, short text is never zero, and list-style content is counted. The next tests check that the ledger refuses a call whose input alone breaks the ceiling and that spending is booked from both sides. The last tests check that the cartographer agent really uses the two-sided estimate.",
+  "inputs": "Sample text of different sizes, a budget ledger with a set ceiling, and a sample usage record.",
+  "outputs": "Pass or fail results. No real calls are made.",
+  "risks": "The estimate is approximate by design. A small error is accepted, but ignoring one whole side of the call is not.",
+  "debug": "If a budget test fails, check the characters-per-token constant and whether the agent passes the full prompt to the budget check. The last two tests depend on the cartographer's output limit, so changing that limit changes the test numbers.",
+  "summary_hash": "sha256:41e551915399470f15c4461b8463c8a0aaacea11a58c629358a51f849c1f9604"
+}

@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "path": "frontend/src/lib/evidence.ts",
+  "language": "TypeScript",
+  "lines": 58,
+  "hash": "sha256:f1127efd8024f1c9047a592b3c48daa5631f4c6cff1cfa3ec5677c7d8bd1a722",
+  "area": "frontend-src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Tests in frontend/src/lib/format.test.ts cover resolve, the dangling path and every tier label.",
+      "Tests in frontend/src/render.test.tsx check that every citation in the records resolves.",
+      "I did not run these tests in this review."
+    ]
+  },
+  "terms": [
+    {
+      "term": "evidence pack",
+      "meaning": "the set of source items given to one case"
+    },
+    {
+      "term": "dangling citation",
+      "meaning": "a claim that cites an id that is not in any pack"
+    },
+    {
+      "term": "authority tier",
+      "meaning": "a number from 1 to 4 showing how authoritative a source is, from final standard down to hearsay"
+    },
+    {
+      "term": "golden case",
+      "meaning": "a fixed reference case used to test the system"
+    }
+  ],
+  "depends_on": [
+    "frontend/src/lib/artifacts.ts (types, imported)",
+    "packages/schema/case_input.py (named as the source of the tier labels)"
+  ],
+  "used_by": [
+    "frontend/src/lib/format.test.ts",
+    "frontend/src/render.test.tsx",
+    "frontend/src/views/Portfolio.tsx (passes the index to the page, per the render test)",
+    "frontend/src/views/Process.tsx (takes the index type)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "007742ef7b1a9b36",
+      "title": "Purpose note and imports",
+      "what": "The header explains that a missing source is shown rather than skipped, and brings in the artifact types.",
+      "why": "Stated in the header comment.",
+      "watch_out": ""
+    },
+    {
+      "start": 11,
+      "end": 15,
+      "kind": "type",
+      "name": "EvidenceIndex",
+      "id": "s2",
+      "hash": "2f143b8c75716cca",
+      "title": "The lookup shape",
+      "what": "Holds two maps: one from evidence id to item, and one from case to its evidence pack.",
+      "why": "Two maps let a page find one item quickly and also list every item in a case.",
+      "watch_out": "Both maps are built together. Keep them in step if either is changed."
+    },
+    {
+      "start": 16,
+      "end": 27,
+      "kind": "function",
+      "name": "buildEvidenceIndex",
+      "id": "s3",
+      "hash": "9f29931bfb289179",
+      "title": "Building the lookup once",
+      "what": "Goes through every case, saves its pack, and records each item under its id.",
+      "why": "Built once, so the pages do not rescan the data each time they draw.",
+      "watch_out": "A duplicate id silently overwrites the earlier item. Nothing here reports it."
+    },
+    {
+      "start": 28,
+      "end": 32,
+      "kind": "type",
+      "name": "Resolution",
+      "id": "s4",
+      "hash": "cc474c08f55c2737",
+      "title": "Result of resolving citations",
+      "what": "Holds the found items and the missing ids separately.",
+      "why": "Keeps missing citations in a list the page can show, instead of letting them disappear.",
+      "watch_out": ""
+    },
+    {
+      "start": 33,
+      "end": 43,
+      "kind": "function",
+      "name": "resolve",
+      "id": "s5",
+      "hash": "35125d799d4fcb6a",
+      "title": "Looking up a citation list",
+      "what": "Looks up each cited id. Found items go into the resolved list and missing ids go into the dangling list.",
+      "why": "Stated in the header comment: a missing id must be reported, not skipped.",
+      "watch_out": "The results keep the order of the input list."
+    },
+    {
+      "start": 44,
+      "end": 55,
+      "kind": "value",
+      "name": "AUTHORITY_TIER_LABEL",
+      "id": "s6",
+      "hash": "dbd9d722069a006b",
+      "title": "Labels for source authority",
+      "what": "Gives tiers 1 to 4 a plain description of how authoritative a source is.",
+      "why": "The labels are copied from the Python enum, so the viewer does not invent its own names.",
+      "watch_out": "This table must stay in step with the enum. It has only four entries."
+    },
+    {
+      "start": 56,
+      "end": 58,
+      "kind": "function",
+      "name": "authorityLabel",
+      "id": "s7",
+      "hash": "b3534d605e8852a5",
+      "title": "Label for any tier number",
+      "what": "Returns the matching label, or says the tier is unmapped for any number outside the table.",
+      "why": "Shows an unknown tier as unknown instead of guessing a name for it.",
+      "watch_out": "The unmapped wording is what a reader sees when a tier is wrong, so it should stay clear."
+    }
+  ],
+  "explained_at": "2026-11-12T01:09:28+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds a lookup from each evidence id to its item, and reports any cited id that cannot be found.",
+  "purpose": "Lets a claim show the source items behind it, and makes a missing source visible instead of dropping it.",
+  "why": "The header says a citation that points nowhere should be shown as a dangling citation, because that is a different statement from a claim with no evidence at all.",
+  "how": "Goes through each golden case, keeps its evidence pack, and stores each item under its id. Resolving a list of ids then splits it into the items that were found and the ids that were not. Authority tiers are labelled from a fixed table.",
+  "inputs": "The collected artifacts object with its cases, and a list of evidence ids to look up.",
+  "outputs": "An index with a lookup by id and a list of packs by case. A resolution with the found items and the missing ids. A text label for each authority tier.",
+  "risks": "If two cases reuse the same id, the later one silently replaces the earlier one. The tier labels must match the Python enum or the page will describe the wrong tier.",
+  "debug": "If a citation shows as dangling, check the id in the source pack and rebuild the artifacts file. If a tier label looks wrong, compare it with the enum in packages/schema/case_input.py.",
+  "summary_hash": "sha256:f1127efd8024f1c9047a592b3c48daa5631f4c6cff1cfa3ec5677c7d8bd1a722"
+}

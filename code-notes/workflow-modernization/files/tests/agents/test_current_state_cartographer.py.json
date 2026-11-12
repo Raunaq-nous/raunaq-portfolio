@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "path": "tests/agents/test_current_state_cartographer.py",
+  "language": "Python",
+  "lines": 295,
+  "hash": "sha256:d68562f39b229afe7fa6122aceea8328844cae64390e039fcd1044e5c1abf030",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The tests were read but not run during this review.",
+      "Coverage of the stated rules looks broad, with clear comments explaining each guard."
+    ]
+  },
+  "terms": [
+    {
+      "term": "stub client",
+      "meaning": "a fake model connection that returns canned answers"
+    },
+    {
+      "term": "citation",
+      "meaning": "a reference to a source item, here an evidence id, that backs a claim"
+    },
+    {
+      "term": "evidence pack",
+      "meaning": "the set of source items retrieved for a run, and the only items a claim may cite"
+    },
+    {
+      "term": "soft warning",
+      "meaning": "a non-fatal note attached to a result, such as effort shares not adding up"
+    },
+    {
+      "term": "prompt caching",
+      "meaning": "reusing the fixed start of a prompt so it is cheaper to send again"
+    },
+    {
+      "term": "cost basis",
+      "meaning": "the data used to turn scores into money, which agents must never see"
+    }
+  ],
+  "depends_on": [
+    "packages.agents.base",
+    "packages.agents.current_state_cartographer",
+    "packages.agents.routing",
+    "packages.schema",
+    "packages.schema.manifest",
+    "tests.fixtures",
+    "pytest",
+    "pydantic"
+  ],
+  "used_by": [
+    "tests.agents.test_budget_estimate",
+    "tests.agents.test_concurrency"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "429a29b99b387e22",
+      "title": "Imports and purpose of the file",
+      "what": "Brings in the cartographer, the error types, the schema types, and the shared stub and run context. The docstring states the file tests the agent's behaviour, not the model's judgement.",
+      "why": "Keeps the file focused on rules the code controls rather than on what the model happens to say.",
+      "watch_out": ""
+    },
+    {
+      "start": 26,
+      "end": 39,
+      "kind": "function",
+      "name": "step",
+      "id": "s2",
+      "hash": "b9221ecababf88ca",
+      "title": "Sample process step",
+      "what": "Builds a sample process step with an actor, one system, a duration range, an effort share, and citations.",
+      "why": "Lets each test create the steps it needs with only the parts that matter changed.",
+      "watch_out": ""
+    },
+    {
+      "start": 40,
+      "end": 53,
+      "kind": "function",
+      "name": "good_output",
+      "id": "s3",
+      "hash": "bbf47d9fd9359769",
+      "title": "Valid sample output",
+      "what": "Builds a valid cartographer answer with two steps and one pain point, all citing approved evidence.",
+      "why": "The default answer most tests start from, so the happy path is clear.",
+      "watch_out": "Many tests assume these exact values, so changing them changes many results."
+    },
+    {
+      "start": 54,
+      "end": 58,
+      "kind": "function",
+      "name": "anyio_backend",
+      "id": "s4",
+      "hash": "9d15fda7b3aa438b",
+      "title": "Async runner choice",
+      "what": "Tells the async test runner to use asyncio.",
+      "why": "Likely reason: the agent code is written for asyncio.",
+      "watch_out": ""
+    },
+    {
+      "start": 59,
+      "end": 89,
+      "kind": "class",
+      "name": "TestHappyPath",
+      "id": "s5",
+      "hash": "2abb466f17db35a7",
+      "title": "Normal run results",
+      "what": "Checks a valid run returns a validated current state with the expected steps and one attempt. It also checks the agent leaves workflow debt empty, hides that field from the model, uses the standard model tier, and caps output size.",
+      "why": "The auditor owns workflow debt, so the cartographer must not write it. Hiding the field makes it impossible for the model to fill it.",
+      "watch_out": "The output cap is a limit that cost depends on. Raising it needs a matching review of spend."
+    },
+    {
+      "start": 90,
+      "end": 114,
+      "kind": "class",
+      "name": "TestPromptAssembly",
+      "id": "s6",
+      "hash": "be303e8e32457738",
+      "title": "Prompt assembly",
+      "what": "Checks the fixed prefix is sent as the system part with a cache marker, the process brief goes after the marker, and the task text includes the effort-share rule and the no-redesign rule.",
+      "why": "The cache marker only saves money if the fixed part sits before it. The process brief must not be cached, since it changes per run.",
+      "watch_out": "If the brief moves into the fixed prefix, caching stops working and each process gets a new cache entry."
+    },
+    {
+      "start": 115,
+      "end": 150,
+      "kind": "class",
+      "name": "TestEmptyEvidence",
+      "id": "s7",
+      "hash": "d6e9b46473c08b91",
+      "title": "Empty evidence handling",
+      "what": "Checks that when retrieval finds nothing, the agent still returns a state with empty citations, the prompt says retrieval found nothing and that this is not an error, and any citation invented on an empty pack is rejected.",
+      "why": "Analysis should carry on without evidence, but nothing may appear sourced when it is not.",
+      "watch_out": ""
+    },
+    {
+      "start": 151,
+      "end": 185,
+      "kind": "class",
+      "name": "TestCitationDiscipline",
+      "id": "s8",
+      "hash": "8f9238ce76ba9df7",
+      "title": "Citation rules",
+      "what": "Checks that a citation outside the evidence pack is rejected, that citations inside the pack are kept, and that a bad citation gets one retry that names the bad id.",
+      "why": "Stops the model from inventing sources. Telling the model the exact error gives the retry a real chance to fix it.",
+      "watch_out": ""
+    },
+    {
+      "start": 186,
+      "end": 208,
+      "kind": "class",
+      "name": "TestRetryAndFailure",
+      "id": "s9",
+      "hash": "5ea41006b2f39266",
+      "title": "Retry and final failure",
+      "what": "Checks that a validation error is retried exactly once, that two failures raise an error without coercing the data, and that no third call is made.",
+      "why": "Limits cost and stops the agent from quietly fixing broken output.",
+      "watch_out": ""
+    },
+    {
+      "start": 209,
+      "end": 237,
+      "kind": "class",
+      "name": "TestSoftWarnings",
+      "id": "s10",
+      "hash": "ee1db2cae8c5b995",
+      "title": "Soft warnings for effort drift",
+      "what": "Checks that effort drift gets one retry, that persistent drift returns the record with the warning attached both on the result and on the run context, and that the retry message explains what drifted.",
+      "why": "Drift should not throw away a usable record, but the warning must stay visible.",
+      "watch_out": ""
+    },
+    {
+      "start": 238,
+      "end": 256,
+      "kind": "class",
+      "name": "TestBudget",
+      "id": "s11",
+      "hash": "6716f3b8667ec266",
+      "title": "Budget check before spending",
+      "what": "Checks that a call the budget cannot afford is refused before any model call, and that a successful run records the exact token spend against the ledger.",
+      "why": "The budget is a hard limit, so it must be checked before the money is spent.",
+      "watch_out": "The spend number is tied to the stub's fixed usage figures."
+    },
+    {
+      "start": 257,
+      "end": 295,
+      "kind": "class",
+      "name": "TestContextBoundary",
+      "id": "s12",
+      "hash": "256effdc23eec44a",
+      "title": "Agents cannot see cost data",
+      "what": "Checks the run context has no cost basis field, that its field list is exactly the allowed set, that the projection survives the manifest gaining a cost field, that engagement and classification are absent, and that the evidence matches the process brief.",
+      "why": "Cost is where scores become money. Keeping it away from agents stops the model from reasoning about price. The tests are written to survive the manifest growing.",
+      "watch_out": "Adding any new field to the run view will fail the exact field list check on purpose. Review it for cost leakage before updating the list."
+    }
+  ],
+  "explained_at": "2026-11-12T00:42:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the cartographer agent's contract: what it asks the model for, what it refuses, what it retries, and what it reports, all against a fake model.",
+  "purpose": "Checks the agent's own behaviour, not the model's judgement. It covers the output shape, citation rules, empty evidence handling, retries, soft warnings, budget checks, and the boundary that keeps cost data away from agents.",
+  "why": "The module description says judging model quality belongs to a separate rubric layer. These tests lock in the rules the agent must follow regardless of what the model says.",
+  "how": "Builds a sample process brief and sample outputs, runs the cartographer against a stub client, and checks the result, the prompt contents, the retry behaviour, and the recorded spend.",
+  "inputs": "Sample steps, pain points, a process brief, a run context with an evidence pack, and stub answers.",
+  "outputs": "Pass or fail results. No real model calls.",
+  "risks": "Several tests check exact wording in the prompt and error messages, so rewording breaks them. Some counts such as the 460 token spend depend on the stub's fixed usage numbers.",
+  "debug": "Read the failing assertion's message. For citation failures, compare the evidence pack ids to the ids in the sample. For budget failures, check the ceiling and the spend numbers. For the boundary tests, check the run context fields.",
+  "summary_hash": "sha256:d68562f39b229afe7fa6122aceea8328844cae64390e039fcd1044e5c1abf030"
+}

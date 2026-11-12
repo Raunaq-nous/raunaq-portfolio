@@ -1,0 +1,259 @@
+{
+  "schema_version": 1,
+  "path": "tests/orchestration/test_pipeline.py",
+  "language": "Python",
+  "lines": 497,
+  "hash": "sha256:f427da7c1a5b13819498986a69bfff129a3c48cc73c70c52a2af36798261eca0",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Parametrized tests run zero times if the golden folder is empty, and nothing fails to say so.",
+      "Some boundary checks search function names and imports rather than observed behaviour.",
+      "The scripts folder is added to the import path repeatedly from several helper functions."
+    ]
+  },
+  "terms": [
+    {
+      "term": "pytest",
+      "meaning": "The test runner that finds and runs every function whose name starts with test."
+    },
+    {
+      "term": "parametrize",
+      "meaning": "A way to run one test function once for each item in a list, such as each golden case."
+    },
+    {
+      "term": "golden set",
+      "meaning": "A fixed collection of hand-checked input cases used as the reference for expected results."
+    },
+    {
+      "term": "replay",
+      "meaning": "Running the pipeline on saved model outputs instead of calling a live model, so results repeat exactly."
+    },
+    {
+      "term": "syntax tree",
+      "meaning": "A structured map of a Python file's code, used here to check which functions are called without running them."
+    },
+    {
+      "term": "feasibility ceiling",
+      "meaning": "The most autonomy a design may propose, set by rules such as regulation."
+    }
+  ],
+  "depends_on": [
+    "packages/agents/base.py",
+    "packages/agents/payloads.py",
+    "packages/agents/prompt.py",
+    "packages/agents/portfolio_reconciler",
+    "packages/knowledge/evidence.py",
+    "packages/orchestration/assembly.py",
+    "packages/orchestration/pipeline.py",
+    "packages/orchestration/replay.py",
+    "packages/schema",
+    "packages/schema/manifest.py",
+    "packages/schema/record.py",
+    "tests/fixtures",
+    "scripts/run_pipeline.py",
+    "scripts/synthesise_recordings.py",
+    "evals/golden",
+    "evals/recorded",
+    "evals/results/candidates"
+  ],
+  "used_by": [
+    "Run by pytest. No importing file is visible."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 31,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "51be07ff906175ff",
+      "title": "Imports and shared test folders",
+      "what": "Brings in the pipeline, schema and helper code the tests need, and sets the folders for golden cases and recorded outputs. It runs no test itself.",
+      "why": "Likely reason: every test in the file needs the same code and the same two data folders, so they are named once here.",
+      "watch_out": "The folder paths are worked out from this file's own location, so moving the file breaks every test that reads data."
+    },
+    {
+      "start": 32,
+      "end": 36,
+      "kind": "function",
+      "name": "anyio_backend",
+      "id": "s2",
+      "hash": "9d15fda7b3aa438b",
+      "title": "Run async tests on asyncio",
+      "what": "Tells the async test support to run these tests on Python's asyncio engine.",
+      "why": "Reason not stated in the code beyond the choice of engine. The module-wide marker applies it to every test.",
+      "watch_out": ""
+    },
+    {
+      "start": 37,
+      "end": 40,
+      "kind": "function",
+      "name": "case_ids",
+      "id": "s3",
+      "hash": "4a81ffb829160289",
+      "title": "List the golden case names",
+      "what": "Finds every golden case folder that has an input file and returns the names in sorted order. Each name becomes one test run.",
+      "why": "Lets the same checks run once for each case without listing the cases by hand.",
+      "watch_out": "If the golden folder is empty or moved, the parametrized tests quietly run zero times instead of failing."
+    },
+    {
+      "start": 41,
+      "end": 50,
+      "kind": "function",
+      "name": "load_spec",
+      "id": "s4",
+      "hash": "105b74f09dbd14d2",
+      "title": "Load one case's spec and evidence",
+      "what": "Reads one golden case and returns its process spec, its evidence pack and its raw case data, using the loader in the scripts folder.",
+      "why": "Likely reason: the loader lives in a script, so the tests reuse it instead of copying its logic.",
+      "watch_out": "Each call adds the scripts folder to the import path again. This side effect repeats on every call."
+    },
+    {
+      "start": 51,
+      "end": 106,
+      "kind": "class",
+      "name": "TestReduceBoundary (part 1)",
+      "id": "s5",
+      "hash": "ea47737aed867a12",
+      "title": "Reduce runs only in the portfolio step",
+      "what": "Reads the code's syntax tree to check that the per-process analysis never calls anything with a reconcile name, and that the portfolio map only calls the per-process function and checkpoints. It also checks that only the reduce module imports the reconciler.",
+      "why": "The docstrings say a reconcile run on one process compares it with itself and always looks clean, so the reduce must run once over everything.",
+      "watch_out": "These checks read names, not runtime behaviour. A reconciler reached through a differently named helper could pass."
+    },
+    {
+      "start": 107,
+      "end": 119,
+      "kind": "method",
+      "name": "TestReduceBoundary: test_the_reconciler_is_not_importable_from_the_per_process_path",
+      "id": "s6",
+      "hash": "5d47c924bfc9b089",
+      "title": "Pipeline does not import reconciler",
+      "what": "Checks the pipeline file imports nothing whose name contains Reconciler or Portfolio.",
+      "why": "The docstring says the reconciler exists and this test only ensures nothing per-process reaches it.",
+      "watch_out": "Only catches direct imports. A route through another module would not be caught."
+    },
+    {
+      "start": 120,
+      "end": 170,
+      "kind": "class",
+      "name": "TestReplay",
+      "id": "s7",
+      "hash": "31070209761a3104",
+      "title": "Replays are valid and repeatable",
+      "what": "Runs every golden case from its saved outputs and checks the result is a valid record with the current schema version and a confidence score for every block. It also runs each replay twice and requires identical output, and checks that a missing recording raises an error instead of calling a model.",
+      "why": "Replays must repeat exactly so that results can be compared between runs. The docstring says replay must not drift.",
+      "watch_out": "The identical-output check compares text dumps, so a new field that holds a timestamp or random id would make it fail."
+    },
+    {
+      "start": 171,
+      "end": 229,
+      "kind": "class",
+      "name": "TestConfidenceIsComputedFromWhatBlocksCite",
+      "id": "s8",
+      "hash": "62c11fd6a835d59d",
+      "title": "Confidence follows surviving citations",
+      "what": "Checks that a struck citation lowers the score of the block it was raised against, that the record's overall score equals its lowest block score, and that the case built on one old tier-3 source scores lowest.",
+      "why": "The docstring explains that one weak, stale source should not look like a well-evidenced case.",
+      "watch_out": "The lowest-score check names one specific case folder, so renaming that folder breaks the test."
+    },
+    {
+      "start": 230,
+      "end": 268,
+      "kind": "class",
+      "name": "TestAssembly",
+      "id": "s9",
+      "hash": "04fa0b7f564e4e6a",
+      "title": "Assembly groups strikes and stays arithmetic-free",
+      "what": "Checks that strikes are grouped by block, and that the assembly module contains no scoring arithmetic on value or ease scores. It also checks that candidate records saved on disk still validate, and skips that check when no candidates exist.",
+      "why": "Likely reason: scoring belongs in one place, so the assembly step is kept free of it.",
+      "watch_out": "The no-arithmetic check is a text search for two names. It does not prove that no arithmetic exists."
+    },
+    {
+      "start": 269,
+      "end": 317,
+      "kind": "class",
+      "name": "TestContextConstruction",
+      "id": "s10",
+      "hash": "68c30f8a4cc3e887",
+      "title": "Context refuses mismatched snapshots",
+      "what": "Checks that an evidence pack from a different snapshot is refused when a run context is built. It also checks that the process spec keeps record-only fields that agents never see.",
+      "why": "The docstring says a replay reading a different corpus breaks the reproducibility guarantee.",
+      "watch_out": "The refusal check looks for the word pinned in the error message, so rewording that message breaks it."
+    },
+    {
+      "start": 318,
+      "end": 358,
+      "kind": "class",
+      "name": "TestTheGoldenSetExercisesTheRecordsNewBlocks (part 1)",
+      "id": "s11",
+      "hash": "1a8dfa210f63ac89",
+      "title": "Golden cases carry feasibility ceilings",
+      "what": "Checks every golden case has a feasibility block with constraints and a binding autonomy ceiling. It also checks that the lending case's ceiling is human-decides and that its first constraint names a regulatory instrument.",
+      "why": "The docstring says a path only unit tests reach is a path the golden run cannot catch if it regresses.",
+      "watch_out": "The lending check depends on one case folder name and on that case's first constraint."
+    },
+    {
+      "start": 359,
+      "end": 389,
+      "kind": "method",
+      "name": "TestTheGoldenSetExercisesTheRecordsNewBlocks: test_the_uncited_objection_reaches_the_record",
+      "id": "s12",
+      "hash": "3bcefdb871c2aea6",
+      "title": "Uncited objections reach the record",
+      "what": "Checks that objections without a citation become declared assumptions on the record, and that the first assumption's wording matches the expected text for that case. Uncited assumptions must be a subset of the uncited objections.",
+      "why": "The comments explain that a single generic caveat across all cases would hide differences, so exact case text is compared.",
+      "watch_out": "The expected wording comes from the synthesis script, so editing that wording breaks this test."
+    },
+    {
+      "start": 390,
+      "end": 420,
+      "kind": "method",
+      "name": "TestTheGoldenSetExercisesTheRecordsNewBlocks: test_an_unsupported_assumption_costs_the_block_coverage",
+      "id": "s13",
+      "hash": "31a00810716e06b6",
+      "title": "Unsupported assumption lowers block coverage",
+      "what": "Checks that each assumption marked unsupported reduces the block's effective evidence count by one, while the gross count still shows what the block cites.",
+      "why": "The docstring says unsupported is not a disclosure. Coverage must show the thinness so a resolution cannot be picked for comfort.",
+      "watch_out": "The formula floors the effective count at zero, so a block with more gaps than citations reads zero, not a negative number."
+    },
+    {
+      "start": 421,
+      "end": 454,
+      "kind": "method",
+      "name": "TestTheGoldenSetExercisesTheRecordsNewBlocks: test_the_records_join_key_is_the_normalisers_resolution",
+      "id": "s14",
+      "hash": "a376587ea831862f",
+      "title": "Record's work unit matches input",
+      "what": "Checks that the record's work unit equals the value the normaliser derives from the raw input, and that it is not the unspecified value.",
+      "why": "The docstring says a unit that does not resolve joins to no benchmark group, so a figure can look normal while being wrong.",
+      "watch_out": "Depends on the wording of the raw input file. New wording the normaliser cannot map will fail this check on purpose."
+    },
+    {
+      "start": 455,
+      "end": 497,
+      "kind": "method",
+      "name": "TestTheGoldenSetExercisesTheRecordsNewBlocks: test_a_declared_prerequisite_becomes_an_edge",
+      "id": "s15",
+      "hash": "465a264db39d5969",
+      "title": "Declared prerequisites become graph edges",
+      "what": "Checks that each declared prerequisite assumption names a predecessor that appears as an edge, and that its evidence is cited. It also checks that the edge count equals the estimator's declared dependencies plus the declared prerequisites.",
+      "why": "The docstring says a declared prerequisite puts a node in a graph that a planner reads, so it is a real commitment.",
+      "watch_out": "The count check assumes every edge comes from one of those two sources. A third source would break it."
+    }
+  ],
+  "explained_at": "2026-11-12T00:56:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks the per-process analysis pipeline against recorded model outputs for every golden case, and checks that the reduce step is never reached from the per-process path.",
+  "purpose": "Guards the core analysis pipeline. It confirms each golden case produces a valid record, that replays are repeatable, that confidence scores follow the evidence that survives review, and that the portfolio-level reconciler is kept separate from the per-process path.",
+  "why": "The file exists because several design rules are easy to break silently. A pipeline that quietly calls the reconciler per process, or that drifts between replays, would still look fine on a quick read. These tests make those breaks visible.",
+  "how": "The file loads each golden case and its recorded model outputs, runs the pipeline on them, and checks the result against expected properties. Some checks read the source code's syntax tree to see which functions are called or imported, rather than running them. Parametrized tests run once per golden case folder.",
+  "inputs": "Golden case files under evals/golden, recorded model outputs under evals/recorded, and the case-loading helpers in scripts/run_pipeline.py. No live model or network calls.",
+  "outputs": "Pass or fail results from pytest. Failures name the case and the expectation that broke.",
+  "risks": "Several checks silently run zero times if the golden or recorded folders are empty or moved, so a green result can hide missing coverage. Source-text checks catch renamed or imported names but not behaviour changes. Some tests change the import path on each call, which is a shared side effect.",
+  "debug": "Start with the test name in the failure output and find its section. For replay or confidence failures, open packages/orchestration/pipeline.py. For schema failures, check packages/schema. For missing cases, confirm evals/golden and evals/recorded contain the expected folders. For the boundary checks, look for a new call or import of a reconciler in packages/orchestration.",
+  "summary_hash": "sha256:f427da7c1a5b13819498986a69bfff129a3c48cc73c70c52a2af36798261eca0"
+}

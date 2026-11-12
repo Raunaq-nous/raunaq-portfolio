@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/value_estimator.py",
+  "language": "Python",
+  "lines": 227,
+  "hash": "sha256:72ce71db9fdf8025ce80f9bf794db7d446833bdd9b4fc228b1680ba70eadc1ef",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for this file is visible in the packet.",
+      "A false match in the arithmetic word check stops the whole process with no retry.",
+      "The word check is a loose pattern match on English text."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Range",
+      "meaning": "An estimate given as three values: low, base and high."
+    },
+    {
+      "term": "Schema",
+      "meaning": "The agreed shape of a piece of data, including which fields exist and what they may contain."
+    },
+    {
+      "term": "Boundary violation",
+      "meaning": "An error raised when the model has crossed a rule, such as writing a total."
+    },
+    {
+      "term": "Enabler",
+      "meaning": "A shared capability that several processes depend on."
+    },
+    {
+      "term": "Prerequisite",
+      "meaning": "Something that must be built before a process can run."
+    },
+    {
+      "term": "Validation error",
+      "meaning": "An error raised when data does not match its required shape."
+    }
+  ],
+  "depends_on": [
+    "packages/agents/base.py",
+    "packages/agents/payloads.py",
+    "packages/agents/routing.py",
+    "packages/schema",
+    "pydantic"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 50,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "9b588e81856cfa74",
+      "title": "Rules and purpose of the estimator",
+      "what": "Explains that this agent only estimates inputs as ranges and never does arithmetic. The output shape has no place for totals or money, and the maths happens in a separate value package.",
+      "why": "Stated in the docstring: the old tool wrote financial totals as prose that looked modelled but was not, so the fix is a structure with nowhere to put a total.",
+      "watch_out": "The prompt text and the output shape both enforce this rule, so editing one without the other weakens the guard."
+    },
+    {
+      "start": 51,
+      "end": 103,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "5f4d70c8f91280ea",
+      "title": "Instructions given to the model",
+      "what": "Holds the task text the model reads. It lists each parameter, requires enablers to be chosen from a fixed list, and shows the current and redesigned processes. It also defines a word pattern that catches arithmetic words such as totals or payback in the rationale.",
+      "why": "Stated in the docstring: ranges rather than single numbers show uncertainty. The word pattern is kept loose so ordinary English is not blocked.",
+      "watch_out": "Adding a common word to the pattern would fail valid runs, and because the error is raised without a retry, there is no second chance."
+    },
+    {
+      "start": 104,
+      "end": 132,
+      "kind": "class",
+      "name": "_EstimatorOutput",
+      "id": "s3",
+      "hash": "6170d5f06e052c2e",
+      "title": "Shape of the estimator's answer",
+      "what": "Defines the fields the model must fill: seven parameter ranges, plus lists of shared capabilities, prerequisites and evidence IDs, and a written rationale. Unknown fields are rejected.",
+      "why": "Reason not stated in the code beyond the docstring. Likely reason: it mirrors the final parameter object, so the model can write the whole thing while the strict shape blocks extra totals.",
+      "watch_out": "The rationale must not be empty, so the model cannot skip explaining its estimates."
+    },
+    {
+      "start": 133,
+      "end": 180,
+      "kind": "class",
+      "name": "ValueEstimator (part 1)",
+      "id": "s4",
+      "hash": "f1f1c8b668745fa6",
+      "title": "The estimator agent and its text check",
+      "what": "The agent that asks the model for parameter ranges. It builds the prompt from the process steps and the future state, and checks the rationale for arithmetic narration before accepting an answer.",
+      "why": "Stated in the docstring: a figure written as a sentence would look modelled, so it is rejected.",
+      "watch_out": "A rejected rationale raises an error outside the normal retry path, so a wrong match stops the process."
+    },
+    {
+      "start": 181,
+      "end": 227,
+      "kind": "method",
+      "name": "ValueEstimator: _check_enablers_declared",
+      "id": "s5",
+      "hash": "fd6277622fbed8ef",
+      "title": "Check committed enablers are declared",
+      "what": "Compares the capabilities the designer committed to with the ones the model declared. It raises a validation error listing any that are missing, so shared capabilities are counted once.",
+      "why": "Stated in the docstring: a missing declaration is invisible to the reconciler, so the capability would be counted once per process instead of once overall.",
+      "watch_out": "The validation error is built by hand, so its structure must keep matching what the validator expects."
+    }
+  ],
+  "explained_at": "2026-11-12T01:20:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Asks an AI model to estimate value parameters as low, base and high ranges, and refuses any output that contains totals, sums or money.",
+  "purpose": "Produces the inputs the deterministic value engine turns into benefit figures, without the model doing any arithmetic.",
+  "why": "Finance teams test this stage first. Keeping arithmetic in code rather than in the model makes results repeatable and checkable.",
+  "how": "Build a prompt from the current process steps and the designed future state. The model returns parameter ranges, shared capabilities, prerequisites, evidence IDs and a rationale. The rationale is scanned for arithmetic words. Committed capabilities are checked against the declared list. Then the parameter object is built, and its shape rejects extra fields.",
+  "inputs": "An estimation payload holding the current process steps and the future state, including posture, steps and committed agent patterns.",
+  "outputs": "A value parameters object containing ranges, declared enablers, prerequisites and evidence IDs.",
+  "risks": "A false match on an arithmetic word raises an error outside the retry path, which stops the process. A missing enabler silently inflates the portfolio total, so the enabler check is important.",
+  "debug": "If a run fails with a boundary error, read the words listed in the message and check the rationale. If enablers are reported missing, compare the committed patterns with the declared list. If answers are cut short, check the output size limit in this agent.",
+  "summary_hash": "sha256:72ce71db9fdf8025ce80f9bf794db7d446833bdd9b4fc228b1680ba70eadc1ef"
+}

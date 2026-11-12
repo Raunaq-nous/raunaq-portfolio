@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "path": "tests/schema/test_optional_field_sweep.py",
+  "language": "Python",
+  "lines": 239,
+  "hash": "sha256:1f5f933ca647bb2ec0b17fb8baef92f065c6b3563803999305a71c42ec02f298",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The packet does not show whether the sweep currently passes.",
+      "The file is careful about its own weak spots, which is good evidence of intent, but the sweep script it depends on was not shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "optional field",
+      "meaning": "a data field the system is allowed to run without, which means a value may be left out."
+    },
+    {
+      "term": "omission case",
+      "meaning": "a test that removes one field from a recorded example to see what happens."
+    },
+    {
+      "term": "refused",
+      "meaning": "the data model rejects the example with a clear validation error, which is the intended outcome for some fields."
+    },
+    {
+      "term": "crash",
+      "meaning": "an unexpected error such as a missing key or wrong type, which means some code did not expect the field to be absent."
+    },
+    {
+      "term": "fixture",
+      "meaning": "a fixed example input used by tests."
+    },
+    {
+      "term": "boundary",
+      "meaning": "a field whose absence is refused by a specific recording rather than by the field itself."
+    },
+    {
+      "term": "model_fields",
+      "meaning": "the list of fields that a data model declares, read directly from the model."
+    }
+  ],
+  "depends_on": [
+    "scripts/optional_field_sweep.py",
+    "packages/schema",
+    "packages/schema/record"
+  ],
+  "used_by": [
+    "Test runner (pytest). No other file in the packet calls this file."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 31,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "58fcd89213c9237f",
+      "title": "File setup and purpose notes",
+      "what": "Explains the two rules the sweep must keep: every optional field has a case, and no case crashes. Loads the sweep script from the scripts folder.",
+      "why": "The docstring says a list kept by hand goes stale without anyone noticing, so the list must be read from the models.",
+      "watch_out": "The sweep script is loaded by changing the import path, so moving it breaks every test here."
+    },
+    {
+      "start": 32,
+      "end": 51,
+      "kind": "class",
+      "name": "TestTheEnumerationComesFromTheModels",
+      "id": "s2",
+      "hash": "7d0e6d0c4182ac66",
+      "title": "The optional field list comes from the models",
+      "what": "Checks that the sweep finds more than twenty optional fields, includes a known optional one, excludes a known required one, and that every key has at least two dots, meaning module, model and field names are all present.",
+      "why": "The first test guards against an empty list passing the completeness check trivially.",
+      "watch_out": "The key format depends on dots. A rename that breaks the format will show up here first."
+    },
+    {
+      "start": 52,
+      "end": 75,
+      "kind": "class",
+      "name": "TestTheSweepIsComplete",
+      "id": "s3",
+      "hash": "dfcb47bd539b4a9b",
+      "title": "Every optional field has one omission case",
+      "what": "Checks that every optional field has an omission case, that no case points to a field that is no longer optional, and that each field has exactly one case.",
+      "why": "The failure message says a field that gains a default silently drops out of coverage otherwise.",
+      "watch_out": "When a new optional field is added, a matching case must be added to OMISSIONS in scripts/optional_field_sweep.py."
+    },
+    {
+      "start": 76,
+      "end": 126,
+      "kind": "class",
+      "name": "TestTheBoundaryClassificationIsStillTrue",
+      "id": "s4",
+      "hash": "b4e010d5bddc0d0b",
+      "title": "Boundary cases still match their stated reason",
+      "what": "For entries marked as boundary cases, checks that the recording file exists, that the declared refusal reason matches the model (required on the output model, or not), and that the probe raises the declared mechanism.",
+      "why": "The docstring explains that an entry with the wrong reason would pass unchecked, and that this check was previously done by a hand-kept list.",
+      "watch_out": "If a boundary field becomes required, its declared reason must be changed, or the test fails."
+    },
+    {
+      "start": 127,
+      "end": 153,
+      "kind": "class",
+      "name": "TestEveryOmissionOmitsSomething",
+      "id": "s5",
+      "hash": "19b4b73e19e08ae2",
+      "title": "Each omission really removes its key",
+      "what": "For omissions that are not code-level, checks that removing the key matches what the entry expects. Also checks that the only exception, the aliases field on the case process, is the single listed no-op.",
+      "why": "The docstring says a mispointed omission does nothing and reports the field as safe forever.",
+      "watch_out": "The aliases exception is a known gap in the test data. If that gap is fixed, the exception list test will fail until it is updated."
+    },
+    {
+      "start": 154,
+      "end": 194,
+      "kind": "class",
+      "name": "TestOmittingAFieldDoesNotCrash (part 1)",
+      "id": "s6",
+      "hash": "8c6bcc5e1f577a9d",
+      "title": "Omitted fields are survived or refused, never crashed",
+      "what": "Runs every omission and checks that none crashes. Also pins the set of omissions that the record model refuses: the current state steps and the future state agents.",
+      "why": "The docstring states that a refusal is the gate working, while a crash means a consumer never considered the field might be absent.",
+      "watch_out": "A new refusal could mean a real requirement or a broken fixture. Check the fixture first, as the test message advises."
+    },
+    {
+      "start": 195,
+      "end": 225,
+      "kind": "method",
+      "name": "TestOmittingAFieldDoesNotCrash: test_no_omission_is_refused_by_its_own_fixture",
+      "id": "s7",
+      "hash": "40f0bd87284a266a",
+      "title": "Refusals must come from the omitted field itself",
+      "what": "For each refusal, checks that the error is about the omitted field and not about a stale schema version or other scaffolding. Also checks that every boundary probe still refuses.",
+      "why": "The docstring explains that an outdated fixture value can produce a refusal that looks valid while testing nothing.",
+      "watch_out": "This check reads error text, so changes to validation wording can make it fail even when the behaviour is correct."
+    },
+    {
+      "start": 226,
+      "end": 239,
+      "kind": "class",
+      "name": "TestTheSweepCanStillFail",
+      "id": "s8",
+      "hash": "0bc8a9cb2665cad8",
+      "title": "The sweep can still tell refusal from crash",
+      "what": "Checks that a validation error from the record model is classified as refused, and that a missing key or type error is classified as a crash.",
+      "why": "Reason not stated in the code beyond testing the classifier that all other tests rely on.",
+      "watch_out": "If the classifier is changed, every sweep result changes meaning, so this test should be run after any change to it."
+    }
+  ],
+  "explained_at": "2026-11-12T01:01:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Makes sure every optional data field has a test case showing the system still works without it, and that the sweep that runs those cases can still detect crashes.",
+  "purpose": "Guards against a field quietly becoming optional and then breaking the system when someone leaves it out.",
+  "why": "The docstring says the defect that prompted this was a field with a default value that a later step read without checking, and no test covered the case where it was missing.",
+  "how": "It lists the optional fields by reading the models directly. It checks that each one has exactly one omission case, runs each case, and checks the outcome: survived, refused by validation, or crashed. Some cases are also checked against the recording they point to, and the refusal list is pinned.",
+  "inputs": "The data models in packages/schema, the omission cases in scripts/optional_field_sweep.py, and the recorded fixtures those cases use.",
+  "outputs": "Pass or fail results. The failure messages list the missing or stale cases and the new refusals.",
+  "risks": "The refusal list is pinned to two named fields, so a legitimate new refusal fails the test until someone reviews it. Fixtures that drift from the current schema can make an omission look refused when it was never applied.",
+  "debug": "If the completeness test fails, add the named field to OMISSIONS in scripts/optional_field_sweep.py. If the refusal list test fails, check whether the fixture for that case broke first, using the detail printed in the failure. If a boundary test fails, compare the declared mechanism with the current model.",
+  "summary_hash": "sha256:1f5f933ca647bb2ec0b17fb8baef92f065c6b3563803999305a71c42ec02f298"
+}

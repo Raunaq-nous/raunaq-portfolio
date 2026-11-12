@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "path": "packages/schema/normalisation.py",
+  "language": "Python",
+  "lines": 250,
+  "hash": "sha256:f3b0bc1aa797856670a2489e4de30819c6878f1b098450ff13db81f7f27ea485",
+  "area": "packages-schema",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Validators are thorough and their reasons are written in the docstrings.",
+      "No test is visible in the packet, so the rules are unverified here.",
+      "The docstring says the match rate is the service's evaluation metric, which means its correctness depends on the service."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Canonical identifier",
+      "meaning": "The one standard code for a process, shared across all clients so the same process can be found wherever it appears."
+    },
+    {
+      "term": "Ontology",
+      "meaning": "The shared catalogue of process names and identifiers that the matching is measured against."
+    },
+    {
+      "term": "Taxonomy",
+      "meaning": "The client's own tree of process names, from broad groups down to specific tasks."
+    },
+    {
+      "term": "Leaf",
+      "meaning": "A process at the bottom of a taxonomy tree, which is the only level analysed."
+    },
+    {
+      "term": "Embedding",
+      "meaning": "A numeric description of a text's meaning, used to find similar labels."
+    },
+    {
+      "term": "Mean",
+      "meaning": "The average of all match scores."
+    }
+  ],
+  "depends_on": [
+    "packages/schema/work_unit.py"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 31,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d6ca88306937d53c",
+      "title": "Module purpose and metric rules",
+      "what": "Explains that the identifier makes processes comparable and that the unmatched count and mean score measure matching quality, not money. It also lists the imports and the score tolerance.",
+      "why": "The docstring warns readers that the arithmetic rule about value figures does not extend to these matching measures.",
+      "watch_out": "Do not treat these two numbers as value figures, and do not add money to them."
+    },
+    {
+      "start": 32,
+      "end": 46,
+      "kind": "class",
+      "name": "MatchMethod",
+      "id": "s2",
+      "hash": "66016cfd401beb78",
+      "title": "How a label was matched",
+      "what": "Lists the five ways a label can be resolved: exact, alias, embedding, model and unmatched, in order from most to least certain.",
+      "why": "The docstring says an exact hit is never improved by asking a model, since that costs money and adds variation to a deterministic step.",
+      "watch_out": "The order of these methods matters for confidence comparisons, so keep it consistent."
+    },
+    {
+      "start": 47,
+      "end": 104,
+      "kind": "class",
+      "name": "ProcessMatch (part 1)",
+      "id": "s3",
+      "hash": "5b1e179f2e9732d3",
+      "title": "One client label result",
+      "what": "Holds one client label with its taxonomy path, matched identifier, method, score, runner-up candidates, leaf flag, original work unit text and resolved work unit. The record cannot be changed after creation.",
+      "why": "The docstring says an unmatched label must stay unmatched, because a made-up identifier would silently merge two different processes.",
+      "watch_out": "Runner-up candidates are kept so that a human reviewing a confusing label can see the close alternatives."
+    },
+    {
+      "start": 105,
+      "end": 136,
+      "kind": "method",
+      "name": "ProcessMatch: joins_to_benchmarks",
+      "id": "s4",
+      "hash": "82177b680e43882b",
+      "title": "Whether a row can be benchmarked",
+      "what": "Returns true only when a row has an identifier and a resolved work unit that is not the unspecified value.",
+      "why": "The docstring says a benchmark needs both which process and which peer group, and missing either would compare against peers never established.",
+      "watch_out": "A row with a resolved identifier but an unspecified work unit is excluded from benchmarks, so check this when benchmark coverage looks low."
+    },
+    {
+      "start": 137,
+      "end": 170,
+      "kind": "method",
+      "name": "ProcessMatch: _check_alternatives",
+      "id": "s5",
+      "hash": "bcbe21011b32d8b3",
+      "title": "Consistency of match and identifier",
+      "what": "Checks that unmatched rows have no identifier and a score of zero, and that matched rows do have an identifier. It is the rule that keeps match method, identifier and score in agreement.",
+      "why": "The docstring says a mismatch would make the two headline measures disagree while the record still passes validation.",
+      "watch_out": "Any code that builds a match must set all three fields together."
+    },
+    {
+      "start": 171,
+      "end": 212,
+      "kind": "class",
+      "name": "NormalisationResult (part 1)",
+      "id": "s6",
+      "hash": "642cc8b91505476e",
+      "title": "Runner-up candidate checks",
+      "what": "Checks that alternatives are sorted best first, that the chosen identifier does not also appear as an alternative, and that no alternative outranks the chosen match. Unmatched rows are exempt from the last check.",
+      "why": "The docstring says exempting unmatched rows keeps genuine near-misses visible to a reviewer, instead of forcing their scores down.",
+      "watch_out": "Unmatched rows can show alternatives scoring higher than the chosen match, which is expected and not an error."
+    },
+    {
+      "start": 213,
+      "end": 250,
+      "kind": "method",
+      "name": "NormalisationResult: _check_metrics_match_the_matches",
+      "id": "s7",
+      "hash": "924413d27616c205",
+      "title": "Whole normalisation result",
+      "what": "Combines all matches with the unmatched count, the mean score and the ontology version into one frozen result. The validator recalculates the two measures from the matches and rejects any stored value that disagrees.",
+      "why": "The docstring says a stored metric that can drift from its matches looks measured when it is stale.",
+      "watch_out": "The matches are stored as a tuple so the list cannot be appended after creation. The matched count and match rate are computed from these values, so they stay consistent."
+    }
+  ],
+  "explained_at": "2026-11-12T01:13:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Records how each client label was matched to a standard identifier, with confidence and runner-up matches, plus two quality measures of how well the matching worked.",
+  "purpose": "Makes process names comparable across clients and years, and shows reviewers which matches were uncertain or failed.",
+  "why": "The docstring says a stable identifier is the precondition for benchmarks and cross-client comparison, and a wrong identifier silently merges two processes.",
+  "how": "First, each client label is recorded with its original text, its path in the client taxonomy, its matched identifier, the method used, a score from zero to one, and runner-up candidates. Second, validators check that unmatched rows have no identifier and a score of zero, and that alternatives are sorted and do not outrank the chosen match. Third, the result gathers all matches with the unmatched count and the mean score, and recalculates both from the matches to reject any mismatch.",
+  "inputs": "A list of client labels with their taxonomy path, leaf flag, work unit and match details, plus the ontology version.",
+  "outputs": "A frozen result with the match list, the unmatched count, the mean score and the ontology version. The matched count and match rate properties are computed from these.",
+  "risks": "A validator that falsely rejects a valid result could block a whole run. Matching quality itself is not checked here. The docstring states that the two numeric measures are not value figures, which matters for anyone reviewing the arithmetic rule.",
+  "debug": "If a validation error mentions unmatched count or mean score, the stored figure disagrees with the matches, so recalculate from the matches. If a match error says an identifier is missing, check the match method. If alternatives are rejected, check their sort order and whether any candidate duplicates the chosen one.",
+  "summary_hash": "sha256:f3b0bc1aa797856670a2489e4de30819c6878f1b098450ff13db81f7f27ea485"
+}

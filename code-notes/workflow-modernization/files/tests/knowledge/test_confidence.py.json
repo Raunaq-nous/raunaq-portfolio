@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "path": "tests/knowledge/test_confidence.py",
+  "language": "Python",
+  "lines": 261,
+  "hash": "sha256:4bf8bdcc6656646aa2724f11d1936809b6d821b146630c6ae53a2944f97bc23a",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Tests cover the key properties and the published values.",
+      "The rule that no model is consulted is checked directly.",
+      "Not executed in this review, so the current pass state is unverified."
+    ]
+  },
+  "terms": [
+    {
+      "term": "coverage",
+      "meaning": "How much the amount of evidence counts toward confidence, rising quickly at first and then flattening."
+    },
+    {
+      "term": "saturation",
+      "meaning": "The point where adding more of the same evidence adds almost nothing."
+    },
+    {
+      "term": "half-life",
+      "meaning": "The age at which a source's weight has dropped to half."
+    },
+    {
+      "term": "recency",
+      "meaning": "A weight that falls as a source gets older."
+    },
+    {
+      "term": "agreement",
+      "meaning": "A measure of whether sources support the same point. It is only counted when measured."
+    },
+    {
+      "term": "block",
+      "meaning": "One named part of the written analysis, such as the framing or the scorecard."
+    },
+    {
+      "term": "clamping",
+      "meaning": "Forcing a number into an allowed range, such as between zero and one."
+    },
+    {
+      "term": "AST",
+      "meaning": "A structured view of Python source code, used here to check which libraries a file imports."
+    }
+  ],
+  "depends_on": [
+    "packages/knowledge/confidence.py",
+    "packages/knowledge/evidence.py",
+    "packages/schema.py"
+  ],
+  "used_by": [
+    "Run by pytest as part of the Python test suite"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f1f1b32b9f248e93",
+      "title": "Setup and fixed reference date",
+      "what": "Loads the formula, the sample types and the constants. It fixes a reference date so results do not change with the calendar.",
+      "why": "Likely reason: a fixed date keeps two readings of one run from disagreeing as days pass.",
+      "watch_out": ""
+    },
+    {
+      "start": 31,
+      "end": 41,
+      "kind": "function",
+      "name": "item",
+      "id": "s2",
+      "hash": "0d8adea245fe6ec3",
+      "title": "Making a sample evidence item",
+      "what": "Builds one sample evidence item with an optional date, so tests can vary age.",
+      "why": "Keeps the sample items consistent across the score tests.",
+      "watch_out": ""
+    },
+    {
+      "start": 42,
+      "end": 66,
+      "kind": "class",
+      "name": "TestCoverageIsTheGate",
+      "id": "s3",
+      "hash": "ec77a777fb9de317",
+      "title": "Coverage must gate the score",
+      "what": "Checks that zero evidence gives exactly zero and cannot be rescued by other factors. Also checks published reference values and that coverage levels off as evidence grows.",
+      "why": "With no evidence, the score must be zero, and extra copies of one document must not keep raising confidence.",
+      "watch_out": "Coverage is only checked at realistic counts, since very large counts hit the limit of number precision."
+    },
+    {
+      "start": 67,
+      "end": 80,
+      "kind": "class",
+      "name": "TestRecency",
+      "id": "s4",
+      "hash": "194b3afe298aabac",
+      "title": "Recency decays with age",
+      "what": "Checks that a source from today keeps full weight, that weight halves after one half-life, and that a negative age does not increase weight.",
+      "why": "Older sources should count for less, and a future-dated source should not get extra weight.",
+      "watch_out": "The checks depend on the half-life constant, so changing it will change the expected values."
+    },
+    {
+      "start": 81,
+      "end": 135,
+      "kind": "class",
+      "name": "TestAgreement (part 1)",
+      "id": "s5",
+      "hash": "8acce7d1256d7ce8",
+      "title": "Agreement is measured or absent",
+      "what": "Checks that agreement is only used when a caller supplies it and there are at least two items. Otherwise it is left out, and a measured value of one half differs from a missing one.",
+      "why": "The design rejects a made-up middle value, because a plausible number for an unmeasured feature would look like real evidence.",
+      "watch_out": "The threshold for two items is a constant, so changing it changes which cases count as measured."
+    },
+    {
+      "start": 136,
+      "end": 146,
+      "kind": "method",
+      "name": "TestAgreement: test_an_unmeasured_feature_is_excluded_not_neutralised",
+      "id": "s6",
+      "hash": "5675be8ea10282de",
+      "title": "Unmeasured agreement is left out, not reduced",
+      "what": "Checks that an unmeasured feature is excluded from the calculation rather than treated as a neutral middle value that lowers the score.",
+      "why": "An earlier version applied a neutral value that quietly cut every score by a quarter.",
+      "watch_out": "This test only confirms the difference in one case."
+    },
+    {
+      "start": 147,
+      "end": 192,
+      "kind": "class",
+      "name": "TestComputedConfidence",
+      "id": "s7",
+      "hash": "f27fa94b0377cf72",
+      "title": "Computed confidence and its formula",
+      "what": "Checks that no evidence scores zero, that the method is always computed, that fresher evidence scores higher, that undated evidence counts as old, that results do not depend on the wall clock, and that the score matches the published formula with and without agreement.",
+      "why": "These confirm the score follows the published design, and that undated evidence is treated cautiously.",
+      "watch_out": "The expected values are worked out inside the tests, so any formula change must be made in these tests as well."
+    },
+    {
+      "start": 193,
+      "end": 242,
+      "kind": "class",
+      "name": "TestPerBlockComputation (part 1)",
+      "id": "s8",
+      "hash": "7d5abc54412f667d",
+      "title": "Scoring each block separately",
+      "what": "Checks that every named block gets an entry, that an uncited block scores zero, that removing a citation lowers only the block it was raised against, and that a citation outside the evidence pack does not count.",
+      "why": "Each part of the analysis must stand on its own evidence, so one block's problems must not change another's score.",
+      "watch_out": "Citations and removals must use identical identifiers, or the tests report a count mismatch."
+    },
+    {
+      "start": 243,
+      "end": 261,
+      "kind": "method",
+      "name": "TestPerBlockComputation: test_no_model_is_consulted",
+      "id": "s9",
+      "hash": "3586dbd82fbd9941",
+      "title": "No language model is consulted",
+      "what": "Reads the confidence module's source structure and fails if it imports any AI client library.",
+      "why": "Likely reason: the confidence number must be arithmetic, so it can be tested exactly and repeated.",
+      "watch_out": "Only checks direct imports, so an indirect route through another module would not be caught."
+    }
+  ],
+  "explained_at": "2026-11-12T00:51:30+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the confidence formula that scores how well an analysis is supported by its evidence, checking its key rules: zero evidence gives zero, one source does not count as agreement, and more of the same source stops adding confidence.",
+  "purpose": "To make sure the confidence number behaves the way the design says, so readers can rely on it.",
+  "why": "The file states that the design rests on three properties, which are the things it most needs to get right, not just whether the number looks sensible.",
+  "how": "Each test builds sample evidence items with known dates and counts, runs the formula, and compares the result to a value worked out in the test. The per-block tests check that each named part of the analysis gets its own score and that removing a citation lowers only its own block.",
+  "inputs": "Sample evidence items with optional publication dates, a fixed as-of date, optional agreement values, and sets of cited items per block.",
+  "outputs": "Scores with their evidence count, the source agreement value or none, the average source age, and the list of features that contributed.",
+  "risks": "Several tests repeat the formula by hand, so changing the formula means changing those tests too. The tests also assume the constants keep their current values.",
+  "debug": "If a score test fails, compare the actual value with the hand-worked value in the same test and check which constant changed. If a per-block test fails, check that the citation sets and the strike sets line up by identifier.",
+  "summary_hash": "sha256:4bf8bdcc6656646aa2724f11d1936809b6d821b146630c6ae53a2944f97bc23a"
+}

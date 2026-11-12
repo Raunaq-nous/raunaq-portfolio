@@ -1,0 +1,412 @@
+{
+  "schema_version": 1,
+  "path": "tests/orchestration/test_revision.py",
+  "language": "Python",
+  "lines": 966,
+  "hash": "sha256:6b8c1f18657ac6d1922d660d2b4490f6922a6b183719262ad252b49e00ac4957",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The file is long and depends on hand-built fake clients, so a change to a shared helper can alter many tests at once.",
+      "Several tests depend on the contents of one golden case folder and its recordings.",
+      "Only 21 of the 28 sections in the outline were available for these notes, so the rest of the file is not described here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "critic",
+      "meaning": "The reviewing step that challenges the design's claims and can strike evidence it judges unsupported."
+    },
+    {
+      "term": "revision pass",
+      "meaning": "A second run of the design step using a smaller evidence pack after a challenge."
+    },
+    {
+      "term": "citation",
+      "meaning": "A reference from a design claim to the evidence item that supports it."
+    },
+    {
+      "term": "evidence pack",
+      "meaning": "The set of evidence items the design step is allowed to see and cite."
+    },
+    {
+      "term": "feasibility ceiling",
+      "meaning": "The most autonomy a design may propose, set by rules such as a regulator's instructions."
+    },
+    {
+      "term": "checkpoint",
+      "meaning": "A saved result for one finished process, so a resumed run can reuse it instead of repeating the work."
+    },
+    {
+      "term": "fake client",
+      "meaning": "A stand-in model connection that returns scripted answers so tests run without a real model."
+    }
+  ],
+  "depends_on": [
+    "packages/orchestration/assembly.py",
+    "packages/orchestration/pipeline.py",
+    "packages/orchestration/replay.py",
+    "packages/orchestration/durable.py",
+    "packages/schema",
+    "packages/agents/current_state_cartographer.py",
+    "tests/fixtures",
+    "scripts/run_pipeline.py",
+    "evals/recorded",
+    "evals/golden"
+  ],
+  "used_by": [
+    "Run by pytest. No importing file is visible."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 51,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "9e80f0e68337c4ec",
+      "title": "Imports, constants and purpose",
+      "what": "Brings in the pipeline functions, schema types and test helpers, and sets the paths to the golden and recorded folders. The module docstring explains that the critic never rewrites its own critique.",
+      "why": "The docstring gives the design rule that the rest of the file tests.",
+      "watch_out": "The case name is fixed to one golden case, so these tests cover that case only."
+    },
+    {
+      "start": 52,
+      "end": 56,
+      "kind": "function",
+      "name": "anyio_backend",
+      "id": "s2",
+      "hash": "9d15fda7b3aa438b",
+      "title": "Run async tests on asyncio",
+      "what": "Tells the async test support to run these tests on Python's asyncio engine.",
+      "why": "Reason not stated in the code beyond the choice of engine.",
+      "watch_out": ""
+    },
+    {
+      "start": 57,
+      "end": 93,
+      "kind": "class",
+      "name": "SequencedMessages",
+      "id": "s3",
+      "hash": "590e2fc03eac170f",
+      "title": "Fake model that answers in sequence",
+      "what": "Acts as a stand-in model that returns the next queued answer for each output type, repeats the last answer when the queue runs out, and records every call and the evidence it was shown.",
+      "why": "The docstring says a critic that keeps repeating its objection is the realistic case, and the loop must still stop.",
+      "watch_out": "Calls are counted by output type name, so renaming an output type changes the results."
+    },
+    {
+      "start": 94,
+      "end": 98,
+      "kind": "class",
+      "name": "SequencedClient",
+      "id": "s4",
+      "hash": "38df3195e446252b",
+      "title": "Wrapper that holds the fake model",
+      "what": "A small container that gives the pipeline a messages attribute to call, matching the shape of the real client.",
+      "why": "Likely reason: the pipeline expects a client with a messages attribute.",
+      "watch_out": ""
+    },
+    {
+      "start": 99,
+      "end": 121,
+      "kind": "function",
+      "name": "load_case_material",
+      "id": "s5",
+      "hash": "4cea99b6548bccd5",
+      "title": "Load the golden case with recordings",
+      "what": "Loads the test case at the defensible depth tier, loads the saved outputs without any revision-pass files, and builds a run context.",
+      "why": "The comment says revision-pass files in the golden set would leak answers the test does not want the first architect call to return.",
+      "watch_out": "Depends on the golden case folder layout and file naming. Changing either breaks every test that uses it."
+    },
+    {
+      "start": 122,
+      "end": 134,
+      "kind": "function",
+      "name": "critique",
+      "id": "s6",
+      "hash": "c48ca10bde9d2fcf",
+      "title": "Build a critic objection",
+      "what": "Builds a critic output with one challenge that names a block, a claim location and either a struck citation id or none.",
+      "why": "Gives tests a simple way to request a particular strike or objection.",
+      "watch_out": ""
+    },
+    {
+      "start": 135,
+      "end": 153,
+      "kind": "function",
+      "name": "uncited",
+      "id": "s7",
+      "hash": "5a593ba00066de90",
+      "title": "Remove every citation from a payload",
+      "what": "Walks through a saved output at any depth and empties every list whose key ends in evidence ids, simulating a second pass that cannot see struck evidence.",
+      "why": "The docstring says a live model shown a smaller pack cannot cite what was struck, and the citation check would reject a stale output that still cited it.",
+      "watch_out": "Only empties keys that end in evidence ids. A citation field with another name would survive."
+    },
+    {
+      "start": 154,
+      "end": 178,
+      "kind": "function",
+      "name": "answering",
+      "id": "s8",
+      "hash": "eca47e4dd76f29b3",
+      "title": "Architect answer with an assumption",
+      "what": "Adds one unsupported declared assumption, tied to a claim, to an architect output. If no claim is given, the output is returned unchanged.",
+      "why": "The docstring says an unsupported assumption is the resolution the mechanism must make survivable. If admitting one were free, every architect would choose it. If it were impossible, no architect could be honest.",
+      "watch_out": "The assumption wording is fixed here, so tests that compare text depend on it."
+    },
+    {
+      "start": 179,
+      "end": 211,
+      "kind": "function",
+      "name": "client_with",
+      "id": "s9",
+      "hash": "06f438fcf239337c",
+      "title": "Build a client with scripted passes",
+      "what": "Builds the fake client. The first output per type is the recording, later passes are copies with citations removed, the critic follows the given sequence, and the architect answers four times.",
+      "why": "The docstring explains that later passes cite nothing because the revised pack lacks struck evidence. Stripping applies to every type so the evidence set does not shrink for an unrelated reason.",
+      "watch_out": "The keep citations option makes the revised output cite what the first one cited. It can hide a coverage penalty, so use it only to isolate that effect."
+    },
+    {
+      "start": 212,
+      "end": 246,
+      "kind": "class",
+      "name": "TestTheLoopIsBounded",
+      "id": "s10",
+      "hash": "d730cff40d551ad7",
+      "title": "The loop stops",
+      "what": "Checks the design runs once when there is no strike, runs a second pass when an objection repeats, never exceeds the maximum number of passes, and that the maximum is two.",
+      "why": "The docstring says nothing in the loop makes the critic more satisfied, so the loop must stop by its own limit.",
+      "watch_out": "The maximum is pinned to two. Changing the constant requires changing this test on purpose."
+    },
+    {
+      "start": 247,
+      "end": 303,
+      "kind": "class",
+      "name": "TestWhatARevisionActuallyChanges (part 1)",
+      "id": "s11",
+      "hash": "c64505db08a0e456",
+      "title": "A revision shrinks the evidence",
+      "what": "Checks the second design pass is shown fewer evidence items, that the current-state and audit steps run only once, that a current-state strike triggers no revision but still lowers confidence, and that an objection with no citation reruns with the same evidence.",
+      "why": "The docstring says the designer cannot cite what it cannot see, and that this is the whole mechanism. The current state is never re-mapped.",
+      "watch_out": "Counts evidence ids that appear in the rendered prompt text, so a formatting change to the prompt can change the results."
+    },
+    {
+      "start": 304,
+      "end": 361,
+      "kind": "method",
+      "name": "TestWhatARevisionActuallyChanges: test_surviving_challenges_are_marked_upheld",
+      "id": "s12",
+      "hash": "d39201b0a5dea711",
+      "title": "Surviving objections are marked upheld",
+      "what": "Checks that challenges still standing after a revision are marked upheld, that a resolved objection stays on the record as not upheld, that a strike still counts after it is resolved, and that two strikes on one claim are both kept.",
+      "why": "The docstring says keeping only the last verdict would erase the critique in the case where the critic did the most work.",
+      "watch_out": "The two-strikes check counts distinct evidence ids, so two strikes against the same id would be counted as one."
+    },
+    {
+      "start": 362,
+      "end": 384,
+      "kind": "method",
+      "name": "TestWhatARevisionActuallyChanges: test_upheld_can_be_false",
+      "id": "s13",
+      "hash": "4838b026117c98cb",
+      "title": "Upheld flag can be false",
+      "what": "Checks that merging challenges marks a challenge raised once as not upheld, one raised only in the revision as upheld, and one raised in both as upheld. It also checks which blocks may be revised.",
+      "why": "The docstring says a field that is true on every challenge carries no information, so it must be able to be false.",
+      "watch_out": "The revisable block set is fixed in this test. Adding a block requires updating it."
+    },
+    {
+      "start": 385,
+      "end": 407,
+      "kind": "class",
+      "name": "TestNarrowing",
+      "id": "s14",
+      "hash": "f721dabb6e475f2c",
+      "title": "Narrowing removes only struck evidence",
+      "what": "Checks that narrowing drops exactly the struck items, keeps the snapshot id so validation still passes, returns the same context when nothing is struck, and allows an empty pack when everything is struck.",
+      "why": "The docstring says an empty pack is the unsupported-hypothesis case, which the confidence formula scores at zero.",
+      "watch_out": "Narrowing with nothing struck returns the same object rather than a copy, so callers must not expect a new object."
+    },
+    {
+      "start": 408,
+      "end": 435,
+      "kind": "function",
+      "name": "assessment",
+      "id": "s15",
+      "hash": "6332cad482b7899d",
+      "title": "Build a feasibility assessment",
+      "what": "Creates a feasibility assessment. For any ceiling other than full autonomy, it includes one regulatory constraint naming an instrument and a jurisdiction.",
+      "why": "Likely reason: the ceiling tests need a realistic constraint, here a named regulation, to check that the rule applies.",
+      "watch_out": "The default instrument is a UK regulation name. A test that expects a different instrument must pass it in."
+    },
+    {
+      "start": 436,
+      "end": 482,
+      "kind": "class",
+      "name": "TestTheCeilingConstrainsTheDesign (part 1)",
+      "id": "s16",
+      "hash": "2908969dfde4b1d7",
+      "title": "Ceiling constrains the design",
+      "what": "Checks that full autonomy raises nothing, that a human-only ceiling raises upheld objections from the start, that every agent step is challenged under human-only, and that a human-decides ceiling clears when a human step exists in the design.",
+      "why": "The docstring says a regulatory ceiling cannot be cleared by re-running the designer until it agrees, so these objections are upheld from birth.",
+      "watch_out": "These tests assume the recorded design contains at least one human step."
+    },
+    {
+      "start": 483,
+      "end": 511,
+      "kind": "method",
+      "name": "TestTheCeilingConstrainsTheDesign: test_a_fully_automated_design_under_any_ceiling_is_challenged",
+      "id": "s17",
+      "hash": "9233e6ef315b2580",
+      "title": "Fully automated design is challenged",
+      "what": "Makes a copy of the design in which every step is performed by an agent, then checks that exactly one challenge is raised saying no step is performed by a human.",
+      "why": "Likely reason: this checks that the rule catches a design with no human at all, not only single steps that break it.",
+      "watch_out": "The copy uses the first agent in the list, so the design must contain at least one agent."
+    },
+    {
+      "start": 512,
+      "end": 519,
+      "kind": "function",
+      "name": "evidence_ids",
+      "id": "s18",
+      "hash": "45c8b7e69f32c3a7",
+      "title": "Evidence ids of the golden case",
+      "what": "Reads the golden case file and returns the evidence ids in its pack, so tests can strike real ids rather than typed-in ones.",
+      "why": "Likely reason: tests should strike ids that actually exist in the case.",
+      "watch_out": "Reads the golden folder directly, so a change to the golden case changes which id the tests pick first."
+    },
+    {
+      "start": 520,
+      "end": 567,
+      "kind": "class",
+      "name": "TestThePortfolioMapResumes",
+      "id": "s19",
+      "hash": "65ce8e0e904ba2ba",
+      "title": "Portfolio map resumes from checkpoints",
+      "what": "Checks that a finished process is read back from the checkpoint store instead of being run again, that a failure leaves the finished work saved, and that without a store the portfolio still runs.",
+      "why": "The docstring says one process is one durable unit, and a resumed run that repeats finished work would mix two versions of model output.",
+      "watch_out": "The failure check expects a key error caused by a missing recording. A different error type would break it."
+    },
+    {
+      "start": 568,
+      "end": 606,
+      "kind": "class",
+      "name": "TestFeasibilityReachesTheRecord",
+      "id": "s20",
+      "hash": "f1c52f812926c214",
+      "title": "Feasibility reaches the record",
+      "what": "Checks the lending case carries a human-decides ceiling, that its instrument and jurisdiction survive, that the record's ceiling matches the strictest constraint even after a round trip through the checkpoint store, and that the data gaps are kept.",
+      "why": "The docstring says the ceiling is the one field that says whether the future state is allowed. If it were computed and then discarded, no one reading the record could check it.",
+      "watch_out": "Assumes the lending case is present and that its constraint list is not empty."
+    },
+    {
+      "start": 607,
+      "end": 656,
+      "kind": "class",
+      "name": "TestAStructuralObjectionChangesTheRecord (part 1)",
+      "id": "s21",
+      "hash": "bbfcf641f7287a40",
+      "title": "Structural objection changes the record",
+      "what": "Checks that an objection with no citation triggers a revision pass, that the objection text reaches the architect unchanged, and that the resulting assumption is recorded on the future state as unsupported and tied to its claim.",
+      "why": "The docstring says an absence cannot be fixed by removing evidence, so the objection goes back to the architect, which must declare an assumption.",
+      "watch_out": "The architect's answer is scripted by the test helper, so these tests prove the wiring, not the quality of a real answer."
+    },
+    {
+      "start": 657,
+      "end": 712,
+      "kind": "method",
+      "name": "TestAStructuralObjectionChangesTheRecord: test_an_unsupported_assumption_lowers_the_block",
+      "id": "s22",
+      "hash": "70c1f911e901a039",
+      "title": "Unsupported assumption lowers the confidence score",
+      "what": "Checks that an assumption nothing establishes makes the future state block look thinner. The evidence count stays the same, but the load-bearing gap count rises by one, the effective evidence count falls by one, and the score drops.",
+      "why": "The docstring says the number should show that the block rests on an unestablished claim, not only on a citation count. The two designs cite the same ids, so the only difference is the assumption.",
+      "watch_out": "The test passes only because keep_citations is set to True. Without it, the citations change and the test can pass even if the penalty were removed."
+    },
+    {
+      "start": 713,
+      "end": 751,
+      "kind": "method",
+      "name": "TestAStructuralObjectionChangesTheRecord: test_a_structural_objection_on_an_unrevisable_block_is_not_sent",
+      "id": "s23",
+      "hash": "2ab7e51f772595c4",
+      "title": "Structural objections that cannot be answered are not sent",
+      "what": "Checks that an objection about the current state is not sent back to the architect to redesign the future state, and that no assumption is created for it. Two related checks confirm that feasibility breaches stay as challenges and that the same objection is not sent twice.",
+      "why": "The docstring says redesigning the future state cannot answer a claim the architect made about the current state. Resending the same objection would spend a pass to get the same answer back.",
+      "watch_out": "The breach test depends on the filter that excludes upheld objections. Changing that filter could send breaches to the architect."
+    },
+    {
+      "start": 752,
+      "end": 799,
+      "kind": "class",
+      "name": "TestTheRevisionBudgetFollowsTheTier",
+      "id": "s24",
+      "hash": "a4c80d093a5c9a79",
+      "title": "Number of revision passes depends on depth tier",
+      "what": "Checks the lookup table of revision passes per tier: sketch gets none, standard gets one, defensible gets two. It also checks that a sketch run still records an objection and lowers confidence, but does not redesign.",
+      "why": "The spec says a cheap screening run should not pay for redesign rounds meant for a defensible run.",
+      "watch_out": "A tier added to the manifest without a pass count would crash mid-run. The last test in this section catches that before a run starts."
+    },
+    {
+      "start": 800,
+      "end": 843,
+      "kind": "class",
+      "name": "TestAnAnsweredObjectionStaysAnswered (part 1)",
+      "id": "s25",
+      "hash": "64de80cb995f64b9",
+      "title": "Scripted architect answers for later passes",
+      "what": "Defines the sequence helper, which gives the fake architect a different answer for each call, and one test that checks an answer from the first pass survives a later pass that has no objections.",
+      "why": "A single canned answer would hide a bug where later passes drop earlier answers. Explicit per-call answers make that bug visible.",
+      "watch_out": "The helper replaces the recorded architect responses, so it must keep the original first response as the base or the test setup breaks."
+    },
+    {
+      "start": 844,
+      "end": 894,
+      "kind": "method",
+      "name": "TestAnAnsweredObjectionStaysAnswered: test_every_uncited_objection_still_has_an_assumption_at_the_end",
+      "id": "s26",
+      "hash": "563888ad6a07c6db",
+      "title": "Every open objection keeps its answer",
+      "what": "Checks that at the end of a run, every objection that was not upheld still has a matching assumption. A second test checks that the coverage penalty stays in place when that assumption is present.",
+      "why": "The record must not show an objection with nothing answering it, and it must not score as if nothing were assumed.",
+      "watch_out": "The first test builds its expected set from two filters. If either filter changes, the check can quietly cover fewer objections."
+    },
+    {
+      "start": 895,
+      "end": 911,
+      "kind": "method",
+      "name": "TestAnAnsweredObjectionStaysAnswered: test_two_distinct_structural_objections_are_both_answered",
+      "id": "s27",
+      "hash": "9cd15f1a831f78c2",
+      "title": "Two separate objections both get answers",
+      "what": "Checks that when two different structural objections are raised on the future state, both end up with an assumption naming their claim.",
+      "why": "Ensures one objection's answer does not overwrite or replace another's.",
+      "watch_out": ""
+    },
+    {
+      "start": 912,
+      "end": 966,
+      "kind": "class",
+      "name": "TestMergingAssumptions",
+      "id": "s28",
+      "hash": "d766381dce3057b3",
+      "title": "Rules for merging assumptions",
+      "what": "Tests the merge rule used when assumptions from different passes are combined. The first answer to a claim wins, two different answers to one claim are both kept, unprompted answers are kept apart from prompted ones, and the order is the order first declared. A final test checks that rebuilding the future state runs validation again.",
+      "why": "The docstrings explain each rule. Keeping later wording would let a design soften its own answer, and merging by claim alone would drop real answers.",
+      "watch_out": "Rebuilding the future state with a plain copy would skip validation, so any new code that changes assumptions must rebuild through the proper constructor."
+    }
+  ],
+  "explained_at": "2026-11-12T00:57:59+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks the critic's revision loop, which runs a limited number of times, removes struck evidence and re-runs the design, while leaving the current state unchanged and enforcing the feasibility autonomy ceiling.",
+  "purpose": "Protects the critic and revision mechanism. It shows that a critique changes the design through less evidence, that the loop stops, that objections that cannot be fixed by removing evidence are answered with declared assumptions, and that a regulatory ceiling constrains the design.",
+  "why": "The module docstring states the design: the critic never rewrites the work. The producing stage re-runs with less evidence, so the change comes from what it can see. These tests check that mechanism and its limits.",
+  "how": "A fake client returns scripted answers in order, and the first design pass uses the recorded golden output. Later passes use copies with citations removed, because a revised pack no longer holds struck evidence. Tests then count calls, check the evidence pack sizes, check the merged challenges and their upheld flags, check narrowing, check ceiling objections, check checkpoint resume, and check the record's feasibility and assumption fields.",
+  "inputs": "The lending golden case with its recorded outputs, scripted critic outputs, and the stub client. No live model or network calls.",
+  "outputs": "Pass or fail results from pytest. Failures name the test and the expectation that broke.",
+  "risks": "The fake client is shared by many tests, so a change to its behaviour can change many results at once. Several tests depend on the lending case folder and its recordings. The architect answers used here prove the wiring, not the quality of a real answer.",
+  "debug": "Start from the failing test name and open the matching section. For loop counts, check packages/orchestration/pipeline.py and MAX_REVISION_PASSES. For ceiling failures, check feasibility_challenges and the schema's autonomy ceiling. For checkpoint failures, check packages/orchestration/durable.py. For missing recordings, confirm evals/recorded/commercial-lending-credit-assessment exists.",
+  "summary_hash": "sha256:6b8c1f18657ac6d1922d660d2b4490f6922a6b183719262ad252b49e00ac4957"
+}

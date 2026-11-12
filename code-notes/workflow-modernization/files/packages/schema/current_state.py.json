@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "path": "packages/schema/current_state.py",
+  "language": "Python",
+  "lines": 202,
+  "hash": "sha256:a06ca3a14fc654e17c063df980769a820cc0d7b2cec5c448dddb117364bf4d36",
+  "area": "packages-schema",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The validation and warning rules are explicit in the code.",
+      "The docstring says the evaluation harness and the test configuration promote the warning to a failure, but those files are not visible in the packet.",
+      "No tests for this file are visible here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Effort share",
+      "meaning": "The fraction of a process's total work that one step accounts for."
+    },
+    {
+      "term": "Elapsed time",
+      "meaning": "Real calendar or waiting time, which is separate from the work done."
+    },
+    {
+      "term": "Workflow debt",
+      "meaning": "A known inefficiency drawn from a fixed list of types."
+    }
+  ],
+  "depends_on": [
+    "packages/schema/enums.py",
+    "packages/schema/range.py",
+    "pydantic"
+  ],
+  "used_by": [
+    "packages/schema/__init__.py",
+    "evals/run.py (promotes the share warning to a failed check, per the docstring)",
+    "pyproject.toml (turns the warning into an error under the test runner, per the docstring)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 27,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f9e33a562d594e99",
+      "title": "Setup and the share tolerance",
+      "what": "Explains the rule that fractions are of effort and not of steps or time. Sets the tolerance of 0.02 for how far the effort shares may drift from one before a warning is raised.",
+      "why": "The docstring explains that the three denominators give three different answers, and a step-count denominator would favour processes with many cheap steps.",
+      "watch_out": "Shares must add up to about one. The tolerance allows small rounding, but a sum of seventy percent is well outside it."
+    },
+    {
+      "start": 28,
+      "end": 75,
+      "kind": "class",
+      "name": "ProcessStep",
+      "id": "s2",
+      "hash": "ab9a6bf8e94b14d2",
+      "title": "One step in the current flow",
+      "what": "Defines one step: its order number, a name, its type (action, decision, wait or handoff), the role that performs it, the systems it touches, its elapsed time range, its effort share, a factual description, and evidence ids.",
+      "why": "The docstring says a step describes what happens today. A proposed improvement belongs to the future-state stage.",
+      "watch_out": "A step number must be unique across the flow, and the container rejects duplicates for the whole current state."
+    },
+    {
+      "start": 76,
+      "end": 100,
+      "kind": "class",
+      "name": "PainPoint",
+      "id": "s3",
+      "hash": "ebf3f36447a56994",
+      "title": "One pain point",
+      "what": "Defines one difficulty observed today: a factual description, the steps it affects, a severity from 1 to 5, and evidence ids.",
+      "why": "The docstring says a pain point states what hurts and never a remedy, so the future-state architect can be graded separately.",
+      "watch_out": "Every step number a pain point names must exist in the flow, or the whole record is rejected."
+    },
+    {
+      "start": 101,
+      "end": 127,
+      "kind": "class",
+      "name": "WorkflowDebtItem",
+      "id": "s4",
+      "hash": "2c43333c5e66cdd4",
+      "title": "One workflow debt item",
+      "what": "Defines one instance of workflow debt. The type must come from a fixed list of twelve, and the item has a description, a severity from 1 to 5, the steps it affects, and evidence ids.",
+      "why": "The docstring says the fixed list makes the same term mean the same thing on every process, so rollups stay comparable.",
+      "watch_out": "A free-text debt type would be invisible to every rollup, so the list must be changed through the schema, not by widening the field."
+    },
+    {
+      "start": 128,
+      "end": 142,
+      "kind": "class",
+      "name": "ShareOfProcessWarning",
+      "id": "s5",
+      "hash": "2230ff539ea8a669",
+      "title": "The share warning",
+      "what": "Defines a warning type raised when effort shares drift from one. It is a warning, not an error, so a nearly complete flow still loads. The evaluation harness and the test configuration treat it as a failure.",
+      "why": "The docstring says the warning is only safe because it is promoted to a failure in those two places. Otherwise a wrong effort total would pass without anyone seeing it.",
+      "watch_out": "Filtering this warning out in ordinary use would let wrong effort figures flow downstream silently."
+    },
+    {
+      "start": 143,
+      "end": 202,
+      "kind": "class",
+      "name": "CurrentState",
+      "id": "s6",
+      "hash": "69857dfda7eace3b",
+      "title": "The whole current state",
+      "what": "Groups the steps, pain points and workflow debt for one process. It checks that step numbers are unique and that every linked item points at a real step. It also raises the share warning when the effort shares do not add to about one.",
+      "why": "The docstring says the cartographer writes steps and pain points, the auditor writes debt, and neither may propose improvements. The checks keep each list consistent with the flow.",
+      "watch_out": "The share check raises a warning, not an error, so a record can load with wrong effort figures unless the test configuration or the harness is in use."
+    }
+  ],
+  "explained_at": "2026-11-12T01:12:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines how a process works today: its steps, pain points and workflow debt, with effort shares that should add up to one.",
+  "purpose": "Records the as-is picture that the future-state design is compared against.",
+  "why": "The docstring says every fraction in the schema is a fraction of effort unless named otherwise. Using step counts or elapsed time would bias the portfolio without any record failing validation.",
+  "how": "Sets a warning tolerance for shares. Then defines a step, a pain point, a workflow debt item, a warning type, and the container for the whole current state. The container checks that step numbers are unique, that every pain point and debt item points at real steps, and warns when effort shares fall outside the tolerance.",
+  "inputs": "Steps and items from the cartographer agent (steps and pain points) and the auditor agent (workflow debt).",
+  "outputs": "A validated current state, or a validation error. A warning is raised when shares drift from one.",
+  "risks": "Shares that do not add to about one skew every effort figure derived from them. Duplicate step numbers. Pain points or debt linked to missing steps. Filtering out the share warning in normal use.",
+  "debug": "For a warning, read the sum it reports. For a validation error, check the step numbers named in the message. Confirm the cartographer and auditor outputs match the step list.",
+  "summary_hash": "sha256:a06ca3a14fc654e17c063df980769a820cc0d7b2cec5c448dddb117364bf4d36"
+}

@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/workflow_debt_auditor.py",
+  "language": "Python",
+  "lines": 130,
+  "hash": "sha256:1fd2b246b96af24d9f14ad6e949d3a510cad6075626e736f33469153cb00516f",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for this file is visible in the packet.",
+      "Severity is a judgement by the model, and nothing checks its spread."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Workflow debt",
+      "meaning": "Ways a process is badly built, such as using shadow spreadsheets for work the main system should handle."
+    },
+    {
+      "term": "Catalogue",
+      "meaning": "The fixed list of allowed debt types."
+    },
+    {
+      "term": "Anchor",
+      "meaning": "A link from a debt item to the step numbers it describes."
+    },
+    {
+      "term": "Severity",
+      "meaning": "How serious the consequence is, from 1 minor to 5 severe."
+    },
+    {
+      "term": "Rollup",
+      "meaning": "A combined summary across many processes."
+    }
+  ],
+  "depends_on": [
+    "packages/agents/base.py",
+    "packages/agents/routing.py",
+    "packages/schema",
+    "pydantic"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 57,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "43d378877d05504c",
+      "title": "Purpose and fixed debt catalogue",
+      "what": "Explains that this agent reads a finished process and labels its workflow debt using a fixed list of types. The prompt text tells the model to record debt only, and to tie each item to the step numbers that show it.",
+      "why": "Stated in the docstring: a fixed list means the same label has the same meaning on every process, and free text cannot be rolled up.",
+      "watch_out": "Adding or renaming a debt type changes every rollup that uses it, so such changes should be deliberate."
+    },
+    {
+      "start": 58,
+      "end": 72,
+      "kind": "class",
+      "name": "_AuditorOutput",
+      "id": "s2",
+      "hash": "904c39db3f19788e",
+      "title": "Shape of the auditor's answer",
+      "what": "Defines the only thing the model may return: a list of scored debt items. The steps and pain points are shown as context and are not fields the model can write.",
+      "why": "Stated in the docstring: the auditor is never offered the steps to write, so this is enforced by the shape of the request rather than by asking politely.",
+      "watch_out": "If a step or pain point field were ever added here, the auditor could begin editing the process."
+    },
+    {
+      "start": 73,
+      "end": 130,
+      "kind": "class",
+      "name": "WorkflowDebtAuditor",
+      "id": "s3",
+      "hash": "93b51dc655d46f5d",
+      "title": "Auditor agent and anchor check",
+      "what": "The agent that sends the current steps and pain points to the model, then checks that every debt item points at a step that exists. Items pointing at missing steps raise a validation error so the answer is retried.",
+      "why": "Stated in the docstring: an item tied to a missing step cannot be traced or acted on, so it should not be saved.",
+      "watch_out": "The retry depends on the validation error being raised correctly. If that check were skipped, bad step links could be stored and shown."
+    }
+  ],
+  "explained_at": "2026-11-12T01:20:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Asks an AI model to score a finished process for workflow debt using a fixed list of debt types, and rejects any item that points at steps which do not exist.",
+  "purpose": "Adds scored debt items to the current state of a process so later stages can roll them up.",
+  "why": "A fixed list keeps each debt label meaning the same thing across processes. Reading the finished state is a separate job from writing it, so the auditor cannot edit steps.",
+  "how": "Build the debt type list, and show the steps and pain points as read-only context. Ask the model for debt items. Confirm every referenced step exists. Return the items.",
+  "inputs": "The current state of a process: its steps and its pain points.",
+  "outputs": "A list of workflow debt items. Each has a type, a severity from 1 to 5, and the step numbers it applies to.",
+  "risks": "A debt type outside the list is rejected, so the model may fail to produce valid output. Severity is judged by the model and may be inconsistent between processes.",
+  "debug": "If runs fail with an anchor error, the message lists the missing step numbers and the valid ones. If debt looks wrong, check the step list passed in. If answers are cut short, check the output size limit.",
+  "summary_hash": "sha256:1fd2b246b96af24d9f14ad6e949d3a510cad6075626e736f33469153cb00516f"
+}

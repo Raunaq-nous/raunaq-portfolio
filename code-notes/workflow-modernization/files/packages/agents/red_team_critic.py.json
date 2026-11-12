@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/red_team_critic.py",
+  "language": "Python",
+  "lines": 197,
+  "hash": "sha256:590f4eca53e1c4976257d55d0dc772c8b699d21d7660fa50dfb320c6e39f1fef",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in this packet.",
+      "The class RedTeamCritic, which runs the checks, is not included, so the no-repair rule cannot be confirmed from this file alone.",
+      "REPAIR_MARKERS is defined but its use is not visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Critic",
+      "meaning": "A stage whose job is to find weaknesses in another stage's output, without fixing them."
+    },
+    {
+      "term": "Strike",
+      "meaning": "Removing one citation from a claim's evidence list, which lowers the calculated confidence."
+    },
+    {
+      "term": "Pydantic model",
+      "meaning": "A Python class that checks data has the right shape before it is used."
+    },
+    {
+      "term": "Schema",
+      "meaning": "The agreed structure of the data the system stores and passes between stages."
+    },
+    {
+      "term": "Block",
+      "meaning": "One named part of a process record, such as the current state or the value parameters."
+    }
+  ],
+  "depends_on": [
+    "packages/agents/base.py",
+    "packages/agents/payloads.py",
+    "packages/agents/routing.py",
+    "packages/schema",
+    "pydantic"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 59,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "62cb2d407e694d12",
+      "title": "Purpose and design rules",
+      "what": "Sets out what the critic does: it challenges claims and strikes citations that do not support them. It must not rewrite text or state confidence, and the file says why these rules exist.",
+      "why": "The file's header explains that the rules are needed because a critic that could assert a lower confidence would bring back the self-reported confidence the system removes.",
+      "watch_out": "Any change that lets the critic write replacement text or a number weakens the grading of this stage."
+    },
+    {
+      "start": 60,
+      "end": 77,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "6547a713ef618a3a",
+      "title": "Instruction wording and repair phrases",
+      "what": "Finishes the instruction text, which holds placeholders for the blocks and claims, and defines a list of phrases that suggest a rewrite, such as 'should read' or 'replace with'.",
+      "why": "Likely reason: the phrases are there to catch objections that drift into rewriting. The code that checks them is not visible here.",
+      "watch_out": "A rewrite phrased in other words will not match the list."
+    },
+    {
+      "start": 78,
+      "end": 94,
+      "kind": "class",
+      "name": "_CriticChallenge",
+      "id": "s3",
+      "hash": "35800c1c079164ec",
+      "title": "Shape of one objection",
+      "what": "Describes one objection: which block it is against, which claim it concerns, an optional citation to strike, and the reason. It has no field for a replacement.",
+      "why": "The missing replacement field is the mechanism that stops the model from supplying a fix. The file states this in its comments.",
+      "watch_out": "The strict setting rejects any extra field, so a new field must be added here on purpose."
+    },
+    {
+      "start": 95,
+      "end": 107,
+      "kind": "class",
+      "name": "_CriticOutput",
+      "id": "s4",
+      "hash": "07b77004366c2f2b",
+      "title": "Shape of the full critic answer",
+      "what": "Wraps the objections in one list, which may be empty. It has no fields for corrected text, revised text, confidence or score.",
+      "why": "The file's docstring says the lack of these fields is enforced by the shape, not by asking the model to behave.",
+      "watch_out": "An answer with an extra field will be rejected rather than partly used."
+    },
+    {
+      "start": 108,
+      "end": 141,
+      "kind": "class",
+      "name": "CriticVerdict",
+      "id": "s5",
+      "hash": "e3495124290e07b3",
+      "title": "Verdict and the strike list",
+      "what": "The result the stage returns. It holds the challenges and a derived set of citation ids to remove before confidence is recalculated.",
+      "why": "Confidence falls only because the evidence set shrinks. The strike list is the way the critic lowers confidence.",
+      "watch_out": "The challenges here use the full Challenge type, not the simpler shape the model writes, so the conversion between them matters. That conversion is not visible in this section."
+    },
+    {
+      "start": 142,
+      "end": 197,
+      "kind": "class",
+      "name": "RedTeamCritic",
+      "id": "s6",
+      "hash": "19c67bf305db6b13",
+      "title": "Critic runner class",
+      "what": "The runner class, RedTeamCritic, is not included in the packet, so its behaviour cannot be described from the code supplied.",
+      "why": "Reason not stated in the code, because the class body is not visible.",
+      "watch_out": "Confirm that it checks REPAIR_MARKERS and that it passes the strike list on before trusting the no-repair rule."
+    }
+  ],
+  "explained_at": "2026-11-12T01:23:04+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the red team critic stage, which lists objections to claims and can strike citations that do not support them, but cannot rewrite text or set confidence.",
+  "purpose": "Checks the draft claims in a process record for weak support. Its output is a list of objections and the citations to remove. Removing citations lowers the confidence that the rest of the system calculates.",
+  "why": "The file's header says a critic that repaired its own findings could not be graded on either job. Confidence is calculated from evidence, so the critic lowers it by removing evidence rather than by stating a lower number.",
+  "how": "Step 1: the instruction text in TASK_TEMPLATE is filled with the blocks under review and the claims. Step 2: the model must answer in the _CriticOutput shape, which has no field for a corrected claim, a confidence or a score. Step 3: each answer becomes a _CriticChallenge, which may name one citation to strike. Step 4: the results are wrapped in a CriticVerdict, whose strike_ids property gives the citations to remove before confidence is recalculated. The class RedTeamCritic, which connects these steps, is not visible in this packet, so the exact order of calls is unclear.",
+  "inputs": "The blocks under review and the claims, as text inserted into the instruction template. The model's answer, which must match the challenge shape. A CriticPayload object from packages/agents/payloads.py.",
+  "outputs": "A CriticVerdict holding a list of Challenge objects, and a set of citation ids to strike.",
+  "risks": "The objection text is free text, so a model could still write a rewrite inside it. REPAIR_MARKERS lists phrases that suggest a rewrite, but how the code uses that list is not visible here. A wrong strike removes valid evidence and lowers confidence for no good reason.",
+  "debug": "Look at the challenges list in the verdict and check each struck_evidence_id against the citation it refers to. If confidence looks too low, check whether a strike was raised against the wrong block. If repair text appears in objections, check whether RedTeamCritic applies REPAIR_MARKERS and whether the model received the full instruction text.",
+  "summary_hash": "sha256:590f4eca53e1c4976257d55d0dc772c8b699d21d7660fa50dfb320c6e39f1fef"
+}

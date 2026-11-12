@@ -1,0 +1,237 @@
+{
+  "schema_version": 1,
+  "path": "scripts/synthesise_recordings.py",
+  "language": "Python",
+  "lines": 564,
+  "hash": "sha256:1c848855e60916963cc4bce8f24108984b4da271caab966ca5a2e17b6e8c5c64",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "A case missing from the effort or platform tables fails with a bare lookup error rather than a clear message.",
+      "No test or example run of this script is visible in the packet, so it cannot be confirmed to work here.",
+      "The effort and hours figures are stated assumptions; the file says so, but they are not checked against any source."
+    ]
+  },
+  "terms": [
+    {
+      "term": "fixture",
+      "meaning": "a saved sample of data used in place of a real input so that a test can run"
+    },
+    {
+      "term": "replay",
+      "meaning": "re-running the pipeline's checking steps over saved outputs instead of calling a live model"
+    },
+    {
+      "term": "golden case",
+      "meaning": "a reference test case with known expected behaviour, kept in the repository"
+    },
+    {
+      "term": "evidence pack",
+      "meaning": "the list of source facts that an analysis is allowed to cite"
+    },
+    {
+      "term": "FTE",
+      "meaning": "full-time equivalent, meaning one person working a full year"
+    },
+    {
+      "term": "prerequisite",
+      "meaning": "a system or data piece that must exist before a redesign can be delivered"
+    },
+    {
+      "term": "schema",
+      "meaning": "a written description of the shape that a data file must have"
+    }
+  ],
+  "depends_on": [
+    "evals/golden/*/*/input.json",
+    "evals/recorded/README.md (read before treating outputs as anything but fixtures, per the header)",
+    "Python standard library: json, sys, pathlib, typing"
+  ],
+  "used_by": [
+    "scripts/run_pipeline.py (its replay mode reads the recordings this script writes)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 58,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "4055261ba4764755",
+      "title": "Paths and effort figures from evidence",
+      "what": "Sets where the golden and recorded folders are, the productive-hours figure, and hours-per-unit effort for two cases, each tied to numbered evidence items.",
+      "why": "Likely reason: the comments say these figures are read off each case's own pack, so they can be traced back to evidence.",
+      "watch_out": "The hours figures are copied by hand from evidence items, so they will not update if the source pack changes."
+    },
+    {
+      "start": 59,
+      "end": 71,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "e2342c35ba0cd055",
+      "title": "Stated effort guesses for two cases",
+      "what": "Holds the effort guesses for two cases whose evidence gives no hours figure, along with a note on why two cases share an enabler.",
+      "why": "Reason stated in the code: inventing a derivation for a pack that does not support one is the failure the golden set is meant to catch, so the guesses are labelled as hypotheses.",
+      "watch_out": "These guesses carry no citations, so changing them changes the results with no evidence trail."
+    },
+    {
+      "start": 72,
+      "end": 131,
+      "kind": "function",
+      "name": "effort_range (part 1)",
+      "id": "s3",
+      "hash": "a0a4d4298ea7de69",
+      "title": "Working out an effort range for a case",
+      "what": "Returns the low, base and high effort in people-years for a case. Cases with evidence use hours per unit times volume divided by productive hours; the others use the stated guesses and return no citations.",
+      "why": "The docstring says the range should widen with both volume and effort uncertainty, because a narrow range would understate the real uncertainty.",
+      "watch_out": "A case id that is in neither table raises an error and stops the whole script."
+    },
+    {
+      "start": 132,
+      "end": 160,
+      "kind": "function",
+      "name": "effort_range (part 2)",
+      "id": "s4",
+      "hash": "143665ac1ecea52f",
+      "title": "Platform assumption for each case",
+      "what": "Records one statement per case about the systems the redesign depends on, with how it is resolved and an evidence reference where one exists. The drilling case is deliberately recorded as unsupported.",
+      "why": "The docstring says these references are kept different from the expected prerequisites, so a test cannot pass by reading only one of the two sources.",
+      "watch_out": "A case missing from this table stops the script, and the references must not match the expected prerequisites or a test can pass for the wrong reason."
+    },
+    {
+      "start": 161,
+      "end": 165,
+      "kind": "function",
+      "name": "pick",
+      "id": "s5",
+      "hash": "94784832f5bb3093",
+      "title": "Choosing one citation safely",
+      "what": "Returns one evidence id from a list, chosen by position and wrapped if needed, or an empty list when the list is empty.",
+      "why": "Reason not stated in the code beyond the docstring, though the explicit empty result means a missing pack produces no citation rather than an error.",
+      "watch_out": "Choosing by position means the same citation can repeat across steps when a pack has only a few items."
+    },
+    {
+      "start": 166,
+      "end": 222,
+      "kind": "function",
+      "name": "build (part 1)",
+      "id": "s6",
+      "hash": "f94b012546f127f5",
+      "title": "Building the current-state workflow steps",
+      "what": "Creates the current process steps for a case: receive and validate, assemble supporting information, wait for review, and review and conclude. Each step has an actor, a duration range, a share of the process, and a citation.",
+      "why": "Likely reason: every case gets the same four-step shape so the pipeline's checks see a predictable structure.",
+      "watch_out": "The step names and shares are fixed for every case, so the output does not reflect each client's real process even though it looks specific."
+    },
+    {
+      "start": 223,
+      "end": 266,
+      "kind": "method",
+      "name": "build: dimension",
+      "id": "s7",
+      "hash": "9392dfa3a68ad280",
+      "title": "Scorecard entry helper and redesign steps",
+      "what": "A small helper that wraps a score, a reason and one citation into the shape the scorecard expects. The same function also builds the architect's three redesign steps.",
+      "why": "Likely reason: keeps the many repeated scorecard entries short and identical in shape.",
+      "watch_out": "The helper does not check the score against the allowed range, so an out-of-range score would be written as it is."
+    },
+    {
+      "start": 267,
+      "end": 326,
+      "kind": "function",
+      "name": "build (part 3)",
+      "id": "s8",
+      "hash": "37090f901a366067",
+      "title": "Designer steps and first audit outputs",
+      "what": "Builds the designer's steps, which assign two named AI agents and one human reviewer, then the first current-state outputs: a pain point and two audit items about manual re-keying and batch waiting, followed by the start of the scorecard.",
+      "why": "The file's docstring says the designer's steps mirror the architect's so that the pipeline's cross-checks hold.",
+      "watch_out": "Step numbers are referred to in several places, so changing one step number without the others breaks the cross-checks."
+    },
+    {
+      "start": 327,
+      "end": 386,
+      "kind": "function",
+      "name": "build (part 4)",
+      "id": "s9",
+      "hash": "6f0b8777fae1a940",
+      "title": "Scorecard ratings and redesign outputs",
+      "what": "Fills in the scorecard ratings and the work-nature percentages, then records the architect's redesign output. A second architect pass is included with two declared assumptions: the platform assumption and one with no support in the evidence.",
+      "why": "Reason stated in the code: a revised run made two architect calls, and replay has to serve them in order, so the second pass is recorded separately.",
+      "watch_out": "Fragmentation and change burden score the opposite way from the others, where 5 is worse, which is easy to misread when editing."
+    },
+    {
+      "start": 387,
+      "end": 446,
+      "kind": "function",
+      "name": "build (part 5)",
+      "id": "s10",
+      "hash": "76eec82967bfe2c2",
+      "title": "Exception rules and effort estimate",
+      "what": "Records the designer's exception rules: escalation triggers, a four-hour human response limit, and a fallback to the manual queue. It then records the workforce outputs and the effort estimate, with a baseline from the case and fixed ranges for automation share, efficiency, ramp, and error rate.",
+      "why": "The estimate's rationale states that the effort is bounded by the share spent gathering supporting information, which the evidence describes as the largest component.",
+      "watch_out": "Only the baseline effort comes from the case's evidence; the other ranges are fixed, so they can look evidence-based when they are not."
+    },
+    {
+      "start": 447,
+      "end": 506,
+      "kind": "function",
+      "name": "build (part 6)",
+      "id": "s11",
+      "hash": "b6773b132f67d622",
+      "title": "Feasibility checks and critic objections",
+      "what": "Records feasibility: a regulatory constraint that a named person must be accountable, plus data readiness gaps. It then records the critic's two objections, one tied to a citation to strike and one with no citation.",
+      "why": "The comments say the objection with no citation is one the confidence arithmetic cannot register, so the pipeline must turn it into a declared assumption, and this fixture exercises that path.",
+      "watch_out": "When a case lacks a regulatory instrument or jurisdiction, generic wording is used instead, which can hide a missing legal detail."
+    },
+    {
+      "start": 507,
+      "end": 540,
+      "kind": "function",
+      "name": "build (part 7)",
+      "id": "s12",
+      "hash": "74b443a0bd2c7a72",
+      "title": "Portfolio reconciliation fixture",
+      "what": "Finishes the per-case outputs and defines the portfolio-level fixture: one calibration adjustment on the credit case that raises its AI suitability score by two, compared against the insurance claims case, with empty lists for prerequisite links and capacity findings.",
+      "why": "The comments say the adjustment was chosen to exercise the arithmetic, including the bound on change, the reading of the raw score, and the ceiling clamp, rather than to make a claim about these cases.",
+      "watch_out": "The prerequisite edge and capacity finding lists are empty, so the fixture never exercises those paths."
+    },
+    {
+      "start": 541,
+      "end": 562,
+      "kind": "function",
+      "name": "main",
+      "id": "s13",
+      "hash": "513f74b5fd5022bd",
+      "title": "Writing the recordings to disk",
+      "what": "Goes through every golden case, writes each case's outputs as sorted, indented JSON into a folder named after the case, writes the portfolio file, and prints how many files were written.",
+      "why": "Reason not stated in the code beyond the file header, which says regenerating keeps recordings consistent with their case inputs.",
+      "watch_out": "Existing files are overwritten with no backup or confirmation, so run it only when new recordings are intended."
+    },
+    {
+      "start": 563,
+      "end": 564,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s14",
+      "hash": "a19977043f22fb92",
+      "title": "Script start point",
+      "what": "When run directly, it calls the main routine and passes its result back as the exit code, so the shell sees 0 when all files were written.",
+      "why": "Standard Python pattern so the file can be imported without writing anything.",
+      "watch_out": "Running the file writes into the recorded folder straight away, with no dry-run option."
+    }
+  ],
+  "explained_at": "2026-11-12T01:31:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Writes made-up but internally consistent recorded agent outputs for each golden test case, so the pipeline can be checked in replay mode without calling a live model.",
+  "purpose": "Produces the saved fixtures under the recorded folder that replay mode reads. They test the pipeline's cross-checks; they are not real analysis.",
+  "why": "The header says writing these by hand would drift from the constraints the pipeline enforces, so deriving each one from its case input means a change to a case regenerates a consistent recording.",
+  "how": "Reads every golden case input in sorted order. For each case it builds the outputs of each agent stage from that case's own evidence items: steps, pain points, audit items, scorecard, architect plan, designer plan, workforce, estimate, feasibility, and critic objections. It writes each as a JSON file in a folder named after the case. It then writes one portfolio reconciliation file. Two cases use stated effort guesses because their evidence gives no hours figure, and each case has its own platform assumption.",
+  "inputs": "Golden case inputs under the golden folder, each with a case id, evidence pack, process details, and optional expected enablers and prerequisites. Fixed figures inside this file include the effort hours for two cases, the stated guesses for two others, 1600 productive hours per person-year, platform assumptions, and one portfolio calibration adjustment.",
+  "outputs": "JSON files under the recorded folder, one folder per case plus a portfolio folder holding the reconciler output. Prints how many files were written.",
+  "risks": "The fixed figures are assumptions, not measurements. A new golden case with no entry in the effort or platform tables stops the script with a lookup error. Running it overwrites existing recordings without a prompt or backup. The output is structural and must not be read as analysis.",
+  "debug": "If the script crashes, find the case id named in the error and check it has entries in the effort tables and in the platform assumption table. If replay later fails, compare the regenerated file names with what the pipeline expects. The file has no tests of its own in the packet, so check that the printed file count matches the number of cases plus one.",
+  "summary_hash": "sha256:1c848855e60916963cc4bce8f24108984b4da271caab966ca5a2e17b6e8c5c64"
+}

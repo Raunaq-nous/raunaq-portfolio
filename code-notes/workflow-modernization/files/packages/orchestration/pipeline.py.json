@@ -1,0 +1,293 @@
+{
+  "schema_version": 1,
+  "path": "packages/orchestration/pipeline.py",
+  "language": "Python",
+  "lines": 565,
+  "hash": "sha256:747d7ae957f7dce31f7d7a4091cef506e7eb242a214b7010c3b1c0a4b7cc83c2",
+  "area": "packages-orchestration",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The stage logic is detailed and documented in the code.",
+      "The tests named in the comments were not shown, so behaviour is not confirmed here.",
+      "Failures from individual model calls are not handled in this file, so they stop the process."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Pipeline",
+      "meaning": "The fixed sequence of analysis steps applied to one process."
+    },
+    {
+      "term": "Revision pass",
+      "meaning": "One extra run of the design steps after the critic objects."
+    },
+    {
+      "term": "Structural objection",
+      "meaning": "An objection that points to something missing, not to a specific citation."
+    },
+    {
+      "term": "Depth tier",
+      "meaning": "The level of rigour chosen for a run, which sets how many revisions are allowed."
+    },
+    {
+      "term": "Map",
+      "meaning": "Applying the same function to each item in a list and collecting the results."
+    }
+  ],
+  "depends_on": [
+    "packages/agents",
+    "packages/knowledge/evidence.py",
+    "packages/orchestration/assembly.py",
+    "packages/orchestration/claims.py",
+    "packages/orchestration/durable.py",
+    "packages/schema"
+  ],
+  "used_by": [
+    "packages/orchestration/reduce.py",
+    "scripts/optional_field_sweep.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 58,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "5db49929cd093da1",
+      "title": "Module purpose and entry points",
+      "what": "Explains the two entry points, one for a single process and one for a portfolio, and says that neither combines processes.",
+      "why": "Combining records must happen once over the whole list, so a per-process step cannot compare a process with itself.",
+      "watch_out": "Calling the reconciler from inside a per-process step would produce results that look clean and are wrong."
+    },
+    {
+      "start": 59,
+      "end": 86,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "03f5a637e7111d98",
+      "title": "Revision limits by depth tier",
+      "what": "Sets how many revisions each depth tier allows, and the overall ceiling.",
+      "why": "Each revision costs a full design run, so the number is tied to how valuable the run is. The docstring gives this reasoning and a note on why more passes make the output worse.",
+      "watch_out": "Raising a limit changes both cost and the quality of the output for that tier."
+    },
+    {
+      "start": 87,
+      "end": 109,
+      "kind": "function",
+      "name": "revision_budget",
+      "id": "s3",
+      "hash": "21cb03b5f7037820",
+      "title": "Revision budget lookup",
+      "what": "Reads the depth tier from the run and returns its revision limit.",
+      "why": "Using the run's tier, not one fixed number, lets a quick screening run and a board paper differ.",
+      "watch_out": "A depth tier that is not in the table would raise an error."
+    },
+    {
+      "start": 110,
+      "end": 129,
+      "kind": "class",
+      "name": "ProcessSpec",
+      "id": "s4",
+      "hash": "6f3ac69dfef31296",
+      "title": "Revisable blocks",
+      "what": "The three blocks a revision can change: future state, implications and value parameters.",
+      "why": "Current state is excluded on purpose. A critique of the wording should not change the account of what the client does.",
+      "watch_out": "Adding a block here without adding its claims to the critic's input means the change can never be triggered."
+    },
+    {
+      "start": 130,
+      "end": 138,
+      "kind": "class",
+      "name": "DesignOutcome",
+      "id": "s5",
+      "hash": "7e94a930bc2bd85d",
+      "title": "Per-process specification",
+      "what": "Holds what the agents are told about one process, plus identity fields that agents never read.",
+      "why": "Keeping identity fields out of the agent brief limits what agents see to what they need.",
+      "watch_out": "The work unit has two forms: the client's wording for agents and the standard term for the record."
+    },
+    {
+      "start": 139,
+      "end": 163,
+      "kind": "function",
+      "name": "narrowed",
+      "id": "s6",
+      "hash": "27ba5536dc08ba98",
+      "title": "Design outcome",
+      "what": "Groups the future state, implications and feasibility result produced by one design stage.",
+      "why": "Keeps the output of the parallel stage together so it can be passed on as one value.",
+      "watch_out": "None that is visible."
+    },
+    {
+      "start": 164,
+      "end": 221,
+      "kind": "function",
+      "name": "feasibility_challenges",
+      "id": "s7",
+      "hash": "f5c94a77aff42459",
+      "title": "Narrowing the evidence pack",
+      "what": "Returns a copy of the run context with the struck evidence removed from the pack.",
+      "why": "Removing evidence is how the design is pushed to find other support, without telling the agent what to say. The docstring explains that the confidence score is still computed against the full pack.",
+      "watch_out": "Confidence must be computed on the full pack, or the penalty for strikes is applied twice."
+    },
+    {
+      "start": 222,
+      "end": 255,
+      "kind": "function",
+      "name": "merge_challenges",
+      "id": "s8",
+      "hash": "5499a8bf3add2452",
+      "title": "Feasibility challenges",
+      "what": "Creates objections when the design breaks a legal or regulatory ceiling. These objections are marked as upheld at once.",
+      "why": "Looking again at the same constraint cannot fix a regulatory limit, so the run records the breach rather than trying again until it passes.",
+      "watch_out": "Constraints are matched to the whole process and not to individual steps, because step numbers differ between current and future states."
+    },
+    {
+      "start": 256,
+      "end": 282,
+      "kind": "function",
+      "name": "merge_assumptions",
+      "id": "s9",
+      "hash": "f807fba8e82f50b4",
+      "title": "Merging challenges across passes",
+      "what": "Combines the objections from all passes and marks which ones were still raised in the last pass.",
+      "why": "Dropping earlier objections would hide the critique in the runs where it did the most work.",
+      "watch_out": "The key includes the block, the claim and the struck citation, so two objections on one claim are both kept."
+    },
+    {
+      "start": 283,
+      "end": 299,
+      "kind": "function",
+      "name": "with_assumptions",
+      "id": "s10",
+      "hash": "d12d6f9df04d57a9",
+      "title": "Merging assumptions across passes",
+      "what": "Combines the assumptions declared in each pass, keeping the first one given for each claim and wording.",
+      "why": "A later pass could soften an earlier answer. Keeping the first answer prevents that.",
+      "watch_out": "A repeated answer to the same objection is dropped, not updated."
+    },
+    {
+      "start": 300,
+      "end": 326,
+      "kind": "function",
+      "name": "structural_objections",
+      "id": "s11",
+      "hash": "df65549b108c002f",
+      "title": "Attaching assumptions to the future state",
+      "what": "Rebuilds the future state with the combined assumptions and validates it again.",
+      "why": "Copying the object would skip the validation rule that stops an assumption naming a step that exists.",
+      "watch_out": "Do not replace this rebuild with a plain copy, because that skips the check."
+    },
+    {
+      "start": 327,
+      "end": 337,
+      "kind": "function",
+      "name": "_map_current_state",
+      "id": "s12",
+      "hash": "f44f19897cff3d1a",
+      "title": "Structural objections for the architect",
+      "what": "Picks out objections that name no citation, are still open, and concern a block the design chain writes.",
+      "why": "These cannot be answered by removing evidence, so they go back to the architect for an assumption.",
+      "watch_out": "The filter on upheld objections is what keeps feasibility breaches out. Moving it into call order would be fragile."
+    },
+    {
+      "start": 338,
+      "end": 361,
+      "kind": "function",
+      "name": "_design",
+      "id": "s13",
+      "hash": "19aff1c9c28a8c93",
+      "title": "Current state mapping",
+      "what": "Runs the cartographer, then the debt auditor on its finished output, and returns the combined current state.",
+      "why": "The auditor must read a finished map, so the two run in sequence.",
+      "watch_out": "The auditor is given the mapped steps, so a change to the map changes the audit."
+    },
+    {
+      "start": 362,
+      "end": 384,
+      "kind": "function",
+      "name": "_design_stage",
+      "id": "s14",
+      "hash": "bdb62fa811d6cd98",
+      "title": "Design chain",
+      "what": "Runs the architect, then the agent designer, then the workforce modeller, in that order.",
+      "why": "The modeller needs named agents from the designer, so this chain cannot be run in parallel.",
+      "watch_out": "Objections are only passed to the architect in this chain, so a revision without them can drop an earlier answer."
+    },
+    {
+      "start": 385,
+      "end": 401,
+      "kind": "function",
+      "name": "_estimate",
+      "id": "s15",
+      "hash": "e08f90ee0ed4adb7",
+      "title": "Design stage in parallel",
+      "what": "Runs the design chain and the feasibility check at the same time, then packages the results.",
+      "why": "Neither reads the other's output, so running them together saves one round trip. The docstring warns that a dependency added later would make this stage read stale input.",
+      "watch_out": "If one of the two ever needs the other's output, this must become sequential."
+    },
+    {
+      "start": 402,
+      "end": 448,
+      "kind": "function",
+      "name": "analyse_process (part 1)",
+      "id": "s16",
+      "hash": "e45c8048b683d742",
+      "title": "Value estimation",
+      "what": "Runs the value estimator on the brief, current state and future state and returns the value parameters.",
+      "why": "Estimates need the future state, so they run after the design. The docstring of the main function states that this order matters.",
+      "watch_out": "Estimates must be recalculated after every revision, which the main loop does."
+    },
+    {
+      "start": 449,
+      "end": 490,
+      "kind": "function",
+      "name": "analyse_process (part 2)",
+      "id": "s17",
+      "hash": "b0ed6eb7fe033ce8",
+      "title": "Main process function, opening stages and review loop",
+      "what": "Runs the mapping, assessment, design and estimation stages, then loops: the critic reviews claims, grounding objections strike evidence, structural ones go to the architect, and the design runs again until nothing is left to act on or the limit is reached.",
+      "why": "The loop lets the design respond to the critic while keeping a bounded cost. The docstring explains why the earlier assumptions are carried forward, so a later pass cannot drop them.",
+      "watch_out": "The answered set stops the same objection from being sent twice. Removing it would send the architect the same objection each pass."
+    },
+    {
+      "start": 491,
+      "end": 515,
+      "kind": "function",
+      "name": "analyse_process (part 3)",
+      "id": "s18",
+      "hash": "7a534f02c0423123",
+      "title": "Record assembly",
+      "what": "Hands all stage outputs and identity fields to the assembly function, which builds the final record.",
+      "why": "Confidence is computed in assembly, not here or by any agent, so the scoring stays in one place.",
+      "watch_out": "Assembly receives the full evidence pack, not the narrowed one."
+    },
+    {
+      "start": 516,
+      "end": 565,
+      "kind": "function",
+      "name": "analyse_portfolio",
+      "id": "s19",
+      "hash": "2665c7b78bf6c39b",
+      "title": "Portfolio map with checkpoints",
+      "what": "Runs the single-process analysis for each process in turn, reading back stored records where they exist and saving each new one.",
+      "why": "Each process is a separate recovery point. A stored record is loaded, not recalculated, so the portfolio does not mix versions.",
+      "watch_out": "The client is built per process, so the caller must pass a factory, not a shared client, when the client holds state."
+    }
+  ],
+  "explained_at": "2026-11-12T01:24:21+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs every analysis stage for one process in a fixed order, sends the design back for revision when the critic objects to evidence, and runs that process over a whole portfolio with checkpoints.",
+  "purpose": "Produce one complete process record per process, and do so for a whole portfolio with recovery at each process boundary.",
+  "why": "The stage order follows real dependencies. Each stage needs the output of the one before it. The revision loop is bounded by depth tier so cost matches how much the run is worth.",
+  "how": "First the current state is mapped and audited. The process is then assessed. The design chain and feasibility check run together. Value parameters are estimated. A critic reviews the claims and may trigger up to a tier-set number of revisions, where struck evidence is removed from the pack and open structural objections are sent to the architect. Finally the record is assembled. analyse_portfolio calls this once per process and saves each result.",
+  "inputs": "A model client, a run context holding the evidence pack and depth tier, and a process spec with the brief and identity fields. For the portfolio, a list of contexts and specs plus an optional checkpoint store.",
+  "outputs": "A ProcessRecord for each process. The portfolio function returns a list of these records. It does not reduce them.",
+  "risks": "Reordering stages silently gives a later stage missing input. The concurrent design and feasibility stage is only safe while neither reads the other. The loop keeps old challenges, so a later pass can leave an objection with no matching change.",
+  "debug": "Check the revision budget for the run's depth tier. Look at the challenge list on the record to see which objections were upheld. If a record is missing an assumption, check the merge of declared assumptions across passes.",
+  "summary_hash": "sha256:747d7ae957f7dce31f7d7a4091cef506e7eb242a214b7010c3b1c0a4b7cc83c2"
+}

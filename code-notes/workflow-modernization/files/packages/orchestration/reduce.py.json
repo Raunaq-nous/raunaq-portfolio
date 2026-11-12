@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "path": "packages/orchestration/reduce.py",
+  "language": "Python",
+  "lines": 156,
+  "hash": "sha256:18f28a130c3e8d160c01c71fa7b3fabf6f59339f096716d02a05f7bafec65f7e",
+  "area": "packages-orchestration",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Error cases are handled with clear messages.",
+      "The docstring says a test checks the single-caller property, but it was not shown in the packet.",
+      "Only the reconciler's output shape is trusted here, and that is not visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Reconciler",
+      "meaning": "The agent that checks the full set of records for shared work, calibration and sequencing problems."
+    },
+    {
+      "term": "Calibration",
+      "meaning": "An extra adjustment that changes a score for reporting, while the original score stays unchanged."
+    },
+    {
+      "term": "Prerequisite graph",
+      "meaning": "A map of which processes must be delivered before others."
+    },
+    {
+      "term": "Cycle",
+      "meaning": "A loop in the prerequisite map, where processes depend on each other, so no order exists."
+    }
+  ],
+  "depends_on": [
+    "packages/agents/base.py",
+    "packages/agents/portfolio_reconciler.py",
+    "packages/schema"
+  ],
+  "used_by": [
+    "evals or reporting code, not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 38,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "712198877ff759b3",
+      "title": "Why the reduce step is separate",
+      "what": "The docstring explains that portfolio-level properties need every record at once, and that the portfolio type cannot be built without the reconciler.",
+      "why": "Running the reconciler per process would compare a process with itself and always pass.",
+      "watch_out": "Any new path that builds a portfolio must go through the reconciler."
+    },
+    {
+      "start": 39,
+      "end": 56,
+      "kind": "class",
+      "name": "UnschedulablePortfolio",
+      "id": "s2",
+      "hash": "bd2a79c3fb9e6f32",
+      "title": "Cycle error",
+      "what": "Defines the error raised when the prerequisite map loops back on itself, and lists the loops in the message.",
+      "why": "A plan built from a loop would be arbitrary, and it would look like a valid plan.",
+      "watch_out": "The message asks for the dependency to be fixed in the source record, not for the sequence to be changed."
+    },
+    {
+      "start": 57,
+      "end": 94,
+      "kind": "class",
+      "name": "Portfolio (part 1)",
+      "id": "s3",
+      "hash": "c939991a39e0f874",
+      "title": "Portfolio object and checks",
+      "what": "Holds the records and the reconciliation result, and checks the record count and the adjustment names when built.",
+      "why": "The reconciliation field has no default, so a portfolio cannot exist without it. The checks stop the portfolio from being built with too few records or with broken adjustments.",
+      "watch_out": "The raw records are kept beside the adjustments, so reports must not treat the raw scores as final."
+    },
+    {
+      "start": 95,
+      "end": 126,
+      "kind": "method",
+      "name": "Portfolio: calibrated_score",
+      "id": "s4",
+      "hash": "6ef7740eed03a420",
+      "title": "Calibrated score lookup",
+      "what": "Returns the adjusted score for a process and dimension if one exists, and the raw score otherwise. An unknown dimension raises an error.",
+      "why": "Every report needs the same rule for reading scores, so the rule lives in one place.",
+      "watch_out": "The code notes that at most one adjustment can exist per process and dimension, which keeps the result the same regardless of order."
+    },
+    {
+      "start": 127,
+      "end": 156,
+      "kind": "function",
+      "name": "reconcile_portfolio",
+      "id": "s5",
+      "hash": "f00f309529130327",
+      "title": "Reconcile function",
+      "what": "Sends all records to the reconciler, raises an error if cycles are found and not allowed, and returns the portfolio.",
+      "why": "This is the only place a portfolio is produced. Running it once means the checks see the full set.",
+      "watch_out": "It needs at least two records, so a single-process run cannot reach this step."
+    }
+  ],
+  "explained_at": "2026-11-12T01:24:21+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the reconciler once over all finished records to produce a portfolio, and refuses to build a portfolio without that reconciliation.",
+  "purpose": "Make sure the portfolio-wide checks, such as shared enablers, calibration and sequencing, always run on the full set.",
+  "why": "A portfolio-level property cannot be checked for one process alone. The required reconciliation field makes it impossible to build a portfolio without running the reconciler.",
+  "how": "reconcile_portfolio sends all records to the reconciler. If the prerequisite graph has a cycle and cycles are not allowed, it raises an error. Otherwise it builds the Portfolio. The Portfolio checks that it has enough records and that every adjustment names a process in the set. calibrated_score returns the adjusted value when one exists, otherwise the raw score.",
+  "inputs": "A model client, a run context, a list of finished process records, and an option to allow cycles.",
+  "outputs": "A Portfolio object holding the records and the reconciliation result, or an error.",
+  "risks": "Setting allow_cycles to true lets an arbitrary plan through, and nothing downstream will detect that. Raw scores are kept unchanged, so reports must read calibrated values through calibrated_score.",
+  "debug": "A cycle error lists the processes in the loop. A too-small portfolio error gives the count. A dangling adjustment error lists the missing ids. For wrong scores, check the adjustment list for that process and dimension.",
+  "summary_hash": "sha256:18f28a130c3e8d160c01c71fa7b3fabf6f59339f096716d02a05f7bafec65f7e"
+}

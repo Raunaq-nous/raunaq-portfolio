@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/payloads.py",
+  "language": "Python",
+  "lines": 128,
+  "hash": "sha256:28c0b9a627a57d17f1cface17155fe90e564516dbc19454243d1fe9b2ff7234c",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for these shapes is visible in this file.",
+      "Several list fields accept empty values where the file's own reasoning suggests they should not."
+    ]
+  },
+  "terms": [
+    {
+      "term": "pydantic",
+      "meaning": "a Python library that checks data has the expected shape and fields"
+    },
+    {
+      "term": "frozen",
+      "meaning": "cannot be changed after it is created"
+    },
+    {
+      "term": "render",
+      "meaning": "turn a value into the fixed text that is shown to the model"
+    }
+  ],
+  "depends_on": [
+    "packages/schema",
+    "pydantic"
+  ],
+  "used_by": [
+    "packages/agents/future_state_architect.py",
+    "packages/agents/process_assessor.py",
+    "packages/agents/red_team_critic.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "fbfe4fe0ab182111",
+      "title": "Why inputs are typed containers",
+      "what": "The file opens with the reasoning for using typed containers rather than plain dictionaries. A dictionary with a misspelled key would quietly remove part of the prompt with no error.",
+      "why": "Stated in the file: a silent gap in the prompt produces an analysis built on incomplete information.",
+      "watch_out": "These classes live under the agents folder rather than the schema folder, so changes here do not follow the stored-record migration rules."
+    },
+    {
+      "start": 20,
+      "end": 52,
+      "kind": "class",
+      "name": "ProcessBrief",
+      "id": "s2",
+      "hash": "339975e794c0cb95",
+      "title": "The process being analysed",
+      "what": "Holds the basic facts about one process: its stable id, the client's name for it, its place in the taxonomy, its purpose, what starts it, what it produces and the unit of work. Every field is required. The render method turns these into a fixed text block for the model.",
+      "why": "Stated in the file: a missing trigger would make the prompt ask a different question without any sign that something was missing.",
+      "watch_out": "The render output must stay the same for the same input, because changes to it change the prompt bytes and cache reuse."
+    },
+    {
+      "start": 53,
+      "end": 63,
+      "kind": "class",
+      "name": "ClaimUnderReview",
+      "id": "s3",
+      "hash": "ab2cd9e3f6cf223c",
+      "title": "One claim to challenge",
+      "what": "One claim put to the critic: the block it came from, a path that identifies it, its text, and the evidence ids it currently cites.",
+      "why": "Likely reason: the critic needs the exact claim and its citations so it can name the claim in an objection.",
+      "watch_out": "The claim reference is a path string; if the path format changes, objections will stop matching the claims they answer."
+    },
+    {
+      "start": 64,
+      "end": 82,
+      "kind": "class",
+      "name": "CriticPayload",
+      "id": "s4",
+      "hash": "52c3519d0d930003",
+      "title": "Claims bundle for the critic",
+      "what": "Groups the process brief with the claims for the red team critic. It requires at least one claim, and its render method lays the claims out as a list with their citations.",
+      "why": "Stated in the file: a critic given nothing to challenge returns nothing, which looks the same as a critic that found no problems.",
+      "watch_out": "Callers must make sure there is at least one claim before building this, because an empty list is rejected."
+    },
+    {
+      "start": 83,
+      "end": 95,
+      "kind": "class",
+      "name": "StructuralObjection",
+      "id": "s5",
+      "hash": "b6796ae05e161111",
+      "title": "Objection coming back from the critic",
+      "what": "One objection the critic raised, naming the claim it was raised against and holding the critic's exact words.",
+      "why": "It is kept separate from the claim because it travels in the opposite direction, from the critic back to the stage that must answer it.",
+      "watch_out": "The wording is meant to be unedited, so any change to it changes what the architect is asked to answer."
+    },
+    {
+      "start": 96,
+      "end": 113,
+      "kind": "class",
+      "name": "ArchitectPayload",
+      "id": "s6",
+      "hash": "ed5c8e4f5a517091",
+      "title": "Input for the future state architect",
+      "what": "Holds the current state of the process and any objections the architect must answer. The objection list is empty on the first pass and filled during a revision.",
+      "why": "Stated in the file: objections are typed, not written as prose, because prose replies can satisfy a critique without changing the design.",
+      "watch_out": "The objection list defaults to empty, so a caller that forgets to pass objections gets a design with no check against them."
+    },
+    {
+      "start": 114,
+      "end": 128,
+      "kind": "class",
+      "name": "EstimationPayload",
+      "id": "s7",
+      "hash": "48da4e0e75a39e9b",
+      "title": "Input for the value estimator",
+      "what": "Carries the process brief, the current state and the future state to the value estimator, so it can see which shared enablers the designer committed to and what share is automated or assisted.",
+      "why": "Stated in the file: without the future state, a shared enabler could be counted once per process instead of once, which silently inflates the portfolio total.",
+      "watch_out": "This is the only payload that carries the future state, so leaving it out is the specific mistake that inflates totals."
+    }
+  ],
+  "explained_at": "2026-11-12T01:18:02+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the typed containers that carry information into each analysis agent, so that a missing piece of information causes an error rather than a quietly different question.",
+  "purpose": "Holds the input shapes for the process brief, the claims sent to the critic, the objections coming back, the architect's input and the estimator's input.",
+  "why": "Stated in the file: a dictionary passed into a prompt can lose a key without any error, which would make the model analyse a process it was never fully told about. The shapes live under the agents folder because they are inputs to stages, not part of the stored record.",
+  "how": "Each class checks its fields when it is created, rejects unknown fields, and is frozen so it cannot change after creation. Some classes can also render themselves into fixed text for the model.",
+  "inputs": "Values from the process record, the current and future states, the claims under review and any objections.",
+  "outputs": "Validated containers passed to the agents, and rendered text blocks for the prompts.",
+  "risks": "Some lists, such as the taxonomy path and the evidence lists, accept empty values without complaint. Changing the render output changes the prompt bytes and can break cache reuse. Duplicate process ids are not checked here.",
+  "debug": "If an agent behaves as though it lacks context, check the fields on its payload. If a prompt looks wrong, call render on the payload and read the text. A validation error names the field that failed.",
+  "summary_hash": "sha256:28c0b9a627a57d17f1cface17155fe90e564516dbc19454243d1fe9b2ff7234c"
+}

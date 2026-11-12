@@ -1,0 +1,370 @@
+{
+  "schema_version": 1,
+  "path": "scripts/run_pipeline.py",
+  "language": "Python",
+  "lines": 763,
+  "hash": "sha256:c3e048a55c68243a6a971000a29371d11f7d5dacc2754a9537350d4560315ebd",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The shown sections are only 16 of 24, so the main function and its handling of errors cannot be checked from the packet.",
+      "Live mode is described as not yet capturing output.",
+      "No test for this file is visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "golden set",
+      "meaning": "a fixed collection of example cases with known expected results, used to check the pipeline"
+    },
+    {
+      "term": "replay",
+      "meaning": "running the pipeline again on saved model outputs, so no new model calls are made and results are identical each time"
+    },
+    {
+      "term": "canonical id",
+      "meaning": "one agreed identifier for a process, shared by every label that describes it"
+    },
+    {
+      "term": "ontology",
+      "meaning": "a structured reference list of processes and their names, used to match labels"
+    },
+    {
+      "term": "normaliser",
+      "meaning": "the code that matches each client's own label to the reference list"
+    },
+    {
+      "term": "provenance",
+      "meaning": "a record of where a result came from, such as which model and prompt produced it"
+    },
+    {
+      "term": "manifest",
+      "meaning": "a record stored beside results that describes how they were produced"
+    },
+    {
+      "term": "portfolio reduce",
+      "meaning": "a step that looks at all records together, for example to find shared enablers or capacity issues"
+    },
+    {
+      "term": "placeholder",
+      "meaning": "a stand-in value used so the code can run, which is not a real figure"
+    }
+  ],
+  "depends_on": [
+    "packages.agents",
+    "packages.knowledge",
+    "packages.orchestration",
+    "packages.schema",
+    "packages.value",
+    "anthropic (live mode only)",
+    "evals/golden",
+    "evals/recorded"
+  ],
+  "used_by": [
+    "evals/run.py reads the candidates this script writes (per the docstring)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 37,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "a9939c821a70c3a4",
+      "title": "Purpose and the two modes",
+      "what": "Explains that the script runs the pipeline over the golden set and writes one record per case, in replay mode by default or in live mode with model calls.",
+      "why": "The docstring says the two modes follow a section of the specification.",
+      "watch_out": "Live runs are not expected to match earlier runs, and the docstring says they do not write into the recordings folder."
+    },
+    {
+      "start": 38,
+      "end": 93,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "459523b3d20c0a81",
+      "title": "Imports and folder locations",
+      "what": "Brings in the pipeline parts the script uses and sets where golden cases, recordings, candidates, checkpoints, and output files live.",
+      "why": "Every later step relies on these locations.",
+      "watch_out": "The candidates folder is where the evaluation tool looks, so moving it breaks that hand-off."
+    },
+    {
+      "start": 94,
+      "end": 115,
+      "kind": "setup",
+      "name": "File setup (part 3)",
+      "id": "s3",
+      "hash": "1ad342d5250684fb",
+      "title": "Fixed versions and run identity",
+      "what": "Fixes the taxonomy and ontology version labels, a fixed run id, and a fixed timestamp used for replay.",
+      "why": "The docstring says replay must give identical output each time, so these values cannot change between runs.",
+      "watch_out": "Changing these values changes the identity of every replayed record."
+    },
+    {
+      "start": 116,
+      "end": 139,
+      "kind": "function",
+      "name": "build_ontology",
+      "id": "s4",
+      "hash": "b5e68d26a3b607ee",
+      "title": "Build the reference list",
+      "what": "Builds the reference vocabulary from the golden cases, so the canonical ids come from the normaliser instead of being copied from the input.",
+      "why": "The docstring describes this as the smallest honest version of a maintained asset.",
+      "watch_out": "Because it is built from the same cases, every label matches, which hides unmatched labels in normal runs."
+    },
+    {
+      "start": 140,
+      "end": 187,
+      "kind": "function",
+      "name": "retrieve_pack",
+      "id": "s5",
+      "hash": "898765b9e84a80b1",
+      "title": "Retrieve the evidence pack",
+      "what": "Turns each case's evidence items into in-memory stores and retrieves a ranked pack through the broker, using a pinned clock.",
+      "why": "The docstring says the clock is pinned so that confidence does not depend on when the script runs.",
+      "watch_out": "The search query is built from several case fields, so changing those fields changes what is retrieved."
+    },
+    {
+      "start": 188,
+      "end": 197,
+      "kind": "function",
+      "name": "row_for",
+      "id": "s6",
+      "hash": "076c87d4b888e4fd",
+      "title": "Turn a case into a label row",
+      "what": "Converts one case's process name and taxonomy path into the row form the normaliser reads.",
+      "why": "Likely reason: the normaliser expects its own row type.",
+      "watch_out": "A missing leaf flag is treated as true."
+    },
+    {
+      "start": 198,
+      "end": 226,
+      "kind": "function",
+      "name": "resolve_ids",
+      "id": "s7",
+      "hash": "82c19177d6ca3bce",
+      "title": "Resolve client labels to ids",
+      "what": "Runs all client labels together through the normaliser and returns the resolved id for each case. It stops with an error if any label does not match.",
+      "why": "The docstring says match rates describe the whole vocabulary, and they are graded by numbers rather than a model.",
+      "watch_out": "One unmatched label stops the whole run, and the error names that label."
+    },
+    {
+      "start": 227,
+      "end": 246,
+      "kind": "function",
+      "name": "read_case",
+      "id": "s8",
+      "hash": "50774f8f81657a29",
+      "title": "Read and check a case file",
+      "what": "Loads a case file and checks it against the case contract, so a bad case fails here with its name.",
+      "why": "The docstring says a case that had skipped the gate used to fail deep inside the run.",
+      "watch_out": "The result is a plain dictionary, so later steps must not assume its values have types."
+    },
+    {
+      "start": 247,
+      "end": 276,
+      "kind": "function",
+      "name": "load_case",
+      "id": "s9",
+      "hash": "98bdb0b4a3d35ae5",
+      "title": "Load a case into pipeline inputs",
+      "what": "Turns a case file into the brief, evidence split, and annual volume the pipeline needs. The first and second evidence items are used for framing and volume.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The order of evidence in the case file decides which items the analysis relies on."
+    },
+    {
+      "start": 277,
+      "end": 313,
+      "kind": "function",
+      "name": "build_context",
+      "id": "s10",
+      "hash": "706125f3cbcc519d",
+      "title": "Build the context each agent sees",
+      "what": "Builds the view the agents receive: run id, depth, industry, versions, evidence, prompt prefix, a token budget, and a shared provenance ledger.",
+      "why": "The docstring explains that the manifest must be built after the calls, so the ledger is filled first.",
+      "watch_out": "If no ledger is passed, a new empty one is created, and provenance can be lost. The manifest step refuses an empty ledger to catch this."
+    },
+    {
+      "start": 314,
+      "end": 367,
+      "kind": "function",
+      "name": "final_manifest",
+      "id": "s11",
+      "hash": "7f98ccec2754c9dc",
+      "title": "Write the run manifest",
+      "what": "Builds the provenance record once the calls are done, including models, prompts, the evidence snapshot, and the deepest depth. It refuses to build when no snapshot or no provenance was recorded.",
+      "why": "The docstring says a manifest with no provenance would look like a real record of a run that did not happen.",
+      "watch_out": "Some fields such as the engagement name and classification are fixed text, not real client values."
+    },
+    {
+      "start": 368,
+      "end": 381,
+      "kind": "function",
+      "name": "deepest_tier",
+      "id": "s12",
+      "hash": "998a5eb28a48195f",
+      "title": "Pick the deepest depth tier",
+      "what": "Returns the deepest depth among the cases, ordered as sketch, standard, then defensible.",
+      "why": "The manifest holds one depth value, and the docstring says the deepest is the one the run had to satisfy.",
+      "watch_out": "An unknown tier name causes an error, because the order list is fixed."
+    },
+    {
+      "start": 382,
+      "end": 398,
+      "kind": "function",
+      "name": "live_namespace",
+      "id": "s13",
+      "hash": "ef5ad15c484dc895",
+      "title": "Name the live output folder",
+      "what": "For live runs, works out the folder where captured output would go. It returns nothing for replay runs.",
+      "why": "The docstring says this is computed even though capture is not built, so the guard is tested in live runs.",
+      "watch_out": "Nothing is written to this folder yet, even in live mode."
+    },
+    {
+      "start": 399,
+      "end": 406,
+      "kind": "function",
+      "name": "make_client",
+      "id": "s14",
+      "hash": "09452563877c8f7b",
+      "title": "Choose replay or live model client",
+      "what": "Returns a replay client that reads saved outputs for replay runs, or a live Anthropic client for live runs.",
+      "why": "Keeps replay runs offline and separate from live calls.",
+      "watch_out": "The Anthropic library is only imported in live mode, so a missing install shows up only then."
+    },
+    {
+      "start": 407,
+      "end": 433,
+      "kind": "function",
+      "name": "merged_establishment",
+      "id": "s15",
+      "hash": "041fbc18ff5e3615",
+      "title": "Merge headcount across cases",
+      "what": "Combines headcount by function across all cases, keeping the largest figure per function instead of adding them.",
+      "why": "The docstring says adding would invent a workforce, because each client's function is a separate establishment.",
+      "watch_out": "A case with no headcount is treated as empty, which can make the capacity check appear to have no data."
+    },
+    {
+      "start": 434,
+      "end": 490,
+      "kind": "function",
+      "name": "portfolio_context (part 1)",
+      "id": "s16",
+      "hash": "0b718cc9cb80cff6",
+      "title": "Portfolio context and placeholder rates",
+      "what": "Builds the context for the portfolio reduce, with an empty evidence pack and the merged headcount. The section also holds placeholder cost and inference rates.",
+      "why": "The docstring says the reduce judges the finished set and should not be argued from one process's evidence. The rates are placeholders, labelled as such in the code.",
+      "watch_out": "The cost and inference rates are fixture values, not real figures, so value results built on them are illustrative only."
+    },
+    {
+      "start": 491,
+      "end": 524,
+      "kind": "function",
+      "name": "portfolio_context (part 2)",
+      "id": "s17",
+      "hash": "4efa90c034064657",
+      "title": "Estate operating cost assumptions",
+      "what": "Sets the fixed cost assumptions used to price the whole set of agents: the model assumed in production, typical token use per agent call, the share of input that is cached, yearly orchestration and monitoring costs, and staffing. These numbers feed the value figures written to the value output.",
+      "why": "The comments say the production model is kept separate from the analysis model because the analysis runs once while the agents run for every instance. The batched share is set to zero on purpose because these workflows are interactive, not batch jobs.",
+      "watch_out": "The production model name is a fixed string, so if the model family changes this must be updated or the estate will be priced for a model no longer in use."
+    },
+    {
+      "start": 525,
+      "end": 544,
+      "kind": "function",
+      "name": "cost_basis_for",
+      "id": "s18",
+      "hash": "c370c44c179f5bad",
+      "title": "Building the price basis for a currency",
+      "what": "Creates the cost and price inputs for one currency. It uses placeholder rates taken from the golden test set, applies a fixed cache discount and a fixed batch discount, and labels the result as a benchmark source.",
+      "why": "Reason stated in the code: the source reference says these are placeholder rates because no client cost table was supplied, and the comments say a real client price should come from the client's contract.",
+      "watch_out": "The basis is labelled with source benchmark while its source reference says placeholder, so a reader could take these numbers for real market prices."
+    },
+    {
+      "start": 545,
+      "end": 588,
+      "kind": "function",
+      "name": "engine_inputs",
+      "id": "s19",
+      "hash": "c457f1c4abc0dc1b",
+      "title": "Assembling inputs for the value engine",
+      "what": "Gathers what the run produced, including each agent record, its currency, its client's revenue and headcount, annual volumes, prerequisite links, and the deepest depth tier, into one input package for the value calculation.",
+      "why": "The docstring says each client's currency comes from its own case, because three of the four golden clients report in different currencies and a shared default would show an Australian benefit in sterling.",
+      "watch_out": "Every record must have a matching case through the id lookup, and a missing match stops the run with an error rather than a clear message."
+    },
+    {
+      "start": 589,
+      "end": 639,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s20",
+      "hash": "ed8109e5b6eb601b",
+      "title": "Reading options and checking inputs",
+      "what": "Reads the command-line choices (replay or live, and resume or not), prepares the candidate output folder, loads the golden test cases, and matches each case label to a work unit. It prints how many matched and how many are eligible to join benchmarks.",
+      "why": "The comments say the printed match rate is 1.00 by construction because the ontology is built from the same cases, so the number is labelled that way rather than presented as a measure of coverage.",
+      "watch_out": "Do not read the printed match rate as evidence that the taxonomy covers real work, since it is true by design and no benchmark set exists yet."
+    },
+    {
+      "start": 640,
+      "end": 684,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s21",
+      "hash": "4692e9b9faca486e",
+      "title": "Running each case and saving results",
+      "what": "Builds the run context for each case, then runs the analysis across all cases using checkpoints. If any case fails, it prints which cases finished, asks the user to re-run with resume, and stops. Successful records are saved as one file per case, with a summary line for each.",
+      "why": "The comments say checkpoints are always written so the process boundary is durable, but only read when resume is asked for, because resuming into a changed prompt or recording would mix two versions of output.",
+      "watch_out": "Without resume, the earlier checkpoints for this run identifier are deleted first, so starting a fresh run can erase the partial work a failed run left behind."
+    },
+    {
+      "start": 685,
+      "end": 744,
+      "kind": "function",
+      "name": "main (part 3)",
+      "id": "s22",
+      "hash": "fb7fed9880911e7f",
+      "title": "Combining cases and computing value",
+      "what": "Runs the single portfolio-level step over all records, saves the portfolio file, and prints how shared enablers are split between processes along with calibration adjustments, prerequisite links and capacity findings. It then calculates the value summary, saves it, and prints headline lines and one line per rollout wave.",
+      "why": "The value calculation runs with no model call, as the print statement says. The note about no effort-against-headcount comparison refers to a decision labelled D11, which is not explained in this file.",
+      "watch_out": "The portfolio file is written before the value calculation runs, so if the value step fails the folder can hold a new portfolio file beside an old value file."
+    },
+    {
+      "start": 745,
+      "end": 761,
+      "kind": "function",
+      "name": "main (part 4)",
+      "id": "s23",
+      "hash": "1ce568e5d92fce6a",
+      "title": "Writing the provenance manifest and summary",
+      "what": "Writes the manifest, which records the model and prompt version used by each agent, a fingerprint of the shared prompt prefix, and the depth tier. It then prints one line per agent and the output locations, and returns success.",
+      "why": "Likely reason: the manifest lets a reader trace each stored result back to the model and prompt versions that produced it.",
+      "watch_out": "The manifest is the only place model and prompt versions are recorded, so if it is not regenerated after a prompt change, its versions will not match the new results."
+    },
+    {
+      "start": 762,
+      "end": 763,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s24",
+      "hash": "28f8f5ad63cc3396",
+      "title": "Script start point",
+      "what": "When the file is run directly from the command line, it starts the main routine and passes its result back as the program's exit code, so 0 means success and 1 means a stopped run.",
+      "why": "Standard Python pattern so the file can also be imported without running the pipeline. No further reason is stated in the code.",
+      "watch_out": "An error that escapes the handled failure paths will print a traceback and skip the manifest and summary outputs."
+    }
+  ],
+  "explained_at": "2026-11-12T01:31:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the analysis pipeline over the golden test cases and writes a provenance record and output for the run.",
+  "purpose": "Produces one process record per golden case, plus a portfolio reconciliation and value figures. In replay mode it uses saved agent outputs and needs no credentials. In live mode it calls the model provider.",
+  "why": "The docstring says the replay mode is what continuous integration runs, since it is deterministic and checks assembly, validation, citations, and arithmetic without spending money.",
+  "how": "1. Read each golden case and check it against the case contract. 2. Resolve each client label to a canonical id through the normaliser, refusing any that do not match. 3. Retrieve an evidence pack per case through the broker. 4. Build the agent context and analyse each case, with a companion case beside it. 5. Assemble records, run the portfolio reduce, and compute value figures. 6. Write candidates, the portfolio, value figures, and a manifest into the results folder.",
+  "inputs": "Golden case files in evals/golden, recorded agent outputs in evals/recorded for replay, and command-line options for mode. Live mode also needs model provider credentials.",
+  "outputs": "One record per case in evals/results/candidates, plus portfolio.json, value.json and manifest.json in evals/results. The manifest records models, prompts, and the evidence snapshot.",
+  "risks": "The ontology, cost rates, and inference prices are fixture placeholders, so value figures are illustrative. Live mode does not yet capture output. A label that fails to match stops the run.",
+  "debug": "If a run stops with an unmatched label, check the case's client label and taxonomy path. If the manifest step refuses, check that agent calls booked provenance. If replay output changes, check the fixed version and run id values first.",
+  "summary_hash": "sha256:c3e048a55c68243a6a971000a29371d11f7d5dacc2754a9537350d4560315ebd"
+}

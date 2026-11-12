@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "path": "packages/orchestration/durable.py",
+  "language": "Python",
+  "lines": 142,
+  "hash": "sha256:950c2ce5463d43bb00abf9b08e0ee919944927525eb265b0071478c8940d5c53",
+  "area": "packages-orchestration",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Error handling is explicit for schema mismatch.",
+      "No test was shown in the packet, so the resume behaviour is not confirmed here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Checkpoint",
+      "meaning": "A saved copy of finished work, so the run can continue from that point."
+    },
+    {
+      "term": "Schema version",
+      "meaning": "A number that marks which shape of record a file was written in."
+    },
+    {
+      "term": "Atomic rename",
+      "meaning": "Renaming a file as one step, so a half-written file is never seen under its final name."
+    },
+    {
+      "term": "Protocol",
+      "meaning": "A written list of methods that any storage class must offer, so the storage can be swapped."
+    }
+  ],
+  "depends_on": [
+    "packages/schema",
+    "packages/schema/record.py"
+  ],
+  "used_by": [
+    "packages/orchestration/pipeline.py",
+    "scripts/optional_field_sweep.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 32,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "19e9b842569ad8e3",
+      "title": "Purpose and recovery rule",
+      "what": "Explains that a process is the unit of recovery and that finished records are stored and read back as they were, not recalculated.",
+      "why": "Recalculating after a restart could give the portfolio two different versions of analysis, which would make the final comparisons unreliable.",
+      "watch_out": "Anyone changing this file must keep the rule that stored results are read back, not run again."
+    },
+    {
+      "start": 33,
+      "end": 41,
+      "kind": "class",
+      "name": "StaleCheckpoint",
+      "id": "s2",
+      "hash": "367bdd7ab74ad0f8",
+      "title": "Stale checkpoint error",
+      "what": "Defines the error raised when a stored record was written under a different schema version.",
+      "why": "A checkpoint that almost fits would produce a complete-looking portfolio with one record in the wrong shape, which is harder to spot than a visible failure.",
+      "watch_out": "Catching this error and carrying on would silently mix schema versions."
+    },
+    {
+      "start": 42,
+      "end": 63,
+      "kind": "class",
+      "name": "CheckpointStore",
+      "id": "s3",
+      "hash": "0a3085654e30f8b8",
+      "title": "Checkpoint store contract",
+      "what": "Lists the three things any store must do: get a record, save a record, and list finished ids for a run.",
+      "why": "Keeping the contract separate lets the file store and the memory store be swapped without changing the pipeline.",
+      "watch_out": "The run id is part of every key, so two runs of the same portfolio never share checkpoints."
+    },
+    {
+      "start": 64,
+      "end": 84,
+      "kind": "class",
+      "name": "InMemoryCheckpointStore",
+      "id": "s4",
+      "hash": "d0b4e6b3c29bb925",
+      "title": "In-memory checkpoint store",
+      "what": "Keeps finished records in a dictionary for the life of one program run.",
+      "why": "The docstring says it is for tests and single runs where the failure is a bad response, not a crash. Reason beyond that is not stated in the code.",
+      "watch_out": "Nothing is saved to disk, so a crash loses all records held here."
+    },
+    {
+      "start": 85,
+      "end": 142,
+      "kind": "class",
+      "name": "FileCheckpointStore",
+      "id": "s5",
+      "hash": "dc17a0b49ac216ce",
+      "title": "File checkpoint store",
+      "what": "Saves one JSON file for each finished process inside a folder named for the run, and reads files back with a schema check.",
+      "why": "Writing to a temporary file and then renaming it means a crash mid-write leaves no truncated file under the real name. Keys are kept in the original order so the saved bytes match a fresh run.",
+      "watch_out": "Sorting the keys on write would change the saved bytes and break the byte-identical replay promise."
+    }
+  ],
+  "explained_at": "2026-11-12T01:24:21+00:00",
+  "explained_by": "haiku",
+  "summary": "Saves each finished process analysis to disk so that a failed run can resume without redoing the work already completed.",
+  "purpose": "Make a run recoverable at the boundary of each process, so one failure does not cost all earlier analyses.",
+  "why": "Recalculating finished processes under a different model version would mix two versions of analysis in one portfolio. Stored records are read back exactly as they were written.",
+  "how": "After each process completes, its record is written to a temporary file and then renamed into place. On resume, a stored record is loaded if it exists. If the stored record was written under a different schema version, loading fails with a clear error.",
+  "inputs": "A run id, a process canonical id, and a completed ProcessRecord.",
+  "outputs": "A stored ProcessRecord when asked for one, or nothing if the process has not finished. A set of finished process ids for a run.",
+  "risks": "A checkpoint from an older schema version stops the resume rather than being converted. The in-memory store is lost when the program stops.",
+  "debug": "If a resume raises StaleCheckpoint, compare the schema version in the stored file with the current build. Look for leftover partial files, which are named with a leading dot and an extension of partial.",
+  "summary_hash": "sha256:950c2ce5463d43bb00abf9b08e0ee919944927525eb265b0071478c8940d5c53"
+}

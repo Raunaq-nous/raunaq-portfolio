@@ -1,0 +1,324 @@
+{
+  "schema_version": 1,
+  "path": "scripts/optional_field_sweep.py",
+  "language": "Python",
+  "lines": 642,
+  "hash": "sha256:073a8b872e74d06da4430a0e0084c1e09f7a680f88d81d3e6330ed2b46c8800e",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only sections s1 to s3 of 22 were included in this packet, so the rest of the file cannot be checked here.",
+      "The docstring describes a completeness test, which was not shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Optional field",
+      "meaning": "A field in the data that the system is allowed to run without."
+    },
+    {
+      "term": "Golden case",
+      "meaning": "A hand-written test input with a known correct result."
+    },
+    {
+      "term": "Gate",
+      "meaning": "The set of checks that decide whether a record is consistent."
+    },
+    {
+      "term": "Crash",
+      "meaning": "An unhandled error that stops the program, which here means a missing optional field was not handled."
+    }
+  ],
+  "depends_on": [
+    "evals/run.py",
+    "evals/run_pipeline.py",
+    "packages/schema",
+    "packages/orchestration/pipeline.py",
+    "packages/orchestration/durable.py",
+    "packages/orchestration/reduce.py",
+    "packages/orchestration/replay.py"
+  ],
+  "used_by": [
+    "tests/schema/test_optional_field_sweep.py, named in the file docstring"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 59,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "8c756bc29ab0bcf7",
+      "title": "Purpose and verdict meanings",
+      "what": "The docstring explains why the sweep exists and what the four outcomes mean.",
+      "why": "Treating a working guard as a bug would bury the real defects, so the outcomes are kept separate.",
+      "watch_out": "A fail outcome means the gate worked, so it should not be treated as a bug by default."
+    },
+    {
+      "start": 60,
+      "end": 100,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "9dc9cd18aa823bc0",
+      "title": "Imports, paths and verdict types",
+      "what": "Sets up import paths for the evals folder and the package, and defines the four verdict types and the set of expected refusals.",
+      "why": "A typed refusal means the code knows the field is required at that point. Any other error suggests a consumer that never considered the field could be missing.",
+      "watch_out": "Adding a new refusal type here makes the sweep ignore it, so it should only be added on purpose."
+    },
+    {
+      "start": 101,
+      "end": 138,
+      "kind": "function",
+      "name": "optional_fields",
+      "id": "s3",
+      "hash": "fd8712cd46a3c261",
+      "title": "Optional field list",
+      "what": "Finds every optional or defaulted field in the schema models by inspecting the models themselves.",
+      "why": "A hand-kept list would go out of date. Reading the models means a new optional field appears automatically, and the completeness test then fails until a case exists for it.",
+      "watch_out": "The function imports every module in the schema package, so any import side effect runs during the sweep."
+    },
+    {
+      "start": 139,
+      "end": 183,
+      "kind": "class",
+      "name": "Omission (part 1)",
+      "id": "s4",
+      "hash": "f8dc0dd5341d471d",
+      "title": "Format of one omission case",
+      "what": "Describes one planned test: which field to remove, where that field sits in the data, and which stage of the pipeline should be tested. The sweep works through a list of these descriptions.",
+      "why": "Likely reason: keeping each test's facts in one structured record makes the full list easy to read and check.",
+      "watch_out": "The pointer must still lead to a container that holds the key, or the test quietly does nothing."
+    },
+    {
+      "start": 184,
+      "end": 243,
+      "kind": "class",
+      "name": "Omission (part 2)",
+      "id": "s5",
+      "hash": "003a35d770381927",
+      "title": "List of every omission case",
+      "what": "Lists each optional field the sweep will try to remove, grouped by origin: the case input, the recorded agent outputs, and the assembled record. Each entry asks whether the app copes when that one field is missing.",
+      "why": "The file's own comments say the list is meant to cover every optional field, so a gap here is a gap in the test.",
+      "watch_out": "Some entries are marked as fields no fixture supplies, so their result means the field was already absent, not that it was removed."
+    },
+    {
+      "start": 244,
+      "end": 298,
+      "kind": "class",
+      "name": "Omission (part 3)",
+      "id": "s6",
+      "hash": "6d99e7b3cd24bf77",
+      "title": "Omission cases for the assembled record",
+      "what": "Lists optional fields removed from the final record, plus notes that explain why some fields were chosen or skipped. Some entries pair with a recording that should refuse the missing field.",
+      "why": "Comments state that a field which is optional on the schema can only be absent when a stored record is read back, so the sweep reads records back to test it.",
+      "watch_out": "A comment says one confidence field was left out on purpose after its default was removed. Restore it only after checking that it is still optional."
+    },
+    {
+      "start": 299,
+      "end": 315,
+      "kind": "class",
+      "name": "Outcome",
+      "id": "s7",
+      "hash": "3b993c82644e77d9",
+      "title": "Result of one omission test",
+      "what": "Holds the outcome of one test: the field, its module, the verdict, a detail message, whether the key was really removed, and an optional traceback. Verdicts are survives, fails, refused, and crashes.",
+      "why": "Separate verdicts keep a safe result apart from a broken one.",
+      "watch_out": "A removed value of None means a code-level test with no removal to check, not a failed removal."
+    },
+    {
+      "start": 316,
+      "end": 337,
+      "kind": "function",
+      "name": "narrow_output_model",
+      "id": "s8",
+      "hash": "838c32de14d92cda",
+      "title": "Find the agent output model by name",
+      "what": "Given a recording's file name, searches the agents package for the output model with the matching name. The sweep uses it to check what a recording must contain.",
+      "why": "The docstring says a hand-kept list had already missed one recording, so the lookup is derived from names.",
+      "watch_out": "If a model is renamed or missing, the lookup raises an error for that recording rather than skipping it."
+    },
+    {
+      "start": 338,
+      "end": 344,
+      "kind": "function",
+      "name": "case_dir",
+      "id": "s9",
+      "hash": "d769620bced225e7",
+      "title": "Find a golden case folder",
+      "what": "Finds a case folder in the golden set by its name and stops with a clear message when none exists.",
+      "why": "Reason not stated in the code beyond being a shared lookup used by several steps.",
+      "watch_out": "If the same name appears under more than one group, only the first match is used."
+    },
+    {
+      "start": 345,
+      "end": 355,
+      "kind": "function",
+      "name": "drop",
+      "id": "s10",
+      "hash": "9e65f84a66390229",
+      "title": "Remove one key from loaded data",
+      "what": "Follows a path into loaded JSON data, removes one key if it is there, and reports whether it was removed.",
+      "why": "Every omission depends on this step, and its result tells the caller whether the removal happened.",
+      "watch_out": "A wrong path raises an error rather than returning False, so a stale pointer shows up as a crash."
+    },
+    {
+      "start": 356,
+      "end": 368,
+      "kind": "function",
+      "name": "workspace",
+      "id": "s11",
+      "hash": "85768a4c51698a61",
+      "title": "Private working copy of a case",
+      "what": "Makes a temporary copy of one case's input, its recordings, and the shared portfolio data, then deletes that copy when finished.",
+      "why": "The docstring says this keeps the sweep from editing the repository.",
+      "watch_out": "The copy is deleted even after a crash, but the sweep only ever writes inside that copy, so the repository is never the target."
+    },
+    {
+      "start": 369,
+      "end": 413,
+      "kind": "function",
+      "name": "pipeline",
+      "id": "s12",
+      "hash": "41c631c024a7dded",
+      "title": "Run the full analysis on a case",
+      "what": "Runs the whole deterministic pipeline on the case under test plus a companion case: it resolves labels, analyses, assembles the record, and runs the portfolio reduce. It returns the record for the case under test.",
+      "why": "The docstring says the reduce refuses a portfolio of one, so a companion case always runs beside it.",
+      "watch_out": "The companion is chosen by fixed case names, so renaming a golden case can break this pairing."
+    },
+    {
+      "start": 414,
+      "end": 421,
+      "kind": "function",
+      "name": "reduce_only",
+      "id": "s13",
+      "hash": "dbf2582d05bfc0b5",
+      "title": "Run only the portfolio reduce",
+      "what": "Runs only the portfolio reconciliation on records already produced, using the merged headcount figures.",
+      "why": "Likely reason: it lets a test check the reduce step without rerunning the earlier stages.",
+      "watch_out": "It depends on the portfolio folder existing in the working copy."
+    },
+    {
+      "start": 422,
+      "end": 436,
+      "kind": "function",
+      "name": "gate_checks",
+      "id": "s14",
+      "hash": "0173324b465f8ab8",
+      "title": "Run the quality gate on a record",
+      "what": "Runs the gate's record checks on the altered record and returns the names and details of any that fail, ignoring checks that were skipped.",
+      "why": "These checks are what show whether a missing field is caught downstream.",
+      "watch_out": "Only the checks listed here run, so a check added elsewhere in the gate is not included."
+    },
+    {
+      "start": 437,
+      "end": 496,
+      "kind": "function",
+      "name": "code_omission (part 1)",
+      "id": "s15",
+      "hash": "ec3e40c173bc94a3",
+      "title": "Omission tests for code-built models",
+      "what": "For the two models that are only built in code and never read from a case, builds an object with the field removed and reports whether the key was removed or refused.",
+      "why": "The docstring says these models are never read from a file, so a case cannot test them.",
+      "watch_out": "The manifest test reads the schema version from the module rather than a typed value, so a typed value would hide the test."
+    },
+    {
+      "start": 497,
+      "end": 506,
+      "kind": "function",
+      "name": "code_omission (part 2)",
+      "id": "s16",
+      "hash": "d3d5769eb0767258",
+      "title": "Unmatched label must be refused",
+      "what": "Checks that a label matching nothing in the reference vocabulary is refused by name rather than analysed.",
+      "why": "Stated in the code: an unmatched label has no canonical id, so it cannot be analysed or benchmarked.",
+      "watch_out": "Only a ValueError counts as the expected refusal; any other error type is reported as a crash."
+    },
+    {
+      "start": 507,
+      "end": 511,
+      "kind": "function",
+      "name": "verdict_for",
+      "id": "s17",
+      "hash": "9c382332f49e408b",
+      "title": "Sort errors into verdicts",
+      "what": "Decides whether an error is a planned refusal, which counts as the system working, or an unexpected crash, which means something assumed too much.",
+      "why": "The docstring states this rule directly.",
+      "watch_out": "The list of refusal error types is defined elsewhere, so a new refusal type missing from that list is counted as a crash."
+    },
+    {
+      "start": 512,
+      "end": 545,
+      "kind": "function",
+      "name": "probe_boundary",
+      "id": "s18",
+      "hash": "b24df3a0ca263fe5",
+      "title": "Check which mechanism refuses a recording",
+      "what": "Removes the field from the recording as well, runs the pipeline, and reports which error type refused it so the result can be compared with the expected one.",
+      "why": "The docstring says prose claims went out of date, so the actual error type is checked instead.",
+      "watch_out": "The workspace is set up and torn down by hand through a generator, so changes to the workspace helper must keep that cleanup working."
+    },
+    {
+      "start": 546,
+      "end": 605,
+      "kind": "function",
+      "name": "run_one (part 1)",
+      "id": "s19",
+      "hash": "f0ae60e0644ab3ef",
+      "title": "Run one omission and give its verdict",
+      "what": "Runs one omission from start to finish and returns its verdict: survives, fails a gate check, refused, or crashes. For recordings it first checks the boundary.",
+      "why": "This is the core of the sweep, with each stage (input, recording, record, code) handled on its own path.",
+      "watch_out": "A crash inside the pipeline is recorded as the finding, so an unrelated bug can look like the result for one field."
+    },
+    {
+      "start": 606,
+      "end": 606,
+      "kind": "function",
+      "name": "run_one (part 2)",
+      "id": "s20",
+      "hash": "da39a3ee5e6b4b0d",
+      "title": "End of the single-omission run",
+      "what": "Holds only the closing part of the single-omission function, with no logic of its own in this block.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 607,
+      "end": 640,
+      "kind": "function",
+      "name": "main",
+      "id": "s21",
+      "hash": "8e1c1a1df3c54c00",
+      "title": "Command-line entry and summary table",
+      "what": "Reads the optional field and trace arguments, runs the chosen omissions, prints a table of verdicts with a count of each, and optionally prints tracebacks.",
+      "why": "Lets the owner run the full sweep or a single field.",
+      "watch_out": "The exit status is 1 only when a crash happens; failures and refusals still exit with 0."
+    },
+    {
+      "start": 641,
+      "end": 642,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s22",
+      "hash": "a19977043f22fb92",
+      "title": "Script start",
+      "what": "Starts the sweep when the file is run directly and passes its result to the system as the exit status.",
+      "why": "Standard pattern for a runnable Python script.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T01:25:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Removes each optional field from the system, one at a time, and runs a case to see whether the system survives, refuses on purpose, or crashes.",
+  "purpose": "Find places where code assumes an optional field is always present, since a golden test case would never reveal them.",
+  "why": "The docstring explains that test cases supply every field, so the branch where a field is missing is never tested. A mechanical sweep covers that gap.",
+  "how": "The sweep lists optional fields from the schema models, drops each one at the point it enters the system, runs the pipeline and the gate checks, and sorts the result into survives, fails, refused or crashes.",
+  "inputs": "The schema models, the golden test cases, the recorded outputs, and an optional field name to run one case.",
+  "outputs": "A table of verdicts for each field, or a result for one field.",
+  "risks": "A real defect can be counted as a refusal if a guard raises an expected error. Only some omission cases are visible in this packet, so the coverage cannot be judged here.",
+  "debug": "Run the sweep for one field to see the full error trace. A crash means a consumer assumed the field was present. A fail means the gate caught an inconsistent record.",
+  "summary_hash": "sha256:073a8b872e74d06da4430a0e0084c1e09f7a680f88d81d3e6330ed2b46c8800e"
+}

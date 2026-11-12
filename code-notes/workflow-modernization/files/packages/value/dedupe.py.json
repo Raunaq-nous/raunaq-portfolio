@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "path": "packages/value/dedupe.py",
+  "language": "Python",
+  "lines": 170,
+  "hash": "sha256:bbd5ef7eb4adbd8764e682a23a8b24e8cff081bd4afdb54fdbe8128675d3497b",
+  "area": "packages-value",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for this file is visible in the packet.",
+      "A process missing from the baseline map is silently treated as zero size, which changes its split."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Capability (enabler)",
+      "meaning": "A shared resource that several processes depend on."
+    },
+    {
+      "term": "Pool",
+      "meaning": "The benefit of one capability, counted once."
+    },
+    {
+      "term": "Claim",
+      "meaning": "The benefit a process says a capability gives it."
+    },
+    {
+      "term": "Baseline effort",
+      "meaning": "The current size of a process's workload, used as the weight for splitting."
+    },
+    {
+      "term": "Gross total",
+      "meaning": "The sum of all processes' effort before counting shared capabilities once."
+    },
+    {
+      "term": "Cap",
+      "meaning": "An upper limit that a credited amount may not exceed."
+    }
+  ],
+  "depends_on": [
+    "packages/schema/enums.py",
+    "packages/value/attribution.py"
+  ],
+  "used_by": [
+    "packages/value/pipeline.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 38,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "51a590dc7243b5ae",
+      "title": "Rules for counting shared capability once",
+      "what": "Explains the three-step rule: split each process's effort evenly across its capabilities, count each capability at its largest claim, then divide that pool back by baseline size with each share capped. Processes with no capability keep their full effort.",
+      "why": "Stated in the docstring: counting a capability once stops the headline inflating. The even split avoids inventing weights, and the largest claim is treated as the most complete view.",
+      "watch_out": "Changing the even split or the largest-claim rule changes every de-duplicated total in the portfolio, so it should be argued as a change of method."
+    },
+    {
+      "start": 39,
+      "end": 74,
+      "kind": "class",
+      "name": "DeduplicationResult",
+      "id": "s2",
+      "hash": "6b6c3a13e0906223",
+      "title": "Stored result of deduplication",
+      "what": "A plain container holding the credited amounts per process, the pools per capability, the gross total and the de-duplicated total. It computes the duplication ratio only when asked.",
+      "why": "Stated in the docstring: the result is built once and then read. The ratio is computed on request because a low band can legitimately de-duplicate to zero.",
+      "watch_out": "Asking for the ratio on a band that de-duplicates to zero raises an error. Callers should ask for the ratio only on the base case."
+    },
+    {
+      "start": 75,
+      "end": 118,
+      "kind": "function",
+      "name": "deduplicate",
+      "id": "s3",
+      "hash": "43f0b1276b7495c5",
+      "title": "Counting shared capabilities once",
+      "what": "Takes each process's released effort and its declared capabilities, and returns how much each process is credited after shared capabilities are counted once. Processes with no capability keep their whole effort. It also records the pools and the totals before and after.",
+      "why": "Stated in the docstring: baseline size, not claimed effort, is the weight. This stops an optimistic estimate from taking the largest share of the pool it inflated.",
+      "watch_out": "An empty set of effort raises an error. A process missing from the baseline map is treated as zero size, which silently changes its share."
+    },
+    {
+      "start": 119,
+      "end": 167,
+      "kind": "function",
+      "name": "capped_split",
+      "id": "s4",
+      "hash": "b3af62736d64d01d",
+      "title": "Sharing a pool without over-crediting",
+      "what": "Shares a pool among its claimants in proportion to their weights, but never gives a claimant more than it claimed. Any excess is passed to the claimants still under their claim, and this repeats until nothing is left to move.",
+      "why": "Stated in the docstring: a small process with a large baseline could otherwise be credited many times its own claim, which no report can defend. The total stays the same.",
+      "watch_out": "The loop relies on small tolerance values. Changing them could stop the loop early or leave a small amount unallocated."
+    },
+    {
+      "start": 168,
+      "end": 170,
+      "kind": "function",
+      "name": "pool_size",
+      "id": "s5",
+      "hash": "fda472d753649424",
+      "title": "Size of a shared capability's pool",
+      "what": "Returns the largest single claim on a capability, which is the amount counted once for that capability.",
+      "why": "Stated in the docstring: the largest claim is the most complete view of what the capability delivers.",
+      "watch_out": "The main counting function works out the same figure inline, so changing one without the other would split the rule. An empty set of claims raises an error."
+    }
+  ],
+  "explained_at": "2026-11-12T01:20:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Counts each shared capability once across the processes that use it, credits each process a capped share, and reports the total before and after.",
+  "purpose": "Stops a shared capability's benefit being counted once per process, which would inflate the portfolio headline.",
+  "why": "Stated in the docstring: a headline inflated by repeated counting is the first number a finance team tests. The rules are written so they can be argued with.",
+  "how": "Split each process's effort evenly across its declared capabilities. For each capability, take the largest single claim as its pool. Divide each pool back across claimants in proportion to baseline size, with each share capped at that claimant's own claim. Credit processes with no capability their full effort. Keep the gross and de-duplicated totals.",
+  "inputs": "Released effort per process, the capabilities each process declares, and baseline effort per process.",
+  "outputs": "A result holding credited amounts per process, pools per capability, the gross total, the de-duplicated total, and a ratio on request.",
+  "risks": "The even split and the largest-claim rule shape every total. A process missing from the baseline counts as zero size. Empty input raises an error. The ratio raises an error for a zero band.",
+  "debug": "If totals look high, check each process declares its capabilities. If one process gets unexpected credit, compare its baseline with its claim. If the ratio raises an error on a low band, that is expected, so ask for the base case. An empty input error means no effort was passed in.",
+  "summary_hash": "sha256:bbd5ef7eb4adbd8764e682a23a8b24e8cff081bd4afdb54fdbe8128675d3497b"
+}

@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "path": "packages/value/run_cost.py",
+  "language": "Python",
+  "lines": 122,
+  "hash": "sha256:0b43fed6a17186b0f0f3348a979b78a10068ae80c95b585ae4a87b6ee2eb1b68",
+  "area": "packages-value",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in this packet.",
+      "Inference can silently be zero when a price is missing, although the flag reports it."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Inference",
+      "meaning": "The cost of the model answering a request, charged per token of input and output."
+    },
+    {
+      "term": "Token",
+      "meaning": "A small piece of text, roughly a word fragment, that models are billed by."
+    },
+    {
+      "term": "Prompt cache",
+      "meaning": "A discount for input text the provider has already seen recently."
+    },
+    {
+      "term": "Batch API",
+      "meaning": "A cheaper way to send many requests together when they do not need an immediate answer."
+    },
+    {
+      "term": "FTE",
+      "meaning": "Full-time equivalent: one person working full time for a year, used as a unit of effort and cost."
+    }
+  ],
+  "depends_on": [
+    "packages/value/cost_basis.py",
+    "packages/value/results.py",
+    "pydantic"
+  ],
+  "used_by": [
+    "packages/value/pipeline.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "0581143b9e2e9dec",
+      "title": "Purpose and pricing rule",
+      "what": "Describes the five parts of the yearly running cost and states that prices come from the input, not from the code.",
+      "why": "The docstring explains that a price written into the code would look like a quoted figure and would go stale.",
+      "watch_out": "Without supplied prices, the inference line is zero and is marked unpriced."
+    },
+    {
+      "start": 31,
+      "end": 58,
+      "kind": "class",
+      "name": "RunCostAssumptions",
+      "id": "s2",
+      "hash": "be619ecbf23af995",
+      "title": "Assumptions the running cost rests on",
+      "what": "Holds the inputs for the running cost: the production model, token counts per call, cache and batch shares, and per-agent and per-FTE costs.",
+      "why": "The docstring says the production model must be named separately from the model used for analysis, because the estate runs far more often.",
+      "watch_out": "The cache and batch shares must stay between zero and one, and the structure enforces this."
+    },
+    {
+      "start": 59,
+      "end": 93,
+      "kind": "function",
+      "name": "inference_cost",
+      "id": "s3",
+      "hash": "218f563dda57989d",
+      "title": "Yearly model spend",
+      "what": "Works out the yearly inference spend from the number of calls, token sizes, the cache discount and the batch discount. It also reports whether a price was available.",
+      "why": "The docstring explains the cache discount must apply only to the cached share. Applying it to all input would make the estimate far too low. The call count is passed in directly after an earlier version reached the same answer only by cancelling factors.",
+      "watch_out": "With no price for the production model, it returns zero and false, and the caller must show that as unpriced."
+    },
+    {
+      "start": 94,
+      "end": 122,
+      "kind": "function",
+      "name": "run_cost, total_of",
+      "id": "s4",
+      "hash": "646ab06c8b58e236",
+      "title": "Five-part cost and currency total",
+      "what": "Builds the five-part running cost for one currency. The total function adds up all the breakdowns for one currency.",
+      "why": "Reason not stated in the code for the total function. The five parts follow the list given in the file's header.",
+      "watch_out": "Every part uses the cost per FTE from the basis, so a wrong rate shifts several parts at once."
+    }
+  ],
+  "explained_at": "2026-11-12T01:23:04+00:00",
+  "explained_by": "haiku",
+  "summary": "Works out what it costs each year to run the designed AI agents, split into five parts, with model inference priced from supplied rates.",
+  "purpose": "Gives the yearly running cost of the estate per currency, so the net benefit is not overstated by ignoring costs that continue after launch.",
+  "why": "The docstring says prices must be supplied, never assumed, because a hard-coded price would look like a quoted figure and go stale when rates change.",
+  "how": "Step 1: take the assumptions, such as the production model, token counts, cache and batch shares, and per-agent costs. Step 2: work out inference spend from the yearly calls, applying the cache discount only to the cached share and the batch discount to the batched share. Step 3: if the production model has no price, return zero and mark it unpriced. Step 4: add the other four parts, which depend on the number of agents and the cost per FTE. Step 5: total the parts for each currency.",
+  "inputs": "Run cost assumptions, a cost basis with prices and cost per FTE for a currency, the yearly agent call count and the number of agents.",
+  "outputs": "A RunCostBreakdown per currency, with each part, a total and a priced flag.",
+  "risks": "A missing price silently becomes zero spend, flagged only by the priced value. Cache and batch shares must be given correctly, since the discounts are applied to them directly. The estate's cost follows call volume, so a wrong volume is a large error.",
+  "debug": "If inference is zero, check the priced flag and whether the production model name matches a price in the basis. If totals look too low, check the agent count and the yearly volume. If one currency is off, check its cost per FTE.",
+  "summary_hash": "sha256:0b43fed6a17186b0f0f3348a979b78a10068ae80c95b585ae4a87b6ee2eb1b68"
+}

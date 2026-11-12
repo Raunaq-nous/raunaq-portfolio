@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "path": "frontend/scripts/collect-artifacts.mjs",
+  "language": "JavaScript",
+  "lines": 236,
+  "hash": "sha256:b26b60da89e78b78e61b44a0582f51c314548648ad0de15a9608b76ff757eea0",
+  "area": "frontend-scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The failure paths are covered by collect-artifacts.test.mjs, which is real evidence that the main checks work.",
+      "A golden case with a missing input file is skipped without any message, which the file does not flag.",
+      "Shape checks are shallow by design, so files with the right keys but wrong values pass."
+    ]
+  },
+  "terms": [
+    {
+      "term": "bundle",
+      "meaning": "one combined file that holds everything the viewer needs"
+    },
+    {
+      "term": "artefact",
+      "meaning": "a file that the pipeline produced, such as a result or a manifest"
+    },
+    {
+      "term": "replay",
+      "meaning": "re-running the pipeline's checking steps over saved outputs instead of calling a live model"
+    },
+    {
+      "term": "shape check",
+      "meaning": "a test that a file has the expected top-level fields and types, without checking the values inside"
+    },
+    {
+      "term": "placeholder",
+      "meaning": "a stand-in value that looks like real data"
+    },
+    {
+      "term": "viewer",
+      "meaning": "the web page that displays the results"
+    },
+    {
+      "term": "Node.js",
+      "meaning": "the program that runs JavaScript outside a browser, used here to run this script"
+    }
+  ],
+  "depends_on": [
+    "Node.js built-in modules node:fs and node:path",
+    "evals/results/candidates/*.json",
+    "evals/results/value.json, evals/results/manifest.json and evals/results/portfolio.json",
+    "evals/golden/<industry>/<case>/input.json"
+  ],
+  "used_by": [
+    "frontend/src/App.tsx, the viewer, which the file's comments say imports the bundle",
+    "frontend/scripts/collect-artifacts.test.mjs"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 43,
+      "kind": "setup",
+      "name": "File setup, missing, malformed",
+      "id": "s1",
+      "hash": "58c124c1c4be476c",
+      "title": "Setup, paths and collected problems",
+      "what": "Sets the repository root and output location, which can be overridden for tests, and prepares two lists that collect missing files and malformed files.",
+      "why": "The comments say the overrides exist so that tests can run the real failure paths inside a temporary folder.",
+      "watch_out": "The root location is derived from this script's own file location, so moving the script changes which files it reads."
+    },
+    {
+      "start": 44,
+      "end": 60,
+      "kind": "function",
+      "name": "readJson",
+      "id": "s2",
+      "hash": "1ec948d1c327625a",
+      "title": "Reading one JSON file safely",
+      "what": "Reads and parses one file. A missing file is added to the missing list. A file that cannot be parsed has its error recorded with the file name instead of crashing the script.",
+      "why": "The comments say a raw parse error gives a byte position but no file name, which is the opposite of what the script promises.",
+      "watch_out": "The option to treat a file as optional is never used by any caller here, and a caller that sets it would get null with no warning."
+    },
+    {
+      "start": 61,
+      "end": 100,
+      "kind": "value",
+      "name": "RECORD_KEYS",
+      "id": "s3",
+      "hash": "a929b560c6e55488",
+      "title": "Fields the viewer needs from each record",
+      "what": "Lists the top-level fields every candidate record must have, which the viewer reads for each process.",
+      "why": "The comments say an empty object once passed every check and crashed the page on its first render, so the list was added.",
+      "watch_out": "This list must stay in step with the record schema, so a new field the viewer reads needs adding here too."
+    },
+    {
+      "start": 101,
+      "end": 130,
+      "kind": "value",
+      "name": "REQUIRED_KEYS",
+      "id": "s4",
+      "hash": "49ed96605f360b73",
+      "title": "Required fields for the three result files",
+      "what": "Lists the top-level fields required in the value, manifest and portfolio result files.",
+      "why": "Reason stated in the code: the viewer builds its pages from these fields, so their absence would break rendering.",
+      "watch_out": "A field the viewer reads but that is not listed here can be missing without any warning."
+    },
+    {
+      "start": 131,
+      "end": 151,
+      "kind": "function",
+      "name": "checkShape",
+      "id": "s5",
+      "hash": "9ff549494768e99b",
+      "title": "Checking a file has the expected shape",
+      "what": "Confirms a parsed file is an object, has all its expected top-level fields, and has no expected list field that is empty. Each problem is added to the malformed list with the file name.",
+      "why": "Likely reason: the empty-list check stops the viewer from showing a blank section without any explanation.",
+      "watch_out": "A file with all the right keys but wrong values still passes this check."
+    },
+    {
+      "start": 152,
+      "end": 160,
+      "kind": "function",
+      "name": "listDir",
+      "id": "s6",
+      "hash": "a768910ed2c5a164",
+      "title": "Listing files in a folder",
+      "what": "Returns the names of the files in a folder, or records the folder as missing and returns an empty list.",
+      "why": "Likely reason: keeps missing-folder reporting consistent with missing-file reporting.",
+      "watch_out": "An existing but empty folder is not flagged here; the later check on candidate records catches that case instead."
+    },
+    {
+      "start": 161,
+      "end": 186,
+      "kind": "function",
+      "name": "collectCases",
+      "id": "s7",
+      "hash": "9cac377aaaeec56d",
+      "title": "Gathering golden case inputs",
+      "what": "Walks the golden case folders, reads each case's input file, and returns the cases keyed by case id with their industry added. Folders with no input file are skipped.",
+      "why": "The comments say these reads go through the safe reader so that a broken input is reported with its file name.",
+      "watch_out": "A case folder with no input file is skipped silently, so the viewer can show fewer evidence packs with no warning."
+    },
+    {
+      "start": 187,
+      "end": 192,
+      "kind": "function",
+      "name": "loadChecked",
+      "id": "s8",
+      "hash": "76d18b96fb8ec14a",
+      "title": "Reading and checking a file together",
+      "what": "Reads a result file and runs the shape check on it in one step, returning what was read.",
+      "why": "Likely reason: keeps reading and checking together so that no file is used without being checked.",
+      "watch_out": "A broken file returns null, so callers rely on the main script's error list to stop the run, not on the returned value."
+    },
+    {
+      "start": 193,
+      "end": 201,
+      "kind": "value",
+      "name": "records",
+      "id": "s9",
+      "hash": "fdf507e419ecab79",
+      "title": "Collecting every candidate record",
+      "what": "Reads every JSON file in the candidate folder into a map keyed by file name without the extension. If none are found, the candidate folder is recorded as missing.",
+      "why": "Reason stated in the code: all candidate records share one key list, so each file is checked the same way.",
+      "watch_out": "Only files ending in .json are read, so a record saved under another extension is silently ignored."
+    },
+    {
+      "start": 202,
+      "end": 236,
+      "kind": "value",
+      "name": "bundle",
+      "id": "s10",
+      "hash": "a5cd8277b4675275",
+      "title": "Writing the bundle or stopping",
+      "what": "Assembles everything into one object. If any file was missing or malformed, it prints each problem with a hint to run the replay and exits with failure without writing. Otherwise it creates the output folder, writes the bundle, and prints the record count, case count and run identifier.",
+      "why": "The comments say a viewer that renders an empty result when a file is absent cannot be told apart from a truly empty result, so writing nothing is the safer choice.",
+      "watch_out": "The success line reads the manifest's run identifier directly, relying on the earlier shape check to guarantee that it exists."
+    }
+  ],
+  "explained_at": "2026-11-12T01:31:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Gathers the output files from a replay into one bundle the web viewer can import, and refuses to write that bundle if any required file is missing or has the wrong shape.",
+  "purpose": "Makes the viewer's data a single generated file, and makes a broken or missing run stop loudly rather than show empty pages.",
+  "why": "The header says a viewer that shows an empty result when a value file is absent cannot be told apart from a genuinely empty portfolio, so the script names the problem instead.",
+  "how": "Sets the repository root and output location, which tests can override. Reads the value, manifest and portfolio files and checks each has the keys the viewer uses. Reads each candidate record and checks it against the record key list. Reads each golden case input and tags it with its industry folder. If anything is missing or malformed, it prints the list of problems and a hint to run the replay, then exits with failure without writing. Otherwise it writes the bundle file and prints a one-line summary.",
+  "inputs": "Result files under the results folder (candidate records, value, manifest, portfolio) and golden case inputs under the golden folder. Two optional environment settings, VIEWER_REPO_ROOT and VIEWER_OUTPUT, redirect the reads and the output and are used by the tests.",
+  "outputs": "On success, one bundle file at frontend/src/generated/artifacts.json by default, and a one-line success message. On failure, messages on the error output and exit code 1, with no file written.",
+  "risks": "A golden case whose input file is missing is skipped without any message, so the viewer can show fewer evidence packs with no warning. The shape check is shallow, so a file with the right top-level keys but wrong contents passes. The folder path is derived from the file's URL, which may break for folder names with spaces or unusual characters.",
+  "debug": "Read the error list first, since each line names a file and a problem. If the script exits with missing or malformed, run the replay command named in the message and try again. If the viewer shows fewer cases than expected, check the golden folder for missing input files. Run the companion test file to see which failure paths still behave as described. Compare the run identifier in the bundle with the one in the manifest.",
+  "summary_hash": "sha256:b26b60da89e78b78e61b44a0582f51c314548648ad0de15a9608b76ff757eea0"
+}

@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "path": "tests/knowledge/test_normalise.py",
+  "language": "Python",
+  "lines": 173,
+  "hash": "sha256:68b162c09d71538fd60071bc910f042a99eebb379a5529538df7d93a199cd8c7",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Covers the order of matching, the model fallback, rejection of invented identifiers, determinism and metrics.",
+      "Not executed in this review, so the current pass state is unverified."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ontology",
+      "meaning": "The agreed list of canonical process names, with their labels, aliases and places in a taxonomy."
+    },
+    {
+      "term": "canonical identifier",
+      "meaning": "The single stable code given to one process, used to compare processes across clients."
+    },
+    {
+      "term": "alias",
+      "meaning": "An alternative name for a process that is accepted as an exact-type match."
+    },
+    {
+      "term": "embedding",
+      "meaning": "A numeric fingerprint of text used to measure how similar two labels are."
+    },
+    {
+      "term": "token overlap",
+      "meaning": "A simple similarity method that counts the shared words between two labels."
+    },
+    {
+      "term": "match rate",
+      "meaning": "The share of labels that were resolved to a known process."
+    },
+    {
+      "term": "deterministic",
+      "meaning": "Producing the same output every time for the same input."
+    }
+  ],
+  "depends_on": [
+    "packages/knowledge/normalise.py",
+    "packages/schema.py"
+  ],
+  "used_by": [
+    "Run by pytest as part of the Python test suite"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 45,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6ddbf5f137398a45",
+      "title": "Setup and sample ontology",
+      "what": "Loads the matching tools and builds a three-process sample ontology with labels and aliases.",
+      "why": "Gives every test a small, known set of processes to match against.",
+      "watch_out": "Tests depend on these exact labels and aliases, so editing them changes expected results."
+    },
+    {
+      "start": 46,
+      "end": 49,
+      "kind": "function",
+      "name": "row",
+      "id": "s2",
+      "hash": "778b37426cfea49b",
+      "title": "Making a sample label row",
+      "what": "Builds one client label row with a taxonomy path and a leaf flag.",
+      "why": "Keeps input rows consistent across tests.",
+      "watch_out": ""
+    },
+    {
+      "start": 50,
+      "end": 53,
+      "kind": "function",
+      "name": "resolve",
+      "id": "s3",
+      "hash": "f868d014a0fd5817",
+      "title": "Resolving one label",
+      "what": "Runs the single-label matcher with the sample ontology and the token overlap similarity method.",
+      "why": "A shared helper keeps each test short and focused on the outcome.",
+      "watch_out": "Returns a loosely typed value, so tests need type ignore comments to read its fields."
+    },
+    {
+      "start": 54,
+      "end": 91,
+      "kind": "class",
+      "name": "TestTheCascadeOrder",
+      "id": "s4",
+      "hash": "1f1d34e8fa60480c",
+      "title": "The matching order",
+      "what": "Checks that exact labels match exactly, that case and punctuation do not block a match, that aliases match by alias, that a near miss matches by similarity above the threshold, that an unknown label is unmatched, and that a weak similarity is not accepted.",
+      "why": "The order runs from most certain to least certain, and a guess must not look like a confident match.",
+      "watch_out": "The near-miss and weak-similarity cases depend on the threshold and the similarity method, so both must change together."
+    },
+    {
+      "start": 92,
+      "end": 128,
+      "kind": "class",
+      "name": "TestTheModelFallback",
+      "id": "s5",
+      "hash": "58eaa51db1da71d6",
+      "title": "The model fallback",
+      "what": "Checks that the model is not asked when an earlier method already matched, that it is asked only after similarity fails, that a model declining yields unmatched, and that a made-up identifier is rejected with an error.",
+      "why": "Asking a model costs money and can be wrong, so it is the last resort. A wrong identifier would merge two different processes.",
+      "watch_out": "The stub resolver answers with fixed values, so these tests do not show how the real model behaves."
+    },
+    {
+      "start": 129,
+      "end": 145,
+      "kind": "class",
+      "name": "TestDeterminism",
+      "id": "s6",
+      "hash": "0a23d1fc056593f2",
+      "title": "Same input gives the same output",
+      "what": "Checks that normalising the same taxonomy twice gives the same result, that ties are broken by identifier rather than by order of entry, and that case, punctuation and spacing are folded in the canonical text.",
+      "why": "Without a fixed tie break, the same input could match differently from one run to the next.",
+      "watch_out": "The tie test depends on the ontology having entries with equal scores for the chosen query."
+    },
+    {
+      "start": 146,
+      "end": 173,
+      "kind": "class",
+      "name": "TestTheResultMetrics",
+      "id": "s7",
+      "hash": "aafa5f271b089dab",
+      "title": "Result metrics and recorded alternatives",
+      "what": "Checks that the match rate counts resolved labels correctly, that the ontology version is recorded, that an empty input is legal, that alternatives are recorded for review, and that the chosen process is not listed as its own alternative.",
+      "why": "The match rate is the grading measure, and the version is needed because identifiers only mean something within one version.",
+      "watch_out": "The alternatives test assumes alternatives are listed with scores no higher than the chosen match."
+    }
+  ],
+  "explained_at": "2026-11-12T00:51:30+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the normaliser that maps each client process label to a single canonical process identifier, trying exact, alias, similarity and finally model matching in that order.",
+  "purpose": "To measure matching accuracy, so the same process named two ways is recognised as one, and a process the ontology does not know is marked as unmatched.",
+  "why": "A wrong identifier would merge two different processes and corrupt every later comparison. The cheapest and most certain methods come first to keep costs down and results reliable.",
+  "how": "Each test builds a small ontology of three processes, normalises sample labels, and checks which method matched and which identifier was chosen. The fallback tests check that a model is only asked when earlier methods fail, and that a made-up identifier is rejected.",
+  "inputs": "A small fixed ontology with labels, aliases and taxonomy paths, plus sample client label rows.",
+  "outputs": "Match results with method, identifier, score, alternatives, match rate, and the ontology version used.",
+  "risks": "A changed similarity threshold or embedding method can move a near-miss label between matched and unmatched. The model fallback could also answer with an identifier that exists in no ontology, which the code rejects.",
+  "debug": "If a label resolves to the wrong method, print its match method and score and compare them to the threshold. If the model fallback tests fail, check the stub answers and that the ontology still contains the identifiers used.",
+  "summary_hash": "sha256:68b162c09d71538fd60071bc910f042a99eebb379a5529538df7d93a199cd8c7"
+}

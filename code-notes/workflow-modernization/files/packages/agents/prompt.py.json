@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/prompt.py",
+  "language": "Python",
+  "lines": 199,
+  "hash": "sha256:e7cbca311f5ba5fec3139b6fa5a72608ad68334d3033b902431d6be6cb768a6e",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The file names a test for byte stability, but that test is not visible in this file.",
+      "The token estimate is a rule of thumb rather than an exact count.",
+      "Text passed in is trusted as given; the file does not check it for per-process content."
+    ]
+  },
+  "terms": [
+    {
+      "term": "prompt cache",
+      "meaning": "a stored copy of the repeated start of a prompt that the provider can reuse, which lowers cost"
+    },
+    {
+      "term": "fingerprint",
+      "meaning": "a short code computed from text that changes whenever the text changes"
+    },
+    {
+      "term": "token",
+      "meaning": "a small piece of text, roughly four characters, that the model is billed for"
+    },
+    {
+      "term": "normalise",
+      "meaning": "to tidy text into one standard form so that the same content always produces identical bytes"
+    },
+    {
+      "term": "NFC",
+      "meaning": "a standard way of encoding accented characters so that equal text compares equal"
+    }
+  ],
+  "depends_on": [
+    "packages/knowledge/evidence.py",
+    "Python standard library (hashlib, re, unicodedata, dataclasses)"
+  ],
+  "used_by": [
+    "packages/agents/provenance.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 54,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "37093f86ccc08bbe",
+      "title": "Order of the prompt and the cache",
+      "what": "Explains the layout of what is sent to the model. Stable background comes first: the method, industry context and taxonomy. A cache marker follows, then the per-process evidence and the process itself. The file lists the three things that would silently ruin cache reuse.",
+      "why": "Stated in the file: stable content placed first lets the provider reuse it, which is the main cost saving for a run.",
+      "watch_out": "A timestamp or per-process value in the stable part does not cause an error; it only makes every call cost more."
+    },
+    {
+      "start": 55,
+      "end": 68,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "b35bb1951ea5e83c",
+      "title": "Rules every stage follows",
+      "what": "The method text shared by all stages. It tells the model to cite only the evidence it was given, to state no totals or money, not to claim its own confidence, and to treat fractions as shares of effort rather than elapsed time.",
+      "why": "Likely reason: it stops invented citations and arithmetic being written into model answers, since code is meant to do the arithmetic.",
+      "watch_out": "These rules are instructions to the model; this section does not check them."
+    },
+    {
+      "start": 69,
+      "end": 82,
+      "kind": "function",
+      "name": "normalise",
+      "id": "s3",
+      "hash": "1788f5f780e30650",
+      "title": "Tidying text so it repeats exactly",
+      "what": "Standardises any piece of text: it fixes the character encoding, unifies line endings, removes trailing spaces, collapses extra blank lines and leaves exactly one final newline.",
+      "why": "Stated in the file: equal content must give equal bytes, or the cache sees a new prefix and does not reuse it.",
+      "watch_out": "This function is the one a test protects. A change to it changes every cache key at once."
+    },
+    {
+      "start": 83,
+      "end": 108,
+      "kind": "class",
+      "name": "CachedPrefix",
+      "id": "s4",
+      "hash": "f2f6854167ed970b",
+      "title": "The cached block",
+      "what": "Holds the stable prefix text and a short fingerprint of it. It can produce the system block with the cache marker placed at the end of the text.",
+      "why": "The fingerprint lets a run record which prefix each call used, so a changed prefix can be spotted later.",
+      "watch_out": "Any change to the prefix text changes its fingerprint and causes a cold cache on the next run."
+    },
+    {
+      "start": 109,
+      "end": 123,
+      "kind": "function",
+      "name": "build_prefix",
+      "id": "s5",
+      "hash": "9167f08a1288b850",
+      "title": "Building the stable prefix",
+      "what": "Joins the method, industry context and taxonomy into one normalised block. It uses only run-level values, so the same inputs always produce the same text.",
+      "why": "Stated in the file: the function takes no clock, process or counter, which keeps the prefix identical across calls in a run.",
+      "watch_out": "It accepts whatever industry text it is given. If that text contains per-process content, the cache splits without any error."
+    },
+    {
+      "start": 124,
+      "end": 153,
+      "kind": "function",
+      "name": "render_evidence",
+      "id": "s6",
+      "hash": "2157a1acd42e3d20",
+      "title": "Turning evidence into text",
+      "what": "Writes each evidence item with its id, authority tier, date, source store and reference, followed by its excerpt. If the pack is empty, it says so and tells the model to mark every part as hypothesis rather than observation.",
+      "why": "Stated in the file: a model told that nothing was found behaves differently from one shown an empty list and left to guess why.",
+      "watch_out": "Excerpts are inserted as given. Very long excerpts increase cost and the token estimate."
+    },
+    {
+      "start": 154,
+      "end": 163,
+      "kind": "function",
+      "name": "build_messages",
+      "id": "s7",
+      "hash": "b97e66e7e404f17b",
+      "title": "Assembling the per-call message",
+      "what": "Combines the evidence text and the task text into one user message. This message sits after the cache marker.",
+      "why": "Stated in the file: anything that varies per process must sit after the marker, or the cache would be invalidated on every call.",
+      "watch_out": "The message is a single text block, so any structure the model needs must be written into the text itself."
+    },
+    {
+      "start": 164,
+      "end": 185,
+      "kind": "function",
+      "name": "prompt_version",
+      "id": "s8",
+      "hash": "fb6ff5eba9c9725d",
+      "title": "Fingerprint of a task template",
+      "what": "Computes a short fingerprint of an agent's task wording. The run records it so that a change in output can be traced to a change in wording.",
+      "why": "Stated in the file: this lets a difference between two runs be blamed on the prompt or on the model.",
+      "watch_out": "The fingerprint depends on the template text passed in. If a caller passes text that has already been filled in, the fingerprint will differ for each process."
+    },
+    {
+      "start": 186,
+      "end": 199,
+      "kind": "function",
+      "name": "estimate_prompt_tokens",
+      "id": "s9",
+      "hash": "8420252bdc8a5cd9",
+      "title": "Estimating input size before a call",
+      "what": "Gives a rough count of the input tokens for a call, covering the prefix and the per-call messages. The count is rounded up so a short call is never estimated at zero. It is used to decide whether a call is affordable.",
+      "why": "Stated in the file: ignoring the input side of a call entirely was the failure this replaces.",
+      "watch_out": "The count assumes about four characters per token, so it can be wrong. The provider's own count is what gets recorded afterwards."
+    }
+  ],
+  "explained_at": "2026-11-12T01:18:02+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the text sent to the model. It arranges the stable background first so the provider can reuse it at lower cost, and it produces the fingerprints recorded in each run.",
+  "purpose": "Produces the cached prefix and the per-call messages for every agent call, and estimates how many input tokens a call will use.",
+  "why": "Stated in the file: a stable beginning of the prompt can be reused by the provider, which makes repeated calls much cheaper. That reuse only works if the bytes are identical every time, so the code normalises all text.",
+  "how": "Normalises the method, industry context and taxonomy text, then joins them into one stable prefix with a cache marker at its end. Per-process evidence and the task are added after the marker. Fingerprints are computed for the record, and a rough token count is returned for budget checks.",
+  "inputs": "Industry context text, a taxonomy summary, an evidence pack, the task text and the template text.",
+  "outputs": "A CachedPrefix with a system block carrying the cache marker, the message list for the call, short fingerprints of the prefix and templates, and a token estimate.",
+  "risks": "A timestamp or a per-process value in the stable part silently raises cost without any error. Changing the normalise function changes every cache key at once. The token estimate is a rough rule of thumb.",
+  "debug": "If cost is high, compare the prefix fingerprints across calls in one run; differing values mean the stable part changed. If the evidence text looks wrong, check whether the pack is empty. If the token estimate looks off, compare it with the provider's own count.",
+  "summary_hash": "sha256:e7cbca311f5ba5fec3139b6fa5a72608ad68334d3033b902431d6be6cb768a6e"
+}

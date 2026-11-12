@@ -1,0 +1,311 @@
+{
+  "schema_version": 1,
+  "path": "tests/frontend/test_viewer_constraints.py",
+  "language": "Python",
+  "lines": 658,
+  "hash": "sha256:74fecf2725bc1a5118f7416078b8b4e82cb728502b820e02f51b7bac0a664fb5",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Two build tests skip silently when Node.js is missing.",
+      "Raw text matching can flag harmless text, so some failures need a human to judge.",
+      "These checks were not run in this review, so their current pass or fail state is unknown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "pytest",
+      "meaning": "The Python test runner that executes these checks."
+    },
+    {
+      "term": "regular expression",
+      "meaning": "A pattern language for finding text that fits a shape, such as a class name."
+    },
+    {
+      "term": "stylesheet",
+      "meaning": "A file of visual rules that controls colour, borders and what is shown or hidden on a page."
+    },
+    {
+      "term": "CSS",
+      "meaning": "The language stylesheets are written in."
+    },
+    {
+      "term": "TSX",
+      "meaning": "A TypeScript file that mixes code with the markup of a page component."
+    },
+    {
+      "term": "React state",
+      "meaning": "Values a page keeps while it is open, which are lost on reload."
+    },
+    {
+      "term": "Node.js",
+      "meaning": "A program that runs JavaScript outside a browser, used here to run the collector script."
+    },
+    {
+      "term": "bundle",
+      "meaning": "The single combined data file the viewer reads when it loads."
+    },
+    {
+      "term": "substring",
+      "meaning": "A plain piece of text searched for inside a larger text."
+    }
+  ],
+  "depends_on": [
+    "frontend/src",
+    "frontend/scripts/collect-artifacts.mjs",
+    "frontend/src/styles.css",
+    "frontend/src/lib/format.ts",
+    "frontend/src/components.tsx",
+    "frontend/src/views/Process.tsx",
+    "frontend/src/lib/artifacts.ts",
+    "pytest",
+    "Node.js"
+  ],
+  "used_by": [
+    "Run by pytest as part of the Python test suite"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 46,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "4b9016da4fc6181c",
+      "title": "The four promises the viewer keeps",
+      "what": "States the four rules the viewer must follow: no saved browser data, no live calls, no hand-written record shapes, and a run stamp on every view. Each rule is explained with the harm it prevents.",
+      "why": "The file records why each rule exists, so a reader can judge whether a rule still applies.",
+      "watch_out": ""
+    },
+    {
+      "start": 47,
+      "end": 93,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "ab924198dc986b96",
+      "title": "Banned storage and network names",
+      "what": "Defines the lists of storage and network features the viewer may not use. It includes ways a page can reach the network through stylesheets and HTML, not only through scripts.",
+      "why": "Likely reason: a raw text search cannot be fooled by comments or string tricks, which an earlier comment-stripping version could be.",
+      "watch_out": "Shipped source may not name a banned feature even in a comment, or the check fails."
+    },
+    {
+      "start": 94,
+      "end": 124,
+      "kind": "function",
+      "name": "print_rules_hiding_something",
+      "id": "s3",
+      "hash": "458c5ffa9e24e2fb",
+      "title": "Finding what the print view hides",
+      "what": "Reads the print section of the stylesheet and returns every selector that is set to hide content. It is the basis for checking that important marks survive printing.",
+      "why": "The comments say an earlier version could not fail, so this version was rewritten and tested.",
+      "watch_out": "Relies on the print section being a single block with simple nested braces."
+    },
+    {
+      "start": 125,
+      "end": 133,
+      "kind": "function",
+      "name": "sources_without_generated",
+      "id": "s4",
+      "hash": "f6db47b5e8068b8b",
+      "title": "Listing source files without the generated types",
+      "what": "Returns every shipped frontend source file except the generated record type file. That file is machine written and too large to scan meaningfully.",
+      "why": "Keeps the generated file out of text searches, so a word in a description cannot cause a false failure.",
+      "watch_out": "A future generated file with a different path would be scanned and could cause false failures."
+    },
+    {
+      "start": 134,
+      "end": 152,
+      "kind": "class",
+      "name": "TestNoBrowserStorage",
+      "id": "s5",
+      "hash": "fb9aa69f0c956a11",
+      "title": "No browser storage allowed",
+      "what": "Fails if any storage feature name appears in shipped sources. It also checks that the app keeps its state in React state.",
+      "why": "The viewer is read only, so anything saved across a reload would suggest a save feature that does not exist.",
+      "watch_out": "The match is a plain substring, so a harmless mention of the name still fails."
+    },
+    {
+      "start": 153,
+      "end": 170,
+      "kind": "class",
+      "name": "TestNoLiveCalls",
+      "id": "s6",
+      "hash": "09c0e27877d9e4e8",
+      "title": "No live network calls allowed",
+      "what": "Fails if any network call, or any remote style, script or image link, appears in shipped sources. It also checks that the only data import is the collected bundle.",
+      "why": "Every figure must come from a saved file, so the page works the same whether or not a service is up.",
+      "watch_out": "A local import whose name looks like a banned call could be flagged."
+    },
+    {
+      "start": 171,
+      "end": 196,
+      "kind": "class",
+      "name": "TestTheRecordShapeIsGeneratedNotDeclared",
+      "id": "s7",
+      "hash": "ebcf4ed3c43a84b2",
+      "title": "Record shapes must come from the generated file",
+      "what": "Fails if a view declares its own copy of the main record type or its scorecard or current state shapes. It also checks that the three views import the generated types and that hand-written shapes are labelled as a known gap.",
+      "why": "A hand-written copy would drift from the real contract, and the drift checks would not see it.",
+      "watch_out": "The gap check depends on exact wording in the artefact file."
+    },
+    {
+      "start": 197,
+      "end": 235,
+      "kind": "class",
+      "name": "TestEveryViewCarriesTheRunStamp (part 1)",
+      "id": "s8",
+      "hash": "217a31f7640b445d",
+      "title": "Every view must mount the run stamp",
+      "what": "Checks that exactly three views exist and that each one mounts the run stamp component. It also checks that the component reads the depth tier and the model list.",
+      "why": "A page with figures but no depth tier cannot show how strong its evidence is.",
+      "watch_out": "These checks confirm the component appears in source only. A separate rendering test confirms it appears on every code path."
+    },
+    {
+      "start": 236,
+      "end": 271,
+      "kind": "method",
+      "name": "TestEveryViewCarriesTheRunStamp: test_print_does_not_hide_the_standing_indicator",
+      "id": "s9",
+      "hash": "c252fbb14d1c1cd6",
+      "title": "Print must keep the evidence marks",
+      "what": "Checks that the print stylesheet does not hide any mark that shows how strong a claim is, such as the standing word, the border, or the run stamp.",
+      "why": "A printed page is the copy most likely to be read without the screen, so a hidden mark would hide the evidence level.",
+      "watch_out": "If the parser returned nothing, this check would pass silently, which is why the parser has its own tests."
+    },
+    {
+      "start": 272,
+      "end": 298,
+      "kind": "class",
+      "name": "TestThePrintedPageKeepsTheBandNotice",
+      "id": "s10",
+      "hash": "7bdeaeae369c8c9e",
+      "title": "Band notice stays readable in print",
+      "what": "Checks that the print stylesheet restates the band comparability notice in black. It also checks that the notice is not exempt from needing a style rule.",
+      "why": "A notice in screen grey can vanish on a black and white printer, and the notice warns against comparing bands across quarters.",
+      "watch_out": "The check looks for one specific black colour code, so changing how the colour is written needs this check updated."
+    },
+    {
+      "start": 299,
+      "end": 324,
+      "kind": "class",
+      "name": "TestThePrintParserWorks",
+      "id": "s11",
+      "hash": "766e7423d0ce8346",
+      "title": "Tests for the print parser",
+      "what": "Feeds small hand-written stylesheets into the print parser. It confirms the parser finds hidden selectors inside the print block, skips rules that hide nothing, and reads past the first rule.",
+      "why": "Without these tests, the print checks would pass whenever the parser found nothing.",
+      "watch_out": "The tests only cover the CSS forms written here, so a new form would go untested."
+    },
+    {
+      "start": 325,
+      "end": 382,
+      "kind": "function",
+      "name": "_classname_expression",
+      "id": "s12",
+      "hash": "3b7762ba9eb1513b",
+      "title": "Reading class values and the exempt class list",
+      "what": "Pulls out the value of a class attribute in a component, whether it is a quoted string or a braced expression. It also holds the list of class names that are allowed to have no style rule, each with a reason.",
+      "why": "Conditional class names in braces are common, and a simple pattern would cut them short. The exempt list records that a missing style was a deliberate choice.",
+      "watch_out": "A quoted value is read up to the next quote, so an escaped quote inside the value would cut it short."
+    },
+    {
+      "start": 383,
+      "end": 421,
+      "kind": "class",
+      "name": "TestEveryEmittedClassIsStyled (part 1)",
+      "id": "s13",
+      "hash": "3863e57f3f85a291",
+      "title": "Finding classes that have a real style rule",
+      "what": "Collects every class name that has an actual rule in the stylesheet, ignoring names that appear only in comments. It also tests that comment removal works.",
+      "why": "An earlier version counted a class named only in a comment as styled, so a missing rule passed.",
+      "watch_out": "Only sees rules that exist. A rule that exists but has no visible effect is not caught."
+    },
+    {
+      "start": 422,
+      "end": 476,
+      "kind": "method",
+      "name": "TestEveryEmittedClassIsStyled: test_no_component_emits_an_unstyled_class",
+      "id": "s14",
+      "hash": "a4c385d4beb4d7e6",
+      "title": "Every emitted class must be styled",
+      "what": "Fails if a component emits a class name with no style rule and no exempt reason. It also fails if a class family built by joining a prefix is never styled in the stylesheet.",
+      "why": "This is the check that would have caught the feature-absent row being unstyled, so the row looked the same as a measured one.",
+      "watch_out": "Only string literals inside class attributes are read, so a class built some other way is missed."
+    },
+    {
+      "start": 477,
+      "end": 490,
+      "kind": "method",
+      "name": "TestEveryEmittedClassIsStyled: test_the_structural_hooks_really_have_no_rule",
+      "id": "s15",
+      "hash": "4decb5ffaa9f53f4",
+      "title": "Exempt classes must really have no rule",
+      "what": "Fails if any exempt class name later gets a style rule, which would mean the exemption no longer applies.",
+      "why": "Stops an exemption from outliving its reason and silently hiding a styled class.",
+      "watch_out": ""
+    },
+    {
+      "start": 491,
+      "end": 549,
+      "kind": "class",
+      "name": "TestFiguresCarryTheirUnits",
+      "id": "s16",
+      "hash": "0d8ba749c97e45f1",
+      "title": "Figures must carry their units",
+      "what": "Checks that the formatting file exports exactly the agreed set of formatters, that no view formats numbers by hand, and that the money formatter includes the currency code.",
+      "why": "Every figure should show its unit, and keeping formatting in one place keeps that consistent.",
+      "watch_out": "Adding a new formatter means updating the agreed export list, or this check fails."
+    },
+    {
+      "start": 550,
+      "end": 591,
+      "kind": "class",
+      "name": "TestAMissingArtefactStopsTheBuild (part 1)",
+      "id": "s17",
+      "hash": "076c743ece75e788",
+      "title": "Missing results must stop the build",
+      "what": "Sets up a temporary copy of the required results files and the collector script's inputs, so the build can be run on purpose-made trees. It also runs the collector script and reports whether it succeeded and whether it wrote output.",
+      "why": "An earlier version only searched the script for words, which would pass even if the logic were deleted. Running it gives real evidence.",
+      "watch_out": "The copy uses the first candidate and first input file, so the tests need those files to exist in the repository."
+    },
+    {
+      "start": 592,
+      "end": 643,
+      "kind": "method",
+      "name": "TestAMissingArtefactStopsTheBuild: test_a_complete_tree_collects",
+      "id": "s18",
+      "hash": "7c34c9c399fa6f49",
+      "title": "A complete set of results must build",
+      "what": "Runs the collector on a full, valid copy and expects success with an output file. This is the control case for the failure tests.",
+      "why": "Without a passing control, a collector that always failed would pass every failure test.",
+      "watch_out": "Skipped when Node.js is missing, so a machine without it runs fewer checks with no warning."
+    },
+    {
+      "start": 644,
+      "end": 658,
+      "kind": "method",
+      "name": "TestAMissingArtefactStopsTheBuild: test_the_absent_record_branch_exists_in_source",
+      "id": "s19",
+      "hash": "483aa036393b5624",
+      "title": "The missing-record wording exists in the process view",
+      "what": "Checks that the process view source contains the wording used when a record is missing. The real behaviour is tested in a rendering test.",
+      "why": "An earlier version of this check passed while the missing-record branch showed no run stamp.",
+      "watch_out": "Only checks that the wording appears in the file, so a comment with the same words would also pass."
+    }
+  ],
+  "explained_at": "2026-11-12T00:51:30+00:00",
+  "explained_by": "haiku",
+  "summary": "A test file that enforces the viewer's promises by reading its source text: no saved browser data, no live network calls, no hand-written record shapes, a run stamp on every view, readable printing, styled classes, unit-bearing figures, and a build that stops on missing files.",
+  "purpose": "To keep the read-only, evidence-based viewer from drifting into behaviour it promises not to have. It catches these problems in the Python test run, so someone who never installs the frontend still sees them.",
+  "why": "Some of the promises are easy to break by accident, such as a stray network link in a stylesheet. Earlier versions of these checks passed while the defects were present, so the file records why each check was rewritten.",
+  "how": "First it collects the shipped frontend source files, excluding the generated types file. Then it searches those files as raw text for banned names. It also reads the print rules and class names and compares them against the rules the viewer needs. Last, it runs the collector script on copies of the required results and checks that a missing or broken file stops the build.",
+  "inputs": "The frontend source folder, the stylesheet, the HTML entry file, the generated types file, the views folder, the formatting file, the collector script, and the real results files in the evals folder for the build tests.",
+  "outputs": "Pass or fail results for each test in pytest. A failure names the file, the banned name or missing rule, and the reason it matters.",
+  "risks": "Raw text matching can fail on harmless mentions of a banned name, including in comments, which the file accepts on purpose. Two build tests are skipped when Node.js is not installed, so a machine without it runs fewer checks without warning. The checks read exact wording, so a rewording can break them.",
+  "debug": "Read the failure message first, since it names the file and the problem. If a banned-name check fails on a comment, rephrase the comment rather than the check. If a print or class check fails, look at the stylesheet rule named in the message. If build tests fail, run the collector script by hand on the same copied files to see its error output.",
+  "summary_hash": "sha256:74fecf2725bc1a5118f7416078b8b4e82cb728502b820e02f51b7bac0a664fb5"
+}

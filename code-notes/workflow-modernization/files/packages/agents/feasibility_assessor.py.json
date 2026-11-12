@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/feasibility_assessor.py",
+  "language": "Python",
+  "lines": 185,
+  "hash": "sha256:28d6c0608a044b9d144c3c439d2841194b6c6fca8870d04dcc58a9eda4d030b9",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The file's last section, which the packet did not include, was not reviewed, so the end of the file is unverified.",
+      "The scoring check uses loose text matching that can give false positives and misses.",
+      "No tests are visible in this packet to confirm the constraint, readiness and scoring behaviour.",
+      "The docstring refers to a separate process assessor that is not in this packet, so the division of labour is unverified here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "constraint",
+      "meaning": "A named rule outside the design's control, such as a regulation or contract clause, that limits what the process may do."
+    },
+    {
+      "term": "autonomy ceiling",
+      "meaning": "The most automatic decision-making a constraint allows. The strictest one across constraints binds the whole process."
+    },
+    {
+      "term": "jurisdiction",
+      "meaning": "The legal area or authority a regulation applies in."
+    },
+    {
+      "term": "data readiness",
+      "meaning": "How far the data a redesign needs is actually reachable, governed and complete."
+    },
+    {
+      "term": "governed",
+      "meaning": "Data with a named owner and an approved way to access it."
+    },
+    {
+      "term": "scorecard",
+      "meaning": "The set of numeric ratings given to a process, set by a separate stage."
+    }
+  ],
+  "depends_on": [
+    "packages/agents/base.py",
+    "packages/agents/payloads.py",
+    "packages/agents/routing.py",
+    "packages/schema (AutonomyCeiling, Constraint, ConstraintKind, CurrentState, DataReadiness, FeasibilityAssessment)",
+    "pydantic"
+  ],
+  "used_by": [
+    "packages/agents/__init__.py",
+    "Code that builds the record and the scorecard (not visible in this packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 60,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "c27f419336ebac38",
+      "title": "Assessor purpose and boundary",
+      "what": "Describes the stage: find the constraints and check whether the needed data exists. It informs the scorecard but does not set it, and it must not redesign.",
+      "why": "Stated in the docstring: arguing about a score is not scoring, and a stage that does both cannot be graded on either.",
+      "watch_out": "The docstring names the most serious failure as a design allowing forbidden autonomy. The binding ceiling is computed in code and not offered to the model."
+    },
+    {
+      "start": 61,
+      "end": 87,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "887bd64853d64758",
+      "title": "Instructions to the model",
+      "what": "The prompt asks for real named constraints with their jurisdiction, the most autonomy each permits, and data readiness in four parts. It forbids scoring and redesign, and says an empty list means investigated, not absent. It also holds the list of scoring phrases used by a later check.",
+      "why": "Stated in the prompt: a vague constraint is dropped by whoever must act on it, and an empty list must be a real finding.",
+      "watch_out": "The scoring phrases are matched as plain text, so ordinary sentences containing them may be flagged."
+    },
+    {
+      "start": 88,
+      "end": 103,
+      "kind": "class",
+      "name": "_FeasibilityOutput",
+      "id": "s3",
+      "hash": "04598075a418db86",
+      "title": "Assessor output shape",
+      "what": "Defines the three things the model returns: constraints, data readiness and evidence ids. It has no field for the binding ceiling or any score.",
+      "why": "Stated in the docstring: a field the model is never offered cannot be filled, so the boundary is structural.",
+      "watch_out": "Adding a ceiling or score field here would break the boundary this stage relies on."
+    },
+    {
+      "start": 104,
+      "end": 149,
+      "kind": "class",
+      "name": "FeasibilityAssessor (part 1)",
+      "id": "s4",
+      "hash": "6b1e272dabdf0022",
+      "title": "Assessor setup, prompt and scoring check",
+      "what": "Sets the assessor's name, tier, output limit and must-not rule, and stores the current state. It builds the prompt from the constraint kinds, the autonomy levels, the brief and the current steps. It also rejects any constraint or gap text that narrates a score.",
+      "why": "Reason not stated in the code beyond the docstrings. The scoring check exists so a score cannot be written into the assessment as text.",
+      "watch_out": "The current state is supplied once at creation. If it is stale or the wrong one, the prompt is wrong without any error."
+    },
+    {
+      "start": 150,
+      "end": 185,
+      "kind": "method",
+      "name": "FeasibilityAssessor: _check_step_anchors",
+      "id": "s5",
+      "hash": "41a7ffe8edc5889c",
+      "title": "Checking constraints point at real steps",
+      "what": "Before a feasibility result is accepted, this checks that every constraint refers only to steps that exist in this process. If any constraint points at a missing step, the run stops with an error that lists the bad step numbers and the steps that do exist. It then combines the autonomy ceilings from all constraints into one binding limit and builds the final assessment.",
+      "why": "Likely reason: a constraint attached to a step that does not exist would be an unsupported claim about the process, so the code refuses it. Reason not fully stated in the code.",
+      "watch_out": "This check covers only constraints; the earlier scoring check in assemble runs first and is not shown in this section."
+    }
+  ],
+  "explained_at": "2026-11-12T01:18:02+00:00",
+  "explained_by": "haiku",
+  "summary": "The stage that finds the constraints on a process, such as regulations and contract clauses, and checks whether the data a redesign would need exists. It supplies evidence to the scorecard but does not score.",
+  "purpose": "Show what a redesign is allowed to do, and whether the data it needs can be reached and governed, before any design is proposed.",
+  "why": "The docstrings say a design that permits more autonomy than a regulation allows is the most damaging failure, and that a stage which both assesses and scores cannot be graded on either.",
+  "how": "1) The prompt asks for named constraints, each with the most autonomy it permits on its own. 2) It asks for data readiness in four parts: required, available, governed and gaps. 3) The output shape has constraints, data readiness and evidence, with no ceiling or score field. 4) The setup builds the prompt from the constraint kinds, ceiling levels, the brief and the current steps. 5) A check rejects scoring language in constraints or gaps.",
+  "inputs": "A ProcessBrief and the CurrentState produced by the cartographer stage.",
+  "outputs": "A FeasibilityAssessment with constraints and data readiness. The binding autonomy ceiling is computed elsewhere in code from the constraints.",
+  "risks": "The scoring check matches plain text markers, so ordinary wording may be flagged or a scoring phrase may slip past. The current state is passed in at setup, so a stale or wrong one gives a wrong prompt with no error.",
+  "debug": "If the assessment is rejected for scoring, check the constraint and gap text for words such as score or rate. If constraints look vague, check the prompt rules. If the data readiness looks wrong, compare the steps shown in the prompt with the current state from the previous stage.",
+  "summary_hash": "sha256:28d6c0608a044b9d144c3c439d2841194b6c6fca8870d04dcc58a9eda4d030b9"
+}

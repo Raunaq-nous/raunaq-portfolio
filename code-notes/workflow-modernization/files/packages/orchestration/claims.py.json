@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "path": "packages/orchestration/claims.py",
+  "language": "Python",
+  "lines": 154,
+  "hash": "sha256:5515e5d31c8c142bbcd80d81462b1c9d57858e9ff9ec96b69226e024318bfc1c",
+  "area": "packages-orchestration",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The file is pure logic with no error handling needed, but the test it cites was not shown or run.",
+      "Correctness depends on claim_ref paths matching the record layout, which is only checked by that test."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Claim",
+      "meaning": "One statement from the analysis that a critic can question."
+    },
+    {
+      "term": "claim_ref",
+      "meaning": "An address, written as a JSON path, that points to one exact place in the finished record."
+    },
+    {
+      "term": "Critic",
+      "meaning": "The agent that reviews the analysis and raises objections to weak claims."
+    },
+    {
+      "term": "Evidence id",
+      "meaning": "A label for one source excerpt that a claim is based on."
+    }
+  ],
+  "depends_on": [
+    "packages/agents/payloads.py",
+    "packages/schema"
+  ],
+  "used_by": [
+    "packages/orchestration/pipeline.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "85771e0c95ac28a5",
+      "title": "Setup and the reason for the selection",
+      "what": "Imports the claim type and the four block types. The docstring explains which blocks are shown to the critic and which are left out.",
+      "why": "The docstring states that nature of work and scorecard are excluded because the critic cannot cause them to change. Showing them would give objections that do nothing.",
+      "watch_out": "A new block that cites evidence must be added here and to REVISABLE_BLOCKS together, or the critic will not see it."
+    },
+    {
+      "start": 31,
+      "end": 53,
+      "kind": "function",
+      "name": "current_state_claims",
+      "id": "s2",
+      "hash": "42262bd295178273",
+      "title": "Current state claims",
+      "what": "Creates one claim for each process step and each workflow debt item in the current state. Pain points are not turned into claims.",
+      "why": "Pain points are the client's own words, so they are not treated as analyst claims that need checking.",
+      "watch_out": "The claim text is what the critic reads, so changing how steps are described changes what the critic judges."
+    },
+    {
+      "start": 54,
+      "end": 75,
+      "kind": "function",
+      "name": "future_state_claims",
+      "id": "s3",
+      "hash": "aa4acfd8e26b6e95",
+      "title": "Future state claims",
+      "what": "Creates one claim for each redesigned step, including who performs it.",
+      "why": "A future step with no evidence is a proposal resting on nothing, which is the case the revision step exists to handle.",
+      "watch_out": "The claim_ref uses the step's position in the list, so reordering the steps changes which address each claim points to."
+    },
+    {
+      "start": 76,
+      "end": 109,
+      "kind": "function",
+      "name": "value_claims",
+      "id": "s4",
+      "hash": "076bd6eefab1e801",
+      "title": "Value parameter claims",
+      "what": "Creates one combined claim for the four value parameters, then one claim for each prerequisite.",
+      "why": "The parameters are one judgement, so the critic must challenge them together rather than strike evidence from only part of the set.",
+      "watch_out": "The claim text rounds the numbers, so the critic sees rounded values rather than the exact ones."
+    },
+    {
+      "start": 110,
+      "end": 141,
+      "kind": "function",
+      "name": "implications_claims",
+      "id": "s5",
+      "hash": "067608078d9e2f2c",
+      "title": "Implications claims",
+      "what": "Creates one claim for each operating model item and each workforce item.",
+      "why": "Included because the workforce modeller runs again inside the design chain, so a struck citation here can actually change the result.",
+      "watch_out": "If a workforce item has no skill changes, the text shows the word unchanged, which reads differently to the critic than an empty field."
+    },
+    {
+      "start": 142,
+      "end": 154,
+      "kind": "function",
+      "name": "claims_for_review",
+      "id": "s6",
+      "hash": "766682f17ac69eb4",
+      "title": "Combined claim list",
+      "what": "Joins all claims from the four blocks in record order and returns them as one list.",
+      "why": "A fixed order keeps the list the same each time it is built, so references and reviews line up.",
+      "watch_out": "Any change to block order or to the index-based references will affect every claim that follows."
+    }
+  ],
+  "explained_at": "2026-11-12T01:24:21+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns the finished analysis blocks into a flat list of statements a critic can challenge, each tagged with the address of the spot in the record it came from.",
+  "purpose": "Give the red-team critic a checkable list of claims about the current state, future state, implications and value parameters.",
+  "why": "Only blocks that cite evidence are included, so every objection the critic raises can lead to a real change. Blocks without citations would produce objections that change nothing.",
+  "how": "Four builder functions each walk one block and create one claim per step, debt item, operating model item, workforce item or prerequisite. The value parameters are grouped into one claim. claims_for_review joins all of them in record order.",
+  "inputs": "The four finished blocks: CurrentState, FutureState, Implications and ValueParameters.",
+  "outputs": "A list of ClaimUnderReview items. Each has the block name, a claim_ref path, a short text summary and the list of evidence ids it cites.",
+  "risks": "If a claim_ref does not match the real structure of the record, the revision step cannot find the thing being objected to. Index-based references shift if items are reordered upstream.",
+  "debug": "Compare each claim_ref with the field it names in the record. Check that the list of blocks here matches REVISABLE_BLOCKS. The test named in the file docstring pins that match.",
+  "summary_hash": "sha256:5515e5d31c8c142bbcd80d81462b1c9d57858e9ff9ec96b69226e024318bfc1c"
+}

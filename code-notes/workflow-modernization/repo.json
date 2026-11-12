@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "name": "Workflow-Modernization",
+  "commit": "dbcc611",
+  "synced_at": "2026-11-12T01:37:34+00:00",
+  "summary": "Workflow-Modernization analyses business processes and proposes how they could be redesigned with AI agents. For each process it describes how the work happens today, designs a future version, has a critic challenge the evidence, and then calculates the money benefit with plain arithmetic. Results are stored as one record per process and combined into a portfolio across all processes. A read-only web viewer shows the results, including the evidence behind each claim and how confident the system is. The repository also has a large set of tests and quality checks that guard against hidden errors, such as AI models doing arithmetic or inventing evidence.",
+  "who_its_for": "Consultants or analysts who assess many business processes for AI-driven redesign and need results they can trace and defend. Developers who maintain the pipeline and its safety checks would also use it.",
+  "how_it_runs": "A script runs the analysis pipeline over sample test cases, either with live AI model calls or by replaying saved model outputs, and writes results to disk. A separate viewer is built from those results, and a GitHub job runs checks and quality tests on every pull request. Exact commands are not shown in the summaries, so the pyproject.toml and frontend/package.json files should be checked.",
+  "start_here": [
+    "pyproject.toml",
+    "packages/schema/record.py",
+    "packages/orchestration/pipeline.py",
+    "packages/agents/base.py",
+    "packages/value/pipeline.py",
+    "scripts/run_pipeline.py",
+    "frontend/src/App.tsx"
+  ],
+  "areas": [
+    {
+      "id": "tests",
+      "name": "tests",
+      "match": [
+        "tests/*"
+      ],
+      "summary": "Automated tests for agents, schema, knowledge, orchestration, value, the viewer and special safety checks. Some tests deliberately break code to prove the safeguards notice.",
+      "why": "They protect the rules the system promises, such as no AI arithmetic and no invented evidence.",
+      "debug_tips": "Start with the test whose folder matches the failing area. Tests in tests/fixtures and tests/goldenrun.py supply shared sample data, so check those if many tests fail at once."
+    },
+    {
+      "id": "frontend-src",
+      "name": "frontend/src",
+      "match": [
+        "frontend/src/*"
+      ],
+      "summary": "The source of the read-only viewer with three views (portfolio, process, provenance), shared display pieces and helper code that formats numbers and rechecks confidence figures.",
+      "why": "It is how a person actually sees the results and the evidence behind them.",
+      "debug_tips": "If a figure looks wrong, check frontend/src/lib/format.ts and the matching view. If evidence is missing, check frontend/src/lib/evidence.ts."
+    },
+    {
+      "id": "packages-schema",
+      "name": "packages/schema",
+      "match": [
+        "packages/schema/*"
+      ],
+      "summary": "Defines the exact shape of every stored record, such as the process record, current state, future state, assumptions, confidence and run manifest, plus the allowed vocabulary and version rules.",
+      "why": "Every other part reads or writes these shapes, so this is the contract of the whole system.",
+      "debug_tips": "Validation errors usually trace back to a rule in these files. A fingerprint check flags contract changes made without a version bump."
+    },
+    {
+      "id": "packages-agents",
+      "name": "packages/agents",
+      "match": [
+        "packages/agents/*"
+      ],
+      "summary": "The specialist AI stages: current state mapper, assessor, feasibility, future state designer, agent designer, value estimator, debt auditor, workforce modeller, red team critic and portfolio reconciler. A shared base engine handles the model call, validation, citations, budget and one retry.",
+      "why": "These stages produce the analysis content, each with strict limits on what it may do.",
+      "debug_tips": "Check base.py first for retries and rejected outputs. Check routing.py for which model is used and prompt.py for what was sent."
+    },
+    {
+      "id": "packages-value",
+      "name": "packages/value",
+      "match": [
+        "packages/value/*"
+      ],
+      "summary": "The arithmetic-only layer that turns estimated ranges into money: adoption timing, phasing, shared-benefit deduplication, run cost, a gross-to-net bridge per currency, sensitivity and checks against client figures.",
+      "why": "It keeps all money numbers reproducible and free of AI model involvement.",
+      "debug_tips": "Compare a bad figure against its step in packages/value/pipeline.py. Currency mixing errors point to cost_basis.py."
+    },
+    {
+      "id": "packages-orchestration",
+      "name": "packages/orchestration",
+      "match": [
+        "packages/orchestration/*"
+      ],
+      "summary": "Runs the stages in order for each process, handles the critic's revision loop, saves progress so a failed run can resume, assembles the final record, and combines all processes into a portfolio. It also provides the replay stand-in for the live model.",
+      "why": "It connects the individual stages into a complete run.",
+      "debug_tips": "Look at pipeline.py for ordering and revisions, durable.py for resume problems, and replay.py when replayed output seems off."
+    },
+    {
+      "id": "scripts",
+      "name": "scripts",
+      "match": [
+        "scripts/*"
+      ],
+      "summary": "Command line helpers: run the pipeline, create sample recordings, export the schema, sweep optional fields, probe an AI provider and guard commits.",
+      "why": "These are the practical entry points for running and checking the system.",
+      "debug_tips": "Start with scripts/run_pipeline.py for run problems. If a commit is refused, check pre_commit_guard.py, which blocks commits during mutation testing."
+    },
+    {
+      "id": "frontend-scripts",
+      "name": "frontend/scripts",
+      "match": [
+        "frontend/scripts/*"
+      ],
+      "summary": "Build-time scripts for the viewer: generate TypeScript types from the schema, bundle run output files, and print each view as plain text.",
+      "why": "They keep the viewer in sync with the Python results.",
+      "debug_tips": "A bundle failure names the missing or wrong file. Regenerate types if the schema has changed."
+    },
+    {
+      "id": "packages-knowledge",
+      "name": "packages/knowledge",
+      "match": [
+        "packages/knowledge/*"
+      ],
+      "summary": "Gathers evidence from several knowledge stores, ranks it, maps client process names onto a standard list, and computes confidence scores by arithmetic.",
+      "why": "Claims need evidence and a confidence number that can be checked.",
+      "debug_tips": "Poor evidence points to broker.py. Wrong process matching points to normalise.py."
+    },
+    {
+      "id": "frontend",
+      "name": "frontend",
+      "match": [
+        "frontend/*"
+      ],
+      "summary": "Viewer setup files: the page shell, package list, build config and strict type checking settings.",
+      "why": "They define how the viewer is built and run.",
+      "debug_tips": "Check package.json for the available commands and vite.config.ts for build output problems."
+    },
+    {
+      "id": "root-files",
+      "name": "(root files)",
+      "match": [
+        "*"
+      ],
+      "summary": "Project-level files: the Python project settings, an example settings file with a model key and database address, and a GitHub workflow that runs checks on every pull request. The evals folder with the quality gate and purity check is also in this group, though it is unclear from the summaries where it is assigned.",
+      "why": "They control setup and the automatic gate before changes are accepted.",
+      "debug_tips": "If the gate fails on GitHub, read .github/workflows/eval-gate.yml and evals/run.py. Copy .env.example to set up local keys."
+    },
+    {
+      "id": "other",
+      "name": "Everything else",
+      "match": [],
+      "summary": "",
+      "why": "",
+      "debug_tips": ""
+    }
+  ],
+  "decisions": [],
+  "readiness": {
+    "overall": "not-ready",
+    "summary": "Top fixes: add a deploy and rollback procedure plus database migrations and backups, run and pass the tests and dependency audit (and scan git history for secrets), and document a single start command with route-level access checks.",
+    "checked_at": "2026-11-12T01:37:47+00:00",
+    "checks": [
+      {
+        "id": "starts",
+        "question": "Does the app build and start with one documented command?",
+        "status": "partial",
+        "evidence": "`README.md` documents `uv sync` and test/lint commands, but there is no single documented run or start command for the app. Build and start were not run.",
+        "next_step": "Add one documented command to start the API (for example `uv run ...`) and a frontend start step."
+      },
+      {
+        "id": "tests",
+        "question": "Are there automated tests, and do they pass?",
+        "status": "unknown",
+        "evidence": "Not checked: tests were not run in this pass. 70 test files exist (e.g. `frontend/src/evidence-chip.test.tsx`, `frontend/src/lib/confidence.test.ts`) plus `evals/` golden cases, and `.github/workflows/eval-gate.yml` runs an eval gate.",
+        "next_step": "Run `uv run pytest -x -q` and the frontend tests, and confirm CI runs them on every push."
+      },
+      {
+        "id": "errors",
+        "question": "When something goes wrong, does the app show a clear message instead of crashing or failing silently?",
+        "status": "unknown",
+        "evidence": "Not checked: error behaviour needs running the app. Static scan found 0 swallowed errors, which is a good sign, but user-facing messages were not verified.",
+        "next_step": "Trigger a failed model call and a bad request and confirm the user sees a clear message."
+      },
+      {
+        "id": "inputs",
+        "question": "Does it check what people type or upload before using it?",
+        "status": "pass",
+        "evidence": "401 validation matches across 96 files, and `pydantic>=2.9` is a core dependency with a canonical schema in `packages/schema/`.",
+        "next_step": "Confirm upload size and type limits on the API in `packages/api/`."
+      },
+      {
+        "id": "secrets",
+        "question": "Are passwords and API keys kept out of the code and out of git history?",
+        "status": "partial",
+        "evidence": "`.env.example` is the only tracked env file, `.gitignore` mentions `.env`, and no secret-looking strings were found at HEAD. Git history was not scanned.",
+        "next_step": "Run a history scan (for example gitleaks) and rotate any key it finds."
+      },
+      {
+        "id": "access",
+        "question": "Can only the right people see and change things (sign-in and permissions)?",
+        "status": "partial",
+        "evidence": "107 auth/session/permission matches in 36 files suggest access control exists, but static counts do not show it is enforced on every API route.",
+        "next_step": "Review `packages/api/` and list which routes require sign-in and which roles can change data."
+      },
+      {
+        "id": "data",
+        "question": "Is important data backed up, and are database changes made through migrations?",
+        "status": "fail",
+        "evidence": "No migrations folders found and no backup configuration or documentation seen in the evidence.",
+        "next_step": "If a database is used, add migrations and a documented backup and restore step. If not, state where data lives in `README.md`."
+      },
+      {
+        "id": "dependencies",
+        "question": "Are third-party packages reasonably up to date and free of known security problems?",
+        "status": "unknown",
+        "evidence": "Not checked: the dependency audit was not run. Lockfiles `uv.lock` and `frontend/package-lock.json` exist, but most Python pins are loose lower bounds (e.g. `anthropic>=0.121.0`).",
+        "next_step": "Run `uv run pip-audit` and `npm audit`, and enable Dependabot or similar."
+      },
+      {
+        "id": "logs",
+        "question": "If it breaks while people use it, will logs or alerts show what happened?",
+        "status": "partial",
+        "evidence": "`structlog` is a dependency, but only 7 logging matches in 3 files, which is thin coverage. No alerting or monitoring config seen.",
+        "next_step": "Add structured logging at API request and agent run boundaries and wire up an error alert."
+      },
+      {
+        "id": "performance",
+        "question": "Does it stay fast with realistic amounts of data and users?",
+        "status": "unknown",
+        "evidence": "Not checked: no load or data-volume testing evidence in the files shown, and performance needs running the app.",
+        "next_step": "Run a portfolio with realistic process counts and record timing and model cost."
+      },
+      {
+        "id": "deploy",
+        "question": "Is there a written, repeatable way to deploy it and to roll back a bad release?",
+        "status": "fail",
+        "evidence": "Only CI file is `.github/workflows/eval-gate.yml`, a quality gate. No deploy workflow, Dockerfile or rollback steps seen.",
+        "next_step": "Write a `DEPLOY.md` with build, release and rollback steps."
+      },
+      {
+        "id": "docs",
+        "question": "Could someone new run it and understand it from the docs alone?",
+        "status": "partial",
+        "evidence": "`README.md` has design principles, layout, setup commands and a pre-commit guard note, and points to `SPEC.md` and `CLAUDE.md`. It lacks run instructions, config details and an architecture walkthrough.",
+        "next_step": "Add a run section and a short end-to-end example to `README.md`."
+      }
+    ],
+    "method": "Static evidence only; tests, build and audit were not run in this pass."
+  },
+  "debug_playbook": [
+    {
+      "symptom": "The pipeline run stops with a validation or refusal error",
+      "likely_area": "packages-agents",
+      "where_to_look": [
+        "packages/agents/base.py",
+        "packages/schema/record.py",
+        "scripts/run_pipeline.py"
+      ],
+      "steps": [
+        "Read the error to see which stage raised it.",
+        "Open that stage's file in packages/agents and check what it refuses.",
+        "Check the matching schema file for the rule that failed.",
+        "Rerun in replay mode to see if the saved output has the same problem."
+      ]
+    },
+    {
+      "symptom": "A money figure looks wrong or currencies seem mixed",
+      "likely_area": "packages-value",
+      "where_to_look": [
+        "packages/value/pipeline.py",
+        "packages/value/cost_basis.py",
+        "packages/value/bridge.py"
+      ],
+      "steps": [
+        "Find which step in the value pipeline produced the figure.",
+        "Check cost_basis.py for the currency and rate used.",
+        "Look at the bridge lines for that currency.",
+        "Run the value tests in tests/value."
+      ]
+    },
+    {
+      "symptom": "The viewer shows missing data or fails to build",
+      "likely_area": "frontend-scripts",
+      "where_to_look": [
+        "frontend/scripts/collect-artifacts.mjs",
+        "frontend/scripts/generate-types.mjs",
+        "frontend/src/lib/artifacts.ts"
+      ],
+      "steps": [
+        "Read the collector's error, which names the missing or wrong file.",
+        "Rerun the pipeline so all result files exist.",
+        "Regenerate the types if the schema changed.",
+        "Run the frontend tests."
+      ]
+    },
+    {
+      "symptom": "A run is interrupted and does not resume properly",
+      "likely_area": "packages-orchestration",
+      "where_to_look": [
+        "packages/orchestration/durable.py",
+        "packages/orchestration/pipeline.py",
+        "tests/orchestration/test_durable.py"
+      ],
+      "steps": [
+        "Check whether saved progress exists on disk for the finished processes.",
+        "Look for version or mismatch refusals in durable.py.",
+        "Run the durable tests to see which rule is failing."
+      ]
+    },
+    {
+      "symptom": "The GitHub quality gate fails on a pull request",
+      "likely_area": "root-files",
+      "where_to_look": [
+        ".github/workflows/eval-gate.yml",
+        "evals/run.py",
+        "evals/purity.py"
+      ],
+      "steps": [
+        "Open the failing step in the workflow log.",
+        "If it is the eval gate, rerun evals/run.py locally.",
+        "If it is purity, find the import that reaches a model library from the value layer.",
+        "Check whether a schema change needs a version bump and regenerated types."
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Process record",
+      "meaning": "The single stored result for one analysed business process."
+    },
+    {
+      "term": "Portfolio",
+      "meaning": "The combined view across all processes, including shared effects that one process cannot show."
+    },
+    {
+      "term": "Golden case",
+      "meaning": "A fixed sample case used to test that the system gives expected results."
+    },
+    {
+      "term": "Replay",
+      "meaning": "Rerunning the pipeline using saved model outputs instead of calling a live AI model."
+    },
+    {
+      "term": "Red team critic",
+      "meaning": "A stage that challenges claims and can strike unsupported evidence but cannot rewrite text."
+    },
+    {
+      "term": "Evidence pack",
+      "meaning": "The set of evidence items gathered for one process."
+    },
+    {
+      "term": "Confidence score",
+      "meaning": "A number from 0 to 1 computed by arithmetic from the evidence behind a claim."
+    },
+    {
+      "term": "Bridge",
+      "meaning": "The step by step walk from gross benefit to net benefit, with each cost shown as its own line."
+    },
+    {
+      "term": "Manifest",
+      "meaning": "A record of the models, prompts and settings a run used, so changes can be explained."
+    },
+    {
+      "term": "Mutation testing",
+      "meaning": "Deliberately breaking a safety mechanism to confirm that the tests notice."
+    }
+  ],
+  "skipped": []
+}

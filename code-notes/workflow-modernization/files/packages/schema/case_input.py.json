@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "path": "packages/schema/case_input.py",
+  "language": "Python",
+  "lines": 250,
+  "hash": "sha256:68974e79c881b29f4b59f4ca42ebc517bdea940a8c0eeb5b7743fb08c6e564a1",
+  "area": "packages-schema",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The docstring points to a test file that pins the depth tiers to the manifest, but that file is not visible in the packet.",
+      "The field rules are explicit, which makes review easier."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Golden case",
+      "meaning": "A hand-checked example with known expected behaviour, used to test the pipeline."
+    },
+    {
+      "term": "Evidence pack",
+      "meaning": "The set of source passages a case provides for the pipeline to read."
+    },
+    {
+      "term": "Discovery key",
+      "meaning": "The value used to find and match a case across separate runs."
+    }
+  ],
+  "depends_on": [
+    "packages/schema/enums.py",
+    "packages/schema/range.py",
+    "pydantic"
+  ],
+  "used_by": [
+    "scripts/run_pipeline.py (its read function validates against this model, per the docstring)",
+    "evals/run.py (the evaluation gate, per the docstring)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 40,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a15089208e3af153",
+      "title": "Purpose and the depth tier names",
+      "what": "Explains why this contract exists and defines the allowed depth tier names. The tiers are copied from the run manifest rather than imported, so a case can be written before any run exists.",
+      "why": "The docstring says the case must be written before any run, which is why the names are declared here rather than imported.",
+      "watch_out": "The depth tier names are copied, not shared, so a change must be made in both places. A test is meant to keep them matched."
+    },
+    {
+      "start": 41,
+      "end": 61,
+      "kind": "class",
+      "name": "AuthorityTier",
+      "id": "s2",
+      "hash": "e33d7a7503ad1b14",
+      "title": "The authority scale for sources",
+      "what": "A four-level scale from final deliverable at the top to informal note at the bottom. The retrieval ranking uses this scale to order sources.",
+      "why": "The docstring says the scale is closed because the ranking sorts on it silently. A value outside one to four would put a weak source above a signed document.",
+      "watch_out": "A new level must be added through a deliberate schema change, because any value outside the range would sort without an error."
+    },
+    {
+      "start": 62,
+      "end": 87,
+      "kind": "class",
+      "name": "CaseEvidenceItem",
+      "id": "s3",
+      "hash": "c404a0afceaf0360",
+      "title": "One item of evidence",
+      "what": "Defines one evidence item: its id, the store it came from, where to read it, its publication date (which may be empty), its authority level, and the passage the agents see.",
+      "why": "The docstring says an undated item is a real state and differs from a forgotten date, so the field is required even when empty.",
+      "watch_out": "An empty publication date is valid and lowers the item's confidence weight as if it were old, so never fill it with a guess."
+    },
+    {
+      "start": 88,
+      "end": 118,
+      "kind": "class",
+      "name": "CaseProcess",
+      "id": "s4",
+      "hash": "2136c6bebef95c61",
+      "title": "The process framing",
+      "what": "Describes the process as the client names it: its place in the taxonomy, its purpose, trigger and output, the client's wording of the work unit, the annual volume range, and any aliases.",
+      "why": "The docstring says the work unit stays as free text so the normaliser can match it against the vocabulary. Otherwise the matching step would never be tested.",
+      "watch_out": "The annual volume range must be ordered from low to high, and it is checked here, so a reversed range fails when the case loads."
+    },
+    {
+      "start": 119,
+      "end": 141,
+      "kind": "class",
+      "name": "ClientContext",
+      "id": "s5",
+      "hash": "4c4d1768f6b8e828",
+      "title": "The client context",
+      "what": "Describes the client: currency, revenue, earnings (which may be negative), total headcount, headcount by function, and the regulations in scope.",
+      "why": "The docstring says headcount by function feeds the reduce stage and the capacity note. The comparison it was meant to drive is not implemented (divergence D11).",
+      "watch_out": "Headcount by function is optional below the defensible tier. When it is missing, the capacity check reports not run rather than a figure."
+    },
+    {
+      "start": 142,
+      "end": 150,
+      "kind": "class",
+      "name": "CasePrerequisite",
+      "id": "s6",
+      "hash": "43b2d4e50b5ef849",
+      "title": "One expected ordering constraint",
+      "what": "One prerequisite the case expects the analysis to find, given as a kind from the prerequisite list and a reference name.",
+      "why": "The docstring says the kind is typed so the edge it becomes has a faithful reason and stays in the planning graph.",
+      "watch_out": "A free-text kind would drop the edge from the graph, so the kind must come from the allowed list."
+    },
+    {
+      "start": 151,
+      "end": 210,
+      "kind": "class",
+      "name": "CaseInput (part 1)",
+      "id": "s7",
+      "hash": "db88e1d376c18159",
+      "title": "The whole golden case",
+      "what": "Defines one full case: its id, canonical id, industry, depth tier, the purpose and the reason it exists, the process, the client, the evidence pack, the expected shared enablers, an optional note on why the evidence is thin, and free-form expected behaviour. The docstring says a case must never be loosened to make it load.",
+      "why": "The docstring says the golden set is the measuring instrument, so a case that breaks the contract measures something else.",
+      "watch_out": "Expected enablers must come from the enabler list, because a typo would be invisible at run time and would inflate the portfolio total."
+    },
+    {
+      "start": 211,
+      "end": 250,
+      "kind": "class",
+      "name": "CaseInput (part 2)",
+      "id": "s8",
+      "hash": "57360c335452097d",
+      "title": "Prerequisites, duplicate check and directory check",
+      "what": "Adds the expected prerequisite list and a check that no evidence id appears twice in the pack. It also defines a separate method that returns a list of sentences for any mismatch between the case's id or industry and its folder.",
+      "why": "The docstring says duplicate ids would inflate every confidence figure. The directory is the discovery key, so a mismatch makes results impossible to match across runs.",
+      "watch_out": "The directory check is a separate method, so it runs only when a caller invokes it and not automatically when the case loads."
+    }
+  ],
+  "explained_at": "2026-11-12T01:12:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the required shape of one golden test case, checked before the pipeline or the evaluation gate uses it.",
+  "purpose": "Makes sure a case is valid input before any analysis runs, so a broken case fails early and names the case rather than a field deep inside a run.",
+  "why": "The docstring says the case checks used to test only that keys were present, so a bad value such as a misspelt depth tier got through. Validating the full shape here closes that gap.",
+  "how": "Defines the depth tier names, a four-level authority scale for sources, the evidence item, the process framing, the client context, the prerequisite, and the full case. The full case checks that no evidence id repeats in the pack. A separate method checks that the case's id and industry match the folder it sits in.",
+  "inputs": "A case's input file from the golden set, read by the pipeline's read function or the evaluation harness.",
+  "outputs": "A validated case object, a validation error naming the bad field, or a list of sentences describing directory mismatches.",
+  "risks": "Loosening a field to make a case load, which makes the test measure something other than its purpose. Changing the depth tier names here without changing the run manifest. Treating an empty evidence pack as a broken retrieval when it may be a deliberate test state.",
+  "debug": "Read the validation error, which names the field. For a directory problem, check that the folder name matches the canonical id and industry. For a depth tier mismatch, compare this file with the run manifest.",
+  "summary_hash": "sha256:68974e79c881b29f4b59f4ca42ebc517bdea940a8c0eeb5b7743fb08c6e564a1"
+}

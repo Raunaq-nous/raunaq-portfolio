@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "path": "scripts/pre_commit_guard.py",
+  "language": "Python",
+  "lines": 52,
+  "hash": "sha256:2a08e708bbca12b9f31f9129fa243571a99b65111b73787b273d32c85bd5cec3",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The logic is short and easy to follow, but no test for this file is visible.",
+      "Whether the lock is removed in every case depends on evals/run.py, which is not in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "pre-commit hook",
+      "meaning": "a script that Git runs just before saving a commit, and which can stop that commit"
+    },
+    {
+      "term": "lock file",
+      "meaning": "a small file that signals a process is busy, so other steps wait until it is removed"
+    },
+    {
+      "term": "mutation",
+      "meaning": "a deliberate small defect put into code on purpose, to check that the tests catch it"
+    },
+    {
+      "term": "exit status",
+      "meaning": "the number a program returns when it finishes, where zero means success and any other number means failure"
+    }
+  ],
+  "depends_on": [
+    "Python standard library only"
+  ],
+  "used_by": [
+    ".githooks/pre-commit",
+    "evals/run.py creates the lock file it reads"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4542a64a198940d3",
+      "title": "Purpose and where the lock lives",
+      "what": "Explains that this check blocks commits while the mutation runner has a source file deliberately broken. It also fixes where the lock file is expected.",
+      "why": "The docstring explains that a commit during that window would make the defect the stored source.",
+      "watch_out": "The lock file name must match exactly what the mutation runner creates."
+    },
+    {
+      "start": 26,
+      "end": 40,
+      "kind": "function",
+      "name": "refusal",
+      "id": "s2",
+      "hash": "42a42560b6dcd9b7",
+      "title": "Build the refusal message",
+      "what": "Returns the refusal text when the lock exists, naming the entry in flight and what to do, and returns an empty text when there is no lock.",
+      "why": "The message tells the reader that waiting for the run is the fix.",
+      "watch_out": "An empty lock file produces the text an unnamed entry, which is the only fallback."
+    },
+    {
+      "start": 41,
+      "end": 50,
+      "kind": "function",
+      "name": "main",
+      "id": "s3",
+      "hash": "87dfac7093f36d8d",
+      "title": "Check the lock and set the result",
+      "what": "Reads an optional path, checks for a refusal, prints it to the error output if one exists, and returns status 1 to stop the commit.",
+      "why": "Git stops a commit when the hook returns a non-zero status.",
+      "watch_out": "A path argument replaces the default lock location, so a wrong argument silently checks the wrong place."
+    },
+    {
+      "start": 51,
+      "end": 52,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s4",
+      "hash": "a19977043f22fb92",
+      "title": "Script start",
+      "what": "Runs the check when the file is run directly, and passes its result on as the exit status.",
+      "why": "Standard pattern for a runnable Python script.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T01:25:52+00:00",
+  "explained_by": "haiku",
+  "summary": "A commit check that refuses a commit while the mutation runner has a source file deliberately broken.",
+  "purpose": "Stops a deliberately defective file from being saved into the repository. The mutation runner in evals/run.py patches a tracked file, runs tests, then restores it. This check blocks commits during that window.",
+  "why": "The file's docstring says that detecting a changed file is not enough, because a race can be lost silently. A lock file held for the run is the simpler guarantee.",
+  "how": "1. The mutation runner creates a lock file named .mutation-in-flight at the repository root. 2. Git runs the pre-commit hook, which calls this script. 3. The script checks whether the lock exists. 4. If it exists, the script reads the entry name and prints a refusal message. 5. The script returns status 1, which stops the commit. If the lock is absent, it returns status 0.",
+  "inputs": "An optional path to a lock file given on the command line. Without one, the default lock at the repository root is used.",
+  "outputs": "A refusal message on the error output and exit status 1 when a run is in flight. Otherwise, exit status 0 and no output.",
+  "risks": "If the lock is left behind after a crash, every commit is refused until someone removes it. A wrong path argument checks the wrong file and can let a commit through.",
+  "debug": "If commits are refused with no run active, check the lock file's contents and that no run is still going. The refusal message gives the next steps. If a commit gets through during a run, check that the hook is installed through the hooks path setting described in the docstring.",
+  "summary_hash": "sha256:2a08e708bbca12b9f31f9129fa243571a99b65111b73787b273d32c85bd5cec3"
+}

@@ -1,0 +1,231 @@
+{
+  "schema_version": 1,
+  "path": "tests/schema/test_reconciliation.py",
+  "language": "Python",
+  "lines": 353,
+  "hash": "sha256:d92e7e126a6b2f4716ccb220605969a36cd97fc97b9f45d697dbb31655da832f",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The packet does not show whether these tests pass.",
+      "The rules are documented and tested in detail, but the models they check were not shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "calibration",
+      "meaning": "a bounded adjustment to a process score after comparing it with similar processes."
+    },
+    {
+      "term": "raw score",
+      "meaning": "the original score, kept unchanged so audits can see it."
+    },
+    {
+      "term": "calibrated score",
+      "meaning": "the raw score plus the adjustment, kept within the allowed scale."
+    },
+    {
+      "term": "enabler",
+      "meaning": "a shared capability, such as document intelligence, that several processes can use."
+    },
+    {
+      "term": "attribution",
+      "meaning": "a split of an enabler's credit among the processes that claim it, with weights that sum to one."
+    },
+    {
+      "term": "prerequisite edge",
+      "meaning": "a link saying one process must come before another, and why."
+    },
+    {
+      "term": "cycle",
+      "meaning": "a loop of prerequisites that makes a valid order impossible."
+    },
+    {
+      "term": "schedulable",
+      "meaning": "the plan has no cycles and can be put in an order."
+    },
+    {
+      "term": "capacity check",
+      "meaning": "a comparison of the staffing needs of the plan against the available people."
+    }
+  ],
+  "depends_on": [
+    "packages/schema",
+    "packages/agents/portfolio_reconciler"
+  ],
+  "used_by": [
+    "Test runner (pytest). No other file in the packet calls this file."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "0bc498f671bfa939",
+      "title": "File setup and purpose notes",
+      "what": "Brings in the reconciliation models and states the file's main contract: calibration adds to raw scores without replacing them.",
+      "why": "The header describes the contract directly.",
+      "watch_out": ""
+    },
+    {
+      "start": 20,
+      "end": 37,
+      "kind": "function",
+      "name": "adjustment",
+      "id": "s2",
+      "hash": "b8f50813688d6e9d",
+      "title": "Builder for one calibration adjustment",
+      "what": "Creates a valid calibration with a raw score of four, a change of minus one, two comparison processes and one evidence id. Options let each test change one value.",
+      "why": "Likely reason: keeps each test focused on one rule.",
+      "watch_out": "Default values must stay valid, or many unrelated tests will fail at creation."
+    },
+    {
+      "start": 38,
+      "end": 52,
+      "kind": "function",
+      "name": "attribution",
+      "id": "s3",
+      "hash": "575c02d6997f1625",
+      "title": "Builder for one enabler attribution",
+      "what": "Creates an attribution of a shared enabler between two processes, with weights of 0.6 and 0.4 by default.",
+      "why": "Likely reason: gives a valid split so tests can break one rule at a time.",
+      "watch_out": ""
+    },
+    {
+      "start": 53,
+      "end": 72,
+      "kind": "function",
+      "name": "result",
+      "id": "s4",
+      "hash": "922fc30649286984",
+      "title": "Builder for a full reconciliation result",
+      "what": "Builds a complete result with one calibration, one attribution, one prerequisite link, no cycles or capacity findings, and the capacity check marked as not run. Overrides are applied on top.",
+      "why": "Likely reason: a valid starting point for result-level tests.",
+      "watch_out": "If a required field is added to the result, this builder must be updated or most tests here will fail."
+    },
+    {
+      "start": 73,
+      "end": 129,
+      "kind": "class",
+      "name": "TestCalibrationIsAdditive (part 1)",
+      "id": "s5",
+      "hash": "3d3e1da235f49c57",
+      "title": "Calibration is additive and bounded",
+      "what": "Checks that the calibrated score is the raw score plus the change, kept within zero to five. Checks that the raw score cannot be changed, that the moved flag reports whether clamping absorbed the change, that unbounded changes are rejected, that the raw score must be in range, that the rationale cannot be empty, that comparators are required, and that a process cannot compare with itself.",
+      "why": "The docstrings say an unbounded change is a re-score in disguise, and that a calibration with no comparison is only a second opinion.",
+      "watch_out": "The tests assume a zero to five scale. Changing the scale affects many expected values here."
+    },
+    {
+      "start": 130,
+      "end": 145,
+      "kind": "method",
+      "name": "TestCalibrationIsAdditive: test_two_adjustments_for_one_dimension_are_rejected",
+      "id": "s6",
+      "hash": "6cb930f606a0ff6a",
+      "title": "Only one calibration per dimension per result",
+      "what": "Rejects a result that has two calibrations for the same dimension on the same process, while allowing one process to be calibrated on two different dimensions.",
+      "why": "The docstring says the outcome would depend on the order of processing if two applied.",
+      "watch_out": "This check is about the same process and dimension together, not about the dimension alone."
+    },
+    {
+      "start": 146,
+      "end": 184,
+      "kind": "class",
+      "name": "TestEnablerAttribution",
+      "id": "s7",
+      "hash": "2d749b1aed958edf",
+      "title": "Enabler credit weights must add up to one",
+      "what": "Weights must sum to one within a small tolerance, cannot be negative, must match the list of claimants exactly, and the claimant list cannot be empty. The basis and evidence fields are required.",
+      "why": "The docstring says weights above one double count the enabler, which is the defect this rule removes.",
+      "watch_out": "The tolerance lets rounded splits such as three equal thirds pass. A larger tolerance would also let real double counting through."
+    },
+    {
+      "start": 185,
+      "end": 220,
+      "kind": "class",
+      "name": "TestPrerequisiteEdge",
+      "id": "s8",
+      "hash": "01629ea1e756a99d",
+      "title": "Prerequisite reasons and self-links",
+      "what": "Checks that the reason list is closed with five allowed values, that every prerequisite kind has a matching reason, that an unknown reason is rejected, and that a process cannot be its own prerequisite.",
+      "why": "The docstring says a kind with no reason would make an unmappable report, and any cycle through it would go unnoticed.",
+      "watch_out": "The kind-to-reason check reads a map in packages/agents/portfolio_reconciler. Any new prerequisite kind must be added there."
+    },
+    {
+      "start": 221,
+      "end": 251,
+      "kind": "class",
+      "name": "TestReconciliationResult",
+      "id": "s9",
+      "hash": "a821ceb826b0152b",
+      "title": "Results are schedulable only when free of cycles",
+      "what": "A clean result is schedulable. A result with a cycle is not. Capacity findings carry no numbers, must name the affected processes, and no model in the reconciliation contract has money-like fields.",
+      "why": "The docstring says a non-empty cycle list must fail loudly, and that the capacity arithmetic belongs in another package.",
+      "watch_out": "The tests check cycles only. Schedulability with capacity findings is not tested in this section."
+    },
+    {
+      "start": 252,
+      "end": 293,
+      "kind": "class",
+      "name": "TestTheClosedJoinKey",
+      "id": "s10",
+      "hash": "944d07e1d082eff5",
+      "title": "Enabler identifiers and claimants are strict",
+      "what": "Enabler ids must come from the closed list. Duplicate claimants, a second attribution for the same enabler, and missing basis or evidence are rejected. Two different enablers are accepted.",
+      "why": "The docstrings say a duplicated claimant gets its share twice, and that two attributions for one enabler count it twice. The enabler id is the join into the value parameters.",
+      "watch_out": "Renaming an enabler id breaks the join with the value parameters, not only these tests."
+    },
+    {
+      "start": 294,
+      "end": 312,
+      "kind": "class",
+      "name": "TestDimensionIsAScorecardDimension",
+      "id": "s11",
+      "hash": "27c4e8e6f17e53fb",
+      "title": "Calibration dimensions must be real scorecard names",
+      "what": "Accepts a real scorecard dimension, rejects free text, and checks that the rejection message lists every dimension name read from the scorecard.",
+      "why": "The docstring says near-identical names such as underscore and hyphen versions would both apply, with order deciding.",
+      "watch_out": "The valid list comes from the scorecard, so renaming a dimension there changes what is accepted here."
+    },
+    {
+      "start": 313,
+      "end": 335,
+      "kind": "class",
+      "name": "TestCalibratedScoreSerialises",
+      "id": "s12",
+      "hash": "038940d22380fa7d",
+      "title": "Calibrated score shows in output but cannot be set",
+      "what": "Checks that the calibrated score appears in a dump and in the JSON schema, and that it cannot be supplied directly when creating an adjustment.",
+      "why": "The docstring says reports read the calibrated score, and that if it were missing every reader would have to recalculate it.",
+      "watch_out": ""
+    },
+    {
+      "start": 336,
+      "end": 353,
+      "kind": "class",
+      "name": "TestCapacityCheckRanOrNot",
+      "id": "s13",
+      "hash": "a40f07ecff3b33bf",
+      "title": "Capacity check status is honest",
+      "what": "Accepts not_run and establishment_read, rejects run, and rejects unlisted values.",
+      "why": "The docstring says an empty findings list would otherwise mean both not checked and checked with nothing found. It also says the status run would claim a comparison that the stage does not perform.",
+      "watch_out": "The docstring notes the capacity arithmetic is not implemented yet (divergence D11). Adding a status should be a deliberate choice."
+    }
+  ],
+  "explained_at": "2026-11-12T01:01:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks the rules for the reconciliation results: calibration changes that are additive and bounded, enabler credit that is counted only once, prerequisite links, and the capacity check status.",
+  "purpose": "Protects the reconciliation output, where scores are adjusted, benefits are shared between processes, and a plan's order is checked, from double counting and silent changes to raw scores.",
+  "why": "The file header states the contract: calibration is additive and raw scores stay frozen. Many docstrings give a reason, such as double counting or order-dependent results.",
+  "how": "Helper functions build valid calibrations, attributions and results. Each test changes one value and checks that the model accepts or rejects it with a specific message.",
+  "inputs": "Hand-made calibration, attribution, prerequisite and result objects built inside the test file, plus the reconciliation models in packages/schema.",
+  "outputs": "Pass or fail results. No files are written.",
+  "risks": "Many tests check exact message wording. The enabler list, dimension list and prerequisite reasons are linked to other files, so changing one of those requires matching changes here.",
+  "debug": "If a rule test fails, read the message and find the matching rule in packages/schema. If the reason map test fails, compare REASON_FOR_KIND in packages/agents/portfolio_reconciler with the prerequisite kinds. If the scorecard test fails, check the dimension names in Scorecard.",
+  "summary_hash": "sha256:d92e7e126a6b2f4716ccb220605969a36cd97fc97b9f45d697dbb31655da832f"
+}

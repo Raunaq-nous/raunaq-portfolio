@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "path": "tests/goldenrun.py",
+  "language": "Python",
+  "lines": 102,
+  "hash": "sha256:884267637270b5d75589645495f8c4297d6b13641102d735699409ed16b5bfaa",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No check that the golden inputs and recorded folders exist before the replay starts.",
+      "The shared cache can carry one test's changes into another.",
+      "Not executed in this review, so it is unverified."
+    ]
+  },
+  "terms": [
+    {
+      "term": "replay",
+      "meaning": "Running the pipeline using saved responses instead of a live service."
+    },
+    {
+      "term": "golden set",
+      "meaning": "A fixed set of reference input cases whose outputs are known to be correct."
+    },
+    {
+      "term": "provenance ledger",
+      "meaning": "A running record of which calls and sources were used to produce results."
+    },
+    {
+      "term": "manifest",
+      "meaning": "A summary file that describes one whole run."
+    },
+    {
+      "term": "module-level cache",
+      "meaning": "A stored value kept for the life of the test process, shared by every test in it."
+    }
+  ],
+  "depends_on": [
+    "scripts/run_pipeline.py",
+    "packages/agents/provenance.py",
+    "packages/orchestration/pipeline.py",
+    "packages/orchestration/reduce.py",
+    "packages/orchestration/replay.py"
+  ],
+  "used_by": [
+    "Other test suites that need the replayed output (not listed in this packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 42,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "353cd38827a21b24",
+      "title": "Setup and shared imports",
+      "what": "Adds the project folders to the import path and gathers the pipeline functions, the replay client and the provenance ledger. It is the foundation for the replay.",
+      "why": "Likely reason: the file borrows the pipeline's own functions, so the test uses the same assembly the app uses.",
+      "watch_out": "Changing the import path at load time affects every test that imports this file."
+    },
+    {
+      "start": 43,
+      "end": 55,
+      "kind": "class",
+      "name": "GoldenRun",
+      "id": "s2",
+      "hash": "953d78aebfba5329",
+      "title": "The bundle of replay results",
+      "what": "Defines a frozen record that holds everything the replay produces, so tests can read it by name.",
+      "why": "Gives tests one stable object to read instead of many separate values.",
+      "watch_out": ""
+    },
+    {
+      "start": 56,
+      "end": 96,
+      "kind": "function",
+      "name": "_run",
+      "id": "s3",
+      "hash": "863daf6dd2303baa",
+      "title": "Running the replay",
+      "what": "Loads every golden case, resolves its identifiers, builds the context for each case, and replays each case and the portfolio reconciliation. It then builds the final manifest from the shared ledger.",
+      "why": "Likely reason: one shared ledger keeps the manifest covering the whole run, not one process's share.",
+      "watch_out": "A missing or mismatched recording stops the whole replay, so one bad case blocks every test that uses it."
+    },
+    {
+      "start": 97,
+      "end": 102,
+      "kind": "function",
+      "name": "golden_run",
+      "id": "s4",
+      "hash": "8a96f6f60fe54248",
+      "title": "Getting the cached replay",
+      "what": "Returns the stored replay result, running the replay only on the first call in each test process.",
+      "why": "Avoids paying the replay cost again for every test suite that needs it.",
+      "watch_out": "The cache lives for the whole process, so state set by one test can leak into others."
+    }
+  ],
+  "explained_at": "2026-11-12T00:51:30+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the golden test set through the real pipeline once per test process and keeps the result in memory, so several test files can reuse it.",
+  "purpose": "To give tests a realistic set of pipeline outputs without repeating the slow run for each test file.",
+  "why": "Likely reason: the same output is identical every run, so repeating it for each suite only costs time. The file also reuses the pipeline's own functions so tests check the shipped code.",
+  "how": "It reads every golden case input file, resolves the identifiers, and builds the context for each case with one shared provenance ledger. It replays each case and the portfolio reconciliation from recorded responses. It packs the results into one record and stores it. Later calls return the stored copy.",
+  "inputs": "The golden case input files, the recorded replay responses for each case and the portfolio, and the pipeline functions in the scripts folder.",
+  "outputs": "A frozen record holding the assembled records, the portfolio result, the cases, the case identifiers, the ledger and the final manifest.",
+  "risks": "The cache is shared for the whole test process, so any test that changes the result changes it for later tests. The file does not check that the golden or recorded folders exist first.",
+  "debug": "If every test that uses this fails the same way, look at the first error from the replay, which usually names a missing recording or case. Check that each golden case has a matching recorded folder. Clearing the cache requires restarting the test process.",
+  "summary_hash": "sha256:884267637270b5d75589645495f8c4297d6b13641102d735699409ed16b5bfaa"
+}

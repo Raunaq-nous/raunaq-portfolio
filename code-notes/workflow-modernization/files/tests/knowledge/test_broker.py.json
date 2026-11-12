@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "path": "tests/knowledge/test_broker.py",
+  "language": "Python",
+  "lines": 187,
+  "hash": "sha256:61e7923973e2647fab5d6a1b16d82ab316da4b3671e11bf31f07ded3c74e7354",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Covers retrieval, combining stores, reranking, and error handling.",
+      "Errors are tested directly, so an outage cannot quietly pass.",
+      "Not executed in this review, so the current pass state is unverified."
+    ]
+  },
+  "terms": [
+    {
+      "term": "recall at k",
+      "meaning": "The share of the truly relevant items that appear in the top k results."
+    },
+    {
+      "term": "reciprocal rank fusion",
+      "meaning": "A way to combine several ranked lists by position only, so items ranked high in several lists rise to the top."
+    },
+    {
+      "term": "reranker",
+      "meaning": "A step that reorders results after they are found."
+    },
+    {
+      "term": "store",
+      "meaning": "A source of evidence the broker can search, such as a document collection."
+    },
+    {
+      "term": "protocol",
+      "meaning": "An agreed shape that any store must provide, here a name and a search method."
+    },
+    {
+      "term": "authority tier",
+      "meaning": "A ranking of how authoritative a source is, where a lower number is stronger."
+    }
+  ],
+  "depends_on": [
+    "packages/knowledge/broker.py",
+    "packages/knowledge/evidence.py"
+  ],
+  "used_by": [
+    "Run by pytest as part of the Python test suite"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6082df35988abbdd",
+      "title": "Setup and imports",
+      "what": "Loads the broker parts and the sample evidence type the tests use.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 19,
+      "end": 45,
+      "kind": "function",
+      "name": "item",
+      "id": "s2",
+      "hash": "6d8a3b655181bec0",
+      "title": "Making a sample evidence item",
+      "what": "Builds one sample evidence item with an identifier, excerpt, authority tier and optional date, so tests can create items quickly.",
+      "why": "Keeps every test's sample items consistent with one shape.",
+      "watch_out": ""
+    },
+    {
+      "start": 46,
+      "end": 53,
+      "kind": "function",
+      "name": "broker",
+      "id": "s3",
+      "hash": "47315b3523c86ed6",
+      "title": "Building a broker for tests",
+      "what": "Creates a broker over the fixed sample corpus, with an optional reranker and a set snapshot identifier.",
+      "why": "Gives every test the same starting point so results are comparable.",
+      "watch_out": "The type ignore hides a type mismatch on the reranker, so a wrong reranker type would not be flagged."
+    },
+    {
+      "start": 54,
+      "end": 88,
+      "kind": "class",
+      "name": "TestRetrieval",
+      "id": "s4",
+      "hash": "f3b3deb5dee3560e",
+      "title": "Retrieval tests",
+      "what": "Checks that a query returns the relevant items, that recall is measured correctly, that an unmatched query returns an empty result, that the result count is capped, that results are pinned to a snapshot, and that results repeat exactly.",
+      "why": "Retrieval is the core job of the broker, and an empty result is a legitimate answer that must be shown as such.",
+      "watch_out": "The expected items depend on the sample corpus, so editing the corpus changes these expectations."
+    },
+    {
+      "start": 89,
+      "end": 123,
+      "kind": "class",
+      "name": "TestReciprocalRankFusion",
+      "id": "s5",
+      "hash": "dc83ba233352f338",
+      "title": "Combining rankings from several stores",
+      "what": "Checks that items agreed on by several stores rise above items found in only one, that a single ranking is kept in order, and that ties break by identifier so results repeat.",
+      "why": "Stores score items on different scales, so combining by position is the fair method.",
+      "watch_out": "The protocol test checks that stores do not expose scores; a change that exposes them would need this test updated."
+    },
+    {
+      "start": 124,
+      "end": 151,
+      "kind": "class",
+      "name": "TestReranking",
+      "id": "s6",
+      "hash": "4cc782f863963262",
+      "title": "Reranking by authority and date",
+      "what": "Checks that higher authority ranks first, that a newer item wins a tie in authority, that undated items come last within their tier, and that the broker applies the reranker.",
+      "why": "A final deliverable should outrank an informal note on the same subject.",
+      "watch_out": "Changing the tier or date order changes which evidence the reader sees first."
+    },
+    {
+      "start": 152,
+      "end": 187,
+      "kind": "class",
+      "name": "TestTheProtocolBoundary",
+      "id": "s7",
+      "hash": "36f60c54381ac574",
+      "title": "The store boundary",
+      "what": "Checks that a store only needs a name and a search, that results from several stores combine, that the broker never invents items, and that a store error is raised rather than turned into an empty result.",
+      "why": "Turning an outage into empty results would tell the reader that no evidence exists when the store was simply unreachable.",
+      "watch_out": "The first check reads an internal Python detail of the protocol, which could change with the Python version."
+    }
+  ],
+  "explained_at": "2026-11-12T00:51:30+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests that the evidence broker finds the right supporting items, combines results from several sources fairly, reorders them by authority and recency, and passes store errors through instead of hiding them.",
+  "purpose": "To measure whether the broker retrieves relevant evidence, since it is graded on recall, not on judgement.",
+  "why": "A broker that quietly returns nothing would make a claim look unsupported when the store is actually broken, so error handling is tested directly.",
+  "how": "Each test builds a broker over a fixed set of sample evidence items, runs a query, and checks the results. Tests cover retrieval, combining rankings from several stores, reranking by authority and date, and the rule that errors propagate.",
+  "inputs": "A fixed corpus of five sample evidence items, with queries and a snapshot identifier.",
+  "outputs": "Pass or fail results for each test in pytest.",
+  "risks": "Tests depend on the sample corpus and its dates. Changing the sample items or the reranking rules may break several tests at once.",
+  "debug": "If a retrieval test fails, print the returned item identifiers in order and compare them to the expected ones. If a reranking test fails, check the authority tier and date on each sample item.",
+  "summary_hash": "sha256:61e7923973e2647fab5d6a1b16d82ab316da4b3671e11bf31f07ded3c74e7354"
+}

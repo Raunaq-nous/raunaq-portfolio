@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "path": "packages/schema/assessment.py",
+  "language": "Python",
+  "lines": 195,
+  "hash": "sha256:7e6c474b5cceda873e839ae80db5bf03ce27eb28dba6873b6f29b698a1b92d9a",
+  "area": "packages-schema",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The rules are explicit and written in the field descriptions, which helps review.",
+      "No tests for this file are visible in the packet, so the behaviour cannot be confirmed here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Ordinal",
+      "meaning": "A ranked order where the gaps between steps are not known to be equal."
+    },
+    {
+      "term": "Frozen model",
+      "meaning": "An object that cannot be changed after it is created."
+    },
+    {
+      "term": "Validation",
+      "meaning": "A check that runs when a record is built, rejecting data that breaks the rules."
+    }
+  ],
+  "depends_on": [
+    "packages/schema/enums.py",
+    "pydantic"
+  ],
+  "used_by": [
+    "packages/schema/__init__.py",
+    "packages/value/ (named in the docstring as where derived values are computed; its imports are not visible)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 26,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6478f188e8f1ae2e",
+      "title": "File setup and the inverted-dimension list",
+      "what": "Explains what the module is for and sets up the list of dimensions where a higher score is worse. That list is the main protection against a rollup ranking the hardest processes as the best.",
+      "why": "The docstring says a rollup that gets the inversion wrong does so silently, so the list is exported for rollups to check against.",
+      "watch_out": "Any rollup that ranks by these scores must handle the two inverted dimensions in the opposite direction."
+    },
+    {
+      "start": 27,
+      "end": 49,
+      "kind": "class",
+      "name": "ScoredDimension",
+      "id": "s2",
+      "hash": "7c59dd2ac736bdbc",
+      "title": "One scored judgement",
+      "what": "Defines one score: a whole number from 0 to 5, a one-line reason, and a list of evidence ids. An empty evidence list is allowed, but it marks the score as an unsupported hypothesis.",
+      "why": "The docstring says a bare number cannot be reviewed or calibrated, so a reason is required with every score.",
+      "watch_out": "The evidence list is required even when it is empty, so a missing field is rejected rather than treated as empty."
+    },
+    {
+      "start": 50,
+      "end": 107,
+      "kind": "class",
+      "name": "Scorecard",
+      "id": "s3",
+      "hash": "1318f8e17fd2ce11",
+      "title": "The nine-dimension scorecard",
+      "what": "Groups the nine scores for one process. Seven are higher-is-better. Fragmentation and change burden are inverted, so five means worse. The model is frozen after creation and rejects unknown fields.",
+      "why": "The docstring says the inverted scores are the most common source of scoring bugs, so the field descriptions repeat the warning.",
+      "watch_out": "Any code that averages, ranks or compares these nine scores must respect which two are inverted."
+    },
+    {
+      "start": 108,
+      "end": 131,
+      "kind": "class",
+      "name": "NatureOfWork",
+      "id": "s4",
+      "hash": "c2a1f69d9d980640",
+      "title": "Four work-position values",
+      "what": "Four values from 0 to 100 that place the work on axes: manual to automated, physical to cerebral, judgement required, and coordination load. They describe where the work sits, not how good it is.",
+      "why": "The docstring says there is no good end of any axis, so ranking or averaging them is wrong and a recommendation should not come from one alone.",
+      "watch_out": "The rule against ranking or summing these values is written only in comments. Nothing in the code enforces it."
+    },
+    {
+      "start": 132,
+      "end": 147,
+      "kind": "class",
+      "name": "OperatingModelImplication",
+      "id": "s5",
+      "hash": "8db5160671dfc8f8",
+      "title": "One operating-model consequence",
+      "what": "One effect on how the organisation is run if the future state is adopted. It is a written statement with a list of supporting evidence ids.",
+      "why": "The docstring says consequences are described qualitatively. Quantities are computed downstream.",
+      "watch_out": "The evidence list is required, so an empty list must be written on purpose to mark the consequence as unsupported."
+    },
+    {
+      "start": 148,
+      "end": 175,
+      "kind": "class",
+      "name": "WorkforceImplication",
+      "id": "s6",
+      "hash": "f805c839fbaa02ce",
+      "title": "One workforce consequence",
+      "what": "Describes what happens to one role. It gives the role name, a direction of change from the headcount direction set, a list of skills the role gains, and evidence ids.",
+      "why": "The docstring says the model may give a direction only. Any magnitude must be computed from the cost basis, which only the value code knows.",
+      "watch_out": "The direction is the only workforce quantity allowed here. Adding a number field would let an unchecked total enter the record."
+    },
+    {
+      "start": 176,
+      "end": 195,
+      "kind": "class",
+      "name": "Implications",
+      "id": "s7",
+      "hash": "d0e45e0d5c5a9236",
+      "title": "The full set of consequences",
+      "what": "Groups the operating-model consequences and the workforce consequences for the whole future state, with one evidence list for the block.",
+      "why": "The docstring says this block is qualitative only, so value figures, headcount, costs and timelines do not belong here.",
+      "watch_out": "The block-level evidence list is required, so a block with no items still needs the field to be present."
+    }
+  ],
+  "explained_at": "2026-11-12T01:12:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the judgements about a process: a nine-dimension scorecard, four work-position values, and the operating model and workforce consequences of a future state.",
+  "purpose": "Records the qualitative assessment that the prioritisation grid is built from, in a form a computer can check.",
+  "why": "The docstring states that scores are ordinal, positions are descriptive, and workforce impact is a direction only. Money and headcount totals are computed elsewhere so a model cannot invent them.",
+  "how": "First defines the set of dimensions where a higher score is worse. Then defines the scored dimension (a whole number from 0 to 5, a reason, and an evidence list), the nine-dimension scorecard, the four work positions, the operating model item, the workforce item, and a container that groups the consequences. Every model is frozen after creation and rejects unknown fields.",
+  "inputs": "Values produced by an upstream agent or a person, checked against these models when a record is built.",
+  "outputs": "Validated scorecard and implication objects, or a validation error naming the field that broke a rule.",
+  "risks": "A rollup that treats the two inverted dimensions as higher-is-better will rank the hardest processes as the best opportunities. Adding a numeric headcount field to the workforce item would let a model produce an unchecked total. Omitting an evidence list is an error, not a shortcut.",
+  "debug": "If a record fails to load with a score error, check that each score is a whole number from 0 to 5 with a reason and an evidence list. If a dimension looks ranked the wrong way, check whether the rollup uses the inverted-dimension set.",
+  "summary_hash": "sha256:7e6c474b5cceda873e839ae80db5bf03ce27eb28dba6873b6f29b698a1b92d9a"
+}

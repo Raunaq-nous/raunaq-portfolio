@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/workforce_modeller.py",
+  "language": "Python",
+  "lines": 161,
+  "hash": "sha256:a58297194d420387ad2322aa78b443b8f4ffc52f9cf3c2d8ee925d32bcf9e505",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for this file is visible in the packet.",
+      "The number check is a pattern match, not a full reading of the text."
+    ]
+  },
+  "terms": [
+    {
+      "term": "FTE",
+      "meaning": "Full-time equivalent: one person working full time for a year, used as the unit of effort."
+    },
+    {
+      "term": "Headcount",
+      "meaning": "The count of people in a role or team."
+    },
+    {
+      "term": "Operating model",
+      "meaning": "How an organisation is structured, including who owns decisions and how teams are arranged."
+    },
+    {
+      "term": "Span",
+      "meaning": "The number of people one manager leads directly."
+    },
+    {
+      "term": "Direction",
+      "meaning": "Whether a role's size or shape goes up, down or changes in composition."
+    }
+  ],
+  "depends_on": [
+    "packages/agents/base.py",
+    "packages/agents/routing.py",
+    "packages/schema",
+    "pydantic"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 57,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "cceb286c4249a446",
+      "title": "Purpose and prompt rules for workforce",
+      "what": "Explains that this agent describes which roles change, in which direction, and what skills they need. The prompt tells the model never to give numbers for people or money.",
+      "why": "Stated in the docstring: a number here would be a total produced by an agent, and it would look authoritative next to a role name.",
+      "watch_out": "The prompt rule and the output shape both block numbers, so loosening either one lets quantities through."
+    },
+    {
+      "start": 58,
+      "end": 96,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "3c5398fdf4a7d78a",
+      "title": "Pattern check for numbers in text",
+      "what": "Defines a list of countable nouns and a pattern that detects percentages, currency amounts and counts of people written in free text. It is meant to catch numbers that slip into descriptions.",
+      "why": "Stated in the docstring: the output shape cannot see free text, so this is a backstop. It is kept conservative so labels like tier 2 support still pass.",
+      "watch_out": "A broader pattern would block legitimate labels and push people to work around the check."
+    },
+    {
+      "start": 97,
+      "end": 114,
+      "kind": "class",
+      "name": "_WorkforceOutput",
+      "id": "s3",
+      "hash": "705f117a330f1f52",
+      "title": "Shape of the workforce answer",
+      "what": "Defines the answer shape: operating model changes, one entry per affected role, and a list of evidence IDs. Each role entry has a direction and skills, with no field for a headcount or a money amount.",
+      "why": "Stated in the docstring: the missing number field is the enforcement. A request not to quantify would be weaker.",
+      "watch_out": "Adding any numeric field here would remove the main protection against invented headcount figures."
+    },
+    {
+      "start": 115,
+      "end": 161,
+      "kind": "class",
+      "name": "WorkforceModeller",
+      "id": "s4",
+      "hash": "734068009f00a2c3",
+      "title": "Workforce agent and number check",
+      "what": "The agent that sends the redesigned process to the model, then scans the free-text fields for numbers. If it finds one, it stops with an error rather than passing it on.",
+      "why": "Likely reason: released effort is calculated elsewhere, where the cost of an FTE is known, so a number here would be an unchecked total.",
+      "watch_out": "A false match in this check raises an error that can stop a valid run, so a broad pattern would cause real failures."
+    }
+  ],
+  "explained_at": "2026-11-12T01:20:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Asks an AI model to describe the workforce and operating model effects of a redesign as directions and skills only, and rejects numbers that appear in free text.",
+  "purpose": "Describes the people side of a redesign: which roles change, in which direction, and what skills they need. It contains no money or headcount figures.",
+  "why": "Released effort and cost are calculated in the value package, which knows what a full-time role costs. Keeping numbers out of this stage avoids unchecked totals.",
+  "how": "Build a prompt from the purpose, posture and redesigned steps. The model returns operating model changes, role directions and skills, plus evidence IDs. Free-text fields are scanned for numbers. If none are found, the implications object is built and returned.",
+  "inputs": "The future state: its purpose, posture and redesigned steps, including who performs each step.",
+  "outputs": "An implications object with operating model items, workforce items and evidence IDs.",
+  "risks": "A number written in a form the pattern does not match will pass through. A false match blocks a valid run. Directions chosen by the model may be too optimistic about reductions.",
+  "debug": "If the run fails with a quantification error, the message lists the matched text. Check whether those are real quantities or labels. If role directions look wrong, check the steps passed in.",
+  "summary_hash": "sha256:a58297194d420387ad2322aa78b443b8f4ffc52f9cf3c2d8ee925d32bcf9e505"
+}

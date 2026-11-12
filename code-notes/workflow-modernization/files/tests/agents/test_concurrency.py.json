@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "path": "tests/agents/test_concurrency.py",
+  "language": "Python",
+  "lines": 139,
+  "hash": "sha256:62bf7d750965f3e15d99421da12940864b421089f665ff3a9cba41b43b377bea",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The tests were read but not run during this review.",
+      "The module description records the bug that was observed before the fix, which is good evidence of intent."
+    ]
+  },
+  "terms": [
+    {
+      "term": "event loop",
+      "meaning": "the scheduler that switches between async tasks so they appear to run together"
+    },
+    {
+      "term": "await",
+      "meaning": "a point where async code pauses to wait for something, letting other tasks run"
+    },
+    {
+      "term": "warning capture",
+      "meaning": "a mechanism that collects warnings raised during a block of code"
+    },
+    {
+      "term": "fan-out",
+      "meaning": "running many similar jobs at once"
+    }
+  ],
+  "depends_on": [
+    "packages.agents.base",
+    "packages.agents.current_state_cartographer",
+    "packages.schema",
+    "tests.fixtures",
+    "asyncio",
+    "pytest"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "8186bbfa3c48ea6f",
+      "title": "Imports and shared setup",
+      "what": "Brings in asyncio, the cartographer, the schema types, and the stub client. It also marks the tests as async.",
+      "why": "Gives the concurrency tests the tools they need without calling a real model.",
+      "watch_out": "The module description explains that a stub which never pauses cannot show this bug, so keep the pausing helper in use."
+    },
+    {
+      "start": 31,
+      "end": 35,
+      "kind": "function",
+      "name": "anyio_backend",
+      "id": "s2",
+      "hash": "9d15fda7b3aa438b",
+      "title": "Async runner choice",
+      "what": "Tells the async test runner to use asyncio for these tests.",
+      "why": "Likely reason: the agent code is written for asyncio.",
+      "watch_out": ""
+    },
+    {
+      "start": 36,
+      "end": 49,
+      "kind": "function",
+      "name": "step",
+      "id": "s3",
+      "hash": "f499ffc0bfe21e5d",
+      "title": "Process step builder",
+      "what": "Builds a sample process step with a given effort share.",
+      "why": "Effort shares are what the drift check measures, so tests need to set them directly.",
+      "watch_out": ""
+    },
+    {
+      "start": 50,
+      "end": 54,
+      "kind": "function",
+      "name": "drifting",
+      "id": "s4",
+      "hash": "dde457f222891114",
+      "title": "Drifting sample output",
+      "what": "Builds a sample output whose effort shares add up to 0.7, not 1.0.",
+      "why": "Creates a deliberately inconsistent record that should trigger the drift warning.",
+      "watch_out": ""
+    },
+    {
+      "start": 55,
+      "end": 58,
+      "kind": "function",
+      "name": "clean",
+      "id": "s5",
+      "hash": "0dc300ca29f5c618",
+      "title": "Clean sample output",
+      "what": "Builds a sample output whose effort shares add up to 1.0.",
+      "why": "Creates a consistent record that should pass with no warning.",
+      "watch_out": ""
+    },
+    {
+      "start": 59,
+      "end": 71,
+      "kind": "function",
+      "name": "suspending",
+      "id": "s6",
+      "hash": "af76568189f58583",
+      "title": "Pausing fake client",
+      "what": "Wraps a fake client so each call pauses a set number of times before answering, like a real network wait.",
+      "why": "Makes concurrent runs actually take turns, which is the only way the bug can show.",
+      "watch_out": "The pause counts must vary across tests, or the interleaving cases are not really covered."
+    },
+    {
+      "start": 72,
+      "end": 84,
+      "kind": "function",
+      "name": "run_pair",
+      "id": "s7",
+      "hash": "e6fb4f19d14533ef",
+      "title": "Run two agents together",
+      "what": "Starts two cartographer runs at the same time with their own fake clients and waits for both results.",
+      "why": "This is the setup that reproduces overlapping runs.",
+      "watch_out": ""
+    },
+    {
+      "start": 85,
+      "end": 95,
+      "kind": "function",
+      "name": "test_drift_is_attributed_to_the_run_that_drifted",
+      "id": "s8",
+      "hash": "d5181b20edcc2e50",
+      "title": "Drift warning stays with its run",
+      "what": "Checks that only the drifting run keeps its warning and gets a second attempt, while the clean run gets no warning and only one attempt. It runs across several pause combinations.",
+      "why": "Stops a clean run from paying for another run's retry or losing its own warning.",
+      "watch_out": "The pause combinations are what expose the interleaving, so removing them weakens the test."
+    },
+    {
+      "start": 96,
+      "end": 106,
+      "kind": "function",
+      "name": "test_two_drifting_runs_each_keep_their_own_warning",
+      "id": "s9",
+      "hash": "8acca16179cc02f8",
+      "title": "Two drifting runs keep separate warnings",
+      "what": "Checks that when both runs drift, each one keeps exactly one warning of its own.",
+      "why": "Catches cases where warnings get merged or swapped between runs.",
+      "watch_out": ""
+    },
+    {
+      "start": 107,
+      "end": 113,
+      "kind": "function",
+      "name": "test_no_warning_escapes_the_agent",
+      "id": "s10",
+      "hash": "be2275e19905d9f9",
+      "title": "No warning leaks out of the agent",
+      "what": "Checks that no drift warning reaches the process-wide warning filter when two runs overlap.",
+      "why": "A warning that reaches the global filter has no owner, which is the bug this file guards.",
+      "watch_out": ""
+    },
+    {
+      "start": 114,
+      "end": 139,
+      "kind": "function",
+      "name": "test_an_unrelated_warning_costs_no_retry",
+      "id": "s11",
+      "hash": "31472be5c3bd5a8a",
+      "title": "Unrelated notice costs nothing",
+      "what": "Checks that a deprecation notice from the SDK passes through to the caller without an extra attempt and without appearing as a soft warning.",
+      "why": "The module notes that the eval layer treats soft warnings as hard failures, and that an SDK notice is not a defect in the record.",
+      "watch_out": "The category filter is what stops this notice from triggering a paid retry. If the filter is removed, each such notice costs a full billed call."
+    }
+  ],
+  "explained_at": "2026-11-12T00:42:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests that two agent runs happening at the same time do not mix up their warnings or cause extra paid retries.",
+  "purpose": "Protects against a bug where warnings from one run leak into another run when runs overlap.",
+  "why": "The module description says the warning capture is global to the whole program. Holding it open across a pause lets a concurrent run's warnings land in the wrong record. Large fan-outs make this likely.",
+  "how": "Two cartographer runs are started together with fake clients that pause a few times, so they really interleave. Tests then check that a drift warning belongs only to the run that drifted, that each run keeps its own warnings, that no warning escapes the agent, and that an unrelated notice costs no retry.",
+  "inputs": "Sample process steps with chosen effort shares, fake clients with set pause counts, and a sample brief.",
+  "outputs": "Pass or fail results for each concurrency case. No real calls are made.",
+  "risks": "The bug only appears when runs actually interleave. If the fake client stops pausing, these tests can pass while the bug is still there.",
+  "debug": "If a warning appears on the wrong run, check whether warning capture is held open across an await point. If retries double unexpectedly, check the warning category filter.",
+  "summary_hash": "sha256:62bf7d750965f3e15d99421da12940864b421089f665ff3a9cba41b43b377bea"
+}

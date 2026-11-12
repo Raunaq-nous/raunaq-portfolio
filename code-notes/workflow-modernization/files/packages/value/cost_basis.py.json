@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "path": "packages/value/cost_basis.py",
+  "language": "Python",
+  "lines": 164,
+  "hash": "sha256:1a55f5a88ad6c695718ee1daa972345716add47911dcf9b530f2535222cf83a3",
+  "area": "packages-value",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for this file is visible in the packet.",
+      "The fallback to the default cost happens silently.",
+      "The docstring records a known gap: the run record does not yet carry the cost basis."
+    ]
+  },
+  "terms": [
+    {
+      "term": "FTE",
+      "meaning": "Full-time equivalent: one person working full time for a year."
+    },
+    {
+      "term": "Fully loaded cost",
+      "meaning": "The total cost of one person, including overheads such as benefits and office costs."
+    },
+    {
+      "term": "Currency code",
+      "meaning": "A three-letter international code for a currency, such as GBP for pounds."
+    },
+    {
+      "term": "Frozen",
+      "meaning": "Cannot be changed once created, so a run cannot alter its own prices."
+    },
+    {
+      "term": "Exchange rate",
+      "meaning": "The rate used to convert one currency into another."
+    },
+    {
+      "term": "Token",
+      "meaning": "A small unit of text that an AI model reads or writes, and which is what models are priced by."
+    },
+    {
+      "term": "Batch",
+      "meaning": "A group of requests sent together, usually at a lower price."
+    },
+    {
+      "term": "Cache",
+      "meaning": "Stored repeated input that the model can reuse, usually at a lower price."
+    }
+  ],
+  "depends_on": [
+    "pydantic",
+    "Python standard library (datetime, typing)"
+  ],
+  "used_by": [
+    "packages/value/pipeline.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 36,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "0caa980ce7f902a9",
+      "title": "Where money enters the system",
+      "what": "Explains that money is added at one place only: a named cost basis pinned for each run. Before this point figures are effort, shares and months, and no agent sees currency.",
+      "why": "Stated in the docstring: keeping money away from agents prevents invented costs and leaks across clients. It also explains why the basis is kept here rather than in the record contract.",
+      "watch_out": "The run record does not yet store which cost basis was used, so a result cannot be fully traced back to its prices."
+    },
+    {
+      "start": 37,
+      "end": 69,
+      "kind": "class",
+      "name": "Money",
+      "id": "s2",
+      "hash": "17d5b39e6f7f0861",
+      "title": "Amount that refuses mixed currencies",
+      "what": "Holds an amount together with its currency code, and refuses to add two amounts in different currencies. Multiplying by a number keeps the currency.",
+      "why": "Stated in the docstring: silently adding two currencies would be the costliest arithmetic error available, and it would not be visible in the output.",
+      "watch_out": "Adding amounts in different currencies raises an error rather than converting them, so any conversion has to be done deliberately elsewhere."
+    },
+    {
+      "start": 70,
+      "end": 73,
+      "kind": "class",
+      "name": "MixedCurrency",
+      "id": "s3",
+      "hash": "c60decf7d2b99c62",
+      "title": "Error for mixing currencies",
+      "what": "The specific error raised when two currencies meet in one sum with no exchange rate between them.",
+      "why": "Reason not stated in the code beyond the docstring. Likely reason: a named error makes the refusal easy to recognise and handle.",
+      "watch_out": "Code that catches every value error broadly could hide this refusal, so it should be caught by name."
+    },
+    {
+      "start": 74,
+      "end": 95,
+      "kind": "class",
+      "name": "InferencePrice",
+      "id": "s4",
+      "hash": "0f2f68c447b8190b",
+      "title": "Prices for running a model",
+      "what": "Holds the cost of running one AI model per million input and output tokens, plus discounts for cached and batched use. These prices are supplied and never built into the engine.",
+      "why": "Stated in the docstring: list prices change and differ by contract, so a hard-coded price would look like a derived figure when it is really a quotation.",
+      "watch_out": "If no prices are supplied, inference is not priced at all, and a run can show no inference cost without a clear signal."
+    },
+    {
+      "start": 96,
+      "end": 149,
+      "kind": "class",
+      "name": "CostBasis",
+      "id": "s5",
+      "hash": "a9edbab0ffef8f82",
+      "title": "The pinned cost basis for one currency",
+      "what": "Holds one currency's cost per full-time person, split by function, with the source, date and any inference prices. It is frozen so it cannot change during a run. It looks up a cost for a function and falls back to the default.",
+      "why": "Stated in the docstring: a basis across currencies would need an exchange rate, which belongs to the engagement. Freezing it keeps a run from changing its own prices.",
+      "watch_out": "The creation check requires a default entry, but the function lookup falls back to the default silently. A department-level figure can therefore appear as a blended one."
+    },
+    {
+      "start": 150,
+      "end": 164,
+      "kind": "class",
+      "name": "ClientBaseline",
+      "id": "s6",
+      "hash": "d1e8e5701437ce12",
+      "title": "One client's stated revenue and earnings",
+      "what": "Holds one client's revenue, earnings, headcount and currency. The net bridge is compared against these figures. It covers one client only and is never added across clients.",
+      "why": "Stated in the docstring: adding revenue across clients would invent a group company that does not exist.",
+      "watch_out": "Earnings may be negative and headcount must be a whole number, but the currency is not checked against the bridge here."
+    }
+  ],
+  "explained_at": "2026-11-12T01:20:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines how money enters the system: amounts that refuse to mix currencies, and a pinned, dated cost basis for each currency that turns effort into money.",
+  "purpose": "The only place where effort becomes currency, using cost inputs that are supplied rather than assumed.",
+  "why": "Stated in the docstring: keeping money out of agents, and refusing to mix currencies, prevents the most costly arithmetic errors and stops one client's figures leaking into another's.",
+  "how": "Money adds only when the currency codes match. A cost basis is checked when created: it must have a default cost and no costs can be negative. Cost per FTE is looked up by function and falls back to the default. Inference prices are found by model ID.",
+  "inputs": "A currency code, cost per FTE by function, a source label, a date, optional inference prices, and for clients, revenue, earnings and headcount.",
+  "outputs": "Money amounts, cost per FTE values, inference prices and client baseline objects.",
+  "risks": "The fallback to the default cost is silent, so a function-level rate can be presented as the blended one. Cost tables age, and the date is stored but never checked. A run with no inference prices will price inference at nothing unless the caller says so. The run record does not yet store which basis was used.",
+  "debug": "If costs look too low, check the default entry and whether the function is missing from the basis. If a sum raises an error, check that currencies match. If a basis looks old, check its as-of date.",
+  "summary_hash": "sha256:1a55f5a88ad6c695718ee1daa972345716add47911dcf9b530f2535222cf83a3"
+}

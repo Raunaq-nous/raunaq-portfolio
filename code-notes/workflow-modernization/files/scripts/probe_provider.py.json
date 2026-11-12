@@ -1,0 +1,331 @@
+{
+  "schema_version": 1,
+  "path": "scripts/probe_provider.py",
+  "language": "Python",
+  "lines": 415,
+  "hash": "sha256:e2d9e30403f4ff724668e7c502bc4c25ba0b92a5a83f49c9c92bc34499a58623",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The model list read and the reply parsing do not guard against unexpected response shapes, so an odd reply can crash the probe.",
+      "The main run does not guard the calls to the provider beyond the network error check.",
+      "No test for this file is visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "structured output",
+      "meaning": "a way of asking a model to return data in an exact, predefined shape"
+    },
+    {
+      "term": "JSON schema",
+      "meaning": "a written description of the fields and rules that a JSON object must follow"
+    },
+    {
+      "term": "endpoint",
+      "meaning": "a web address that a program sends requests to in order to use a service"
+    },
+    {
+      "term": "API key",
+      "meaning": "a secret string that proves to a service that a request comes from an authorised user"
+    },
+    {
+      "term": "probe",
+      "meaning": "a small test that asks one question of a system to see how it responds"
+    },
+    {
+      "term": "$ref",
+      "meaning": "a pointer in a schema that reuses a type defined elsewhere in the same schema"
+    }
+  ],
+  "depends_on": [
+    "httpx",
+    "pydantic",
+    "packages.agents (agent output models)",
+    "packages.schema (record schema)",
+    "Together AI endpoint at api.together.xyz"
+  ],
+  "used_by": [
+    "No code in the repository is shown to import this file. The file says it is not wired into the pipeline."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 60,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "47f71e4fbe9264de",
+      "title": "Purpose and how to run it",
+      "what": "Explains that the script asks the provider which real schemas it accepts, then prints the answers. It sends requests but writes nothing to the repository.",
+      "why": "The docstring says the answer must come from a live test, since reading documentation cannot settle it.",
+      "watch_out": "It needs a valid API key in the environment, and each run may cost money."
+    },
+    {
+      "start": 61,
+      "end": 72,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "4f376d94dc3ac2ed",
+      "title": "Why the clock is passed in",
+      "what": "Explains that time readings are passed in as a parameter, so a test can fix the reported durations.",
+      "why": "The docstring says a repository rule about clock reads applies to replay code, and this is satisfied by a parameter rather than an exception list.",
+      "watch_out": "Any change to the default clock must keep it as a parameter."
+    },
+    {
+      "start": 73,
+      "end": 91,
+      "kind": "class",
+      "name": "ProbeResult",
+      "id": "s3",
+      "hash": "9411f10a15990c19",
+      "title": "Result of one question to the provider",
+      "what": "Holds one answer: its name, status, detail, finish reason, schema size, time taken, and whether the reply parsed.",
+      "why": "The docstring says blocked and rejected must stay separate, because they point to opposite causes.",
+      "watch_out": "Do not read a blocked result as the provider refusing the schema."
+    },
+    {
+      "start": 92,
+      "end": 104,
+      "kind": "class",
+      "name": "Config",
+      "id": "s4",
+      "hash": "67928a7b1e1fd99c",
+      "title": "Settings and results so far",
+      "what": "Holds the key, the provider address, the model name, and the list of results gathered during the run.",
+      "why": "Gives the probe one place to carry its settings and collected answers.",
+      "watch_out": "The key sits in memory during the run, but the printed output shows only whether it is present."
+    },
+    {
+      "start": 105,
+      "end": 109,
+      "kind": "class",
+      "name": "_Colour",
+      "id": "s5",
+      "hash": "79133ad233f90192",
+      "title": "Enum test values",
+      "what": "Defines a set of two colour choices used by the enum test.",
+      "why": "Part of an isolated test that checks one schema feature at a time.",
+      "watch_out": ""
+    },
+    {
+      "start": 110,
+      "end": 114,
+      "kind": "class",
+      "name": "_Inner",
+      "id": "s6",
+      "hash": "a1052935931fbb87",
+      "title": "Inner object used by other tests",
+      "what": "Defines a small object with a text label and a decimal weight, reused inside other tests.",
+      "why": "Reused so that nested and repeated references can be tested.",
+      "watch_out": ""
+    },
+    {
+      "start": 115,
+      "end": 121,
+      "kind": "class",
+      "name": "FlatControl",
+      "id": "s7",
+      "hash": "8280aaf6613b20b8",
+      "title": "Simple control test",
+      "what": "Defines the simplest object, with two plain fields, to act as a control.",
+      "why": "The docstring says that if this is rejected, the other feature results mean nothing.",
+      "watch_out": "Keep it simple on purpose, because extra features here would weaken the control."
+    },
+    {
+      "start": 122,
+      "end": 125,
+      "kind": "class",
+      "name": "NestedModel",
+      "id": "s8",
+      "hash": "9de191431ad81c90",
+      "title": "Nested object test",
+      "what": "Defines an object placed inside another object, to test nesting alone.",
+      "why": "Isolates nesting from the other features.",
+      "watch_out": ""
+    },
+    {
+      "start": 126,
+      "end": 129,
+      "kind": "class",
+      "name": "EnumField",
+      "id": "s9",
+      "hash": "1430e0dde646ea05",
+      "title": "Enum field test",
+      "what": "Defines a field that must be one of the fixed colour choices.",
+      "why": "Isolates enum support.",
+      "watch_out": ""
+    },
+    {
+      "start": 130,
+      "end": 133,
+      "kind": "class",
+      "name": "LiteralField",
+      "id": "s10",
+      "hash": "66199c37e840d522",
+      "title": "Fixed-value field test",
+      "what": "Defines a field that must equal one exact text value.",
+      "why": "Isolates support for fixed values.",
+      "watch_out": ""
+    },
+    {
+      "start": 134,
+      "end": 138,
+      "kind": "class",
+      "name": "ConstrainedNumerics",
+      "id": "s11",
+      "hash": "e540e1d9c3b68b5e",
+      "title": "Bounded number test",
+      "what": "Defines whole-number and decimal fields with minimum and maximum limits.",
+      "why": "Isolates range limits, which the probe's own comments say some providers reject.",
+      "watch_out": ""
+    },
+    {
+      "start": 139,
+      "end": 143,
+      "kind": "class",
+      "name": "OptionalField",
+      "id": "s12",
+      "hash": "420a249069ae1780",
+      "title": "Optional field test",
+      "what": "Defines a field that may be left out of the reply.",
+      "why": "Isolates optional fields.",
+      "watch_out": ""
+    },
+    {
+      "start": 144,
+      "end": 150,
+      "kind": "class",
+      "name": "RepeatedRef",
+      "id": "s13",
+      "hash": "42fa386ce0af4b70",
+      "title": "Repeated type reference test",
+      "what": "Defines two fields that share one type, so the schema must reuse a shared definition.",
+      "why": "The docstring states the purpose: it forces a shared definition and two references.",
+      "watch_out": ""
+    },
+    {
+      "start": 151,
+      "end": 171,
+      "kind": "class",
+      "name": "ListOfModels",
+      "id": "s14",
+      "hash": "96361fdcb00e0460",
+      "title": "List of objects test and feature list",
+      "what": "Defines a list of objects test, then gathers every isolated test into one ordered list that the probe runs.",
+      "why": "The ordered list is what the main run goes through for each feature.",
+      "watch_out": "Each entry added to this list adds one request to every run."
+    },
+    {
+      "start": 172,
+      "end": 196,
+      "kind": "function",
+      "name": "smallest_agent_output",
+      "id": "s15",
+      "hash": "800473eb47c349cf",
+      "title": "Find the smallest agent output schema",
+      "what": "Searches the agents package for the agent output model with the smallest schema and returns its name and size.",
+      "why": "The docstring says the smallest real agent schema is one of the two real tests.",
+      "watch_out": "Models are found by name, so a renamed model changes the test without warning. If none is found, the function stops with an error."
+    },
+    {
+      "start": 197,
+      "end": 224,
+      "kind": "function",
+      "name": "largest_schema",
+      "id": "s16",
+      "hash": "758e585f1090be9c",
+      "title": "Find the largest record schema",
+      "what": "Searches the schema package for the largest model and returns its name, size, and number of shared definitions.",
+      "why": "The docstring says the largest schema is what a real call has to carry.",
+      "watch_out": "The chosen model changes as schemas grow, so the test changes with them."
+    },
+    {
+      "start": 225,
+      "end": 274,
+      "kind": "function",
+      "name": "preflight",
+      "id": "s17",
+      "hash": "bbf5e673b6fd71b1",
+      "title": "Check the provider can be reached",
+      "what": "Checks that a key is set, then asks the provider's model list whether the configured model is there. It returns a blocking result when the provider cannot be reached, and nothing when the way is clear.",
+      "why": "The docstring says a connection failure must never be read as a rejected schema.",
+      "watch_out": "The model list is read without guarding its shape, so an unexpected reply makes the probe crash."
+    },
+    {
+      "start": 275,
+      "end": 325,
+      "kind": "function",
+      "name": "ask (part 1)",
+      "id": "s18",
+      "hash": "43a01f145a1bcb0c",
+      "title": "Send one schema question",
+      "what": "Sends one real schema request in strict mode, and records whether the provider refused it or the request could not be sent.",
+      "why": "Strict mode asks the provider to enforce the schema exactly, which is what the pipeline would need.",
+      "watch_out": "A failed connection is reported as blocked, while only a non-success reply is reported as rejected here."
+    },
+    {
+      "start": 326,
+      "end": 353,
+      "kind": "function",
+      "name": "ask (part 2)",
+      "id": "s19",
+      "hash": "8e8dfa7551fb1fb2",
+      "title": "Check the reply against the schema",
+      "what": "Checks the provider's reply against the schema and records whether it parsed, how it finished, and whether it was cut short. A reply that does not match is counted as rejected.",
+      "why": "The code comment says a success that ignores the schema is worse than a refusal, since a pipeline would carry the bad object forward.",
+      "watch_out": "The reply body is parsed without a guard, so a body that is not JSON would crash the probe."
+    },
+    {
+      "start": 354,
+      "end": 376,
+      "kind": "function",
+      "name": "render",
+      "id": "s20",
+      "hash": "d264e57553ae5ee0",
+      "title": "Print the results table",
+      "what": "Prints each result with its status, finish reason, schema size, and a shortened detail, then a count by status and a list of any cut-short replies.",
+      "why": "Gives the owner one readable summary of what the provider accepted.",
+      "watch_out": "Detail text is cut to a fixed length, so long error messages may be incomplete on screen."
+    },
+    {
+      "start": 377,
+      "end": 413,
+      "kind": "function",
+      "name": "main",
+      "id": "s21",
+      "hash": "3277bd11f723a49d",
+      "title": "Main run",
+      "what": "Reads the settings, runs the reachability check, and if it passes runs the two real schema tests and every feature test. It prints the results and exits with 2 only when the provider could not be reached.",
+      "why": "The docstring says the two outcomes need different exit codes.",
+      "watch_out": "A failure in the real schema calls that is not a network error stops the script, because those calls are not guarded."
+    },
+    {
+      "start": 414,
+      "end": 415,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s22",
+      "hash": "a19977043f22fb92",
+      "title": "Script start",
+      "what": "Runs the probe when the file is run directly, and passes its result on as the exit status.",
+      "why": "Standard pattern for a runnable Python script.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T01:25:52+00:00",
+  "explained_by": "haiku",
+  "summary": "A one-off diagnostic that asks the Together AI provider which structured-output schemas it will accept.",
+  "purpose": "Answers whether the provider and chosen model accept the real JSON schemas the pipeline would send, before any code is built on that answer. It sends requests and prints results, but changes nothing in the repository.",
+  "why": "The docstring says documentation cannot settle two questions: support depends on the specific model, and on the specific schema. A probe with real schemas answers both.",
+  "how": "1. Read the key, address and model from environment settings. 2. Check the key is present. 3. Ask the provider's model list whether the configured model exists and whether the provider can be reached. 4. If the preflight passes, send one small and one large real schema. 5. Send one request per isolated feature, such as enums, nesting, or bounded numbers. 6. Check each reply against its schema. 7. Print a table of results and counts.",
+  "inputs": "Environment settings: TOGETHER_API_KEY, optionally TOGETHER_BASE_URL and TOGETHER_MODEL. The schemas come from the agent output models and the record schema in the packages folder.",
+  "outputs": "A printed table of each probe's status, finish reason, schema size and detail, plus a count by status. Exit status 0 when the provider answered, and 2 when it could not be reached.",
+  "risks": "Each probe sends a real request, which may cost money. The model list read is not checked for an unexpected shape. The default model name is labelled as not verified.",
+  "debug": "If every probe reports blocked, check the key, the address, and network access. A 404 for the model means the name is wrong. If a schema is rejected, read the detail text, which holds the provider's own error. Truncated results mean the reply hit the length limit.",
+  "summary_hash": "sha256:e2d9e30403f4ff724668e7c502bc4c25ba0b92a5a83f49c9c92bc34499a58623"
+}

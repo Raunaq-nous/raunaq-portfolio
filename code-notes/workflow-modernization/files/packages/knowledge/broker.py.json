@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "path": "packages/knowledge/broker.py",
+  "language": "Python",
+  "lines": 174,
+  "hash": "sha256:6a244f33b5cf250235b03125fa0573adf574d8d9791283fbfbb5e12e098e76ef",
+  "area": "packages-knowledge",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only the fixture store exists. The file's own docstring says the seven real stores are not built.",
+      "No tests for this file are visible in the packet.",
+      "Error handling is by design (errors propagate), and the packet does not show callers."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Reciprocal rank fusion (RRF)",
+      "meaning": "A way to merge several ranked lists using only each item's position in each list."
+    },
+    {
+      "term": "Store",
+      "meaning": "A source of documents that the broker can search."
+    },
+    {
+      "term": "Rerank",
+      "meaning": "Reorder a list by a second rule, here applied against the specific process."
+    },
+    {
+      "term": "Evidence pack",
+      "meaning": "The bundle of retrieved items for one process, with their provenance and retrieval time."
+    },
+    {
+      "term": "Recall at k",
+      "meaning": "The share of known-relevant items that appear in the top k results."
+    },
+    {
+      "term": "Protocol",
+      "meaning": "A Python interface that any class satisfies by providing the required methods."
+    },
+    {
+      "term": "Dataclass",
+      "meaning": "A Python class whose basic methods are generated from its list of fields."
+    },
+    {
+      "term": "Replay",
+      "meaning": "Rerunning a past pipeline run to reproduce its output."
+    }
+  ],
+  "depends_on": [
+    "packages/knowledge/evidence.py",
+    "Python standard library (dataclasses, datetime, typing)"
+  ],
+  "used_by": [
+    "Not visible in the packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 37,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c58ab5d5fbbafb5d",
+      "title": "Module purpose and shared settings",
+      "what": "Explains that the broker retrieves and ranks evidence but never writes prose or judges it. Sets two shared numbers: the damping constant used in fusion and the default number of items in a pack.",
+      "why": "The docstring states the design rule that retrieval is measured by recall rather than by a judge model. The two numbers have their own explanations in the code.",
+      "watch_out": "Changing the damping constant changes every fused ranking across all stores at once."
+    },
+    {
+      "start": 38,
+      "end": 50,
+      "kind": "class",
+      "name": "StoreProtocol",
+      "id": "s2",
+      "hash": "f6d59990ff472879",
+      "title": "The contract every store must meet",
+      "what": "Describes the single search method each knowledge store must provide. A store returns its items best first and does not report scores.",
+      "why": "The code says the broker deliberately ignores scores because they are on incomparable scales. Adding a store means providing this one method.",
+      "watch_out": "A store that returns items in the wrong order silently weakens every fused result, because the broker trusts the order."
+    },
+    {
+      "start": 51,
+      "end": 60,
+      "kind": "class",
+      "name": "Reranker",
+      "id": "s3",
+      "hash": "5d5a1f00d829c819",
+      "title": "Optional second ordering step",
+      "what": "Describes the interface for an optional step that reorders the merged list against the specific query.",
+      "why": "The docstring says generic industry evidence reads as templated, and reranking against the process reduces that.",
+      "watch_out": "A reranker can only reorder items that fusion already found. It cannot bring back items that no store returned."
+    },
+    {
+      "start": 61,
+      "end": 87,
+      "kind": "class",
+      "name": "InMemoryStore",
+      "id": "s4",
+      "hash": "d0ad418705371149",
+      "title": "Simple test store",
+      "what": "A store that holds a fixed list of items and finds them by counting how many query words appear in the excerpt or source reference. Results are deterministic.",
+      "why": "The docstring says it exists so the broker can be tested before the real stores exist, and it is not a real retrieval strategy.",
+      "watch_out": "Query words of three letters or fewer are ignored, so a short but important word in a query never counts."
+    },
+    {
+      "start": 88,
+      "end": 103,
+      "kind": "class",
+      "name": "AuthorityRecencyReranker",
+      "id": "s5",
+      "hash": "ba16e3355258775a",
+      "title": "Ranking by authority, then age",
+      "what": "Sorts items by authority tier first (tier 1 is the strongest), then by recency so newer dated items come first, then by original position. Undated items sort after dated items within the same tier.",
+      "why": "The docstring says a final deliverable should outrank an informal note on the same subject, and old work should weigh less than recent work.",
+      "watch_out": "Undated items are treated as older than every dated item in their tier, so a store that records no dates is pushed down."
+    },
+    {
+      "start": 104,
+      "end": 123,
+      "kind": "function",
+      "name": "reciprocal_rank_fusion",
+      "id": "s6",
+      "hash": "5a3dce4507575f0d",
+      "title": "Merging the store rankings",
+      "what": "Combines several ranked lists into one. Each item earns a score from its position in each list, so items that several stores agree on rise to the top. Ties are broken by id so results repeat exactly.",
+      "why": "The docstring says agreement across independent stores is a stronger signal than being first in one store. The damping constant follows the original formulation.",
+      "watch_out": "Items are matched only by evidence id, so two stores reporting the same document under different ids will not count as agreeing."
+    },
+    {
+      "start": 124,
+      "end": 163,
+      "kind": "class",
+      "name": "EvidenceBroker",
+      "id": "s7",
+      "hash": "6b8971e5614a4c70",
+      "title": "The retrieval entry point",
+      "what": "Holds the stores, the snapshot id, an optional reranker and a clock. Its retrieve step asks each store, merges the answers, optionally reranks, and returns an evidence pack. It never creates items of its own.",
+      "why": "The docstring explains that an empty result is valid, but a store error must not be turned into an empty result, because that would hide an outage.",
+      "watch_out": "The default clock reads the current time, so a replay must pass in the original run time or its confidence figures will drift."
+    },
+    {
+      "start": 164,
+      "end": 174,
+      "kind": "function",
+      "name": "recall_at_k",
+      "id": "s8",
+      "hash": "a875eb11bdfa09a6",
+      "title": "The broker's quality measure",
+      "what": "Returns the share of known-relevant items that appear in the top k results. If no items are marked relevant, it returns 1.0.",
+      "why": "The docstring says missing the one document that settles a claim is worse than including an extra plausible item, so recall is preferred to precision.",
+      "watch_out": "A case with an empty relevant set scores a perfect 1.0, so an unlabelled test case can make the measure look good."
+    }
+  ],
+  "explained_at": "2026-11-12T01:34:59+00:00",
+  "explained_by": "haiku",
+  "summary": "Asks several knowledge stores for evidence about one process, merges their ranked lists, optionally reorders the result, and returns the best items in an evidence pack.",
+  "purpose": "Gives the rest of the pipeline one uniform way to ask for evidence, so a new store can be added without changing the code that asks. It returns evidence only and writes no prose.",
+  "why": "The code states that stores score on incompatible scales, so averaging raw scores would let one store dominate. Rank-based fusion uses only each item's position, which every store shares.",
+  "how": "1. Each store is asked for up to twice the number of items wanted. 2. The store rankings are merged by reciprocal rank fusion, which uses only positions. 3. An optional reranker may reorder the merged list. 4. The top items go into an evidence pack stamped with the retrieval time and the snapshot id.",
+  "inputs": "A canonical process id, a search query, the number of items wanted (default 8), a tuple of stores, a snapshot id, an optional reranker, and an optional clock.",
+  "outputs": "An EvidencePack from packages/knowledge/evidence.py. An empty pack is a normal result meaning nothing was found.",
+  "risks": "Store errors are not caught here, so they propagate. This is intended by the docstring, but a caller that catches them broadly could hide an outage. Fusion gives no weight to authority or date unless a reranker is supplied. Results are only as good as the stores behind them.",
+  "debug": "If results look wrong, check which stores are passed to EvidenceBroker and what each returns for the query. Check whether a reranker was supplied. For replay differences, check the time passed in through the clock. Recall is measured by recall_at_k.",
+  "summary_hash": "sha256:6a244f33b5cf250235b03125fa0573adf574d8d9791283fbfbb5e12e098e76ef"
+}

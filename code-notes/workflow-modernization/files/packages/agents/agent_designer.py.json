@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/agent_designer.py",
+  "language": "Python",
+  "lines": 227,
+  "hash": "sha256:91d8a24033dfa1e9f4f07198382c1ac73f4bcdac4261ba0d58687a8e0e622486",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The vendor and flow checks are clear, but no tests are visible in this packet to prove they fire.",
+      "The flow check ignores description changes, which the docstring's own goal would include.",
+      "Plain-text matching on forbidden words can give false positives and misses."
+    ]
+  },
+  "terms": [
+    {
+      "term": "posture",
+      "meaning": "The overall stance of the future design, such as how much autonomy it assumes. Set by the architect and not changed here."
+    },
+    {
+      "term": "exception model",
+      "meaning": "The plan for what escalates, how fast a human must respond, and what the process does while it waits."
+    },
+    {
+      "term": "performer",
+      "meaning": "Whoever carries out a step: a named agent or a human role."
+    },
+    {
+      "term": "vendor",
+      "meaning": "An outside company or product. Naming one at design time is out of bounds."
+    },
+    {
+      "term": "substring",
+      "meaning": "Any part of a longer text. A plain text match can hit it even inside another word."
+    }
+  ],
+  "depends_on": [
+    "packages/agents/base.py",
+    "packages/agents/future_state_architect.py",
+    "packages/agents/routing.py",
+    "packages/schema (DesignedAgent, ExceptionModel, FutureState, FutureStep, PerformerKind)",
+    "pydantic"
+  ],
+  "used_by": [
+    "packages/agents/__init__.py",
+    "The pipeline that runs the agents (not visible in this packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 58,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "c3209c89a155665e",
+      "title": "Designer purpose and template rules",
+      "what": "Explains the designer stage: it turns roles into named agents, specifies each one, and designs the failure path. It sets the agent's name, model tier, output limit and must-not rule, and holds the start of the prompt rules.",
+      "why": "Stated in the docstring: a future state without an exception model is a demo, so the failure path is required output.",
+      "watch_out": "The prompt rules are the main control on what the model produces, so editing them changes behaviour without any code error."
+    },
+    {
+      "start": 59,
+      "end": 74,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "0624654702933968",
+      "title": "Prompt wording and forbidden terms",
+      "what": "Holds the prompt template that fills in the purpose, posture and steps, and the list of terms that must not appear in an agent specification, such as vendor, licence, price and subscription.",
+      "why": "Stated by the vendor check's docstring: procurement decisions belong in a separate assessment, not in the architecture.",
+      "watch_out": "Any word containing one of these fragments is flagged, so a harmless word may be rejected and a differently spelled term may pass."
+    },
+    {
+      "start": 75,
+      "end": 87,
+      "kind": "class",
+      "name": "_DesignedStep",
+      "id": "s3",
+      "hash": "0a6aebedc5d73b8b",
+      "title": "One resolved step shape",
+      "what": "Defines the shape of one step after the designer has named its performer: sequence number, name, performer kind and reference, description and evidence ids.",
+      "why": "Reason not stated in the code beyond its one-line description.",
+      "watch_out": "The shape refuses extra fields, so any new detail must be added here deliberately."
+    },
+    {
+      "start": 88,
+      "end": 110,
+      "kind": "class",
+      "name": "_DesignerOutput",
+      "id": "s4",
+      "hash": "081c4c48fd7eab96",
+      "title": "Designer output shape",
+      "what": "Defines the whole payload the model returns: designed agents, resolved steps, the exception model and evidence ids. It has no fields for posture or purpose.",
+      "why": "Stated in the docstring: a designer that could raise the posture would be redesigning while appearing to only specify.",
+      "watch_out": "Posture and purpose are absent on purpose. Adding them here to fix an error would let this stage move them."
+    },
+    {
+      "start": 111,
+      "end": 146,
+      "kind": "class",
+      "name": "AgentDesigner (part 1)",
+      "id": "s5",
+      "hash": "3b8dae4705d506ef",
+      "title": "Designer class and vendor check",
+      "what": "Sets up the designer as an agent and builds its prompt from the architect's flow. Its vendor check reads agent names, responsibilities and tools, and rejects any that contain forbidden commercial terms.",
+      "why": "Stated in the check's docstring: a procurement decision inside an architecture forecloses a separate assessment that needs its own evidence.",
+      "watch_out": "The vendor check does not read other fields, so a vendor named elsewhere in the output would pass it."
+    },
+    {
+      "start": 147,
+      "end": 206,
+      "kind": "method",
+      "name": "AgentDesigner: _check_flow_unchanged",
+      "id": "s6",
+      "hash": "e2d2fdcd9c52f224",
+      "title": "Flow must stay unchanged check",
+      "what": "Checks that the designer returned the same steps, with the same sequence numbers and names, as the architect gave it. Any difference raises a validation error. It also checks that every agent-performed step names a designed agent.",
+      "why": "Stated in the docstring: without this check the designer could quietly add, drop or reword steps while claiming not to redesign.",
+      "watch_out": "Only sequence and name are compared, so a silently reworded description passes. This is a real gap."
+    },
+    {
+      "start": 207,
+      "end": 227,
+      "kind": "class",
+      "name": "AgentDesigner (part 3)",
+      "id": "s7",
+      "hash": "9b3cd057bdc9e466",
+      "title": "Assembling the final future state",
+      "what": "Builds the complete future state from the designer output. It keeps the architect's posture and assumptions exactly as given, and records the evidence as the union of the architect's and the designer's ids.",
+      "why": "Stated in the code: assumptions are carried through verbatim so the designer cannot soften them, and the union keeps this stage's own claims supported.",
+      "watch_out": "The union means the architect's evidence ids are always kept, so this stage cannot remove them."
+    }
+  ],
+  "explained_at": "2026-11-12T01:15:45+00:00",
+  "explained_by": "haiku",
+  "summary": "The stage that turns roles from the redesigned flow into named agents, specifies each one, and designs the failure path, while refusing vendor names and any change to the flow.",
+  "purpose": "Make a future state complete: every step has a performer, and the design says what happens when it fails.",
+  "why": "The docstring says a future state without an exception model is a demo, and that the designer must resolve performers without redesigning the flow.",
+  "how": "1) The prompt template sets the rules: every step needs a performer, one responsibility per agent, no vendors, a required exception model, and humans kept where needed. 2) The model returns agents, resolved steps and an exception model. 3) The vendor check scans agent specifications for forbidden terms. 4) The flow check confirms sequence and names match the architect's flow. 5) Each agent-performed step must name a designed agent. 6) The final future state is assembled, keeping the architect's posture and assumptions unchanged.",
+  "inputs": "An ArchitectedFutureState from the architect stage: the purpose, the posture, the steps and the assumptions, plus evidence ids.",
+  "outputs": "A complete FutureState with the agents, steps, exception model and a combined evidence list. Violations raise a boundary or validation error.",
+  "risks": "The flow check compares only sequence and name, so a reworded description can pass unnoticed. The vendor check looks only at agent name, responsibility and tools. The forbidden word list is a plain text match, so it can flag unrelated words that contain one of its fragments.",
+  "debug": "If the designer fails, read the error. A vendor or price complaint means the agent text named one. A flow changed error means the model added, dropped or renamed steps. An unresolved performer error means a step names an agent that was not designed. Check the exception model if the output seems thin.",
+  "summary_hash": "sha256:91d8a24033dfa1e9f4f07198382c1ac73f4bcdac4261ba0d58687a8e0e622486"
+}

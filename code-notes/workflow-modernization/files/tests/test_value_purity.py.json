@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "path": "tests/test_value_purity.py",
+  "language": "Python",
+  "lines": 131,
+  "hash": "sha256:ca70ed9505e104a5c13d8858cb0f39c2b01b8928b61e8b72d1a7579d52a9db54",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Not run in this review.",
+      "The forbidden list and walk logic live in evals/purity.py, which was not reviewed, so only the tests of it are visible here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "import",
+      "meaning": "a line of code that loads another module so its contents can be used"
+    },
+    {
+      "term": "transitively",
+      "meaning": "through a chain of other modules, not only directly"
+    },
+    {
+      "term": "SDK",
+      "meaning": "software development kit: the official library an AI company provides for calling its models"
+    },
+    {
+      "term": "first-party module",
+      "meaning": "code written inside this project, as opposed to a third-party library"
+    },
+    {
+      "term": "walk",
+      "meaning": "the process of following imports from file to file until the chain ends"
+    }
+  ],
+  "depends_on": [
+    "evals/purity.py",
+    "packages/value",
+    "anthropic",
+    "openai",
+    "claude_agent_sdk",
+    "pytest"
+  ],
+  "used_by": [
+    "The eval gate, according to the docstring, uses the same walk in evals/purity.py. Not otherwise visible."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 29,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "acd3553f9b90f28d",
+      "title": "Sets up the purity rule and its imports",
+      "what": "Holds the file's docstring, which states the rule and says the test must never be changed to pass. It also sets the paths to the value package and the project, and imports the walk and forbidden-name checks from evals/purity.py.",
+      "why": "The docstring explains the walk is shared with the eval gate, so there is only one version of the rule.",
+      "watch_out": "The file adds the evals folder to the import path when it loads, so importing the walk from elsewhere depends on that step."
+    },
+    {
+      "start": 30,
+      "end": 48,
+      "kind": "function",
+      "name": "write_module",
+      "id": "s2",
+      "hash": "a0b7af025e3e34d6",
+      "title": "Creates a temporary module for a test",
+      "what": "A helper that writes a small Python module, and any needed package folders, into a temporary folder so each test can build its own import chain.",
+      "why": "Likely reason: the walk tests need controlled import chains, and this builds them without touching the real code.",
+      "watch_out": "It writes only the files it is given, so a test built on it sees only the modules that test wrote."
+    },
+    {
+      "start": 49,
+      "end": 54,
+      "kind": "function",
+      "name": "test_value_package_exists",
+      "id": "s3",
+      "hash": "138de5b2a7c8ce36",
+      "title": "Checks the value package exists and has code",
+      "what": "Confirms the packages/value folder exists and contains Python files, so the main check cannot pass over nothing.",
+      "why": "The docstring calls this guarding the guard: a missing folder would make the main check silently pass.",
+      "watch_out": "It checks that files exist, not that they contain real code."
+    },
+    {
+      "start": 55,
+      "end": 67,
+      "kind": "function",
+      "name": "test_value_layer_cannot_reach_an_llm_sdk",
+      "id": "s4",
+      "hash": "2447820e77ef8b7d",
+      "title": "Main check: value code cannot reach a model library",
+      "what": "The core guarantee. It walks the imports of every value module and fails if any chain reaches an AI model library, listing each importing module and the library it reaches.",
+      "why": "The module docstring states that identical inputs give identical outputs only if no model call can happen beneath the value layer.",
+      "watch_out": "Only the forbidden names the walk knows about are caught, and that list lives in evals/purity.py, which was not reviewed here."
+    },
+    {
+      "start": 68,
+      "end": 72,
+      "kind": "function",
+      "name": "test_direct_import_is_caught",
+      "id": "s5",
+      "hash": "aa1137e5a5531947",
+      "title": "Direct import of a model library is caught",
+      "what": "Checks a value module that imports an AI library directly is reported, naming that module and the library.",
+      "why": "Likely reason: the simplest case, which confirms the basic check works before the harder chains are tested.",
+      "watch_out": "One example passing does not prove every import form is handled."
+    },
+    {
+      "start": 73,
+      "end": 79,
+      "kind": "function",
+      "name": "test_from_import_is_caught",
+      "id": "s6",
+      "hash": "110ac77f383a5d84",
+      "title": "Named import from a model library is caught",
+      "what": "Checks a value module that imports a named item from an AI library is also reported, with the same library name.",
+      "why": "Likely reason: the two import forms are read through different paths, so each needs its own test.",
+      "watch_out": ""
+    },
+    {
+      "start": 80,
+      "end": 92,
+      "kind": "function",
+      "name": "test_violation_behind_one_first_party_hop_is_caught",
+      "id": "s7",
+      "hash": "343d25e154db1d0e",
+      "title": "Violation one project module away is caught",
+      "what": "Checks that a model library imported by a project module, which a value module imports, is still reported with the project module named.",
+      "why": "The docstring states this is the case a plain text search of the value folder would miss entirely.",
+      "watch_out": "Depends on the walk following project imports; if that stops, this test fails."
+    },
+    {
+      "start": 93,
+      "end": 103,
+      "kind": "function",
+      "name": "test_violation_behind_two_first_party_hops_is_caught",
+      "id": "s8",
+      "hash": "8879e90b175425f8",
+      "title": "Violation two project modules away is caught",
+      "what": "Checks the same kind of violation buried two project modules deep, reporting the library and the module that actually imports it.",
+      "why": "Likely reason: a violation can be hidden deeper in a chain, so the walk has to follow the chain to its end.",
+      "watch_out": "Only two levels are tested, so deeper chains are not covered by this test."
+    },
+    {
+      "start": 104,
+      "end": 109,
+      "kind": "function",
+      "name": "test_relative_import_is_followed",
+      "id": "s9",
+      "hash": "0938df6f7d16449f",
+      "title": "Relative imports are followed",
+      "what": "Checks an import written relative to the current package, such as one stepping up a folder, is followed to the real module and its violation found.",
+      "why": "Likely reason: project code often uses relative imports, which a naive walk would miss.",
+      "watch_out": "Relies on the folder layout in the temporary test tree."
+    },
+    {
+      "start": 110,
+      "end": 117,
+      "kind": "function",
+      "name": "test_import_cycle_terminates",
+      "id": "s10",
+      "hash": "865b71eaee45ae3b",
+      "title": "Import cycles do not loop forever",
+      "what": "Checks two modules that import each other do not make the walk loop endlessly, and the real violation is still reported.",
+      "why": "Likely reason: cycles can exist in real code, and a loop would hang the test run.",
+      "watch_out": "This is the only guard against a hang, so changes to how the walk tracks visited modules need this test."
+    },
+    {
+      "start": 118,
+      "end": 125,
+      "kind": "function",
+      "name": "test_clean_graph_reports_nothing",
+      "id": "s11",
+      "hash": "2d9ec0d613c8daa7",
+      "title": "A clean module set reports nothing",
+      "what": "Checks a value module that imports only project code and a safe third-party library produces no reports.",
+      "why": "Likely reason: a passing case, so the walk is not simply flagging everything it sees.",
+      "watch_out": ""
+    },
+    {
+      "start": 126,
+      "end": 131,
+      "kind": "function",
+      "name": "test_similarly_named_module_is_not_a_false_positive",
+      "id": "s12",
+      "hash": "ad2fc907722ad2aa",
+      "title": "Similar names are not false alarms",
+      "what": "Checks the name matching is exact: a library named the same as a forbidden one is caught, while names that only start the same way, and project modules, are not flagged.",
+      "why": "Likely reason: a plain text match would flag any name that begins with a forbidden word.",
+      "watch_out": "When a new forbidden name is added, check it does not match a safe name starting with the same letters."
+    }
+  ],
+  "explained_at": "2026-11-12T01:05:22+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that the value calculation layer cannot reach any AI model library, directly or through other project modules, and tests the checker that enforces this rule.",
+  "purpose": "Protects the guarantee that the same inputs always give the same value output. If a model call sits beneath the value code, outputs could change between runs.",
+  "why": "The docstring says arithmetic should be plain code, and that the guarantee holds only if no model call can happen below the value layer. The checking logic lives in evals/purity.py so the test and the eval gate share one version.",
+  "how": "1) Lists every Python file under packages/value. 2) Reads each file's import statements. 3) Follows each import that points to another project module and reads that module's imports in turn. 4) Reports any chain that reaches a forbidden library. 5) A set of small tests builds temporary package trees to confirm the walk itself catches direct, two-step, relative and cyclic cases.",
+  "inputs": "Python files under packages/value and the rest of packages, and the walk logic in evals/purity.py.",
+  "outputs": "Pass or fail. A failure lists the value module that reaches each forbidden library.",
+  "risks": "The check reads import statements only, so a model call made through dynamic loading, a string name, or code outside the scanned packages would not be seen. The docstring says the fix is never to change the test, so any exception needs a deliberate decision.",
+  "debug": "If the main check fails, the message names the importing module and the library. Follow the chain of imports from that module and remove the import or move the work out of the value layer. If the walk tests fail, the logic in evals/purity.py has changed, so compare it with the small cases in this file. If the packages/value folder is missing, the first check fails rather than passing over nothing.",
+  "summary_hash": "sha256:ca70ed9505e104a5c13d8858cb0f39c2b01b8928b61e8b72d1a7579d52a9db54"
+}

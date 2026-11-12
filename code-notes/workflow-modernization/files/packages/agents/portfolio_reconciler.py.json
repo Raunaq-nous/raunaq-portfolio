@@ -1,0 +1,217 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/portfolio_reconciler.py",
+  "language": "Python",
+  "lines": 470,
+  "hash": "sha256:dcebe3f4dae1b1229fe9e6f97d0148f1e644ec3c6ffca690f742e5cad8faf3c3",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Ordering links proposed by the model are not checked against the known process ids in this file.",
+      "The capacity comparison is described in the file as not yet implemented.",
+      "The file refers to tests by name in comments, but none are visible in this file, so their results are not confirmed here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "reduce",
+      "meaning": "a step that combines many results into one"
+    },
+    {
+      "term": "calibration",
+      "meaning": "a small, bounded adjustment to a score so that scores from different processes mean the same thing"
+    },
+    {
+      "term": "enabler",
+      "meaning": "a shared tool, platform or capability that several processes depend on"
+    },
+    {
+      "term": "cycle",
+      "meaning": "a loop of ordering, where one process waits for another that waits back, so the work cannot be scheduled"
+    },
+    {
+      "term": "prerequisite graph",
+      "meaning": "a map of which processes must finish before others can start"
+    }
+  ],
+  "depends_on": [
+    "packages/agents/base.py",
+    "packages/agents/routing.py",
+    "packages/schema",
+    "packages/value/attribution.py",
+    "pydantic"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 58,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "ad8fa17362b82109",
+      "title": "What the reconciler is for",
+      "what": "Describes the stage that compares all processes in one run, the only stage that can see more than one. It produces calibration adjustments, the enabler attribution map, the prerequisite graph and capacity findings.",
+      "why": "Stated in the file: a single process compared with itself always looks clean and would report success while meaning nothing.",
+      "watch_out": "The rest of the file assumes at least two records, which the data type enforces; code that changes that rule breaks the assumption."
+    },
+    {
+      "start": 59,
+      "end": 116,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "db1890a9a18ab29e",
+      "title": "Instructions and the minimum portfolio size",
+      "what": "Holds the instruction text for the model. It asks for calibration against other processes, for ordering constraints that the records do not already state, and for capacity concerns. It forbids restating declared work or reporting cycles itself. It also sets the minimum portfolio size to two.",
+      "why": "Stated in the file: calibration needs the whole portfolio in view, and cycles are checked in code because a model asked about its own graph would say there are none.",
+      "watch_out": "When no headcount is supplied, the text tells the model not to report capacity findings at all."
+    },
+    {
+      "start": 117,
+      "end": 139,
+      "kind": "class",
+      "name": "PortfolioPayload",
+      "id": "s3",
+      "hash": "ae21ab3d99281bae",
+      "title": "The whole portfolio as input",
+      "what": "The input to this stage: a list of process records, which must contain at least two. It also offers a lookup of records by their process id.",
+      "why": "Stated in the file: a one-record run would report a clean reconciliation that means nothing.",
+      "watch_out": "Only the length is checked. Two records with the same id would silently overwrite each other in the lookup."
+    },
+    {
+      "start": 140,
+      "end": 162,
+      "kind": "class",
+      "name": "_AdjustmentJudgement",
+      "id": "s4",
+      "hash": "b6b737ced10e43af",
+      "title": "The model's calibration judgement",
+      "what": "One calibration decision the model proposes: which process, which dimension, a change between minus two and plus two, the reason, the processes compared against and the evidence. It has no field for the raw score.",
+      "why": "Stated in the file: the raw score is read from the record, so the model cannot state a different starting score and the bound applies only to the change.",
+      "watch_out": "Evidence may be empty, which means the adjustment is unsupported, so reviewers should check for empty evidence lists."
+    },
+    {
+      "start": 163,
+      "end": 208,
+      "kind": "class",
+      "name": "_ReconcilerOutput",
+      "id": "s5",
+      "hash": "259677a5d79bb318",
+      "title": "What the model returns",
+      "what": "The full answer the model must give: calibration judgements, extra prerequisite links and capacity findings. This section also holds the table that turns each prerequisite kind into a reason for the ordering.",
+      "why": "Stated in the file: anything the code can compute, such as enabler attributions and cycle detection, is kept out of the model's answer.",
+      "watch_out": "A new prerequisite kind added to the schema without a table entry produces a warning rather than an ordering link, so check the warnings after such a change."
+    },
+    {
+      "start": 209,
+      "end": 250,
+      "kind": "function",
+      "name": "build_prerequisite_edges",
+      "id": "s6",
+      "hash": "060d1aee6c4fe150",
+      "title": "Building the ordering from declared links",
+      "what": "Gathers every prerequisite each process declares and turns it into an ordering link. A process that lists itself is dropped with a warning. Prerequisites whose kind has no reason are also returned as warnings rather than links.",
+      "why": "Stated in the file: declared links are read from the records in code so the model cannot restate them and miss one.",
+      "watch_out": "Dropped links appear only as warnings, so a schedule can still be built without them unless someone reads the warnings."
+    },
+    {
+      "start": 251,
+      "end": 274,
+      "kind": "function",
+      "name": "declared_prerequisites",
+      "id": "s7",
+      "hash": "9d8ee19ff3743c8c",
+      "title": "Gathering a process's declared links",
+      "what": "Collects prerequisites from two places: the value estimate's dependency list, and architect assumptions that say something must exist first.",
+      "why": "Stated in the file: both describe the same ordering, and reading only one would miss work that cannot start.",
+      "watch_out": "Only assumptions marked as declared prerequisites, with both a kind and a reference, are included; others are silently ignored."
+    },
+    {
+      "start": 275,
+      "end": 291,
+      "kind": "function",
+      "name": "merge_edges",
+      "id": "s8",
+      "hash": "83c5b43f48b23ead",
+      "title": "Combining declared and proposed links",
+      "what": "Adds ordering links the model proposes, unless the same predecessor and successor pair is already declared. Where both exist, the declared version is kept.",
+      "why": "Stated in the file: duplicate links would make the graph look denser than it is and would distort the loop check.",
+      "watch_out": "Matching uses only the pair of ids, so a proposed link already declared under another reason is dropped without a note."
+    },
+    {
+      "start": 292,
+      "end": 329,
+      "kind": "function",
+      "name": "resolve_adjustments",
+      "id": "s9",
+      "hash": "fce33031d24e4600",
+      "title": "Matching calibration to the stored score",
+      "what": "Checks that each proposed calibration names a real process and a real scorecard dimension. It then reads the stored score for that dimension and creates the final adjustment record. An unknown process or dimension stops the run with an error listing the valid names.",
+      "why": "Stated in the file: calibration must be added to the score that was actually written, so the code reads that score itself.",
+      "watch_out": "A typo in a dimension name stops the whole run, so the error text is the first place to look."
+    },
+    {
+      "start": 330,
+      "end": 360,
+      "kind": "function",
+      "name": "detect_cycles",
+      "id": "s10",
+      "hash": "b754a4e5de31c22f",
+      "title": "Finding cycles in the ordering graph",
+      "what": "Walks the ordering links to find any loop, where processes wait on each other in a circle. It returns each loop as the list of process ids around it.",
+      "why": "Stated in the file: a plan containing a loop cannot be scheduled and should be reported, not sequenced anyway.",
+      "watch_out": "The walk reports loops but does not stop the run; the caller must read the cycles_detected field."
+    },
+    {
+      "start": 361,
+      "end": 392,
+      "kind": "function",
+      "name": "build_attributions",
+      "id": "s11",
+      "hash": "5109fd628f5d3270",
+      "title": "Who claims each shared enabler",
+      "what": "For each shared enabler, lists which processes claim it and splits its benefit between them in proportion to each process's base effort. It also collects the evidence those processes cite.",
+      "why": "Stated in the file: finding which processes claim an enabler is a lookup, and a model asked to do it would sometimes miss one.",
+      "watch_out": "The split uses base effort alone. The weighting arithmetic lives in another package, so changing it changes every split."
+    },
+    {
+      "start": 393,
+      "end": 442,
+      "kind": "class",
+      "name": "PortfolioReconciler (part 1)",
+      "id": "s12",
+      "hash": "0ac38eb5a0990fd9",
+      "title": "The reconciler's job description",
+      "what": "Sets the model tier and output limit. Builds the text listing each process's scores, enablers, declared prerequisites, effort and confidence. Shows the headcount by function when it is supplied, or a note saying it was not supplied when it is not.",
+      "why": "The model must see every process at once in order to calibrate scores and spot shared work.",
+      "watch_out": "Confidence is shown as the minimum across the process's blocks, so a low figure may come from a single weak block."
+    },
+    {
+      "start": 443,
+      "end": 470,
+      "kind": "method",
+      "name": "PortfolioReconciler: assemble",
+      "id": "s13",
+      "hash": "112479d2751577bf",
+      "title": "Combining model output with computed parts",
+      "what": "Builds the final reconciliation result. It checks the model's calibrations against the records, adds the computed enabler attributions, combines the ordering links, runs the loop check, carries over the capacity findings, and sets the capacity status. Unmapped prerequisites are added as warnings.",
+      "why": "Stated in the file: the computed parts stay separate from the model's judgement, so each can be checked on its own.",
+      "watch_out": "The capacity status value establishment_read means the headcount reached the prompt, not that a comparison was made. The file says this explicitly."
+    }
+  ],
+  "explained_at": "2026-11-12T01:18:02+00:00",
+  "explained_by": "haiku",
+  "summary": "Compares every process in one run against the others, to calibrate scores, find shared enablers and ordering constraints, and flag functions that are overloaded.",
+  "purpose": "This is the only stage that sees more than one process. Its outputs feed the prioritisation and sequencing of the whole portfolio.",
+  "why": "Stated in the file: one process compared with itself always looks consistent, so the stage refuses to run on fewer than two records. Counting, splitting and cycle-finding are kept in code because a model would sometimes miss or misstate them.",
+  "how": "Requires at least two records. Builds a prompt listing every process's scores, enablers, declared prerequisites, effort and confidence. Asks the model for calibration adjustments, extra ordering links and capacity concerns. In code, attaches each adjustment to the stored score, builds the enabler splits, merges the ordering links, searches for loops and sets the capacity status.",
+  "inputs": "A PortfolioPayload with two or more process records, and the run context, which may hold headcount by function.",
+  "outputs": "A ReconciliationResult with the calibration adjustments, enabler attributions, prerequisite edges, detected cycles, capacity findings and capacity check status. Unmapped prerequisites are added as warnings to the run context.",
+  "risks": "Ordering links proposed by the model are not checked against known process ids, so an unknown id can appear in a loop check. Duplicate process ids silently overwrite each other in the lookup. The capacity comparison itself is not implemented yet. Enabler splits use base effort only.",
+  "debug": "If a calibration fails, read the process id or dimension named in the error. For a loop, read the cycles_detected list. For missing ordering links, read the warnings. For capacity, check the capacity_check status: not_run means no headcount was supplied.",
+  "summary_hash": "sha256:dcebe3f4dae1b1229fe9e6f97d0148f1e644ec3c6ffca690f742e5cad8faf3c3"
+}

@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "path": "tests/orchestration/test_wiring.py",
+  "language": "Python",
+  "lines": 234,
+  "hash": "sha256:cf4a855e2daaa9a7da427575fc3451e5f2bc5b4203f637d18ed70d28b6620b2b",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The tests were read, not run, so passing status is not confirmed.",
+      "The file covers specific behaviour well, but some tests depend on exact golden data counts."
+    ]
+  },
+  "terms": [
+    {
+      "term": "pytest",
+      "meaning": "the test runner that finds and runs the test functions in this project"
+    },
+    {
+      "term": "parametrized test",
+      "meaning": "one test written once and run many times, once for each item in a list"
+    },
+    {
+      "term": "canonical id",
+      "meaning": "the single official name a process is known by, which every label is matched to"
+    },
+    {
+      "term": "reciprocal rank fusion",
+      "meaning": "a method for merging several ranked search results into one list"
+    }
+  ],
+  "depends_on": [
+    "scripts/run_pipeline.py",
+    "packages.knowledge",
+    "tests.fixtures",
+    "evals/golden",
+    "pytest"
+  ],
+  "used_by": [
+    "the pytest run for the orchestration tests"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 33,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "54b44de8f6dfe92b",
+      "title": "Imports and test setup",
+      "what": "Loads the pipeline entry script, the knowledge services and a shared fixture helper. It also adds the scripts folder to the import path so the entry script can be imported.",
+      "why": "The module docstring says these services must be on the real pipeline path, so the test imports the same code the pipeline runs.",
+      "watch_out": "The scripts folder is added to the import path before the imports. Moving the imports above that line will break them."
+    },
+    {
+      "start": 34,
+      "end": 37,
+      "kind": "function",
+      "name": "cases",
+      "id": "s2",
+      "hash": "da1e86acba322095",
+      "title": "Finding the golden test cases",
+      "what": "Collects every golden case input file under the evals folder, sorted by name, and returns their contents.",
+      "why": "Several tests run once for each golden case, so they share this list.",
+      "watch_out": "If the golden folder is renamed or moved, this list becomes empty and the per-case tests are skipped rather than failing."
+    },
+    {
+      "start": 38,
+      "end": 76,
+      "kind": "class",
+      "name": "TestTheBrokerBuildsThePack",
+      "id": "s3",
+      "hash": "5a4096734010d4ca",
+      "title": "Broker builds the evidence pack",
+      "what": "Checks that the entry script gets evidence from the broker and does not build it by hand. It also checks that every declared evidence item survives retrieval, that repeated retrieval gives identical output, and that at least one golden case draws from more than one store.",
+      "why": "If the broker were bypassed, its results would be decorative. A dropped evidence item would also leave a citation that no longer resolves.",
+      "watch_out": "The multi-store check needs at least one golden case with items from more than one store. Removing that case would fail this check."
+    },
+    {
+      "start": 77,
+      "end": 104,
+      "kind": "class",
+      "name": "TestTheBrokerClockIsInjected",
+      "id": "s4",
+      "hash": "d72c0ea11c259758",
+      "title": "Broker uses an injected clock",
+      "what": "Checks that the retrieval timestamp comes from the clock passed into the broker, and that two retrievals with the same clock give identical output.",
+      "why": "The confidence formula measures evidence age against this timestamp. A real wall clock would make results change every time the run is repeated.",
+      "watch_out": ""
+    },
+    {
+      "start": 105,
+      "end": 134,
+      "kind": "class",
+      "name": "TestTheNormaliserResolvesTheCanonicalId",
+      "id": "s5",
+      "hash": "9e66db4e34e3ce14",
+      "title": "Case labels resolve to canonical ids",
+      "what": "Checks that every golden case label resolves to a canonical id with a full match rate, that the run reports match statistics rather than a model judgment, that an unknown label stops the run with an error, and that exact matches are reported as exact.",
+      "why": "A label with no canonical id has nothing to benchmark against. Letting it become its own id would make the benchmark meaningless.",
+      "watch_out": "The unknown label test creates a fake case by copying a real one. If the case structure changes, that copy step may need updating."
+    },
+    {
+      "start": 135,
+      "end": 190,
+      "kind": "class",
+      "name": "TestTheEstablishmentMerge",
+      "id": "s6",
+      "hash": "26d4d2b0bfe37bd0",
+      "title": "Combining headcount across cases",
+      "what": "Checks the merge of headcount by function across cases. Different functions are combined, a shared function takes the largest value rather than the sum, order does not matter, a case with no headcount adds nothing, no cases gives an empty result, and the golden set gives twelve functions.",
+      "why": "Adding up headcount for a shared function would overstate the staff available, and a capacity check that is too high gives a false pass. The docstring says the direction of error matters.",
+      "watch_out": "The count of twelve and the check that golden function names are all different will need updating when golden data changes. The second check asks whoever adds a case to decide whether taking the maximum is still right."
+    },
+    {
+      "start": 191,
+      "end": 234,
+      "kind": "class",
+      "name": "TestTheCaseIsValidatedByThePipeline",
+      "id": "s7",
+      "hash": "88ea63126db3e066",
+      "title": "Cases are validated when the pipeline loads them",
+      "what": "Checks that reading a case rejects a misspelt depth tier and an inverted volume range, accepts a valid case, and that the case loader calls the validating reader rather than parsing the file directly.",
+      "why": "A case that is not validated can fail deep inside a run after cost has already been spent. Validating at load time gives a clear error early.",
+      "watch_out": "The last test reads the source code of the loader to check which functions it calls. Renaming the validating reader will break this test even if behaviour is correct."
+    }
+  ],
+  "explained_at": "2026-11-12T00:57:59+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that the knowledge services and the case loader are actually used by the pipeline entry point, not just tested on their own.",
+  "purpose": "Makes sure the evidence broker, label resolver, establishment merge and case validation run on the real pipeline path, so they cannot drift without a test failing.",
+  "why": "The module docstring says a service that is only tested by its own test may never have run in the real pipeline. Reason for the file-wide checks is stated in that docstring.",
+  "how": "Adds the scripts folder to the import path, imports the entry script and the knowledge package, then loads every golden case from the evals folder. Each test group checks one part of the wiring: the broker builds the pack, the clock is injected, labels resolve to canonical ids, headcount is merged by maximum, and cases are validated at load.",
+  "inputs": "Golden case files under evals/golden, each with an input.json file, plus the entry script run_pipeline.py.",
+  "outputs": "Pass or fail results from pytest. The file writes no files of its own, though some tests write a temporary case file.",
+  "risks": "If the golden data changes, several tests change meaning, such as the count of 12 in the headcount test and the requirement that one case has more than one store. If the golden folder moves, the case list empties and per-case tests skip silently.",
+  "debug": "If a test fails after changing golden data, check the count-based assertions first. If the entry script fails to import, check the scripts folder path at the top of the file. If a source-reading test fails after a rename, the test is checking function names in the code, so update the names it searches for.",
+  "summary_hash": "sha256:cf4a855e2daaa9a7da427575fc3451e5f2bc5b4203f637d18ed70d28b6620b2b"
+}

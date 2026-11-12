@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "path": "packages/knowledge/evidence.py",
+  "language": "Python",
+  "lines": 89,
+  "hash": "sha256:9c8c41aa86095b73c9c041d6af707338b03b160bebde4d370f08a3abf32ec44b",
+  "area": "packages-knowledge",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The rules are clear, and the library enforces them at creation.",
+      "No tests for this file are visible in the packet.",
+      "The frozen pack still exposes a mutable list."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Pydantic",
+      "meaning": "A Python library that checks data against declared fields and types when it is created."
+    },
+    {
+      "term": "Frozen",
+      "meaning": "Cannot be changed after it is created."
+    },
+    {
+      "term": "Authority tier",
+      "meaning": "A ranking of how authoritative a source is, from 1 for final deliverables to 4 for informal notes."
+    },
+    {
+      "term": "Snapshot id",
+      "meaning": "A label for the exact version of the document collection that was searched."
+    },
+    {
+      "term": "Evidence id",
+      "meaning": "The stable name a claim uses to point at one item."
+    },
+    {
+      "term": "Citation",
+      "meaning": "A claim pointing at the evidence id that supports it."
+    }
+  ],
+  "depends_on": [
+    "pydantic",
+    "Python standard library (datetime, typing)"
+  ],
+  "used_by": [
+    "packages/knowledge/broker.py",
+    "packages/knowledge/confidence.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 20,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f04ab25b8302a384",
+      "title": "Purpose and rules for evidence",
+      "what": "Explains that evidence is saved with each run. States that an empty pack is a normal result, meaning nothing was found, and that an error must never be recorded as an empty pack.",
+      "why": "The docstring says that turning an outage into empty evidence would corrupt the confidence signal for the whole run.",
+      "watch_out": "Any code that catches a retrieval error and returns an empty pack would break this rule without any visible failure."
+    },
+    {
+      "start": 21,
+      "end": 51,
+      "kind": "class",
+      "name": "EvidenceItem",
+      "id": "s2",
+      "hash": "4c5096d6a478ca92",
+      "title": "One piece of retrieved evidence",
+      "what": "Describes one item with the fields a reader needs to check it: the id, the store, the source reference, the optional publication date, the authority tier from 1 to 4, and the passage the claim rests on. Items cannot be changed or given extra fields.",
+      "why": "The docstring says every field must describe something that exists in a store. An invented item would make a weak claim look grounded.",
+      "watch_out": "Authority tiers must be whole numbers from 1 to 4. Any new kind of source has to map into that range."
+    },
+    {
+      "start": 52,
+      "end": 89,
+      "kind": "class",
+      "name": "EvidencePack",
+      "id": "s3",
+      "hash": "27b6de7bacce694d",
+      "title": "The set of evidence for one process",
+      "what": "Bundles the retrieved items for one process with the time retrieval ran and the snapshot id. Rejects any pack that lists the same id twice. Offers two helpers: whether the pack is empty, and the set of ids a claim may cite.",
+      "why": "The docstring says duplicates would inflate the count and therefore the confidence. A claim may cite only what the pack contains, so it cannot cite evidence that was never retrieved.",
+      "watch_out": "The citable-id helper is what stops a claim from citing outside evidence, so any code that bypasses it breaks that rule."
+    }
+  ],
+  "explained_at": "2026-11-12T01:34:59+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the two data shapes the broker produces: one retrieved evidence item, and a pack that holds the items for one process.",
+  "purpose": "Gives every evidence record a fixed structure with a stable id and a source reference, so a claim can cite it and a reader can check it.",
+  "why": "The docstring says a claim that cannot be traced to its source is the defect the architecture exists to fix, so the evidence id is the link between them. It also says an empty pack is valid, but an error must never appear as an empty pack.",
+  "how": "1. An evidence item is defined with an id, store, source reference, optional publication date, authority tier from 1 to 4, and excerpt. Items cannot be changed after creation and reject unknown fields. 2. An evidence pack bundles items with the process id, retrieval time and snapshot id. 3. A validation step rejects a pack that repeats an id. 4. Two read-only helpers report whether the pack is empty and which ids may be cited.",
+  "inputs": "Values supplied by the stores through the broker, including dates, tiers and excerpts.",
+  "outputs": "Validated item and pack objects. The helpers return a yes or no answer for emptiness and the set of citable ids.",
+  "risks": "The items field inside a pack is an ordinary list. The pack is frozen at the field level, but the list itself can still be changed in place. Unknown fields are rejected, so adding a field needs changes in every place that creates items.",
+  "debug": "If creation fails, read the validation message, which names duplicate ids. Check that dates are real dates and tiers are whole numbers from 1 to 4. An unexpectedly empty pack means the stores returned nothing for the query.",
+  "summary_hash": "sha256:9c8c41aa86095b73c9c041d6af707338b03b160bebde4d370f08a3abf32ec44b"
+}

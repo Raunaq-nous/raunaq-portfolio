@@ -1,0 +1,226 @@
+{
+  "schema_version": 1,
+  "path": "packages/knowledge/normalise.py",
+  "language": "Python",
+  "lines": 269,
+  "hash": "sha256:0d0e938295773ea3dffa9f8932b5e7eb9e0413e260c059dd8c2afc9861b0258f",
+  "area": "packages-knowledge",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The resolver is checked, so a made-up id is rejected with an error.",
+      "The summary figures are computed here and rechecked by the schema.",
+      "No tests for this file are visible in the packet.",
+      "The stand-in similarity method is not the production one.",
+      "The score floor for model matches is not explained in the code."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Ontology",
+      "meaning": "The fixed list of canonical processes and the wordings known for each."
+    },
+    {
+      "term": "Canonical id",
+      "meaning": "The one identifier a process has across all clients."
+    },
+    {
+      "term": "Alias",
+      "meaning": "An alternative wording listed for a canonical process."
+    },
+    {
+      "term": "Embedding",
+      "meaning": "A number measuring how similar two phrases are in meaning. The file uses a simpler stand-in."
+    },
+    {
+      "term": "Jaccard overlap",
+      "meaning": "The share of words two phrases have in common, out of all the words they use between them."
+    },
+    {
+      "term": "Cascade",
+      "meaning": "A sequence of steps where each step only handles what the previous steps could not."
+    },
+    {
+      "term": "Match rate",
+      "meaning": "The share of labels that found a canonical id."
+    },
+    {
+      "term": "Work unit",
+      "meaning": "The kind of work a process consumes, taken from a fixed vocabulary."
+    },
+    {
+      "term": "Resolver",
+      "meaning": "A component that picks one candidate. Here it is a language model."
+    },
+    {
+      "term": "Unmatched",
+      "meaning": "No canonical id was assigned to the row."
+    }
+  ],
+  "depends_on": [
+    "packages/schema (WORK_UNIT_ALIASES, MatchMethod, NormalisationResult, ProcessMatch, WorkUnit)",
+    "Python standard library (re, unicodedata, dataclasses, typing)"
+  ],
+  "used_by": [
+    "Not visible in the packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 52,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b5fad6ff9fc8a829",
+      "title": "Purpose and the matching cascade",
+      "what": "Describes the normaliser as a service that maps labels to identifiers through a sequence of steps. Sets the acceptance threshold for embedding matches and the number of runners-up to keep.",
+      "why": "The docstring says exact hits should not go to a model, because that costs money and adds variation, and an unmatched label is preferred to a wrong match.",
+      "watch_out": "Changing the 0.62 threshold or the runner-up count changes which labels match, with no change to the matching logic itself."
+    },
+    {
+      "start": 53,
+      "end": 63,
+      "kind": "function",
+      "name": "canonicalise",
+      "id": "s2",
+      "hash": "6c23b74fdfafe2ff",
+      "title": "Making two labels comparable",
+      "what": "Converts a label to lowercase, removes accent marks, replaces punctuation with spaces and collapses extra spaces. Both exact matching and alias matching use this form.",
+      "why": "The docstring says exact and alias matching must agree on what counts as the same. Otherwise a difference in a hyphen would look like a missing process.",
+      "watch_out": "Any change here changes both matching paths together, so results for existing labels can shift."
+    },
+    {
+      "start": 64,
+      "end": 74,
+      "kind": "class",
+      "name": "OntologyEntry",
+      "id": "s3",
+      "hash": "f840927bd0da38d3",
+      "title": "One canonical process record",
+      "what": "Holds one canonical process: its id, label, place in the taxonomy, whether it is a leaf, and its known alternative wordings.",
+      "why": "This is the unit the matcher returns. Aliases exist so that known client wordings match exactly.",
+      "watch_out": "Alias lists are the main lever for match rate, so a wording missing from them falls through to weaker steps."
+    },
+    {
+      "start": 75,
+      "end": 85,
+      "kind": "class",
+      "name": "Embedder",
+      "id": "s4",
+      "hash": "a9930455078cdbda",
+      "title": "Similarity interface",
+      "what": "Describes the one method that returns a similarity score from 0 to 1 for two labels. The real embedding model is meant to sit behind this interface.",
+      "why": "The docstring says the common interface lets the stand-in be swapped for a real model without changing the cascade.",
+      "watch_out": "Swapping the similarity method changes match rates and therefore results across every run."
+    },
+    {
+      "start": 86,
+      "end": 95,
+      "kind": "class",
+      "name": "TokenOverlapEmbedder",
+      "id": "s5",
+      "hash": "d8d9ed50bcba24de",
+      "title": "Word-overlap stand-in",
+      "what": "Scores two labels by the share of words they have in common after the same folding used for exact matching. Returns zero if either label has no words.",
+      "why": "The docstring says it is deterministic and needs no model or network, which makes it testable. It is a stand-in for the shape of the step, not its quality.",
+      "watch_out": "Word overlap misses synonyms, so two labels that describe the same process in different words will score low."
+    },
+    {
+      "start": 96,
+      "end": 101,
+      "kind": "class",
+      "name": "LabelResolver",
+      "id": "s6",
+      "hash": "6cde4e430a1dfdbf",
+      "title": "Model fallback interface",
+      "what": "Describes a component that receives a label and up to three candidate entries, and either picks one canonical id or declines.",
+      "why": "The docstring says the model is consulted only when the deterministic steps fail, because it costs money and varies from run to run.",
+      "watch_out": "The answer is checked against the ontology, so a made-up id is rejected with an error rather than accepted."
+    },
+    {
+      "start": 102,
+      "end": 133,
+      "kind": "class",
+      "name": "Ontology",
+      "id": "s7",
+      "hash": "5ac89d8c9e2f9f34",
+      "title": "The indexed list of canonical processes",
+      "what": "Holds the canonical entries, builds lookup tables by label and by alias, and can rank every entry against a given label. Ties are broken by canonical id.",
+      "why": "The docstring says the tie-break keeps results repeatable, so the same taxonomy normalises the same way on every run.",
+      "watch_out": "If two entries share a label or alias after folding, the later one silently replaces the earlier in the lookup, and nothing reports the duplicate."
+    },
+    {
+      "start": 134,
+      "end": 144,
+      "kind": "class",
+      "name": "LabelToNormalise",
+      "id": "s8",
+      "hash": "a04f58ccb1bd1190",
+      "title": "One row of client input",
+      "what": "Holds one row from a client taxonomy: the label as written, its path, whether it is a leaf, and the unit of work as the client wrote it.",
+      "why": "The docstring says the unit is kept as written and resolved separately against a closed vocabulary.",
+      "watch_out": "The work unit defaults to unspecified, so a row missing that field quietly drops out of benchmark cohorts rather than raising an error."
+    },
+    {
+      "start": 145,
+      "end": 168,
+      "kind": "function",
+      "name": "resolve_work_unit",
+      "id": "s9",
+      "hash": "a5a5cda779978fc2",
+      "title": "Mapping the unit of work",
+      "what": "Maps a client's unit label onto one of a fixed set of work units, using only exact alias lookup after tidying spaces and underscores. Anything unrecognised becomes unspecified.",
+      "why": "The docstring says a wrong join is worse than no join, and fuzzy matching could place a process in the wrong benchmark cohort.",
+      "watch_out": "Each alias is a judgement. A loose alias could quietly route processes into the wrong benchmark group."
+    },
+    {
+      "start": 169,
+      "end": 226,
+      "kind": "function",
+      "name": "normalise_label (part 1)",
+      "id": "s10",
+      "hash": "28ed980d00d31c9f",
+      "title": "Running one label through the cascade",
+      "what": "Tries an exact match, then an alias match, then the best embedding match at or above the threshold, then the optional model resolver. Each accepted match records which step found it and its runners-up.",
+      "why": "The docstring says the recorded method shows whether the ontology knows the client's words. Cost and variation differ by step, so the method matters.",
+      "watch_out": "A model match is stored with a score of at least 0.5 even if its similarity was lower. The code gives no reason, and this makes the match look stronger than the measured similarity."
+    },
+    {
+      "start": 227,
+      "end": 248,
+      "kind": "function",
+      "name": "normalise_label (part 2)",
+      "id": "s11",
+      "hash": "4d765c9c0347cbf8",
+      "title": "Recording a row that could not be matched",
+      "what": "When no step matches, records the row as unmatched with no id, keeps its nearest candidates for review, and still resolves its work unit.",
+      "why": "The docstring says a reviewer needs the near misses, and the work unit can still join even when the label cannot.",
+      "watch_out": "Unmatched rows score zero, which lowers the mean match score for the whole run."
+    },
+    {
+      "start": 249,
+      "end": 269,
+      "kind": "function",
+      "name": "normalise",
+      "id": "s12",
+      "hash": "311bd520c8d0ac33",
+      "title": "Running a whole taxonomy",
+      "what": "Normalises every row, counts the unmatched rows, averages the match scores, and returns the result with the ontology version. Uses the word-overlap stand-in if no similarity method is given.",
+      "why": "The docstring says the two summary figures are computed here so the schema can recheck them against the matches.",
+      "watch_out": "An empty input gives a mean of zero, which can look like a poor result when the run actually had no rows."
+    }
+  ],
+  "explained_at": "2026-11-12T01:34:59+00:00",
+  "explained_by": "haiku",
+  "summary": "Maps each process label a client writes onto one canonical process id from a fixed list, using steps ordered from most certain to least certain, and reports how many labels matched.",
+  "purpose": "Lets the pipeline compare processes across clients using one identifier. When a label cannot be matched, it says so instead of guessing.",
+  "why": "The docstring says a fabricated match silently merges two different processes, so an unmatched label is a valid outcome. Cheap, certain steps run first, and the model runs only when they fail.",
+  "how": "1. Fold each label to a plain comparison form. 2. Try an exact match on the label. 3. Try an alias match. 4. Score every ontology entry by similarity and accept the best one if it reaches the threshold. 5. Otherwise ask an optional resolver, which must choose from the top candidates. 6. Otherwise record the row as unmatched with its nearest candidates. Each row also has its work unit resolved from a fixed vocabulary by exact alias only. Finally the totals are computed.",
+  "inputs": "Client taxonomy rows with label, path, leaf flag and work unit. An ontology of canonical entries and aliases. An embedder for similarity. An optional model resolver.",
+  "outputs": "A normalisation result holding one match per row, the unmatched count, the mean match score and the ontology version.",
+  "risks": "The model fallback stores a score of at least 0.5 even when the measured similarity was lower, and the code gives no reason. The default similarity method is a word-overlap stand-in, so match rates will change when it is replaced. Duplicate labels in the ontology silently overwrite each other.",
+  "debug": "Read the match method on each row to see which step resolved it. Many MODEL matches mean the ontology does not know that client's wording. Many UNMATCHED rows with near misses suggest missing aliases. If a canonical id looks wrong, compare its alternatives and score. A run that fails with an unknown id means the resolver returned an id not in the ontology.",
+  "summary_hash": "sha256:0d0e938295773ea3dffa9f8932b5e7eb9e0413e260c059dd8c2afc9861b0258f"
+}

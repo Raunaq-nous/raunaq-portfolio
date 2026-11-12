@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "path": "packages/orchestration/replay.py",
+  "language": "Python",
+  "lines": 121,
+  "hash": "sha256:d9f8ef4c8e9a454026d70317f15939d0bac243a1cefee1baec6c1fa4e2ebc5fb",
+  "area": "packages-orchestration",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Missing outputs raise a clear error and calls never fall back to the network.",
+      "The ordering logic has a comment explaining a past bug, which shows care.",
+      "No test was shown in the packet, so the behaviour is not confirmed here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Replay",
+      "meaning": "Running the pipeline again over saved model output with no model calls."
+    },
+    {
+      "term": "Model client",
+      "meaning": "The object the pipeline uses to talk to a language model."
+    },
+    {
+      "term": "Schema",
+      "meaning": "The defined shape that a model output must match."
+    },
+    {
+      "term": "Call order",
+      "meaning": "The order in which the pipeline asks for model output within one schema."
+    }
+  ],
+  "depends_on": [
+    "pydantic"
+  ],
+  "used_by": [
+    "evals or CI code, not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 31,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7a5837d0f6713543",
+      "title": "Replay purpose and guarantees",
+      "what": "The docstring explains the difference between replay, which should give identical output, and a re-run, which may differ.",
+      "why": "Model calls are not reproducible even at zero temperature, so only replay is expected to match exactly.",
+      "watch_out": "A replay that quietly calls a model would break the byte-identical promise without any warning."
+    },
+    {
+      "start": 32,
+      "end": 40,
+      "kind": "class",
+      "name": "MissingRecording",
+      "id": "s2",
+      "hash": "5484990cd08a6aff",
+      "title": "Missing recording error",
+      "what": "Defines the error raised when a needed saved output is absent.",
+      "why": "A replay that filled gaps with live calls would be partly real and partly new, with no way to tell which part was which.",
+      "watch_out": "Catching this error and calling a model would produce a mixed result."
+    },
+    {
+      "start": 41,
+      "end": 50,
+      "kind": "class",
+      "name": "ReplayUsage",
+      "id": "s3",
+      "hash": "a7140e2ae72d1525",
+      "title": "Replay usage record",
+      "what": "Holds token counts with cache reads set to zero.",
+      "why": "Nothing in a replay comes from a cache, so the usage reports zero.",
+      "watch_out": "None that is visible."
+    },
+    {
+      "start": 51,
+      "end": 56,
+      "kind": "class",
+      "name": "ReplayResponse",
+      "id": "s4",
+      "hash": "aac8ffcb8a9194e9",
+      "title": "Replay response record",
+      "what": "Holds the parsed output and the usage for one replayed call.",
+      "why": "Matches the shape the pipeline expects from a real model response.",
+      "watch_out": "None that is visible."
+    },
+    {
+      "start": 57,
+      "end": 94,
+      "kind": "class",
+      "name": "ReplayMessages",
+      "id": "s5",
+      "hash": "7561313f15acf1e2",
+      "title": "Replay message server",
+      "what": "Records each call, then returns the saved output for that schema, using the call number to pick the file.",
+      "why": "Keying by schema rather than global order means reordering stages does not swap outputs. Repeating the last output avoids requiring a numbered file for every stage.",
+      "watch_out": "The count of previous calls is taken from the call log, so the log must be kept in step with the calls."
+    },
+    {
+      "start": 95,
+      "end": 121,
+      "kind": "class",
+      "name": "ReplayClient",
+      "id": "s6",
+      "hash": "590a37139adb2704",
+      "title": "Replay client loader",
+      "what": "Loads a folder of saved outputs, sorting numbered files correctly and failing if the folder is missing or empty.",
+      "why": "The docstring notes that plain filename sorting put the revised output first, so a numeric sort is used.",
+      "watch_out": "Any new naming pattern for saved outputs must sort the same way, or the wrong output is served."
+    }
+  ],
+  "explained_at": "2026-11-12T01:24:21+00:00",
+  "explained_by": "haiku",
+  "summary": "Stands in for the live model client by serving saved outputs from disk, so the pipeline can be rerun without model calls.",
+  "purpose": "Let a stored run be rederived later without paying for it again, and let automated tests exercise the whole assembly path without credentials.",
+  "why": "The docstring says the replay uses the same pipeline as a live run and only the source of the model's words changes, so the checks are real.",
+  "how": "Saved outputs are loaded per schema name, with a numbered file for each repeated call. Each call is matched to the next saved output for that schema. If no output exists, the replay raises an error and does not call a model.",
+  "inputs": "A folder of JSON files named after output schemas, with optional numbered files for repeated calls.",
+  "outputs": "A replay client that returns validated saved outputs in the shape the pipeline expects.",
+  "risks": "A stage that runs more times than recorded silently gets the last saved output. Numbering that is out of order would give the wrong output to a call.",
+  "debug": "A missing output error lists the available names. If a revision seems to use the first design, check the numbered files and the call count.",
+  "summary_hash": "sha256:d9f8ef4c8e9a454026d70317f15939d0bac243a1cefee1baec6c1fa4e2ebc5fb"
+}

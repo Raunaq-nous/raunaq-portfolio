@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "path": "tests/schema/test_manifest_provenance.py",
+  "language": "Python",
+  "lines": 159,
+  "hash": "sha256:5ccbefbcfb2e7b47a76a1b885647d12185d59e652df68bfa76a62757d9edbc90",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The packet does not show whether these tests pass.",
+      "The reference run helper (tests/goldenrun) was not shown, so it is not clear what it returns.",
+      "The tests themselves look well reasoned and state why each check exists."
+    ]
+  },
+  "terms": [
+    {
+      "term": "manifest",
+      "meaning": "a record saved with each run that says which AI models and prompt versions were used, so the run can be explained later."
+    },
+    {
+      "term": "provenance",
+      "meaning": "the record of where a result came from: which model, which prompt, which inputs."
+    },
+    {
+      "term": "golden run",
+      "meaning": "a fixed reference run of the whole pipeline that tests compare against."
+    },
+    {
+      "term": "ledger",
+      "meaning": "a running log that collects model and prompt records from each agent call during a run."
+    },
+    {
+      "term": "prompt version",
+      "meaning": "a short fingerprint of an agent's fixed instructions, so a change to those instructions shows up in the record."
+    },
+    {
+      "term": "prefix",
+      "meaning": "a fixed starting part of a prompt that is sent first; the record tracks which prefixes were used."
+    },
+    {
+      "term": "digest",
+      "meaning": "a short fingerprint computed from a list of values, used to compare runs without storing every value."
+    }
+  ],
+  "depends_on": [
+    "packages/agents/provenance",
+    "tests/goldenrun",
+    "packages/agents/current_state_cartographer",
+    "packages/agents/agent_designer",
+    "scripts/run_pipeline.py"
+  ],
+  "used_by": [
+    "Test runner (pytest). No other file in the packet calls this file."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 22,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c29f22f228438f52",
+      "title": "File setup and purpose notes",
+      "what": "Explains why the file exists and brings in the ledger, the version helper and the reference run that the tests share. It does nothing when run on its own.",
+      "why": "The top comment states the reason: a manifest with empty fields is a broken promise about reproducibility.",
+      "watch_out": ""
+    },
+    {
+      "start": 23,
+      "end": 77,
+      "kind": "class",
+      "name": "TestNothingOnTheManifestIsEmptyAfterAGoldenRun",
+      "id": "s2",
+      "hash": "421f7545dbd1cf8f",
+      "title": "Checks the reference run record is complete",
+      "what": "After one reference run, checks that no field in the saved manifest is empty, that every agent which ran has a recorded exact model name and prompt version, that the prefix digest says how many prefixes it covers, and that the snapshot id covers all four evidence packs rather than only the first.",
+      "why": "The comments say an empty field reads as provenance when it is not, which makes a future divergence impossible to explain.",
+      "watch_out": "The agent count and case count are written into the checks, so a legitimate change to the pipeline will fail these tests until they are updated."
+    },
+    {
+      "start": 78,
+      "end": 100,
+      "kind": "class",
+      "name": "TestAPromptVersionIsAVersion",
+      "id": "s3",
+      "hash": "2b64de91fee0178b",
+      "title": "Prompt version stays the same across calls",
+      "what": "Checks that an agent's prompt version is identical on repeated calculation and differs between two different agents.",
+      "why": "The docstring explains that hashing the rendered task text would give each process its own version, so one agent would appear to have forty versions in one run.",
+      "watch_out": "The version must come from the agent's fixed template. If it starts using per-call text, these tests should fail."
+    },
+    {
+      "start": 101,
+      "end": 159,
+      "kind": "class",
+      "name": "TestTheLedgerRefusesToLoseACall",
+      "id": "s4",
+      "hash": "effb4a437cd17a78",
+      "title": "Ledger refuses lost or conflicting model calls",
+      "what": "Checks that repeated identical calls are accepted, that one agent recorded on two different models is refused, that several prefixes produce a digest stating the count, that one prefix is reported as itself, and that an empty ledger cannot produce a manifest.",
+      "why": "The manifest stores one model per agent, so a second model for the same agent would silently overwrite the first. The docstring says so directly.",
+      "watch_out": "The last test loads the pipeline script by editing the import path. Moving or renaming scripts/run_pipeline.py breaks this test without touching any logic."
+    }
+  ],
+  "explained_at": "2026-11-12T01:01:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that a real reference run produces a complete provenance record, that prompt versions are stable, and that the ledger refuses to lose or contradict a model call.",
+  "purpose": "Makes sure the run manifest, which records which AI models and prompt versions produced a result, never comes out empty or misleading.",
+  "why": "The file's header says the manifest is the fix for the requirement that a re-run weeks later can be explained. Before this existed, the pipeline wrote empty values into the model, prompt and prefix fields, so the requirement was only written down, not met.",
+  "how": "It runs one reference pipeline run (through golden_run), then checks the saved manifest for empty fields, missing agents, and wrong formats. It separately tests the prompt version helper and the ProvenanceLedger class with small hand-made examples.",
+  "inputs": "A reference run from tests/goldenrun, the provenance module in packages/agents, two real agent classes, and the final_manifest function in scripts/run_pipeline.py.",
+  "outputs": "Pass or fail results for each test. There are no files written and no values returned to other code.",
+  "risks": "The reference run is built once per class, so a bug in it affects every test in that class. Several checks depend on exact counts (nine specialists plus one reduce, four evidence packs), so an intended change to the pipeline will break them until the numbers are updated.",
+  "debug": "If a test reports an empty field, look at the manifest the reference run produced and at the agent calls that should have recorded provenance. If the ledger tests fail, check ProvenanceLedger and prompt_version in packages/agents/provenance. If the final_manifest test fails with an import error, the path to scripts/run_pipeline.py has probably moved.",
+  "summary_hash": "sha256:5ccbefbcfb2e7b47a76a1b885647d12185d59e652df68bfa76a62757d9edbc90"
+}

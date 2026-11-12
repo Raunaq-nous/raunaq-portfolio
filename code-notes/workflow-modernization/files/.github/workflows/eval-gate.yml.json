@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "path": ".github/workflows/eval-gate.yml",
+  "language": "Automation workflow",
+  "lines": 118,
+  "hash": "sha256:352adc463f198b6888c2afe810154770f8261eef6b06427954246b51433800d6",
+  "area": "other",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The file is carefully commented.",
+      "The packet contains no run result, so it is not shown that the workflow passes.",
+      "The comments say the mutation registry had never blocked a merge before this job was added, so its behaviour in CI is unproven."
+    ]
+  },
+  "terms": [
+    {
+      "term": "CI",
+      "meaning": "Continuous integration: automated checks that run on every change."
+    },
+    {
+      "term": "Pull request",
+      "meaning": "A proposed change waiting for review before it is merged."
+    },
+    {
+      "term": "Pre-commit guard",
+      "meaning": "A script run before each commit that can refuse the commit."
+    },
+    {
+      "term": "Mutation registry",
+      "meaning": "A list of deliberate small breakages that the tests must catch."
+    },
+    {
+      "term": "Replay",
+      "meaning": "Rerunning pipeline steps on stored outputs, with no model calls."
+    },
+    {
+      "term": "Lint",
+      "meaning": "An automated check for style and common errors."
+    },
+    {
+      "term": "Secret",
+      "meaning": "A value stored in GitHub settings rather than in the code."
+    }
+  ],
+  "depends_on": [
+    "scripts/run_pipeline.py",
+    "evals/run.py",
+    "frontend (npm and vitest)",
+    "tests (pytest)",
+    ".githooks/pre-commit",
+    "ANTHROPIC_API_KEY secret",
+    "packages/schema/process_record.schema.json (through type checks)"
+  ],
+  "used_by": [
+    "GitHub runs this file. No other file in the packet names it."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 55,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "609adb3557aec9d6",
+      "title": "Checks that run on every change",
+      "what": "Runs on pull requests and pushes to main. Installs tools and packages, arms the pre-commit guard, lints, type checks, replays the stored pipeline, and runs the tests.",
+      "why": "The comments say the replay moved ahead of the tests, because tests that find no files are reported as skipped on a green run.",
+      "watch_out": "Reordering these steps can turn failing tests into skipped ones, so the order matters."
+    },
+    {
+      "start": 56,
+      "end": 115,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "9fcaa22dbcabd2c1",
+      "title": "Viewer checks, eval gate and start of mutation check",
+      "what": "Installs Node, builds and tests the viewer, runs the model-graded eval gate with the API key secret, and starts the mutation registry step.",
+      "why": "The comments say the viewer build must follow the replay, since it reads the files the replay wrote. They also say the mutation registry had never blocked a merge, so it was added to this job.",
+      "watch_out": "The eval gate makes paid model calls on every run and fails if the secret is missing. The mutation step patches tracked files, so anything writing to the tree during the job can interfere with it."
+    },
+    {
+      "start": 116,
+      "end": 118,
+      "kind": "setup",
+      "name": "File setup (part 3)",
+      "id": "s3",
+      "hash": "45d8d6010c6eca51",
+      "title": "Failure report for the mutation check",
+      "what": "If the mutation check fails, prints the working tree status and then exits with the original failure code.",
+      "why": "The comments say the clean-tree refusal names a file but not how the file got there, so the status listing is printed to show it.",
+      "watch_out": "The listing is printed only on failure, so a passing run shows nothing extra."
+    }
+  ],
+  "explained_at": "2026-11-12T01:34:59+00:00",
+  "explained_by": "haiku",
+  "summary": "The automated job that runs on every pull request and every push to main. It runs lint, type checks, tests, a replay, the viewer build, the model-graded eval gate, and a mutation check.",
+  "purpose": "Stops changes that break the pipeline, the viewer or the quality gate from being merged.",
+  "why": "Comments explain the ordering. The replay runs before the tests because the tests need files the replay writes. The mutation check runs last because it edits tracked files and refuses to start on a dirty tree.",
+  "how": "Steps in order: install tools and packages; arm the pre-commit guard; lint; type check; replay the pipeline without model calls; run the tests; set up Node; build and test the viewer; run the full eval gate with the API key secret; run the mutation registry; on failure, print the working tree status.",
+  "inputs": "The repository contents, the recorded agent outputs, and the API key stored as a GitHub secret.",
+  "outputs": "A pass or fail status for the job, with logs. On a mutation failure, a listing of the working tree.",
+  "risks": "The eval gate makes paid model calls on every run. The mutation step edits tracked files in place. A run without access to the API key secret will fail at the eval gate step.",
+  "debug": "Find the first failing step in the log. For the mutation step, read the printed working tree listing. For viewer failures, run the viewer commands locally. For eval gate failures, check that the secret is set for the repository.",
+  "summary_hash": "sha256:352adc463f198b6888c2afe810154770f8261eef6b06427954246b51433800d6"
+}

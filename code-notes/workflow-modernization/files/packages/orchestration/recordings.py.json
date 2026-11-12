@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "path": "packages/orchestration/recordings.py",
+  "language": "Python",
+  "lines": 104,
+  "hash": "sha256:cb8a057ca7bdf11a59f706093bd195c85a8f27518409a353a3a56a6208736eaa",
+  "area": "packages-orchestration",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The guard and error messages are clear.",
+      "No test was shown in the packet, so the protection is not confirmed here.",
+      "The protection only applies when code uses the sink function."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Synthetic fixture",
+      "meaning": "Test data that was written by hand, used as the reference for checks."
+    },
+    {
+      "term": "Slug",
+      "meaning": "A version of a name made safe for use in a folder name."
+    },
+    {
+      "term": "Replay",
+      "meaning": "Running the pipeline again over saved model output, with no model calls."
+    }
+  ],
+  "depends_on": [
+    "evals/recorded",
+    "evals/live"
+  ],
+  "used_by": [
+    "evals or other callers of recording_sink, not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 39,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "eeab291b49e7db0e",
+      "title": "Why the recordings are protected",
+      "what": "The module docstring explains why the test fixture must never be overwritten and how live output is organised by provider and model.",
+      "why": "A live run could overwrite the baseline without any error, so the rule is enforced in code, not left to review.",
+      "watch_out": "Recording by provider and model keeps two runs from replacing each other."
+    },
+    {
+      "start": 40,
+      "end": 49,
+      "kind": "class",
+      "name": "SyntheticRecordingsAreReadOnly",
+      "id": "s2",
+      "hash": "8bafc5e0a1b83635",
+      "title": "Read-only error",
+      "what": "Defines the error raised when a live run asks to write into the synthetic fixture or a replay asks to record.",
+      "why": "A redirect would send output to a different place than the caller expects, which makes missing recordings hard to trace.",
+      "watch_out": "The error is meant to stop the run, so catching it and continuing would defeat the protection."
+    },
+    {
+      "start": 50,
+      "end": 62,
+      "kind": "function",
+      "name": "slug",
+      "id": "s3",
+      "hash": "283df80b8d0d8410",
+      "title": "Name cleaning",
+      "what": "Turns a provider or model name into a safe folder name, and refuses names that become empty.",
+      "why": "Model names contain slashes, and dots could climb out of the folder. Cleaning both stops the path from escaping.",
+      "watch_out": "Two different names can clean to the same folder, so distinct models could share output."
+    },
+    {
+      "start": 63,
+      "end": 69,
+      "kind": "function",
+      "name": "is_synthetic",
+      "id": "s4",
+      "hash": "0a7cf5a853840375",
+      "title": "Synthetic path check",
+      "what": "Reports whether a path is inside the synthetic folder, after resolving links and dot-dot parts.",
+      "why": "Checking the resolved path, not the typed path, catches links and tricks that would otherwise slip past.",
+      "watch_out": "The check depends on the resolved path, so the resolution has to be correct for the platform."
+    },
+    {
+      "start": 70,
+      "end": 88,
+      "kind": "function",
+      "name": "guard_write",
+      "id": "s5",
+      "hash": "43e1c2f1971c077d",
+      "title": "Write guard",
+      "what": "Returns the path if the write is allowed, and raises the read-only error if it is a live run aimed at the fixture.",
+      "why": "Returning the path means the caller must go through the guard to get it. An assert could be forgotten.",
+      "watch_out": "The guard only checks when the live flag is true."
+    },
+    {
+      "start": 89,
+      "end": 104,
+      "kind": "function",
+      "name": "recording_sink",
+      "id": "s6",
+      "hash": "da6cb95c7ebe520f",
+      "title": "Recording sink",
+      "what": "The one function that hands out a folder for captured output. It refuses replay runs and empty case ids.",
+      "why": "A replay has nothing new to capture, and a replay that wrote output would overwrite its own source.",
+      "watch_out": "Any new way of writing output must go through this function, or the protection does not apply."
+    }
+  ],
+  "explained_at": "2026-11-12T01:24:21+00:00",
+  "explained_by": "haiku",
+  "summary": "Decides where a live run may save the model output it captured, and refuses any write into the authored test fixture.",
+  "purpose": "Protect the synthetic recordings from being overwritten by a live run, since they are pinned to the test baseline.",
+  "why": "The docstring explains that an overwrite would not fail loudly. Replay would still match itself, but against a different answer, so the protection is enforced in code.",
+  "how": "A recording sink is the only way to get a write folder. It requires a live run, a case id, and a provider and model name, each cleaned to a safe folder name. The write guard then refuses any path inside the synthetic folder.",
+  "inputs": "A provider name, a model name, a case id, and a flag saying whether the run is live.",
+  "outputs": "A folder path under the live folder, or an error.",
+  "risks": "A path that escapes the live folder through unusual characters could reach the synthetic tree. The slug function is meant to prevent this. Only callers that use the sink are protected.",
+  "debug": "If a write is refused, read the message, which names the path and the allowed location. If a folder name is odd, check the slug output. An empty name raises an error.",
+  "summary_hash": "sha256:cb8a057ca7bdf11a59f706093bd195c85a8f27518409a353a3a56a6208736eaa"
+}

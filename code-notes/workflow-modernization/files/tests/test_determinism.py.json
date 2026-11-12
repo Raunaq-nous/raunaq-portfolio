@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "path": "tests/test_determinism.py",
+  "language": "Python",
+  "lines": 331,
+  "hash": "sha256:1ceb55bd6b2fcb65f10d3f02b04ad1b3015aa631e5f94bd103313422a183ab99",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Sections 4 to 8 of this file were not part of the packet, so the rest of the file has not been reviewed here.",
+      "The check matches function names only, so a clock or random source reached through an alias could be missed.",
+      "The allowed list depends on exact line numbers, so it needs updating whenever those files change."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Byte-identity",
+      "meaning": "two outputs that match exactly, down to every byte of text"
+    },
+    {
+      "term": "Replay",
+      "meaning": "running the same steps again over saved outputs to check the result is the same"
+    },
+    {
+      "term": "Clock",
+      "meaning": "any reading of the current date or time"
+    },
+    {
+      "term": "UUID",
+      "meaning": "a unique identifier generated automatically, different every time"
+    },
+    {
+      "term": "Seam",
+      "meaning": "a parameter that lets a test or replay replace a value that would otherwise come from outside"
+    },
+    {
+      "term": "AST",
+      "meaning": "a structured tree of a program's code that a tool can walk through without running it"
+    },
+    {
+      "term": "Allowlist",
+      "meaning": "a list of cases that are explicitly permitted despite the general rule"
+    }
+  ],
+  "depends_on": [
+    "packages (folder)",
+    "scripts (folder)",
+    "packages/knowledge/broker.py",
+    "scripts/run_pipeline.py"
+  ],
+  "used_by": [
+    "the test suite run by pytest"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 50,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "bdb96c22043580b6",
+      "title": "Why the determinism rule exists",
+      "what": "Holds the purpose statement, the list of non-deterministic function names, the folders checked, and the rule that a clock must be a parameter rather than banned outright.",
+      "why": "The docstring explains that a clock read in a service broke replay silently, and that the fix is to make the clock a parameter so a replay can pin it.",
+      "watch_out": "The function-name list is the core of the check. A new way to read the clock, such as a differently named function, will not be caught unless it is added to this list."
+    },
+    {
+      "start": 51,
+      "end": 76,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "275b178c1c5fe1ac",
+      "title": "Approved exceptions with reasons",
+      "what": "Lists the two places a clock or ID call is allowed, keyed by file path and line, each with the reason it is an approved parameter.",
+      "why": "The comments say the line number is deliberately fixed so that moving the call forces someone to re-check the reason. Paths are relative because file names repeat across the repository.",
+      "watch_out": "Each approved call is tied to a specific line. Editing nearby code can shift the line and make the test fail even when nothing is wrong."
+    },
+    {
+      "start": 77,
+      "end": 103,
+      "kind": "function",
+      "name": "offenders",
+      "id": "s3",
+      "hash": "e1a869cf68258e7a",
+      "title": "Scanning for non-deterministic calls",
+      "what": "Walks every Python file in the checked folders, parses it, and records each call whose name is on the non-deterministic list, together with its file, line and call text.",
+      "why": "Parsing the code rather than matching text avoids being fooled by comments or strings that mention the same word.",
+      "watch_out": "The scan matches the name of the function only. It does not know what a call is actually reading, so a harmless call with a matching name would be flagged, and a clock read under a different name would be missed."
+    },
+    {
+      "start": 104,
+      "end": 161,
+      "kind": "class",
+      "name": "TestNothingReachableReadsAClock",
+      "id": "s4",
+      "hash": "53dc5299ddd966e5",
+      "title": "Checks that no hidden clock or random source is read",
+      "what": "Scans the reachable code for calls that read the current time or random numbers, and fails if one sits outside a short list of approved exceptions (the allowlist). Companion checks confirm the allowlist has no stale entries, uses full repository paths, can catch a planted example, and that the prompt prefix carries no timestamp.",
+      "why": "The docstrings explain that a replay of the same recordings must give the same result, so a hidden clock read would make two runs differ.",
+      "watch_out": "A new time or random call in reachable code fails this check until it is passed in as a parameter with a default, or deliberately added to the allowlist."
+    },
+    {
+      "start": 162,
+      "end": 198,
+      "kind": "class",
+      "name": "TestTheBrokerClockIsPinnableEndToEnd",
+      "id": "s5",
+      "hash": "1d333b48e5c21e7f",
+      "title": "Checks the evidence broker clock can be fixed",
+      "what": "Builds an evidence broker with a fixed clock and checks that two retrievals return identical output with the pinned time. A companion test confirms the default clock really moves, so the first check is not passing trivially.",
+      "why": "Likely reason: the broker stamps each retrieval with the time, so tests and replays need a way to fix that time.",
+      "watch_out": "The companion test pauses briefly, so it is slower and relies on the real clock advancing."
+    },
+    {
+      "start": 199,
+      "end": 250,
+      "kind": "class",
+      "name": "TestReplayIsByteIdentical",
+      "id": "s6",
+      "hash": "44f794a6002cd474",
+      "title": "Checks a recorded case replays to identical output",
+      "what": "Runs the commercial lending credit assessment case twice from its recorded responses and compares the two results as exact text. A second check loads the case pack twice to show which half would drift if the clock leaked.",
+      "why": "The class docstring says this is the spec's replay guarantee, checked by running the code rather than by reading it.",
+      "watch_out": "The test is tied to one named case folder, so renaming or removing that case makes it fail with an error."
+    },
+    {
+      "start": 251,
+      "end": 292,
+      "kind": "class",
+      "name": "TestTheValueEngineIsByteIdentical (part 1)",
+      "id": "s7",
+      "hash": "1e9967f89f7bd0e7",
+      "title": "Checks the value engine gives identical results on repeat runs",
+      "what": "Computes the value output twice from the same golden inputs and compares the exact text. A second check does the same for the run manifest, the record of how a result was produced.",
+      "why": "The docstring states that two runs which disagree damage trust, and names the likely causes: rounding in decimals, unordered sets and unsorted output.",
+      "watch_out": "The manifest check uses a fixed snapshot label, so it tests that the output is stable rather than that the label is right."
+    },
+    {
+      "start": 293,
+      "end": 331,
+      "kind": "method",
+      "name": "TestTheValueEngineIsByteIdentical: test_every_mapping_the_engine_emits_is_ordered",
+      "id": "s8",
+      "hash": "db0e468c789fdad2",
+      "title": "Checks every output mapping is sorted",
+      "what": "Walks through the value output and confirms each mapping (pools, costs, waves, currency bridges, and the manifest's model and prompt version lists) lists its keys in sorted order. This keeps output identical even if the order in which things are added changes during a refactor.",
+      "why": "The docstring explains that a mapping written in insertion order is only identical while that order stays the same, so sorting at output protects the guarantee.",
+      "watch_out": "A new mapping added to the engine output is not checked until someone adds a line for it here."
+    }
+  ],
+  "explained_at": "2026-11-12T01:05:22+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that nothing the pipeline can reach reads a clock, a unique-ID generator or a random number source, except through an approved parameter.",
+  "purpose": "Protects the byte-identical replay rule, so that re-running the deterministic steps over saved agent output always gives the same record.",
+  "why": "The docstring explains a real past defect: a confidence figure depended on when the pipeline ran, and it was found only by wiring up the broker. A hidden clock read still produces a valid-looking record, so only a test can catch it.",
+  "how": "Walks every Python file under the packages and scripts folders, parses each one, and looks for calls to a fixed list of non-deterministic function names. Each call found is compared against an allowed list keyed by file path and line number. Any call not on that list is reported as an offender. The other sections of this file, not included in the packet, cover clock pinning and byte-identical replay.",
+  "inputs": "The Python source files under the packages and scripts folders. No outside input.",
+  "outputs": "A list of offenders, each with a file path, line number and the call text, and a pass or fail for the test.",
+  "risks": "Moving an allowed call changes its key, so the test fails on purpose and someone must re-check the reason. The check matches only by function name, so a clock reached through another name could slip past. The allowed list is a set of decisions and needs review when code moves.",
+  "debug": "Read the offender list printed by the failure. If an allowed call was moved, confirm it is still a parameter seam and update its line number. If a new call appeared, decide whether it should become a parameter the replay can pin. The allowed reasons are written in the file itself.",
+  "summary_hash": "sha256:1ceb55bd6b2fcb65f10d3f02b04ad1b3015aa631e5f94bd103313422a183ab99"
+}

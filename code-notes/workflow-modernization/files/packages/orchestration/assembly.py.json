@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "path": "packages/orchestration/assembly.py",
+  "language": "Python",
+  "lines": 197,
+  "hash": "sha256:2e729af2ee2bdf6d57cad6c4c4e3d26fc2da90743132ccb24bebf8a69af4e504",
+  "area": "packages-orchestration",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in this packet.",
+      "The functions that calculate confidence and assemble the record are not in the packet, so the join and calculation cannot be checked here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Process record",
+      "meaning": "The complete description of one business process, with all its blocks."
+    },
+    {
+      "term": "Block",
+      "meaning": "One named part of a process record, such as the current state or the value parameters."
+    },
+    {
+      "term": "Evidence id",
+      "meaning": "A reference to a stored piece of evidence, which a claim cites."
+    },
+    {
+      "term": "Strike",
+      "meaning": "Removing one citation from a block's evidence, which lowers its calculated confidence."
+    },
+    {
+      "term": "Confidence",
+      "meaning": "A number between zero and one showing how well a block is backed by evidence. The system calculates it and no agent sets it."
+    },
+    {
+      "term": "Scorecard",
+      "meaning": "The set of scores given to a process, each with its evidence."
+    }
+  ],
+  "depends_on": [
+    "packages/knowledge/confidence.py",
+    "packages/knowledge/evidence.py",
+    "packages/schema"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 36,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "8dd867051c176ef3",
+      "title": "Purpose and order of steps",
+      "what": "Explains that no agent writes a whole record, that this module joins the blocks, and that confidence is calculated after the critic's strikes are removed.",
+      "why": "The header says applying strikes after the calculation would make the downgrade cosmetic.",
+      "watch_out": "Keep the order: strikes must be applied before confidence is calculated."
+    },
+    {
+      "start": 37,
+      "end": 40,
+      "kind": "function",
+      "name": "framing_evidence",
+      "id": "s2",
+      "hash": "24e165af54f7a1f2",
+      "title": "Evidence for the framing block",
+      "what": "Combines the record ids and volume ids into one set of evidence ids for the framing block.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The result is a set, so repeated ids are merged without any message."
+    },
+    {
+      "start": 41,
+      "end": 51,
+      "kind": "function",
+      "name": "current_state_evidence",
+      "id": "s3",
+      "hash": "0cbbb2f17578cda4",
+      "title": "Evidence for the current state",
+      "what": "Collects evidence ids from every step, pain point and workflow debt item in the current state.",
+      "why": "Likely reason: the confidence for the current state needs every citation in one place.",
+      "watch_out": "Only these three lists are read. A new list with evidence must be added here, or its evidence is ignored."
+    },
+    {
+      "start": 52,
+      "end": 58,
+      "kind": "function",
+      "name": "scorecard_evidence",
+      "id": "s4",
+      "hash": "0c6e6f8408849c34",
+      "title": "Evidence for the scorecard",
+      "what": "Collects evidence ids from every score on the scorecard, reading each score field automatically.",
+      "why": "Likely reason: each score's citations must be counted toward confidence.",
+      "watch_out": "New scored fields are included automatically, so a score added without evidence would weaken the figure without any error."
+    },
+    {
+      "start": 59,
+      "end": 71,
+      "kind": "function",
+      "name": "future_state_evidence",
+      "id": "s5",
+      "hash": "e49300f5a15bc090",
+      "title": "Evidence for the future state",
+      "what": "Collects evidence from the future state itself, its steps, and its declared assumptions.",
+      "why": "The comments say a grounded assumption's evidence counts, while an unsupported assumption adds nothing.",
+      "watch_out": "Unsupported assumptions are penalised elsewhere, through the load-bearing gaps, not by this function."
+    },
+    {
+      "start": 72,
+      "end": 82,
+      "kind": "function",
+      "name": "gaps_by_block",
+      "id": "s6",
+      "hash": "841a2c3a73f8b0a0",
+      "title": "Gaps counted against the future state",
+      "what": "Counts the future state's unsupported load-bearing assumptions and files the count under the future state block only.",
+      "why": "The docstring says an objection to the design must not reduce the current state. A per-block mapping prevents that mistake.",
+      "watch_out": "Only the future state is counted now. A new block with assumptions must be added here."
+    },
+    {
+      "start": 83,
+      "end": 91,
+      "kind": "function",
+      "name": "implications_evidence",
+      "id": "s7",
+      "hash": "ec21387dc2d56eda",
+      "title": "Evidence for the implications block",
+      "what": "Collects evidence ids from the implications block and from its operating model and workforce entries.",
+      "why": "Likely reason: the same collection pattern as the other blocks.",
+      "watch_out": "Only the operating model and workforce lists are read. Other lists with evidence would be ignored."
+    },
+    {
+      "start": 92,
+      "end": 98,
+      "kind": "function",
+      "name": "value_evidence",
+      "id": "s8",
+      "hash": "70177a5b26b39369",
+      "title": "Evidence for the value parameters",
+      "what": "Collects evidence from the value parameters and from the evidence of each prerequisite.",
+      "why": "Reason not stated in the code. It follows the pattern of the other blocks.",
+      "watch_out": "Prerequisite evidence counts toward the value block, so removing a prerequisite changes that block's confidence."
+    },
+    {
+      "start": 99,
+      "end": 111,
+      "kind": "function",
+      "name": "strikes_by_block",
+      "id": "s9",
+      "hash": "3bc46c6d3f3ae4a5",
+      "title": "Grouping strikes by block",
+      "what": "Groups the critic's struck evidence ids by the block each was raised against. Challenges that do not name a citation are skipped.",
+      "why": "The docstring says confidence is calculated per block, so a strike on one block must not lower another.",
+      "watch_out": "Challenges without a struck id are ignored. That is intended for objections that are not about a citation."
+    },
+    {
+      "start": 112,
+      "end": 137,
+      "kind": "function",
+      "name": "compute_confidence",
+      "id": "s10",
+      "hash": "e81761fdfcefb6b4",
+      "title": "Calculating confidence from evidence",
+      "what": "The code for this function is not included in the packet, so exactly what it does cannot be confirmed here. Going by the file's header, it works out each block's confidence from the evidence that remains after strikes.",
+      "why": "Reason not stated in the code, because the body is not visible.",
+      "watch_out": "Confirm that strikes are applied before this runs, since the header says the order matters."
+    },
+    {
+      "start": 138,
+      "end": 197,
+      "kind": "function",
+      "name": "assemble_record",
+      "id": "s11",
+      "hash": "bf406262158a4c2a",
+      "title": "Joining blocks into one record",
+      "what": "The code for this function is not included in the packet, so exactly what it does cannot be confirmed here. Going by the file's header, it joins the block outputs into one process record.",
+      "why": "Reason not stated in the code, because the body is not visible.",
+      "watch_out": "Check that every block is present before the record is used, since the join is the only place that knows what a complete record needs."
+    }
+  ],
+  "explained_at": "2026-11-12T01:23:04+00:00",
+  "explained_by": "haiku",
+  "summary": "Joins the outputs of the separate stages into one complete process record, and calculates each block's confidence from its evidence after the critic's strikes are removed.",
+  "purpose": "Produces the final process record. No single agent writes the whole record, so this module is the one place that knows what a complete record contains.",
+  "why": "The header says a weakness in one stage should not spread to the rest, and that confidence must be calculated after strikes so the critic's downgrade is real.",
+  "how": "Step 1: for each block, collect the evidence ids it cites, from its steps, points, lists and scores. Step 2: apply the critic's strikes for each block. Step 3: calculate confidence per block from the remaining evidence. Step 4: join the blocks into one record. The functions for steps 2 to 4 are described in the packet only by name and docstring.",
+  "inputs": "The output of each stage: current state, scorecard, future state, implications, value parameters, and the critic's challenges. Also the evidence pack.",
+  "outputs": "A complete ProcessRecord with confidence for each block.",
+  "risks": "Evidence that is not collected by these helpers is ignored in the confidence figure. Applying strikes after calculating confidence would make the critic's downgrade cosmetic. A new list added to a block must be added to its helper here.",
+  "debug": "If a block's confidence seems too high, check whether its helper reads every list that holds evidence. If a strike seems to have no effect, check the order of steps. If the record is missing a block, check the join step.",
+  "summary_hash": "sha256:2e729af2ee2bdf6d57cad6c4c4e3d26fc2da90743132ccb24bebf8a69af4e504"
+}

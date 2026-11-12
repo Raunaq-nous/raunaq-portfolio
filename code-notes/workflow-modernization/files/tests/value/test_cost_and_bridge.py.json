@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "path": "tests/value/test_cost_and_bridge.py",
+  "language": "Python",
+  "lines": 226,
+  "hash": "sha256:befd00c23be3beff89e4f50ea9e185dc071f23c3b39797b3c06a2dcd8618a175",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Not run in this review.",
+      "Relies on a private helper in the pipeline, which may change without notice."
+    ]
+  },
+  "terms": [
+    {
+      "term": "currency code",
+      "meaning": "a three-letter code for money, such as GBP for pounds"
+    },
+    {
+      "term": "run cost",
+      "meaning": "the ongoing cost of operating the AI system, not the one-off cost of building it"
+    },
+    {
+      "term": "inference",
+      "meaning": "the cost of each call to an AI model"
+    },
+    {
+      "term": "cache",
+      "meaning": "here, reuse of repeated input at a lower price"
+    },
+    {
+      "term": "net benefit",
+      "meaning": "the benefit left after the costs are taken away"
+    },
+    {
+      "term": "reconciliation",
+      "meaning": "checking the model's totals against a client's own accounts"
+    },
+    {
+      "term": "estimate band",
+      "meaning": "a low, base and high range placed around a cost estimate rather than a single number"
+    }
+  ],
+  "depends_on": [
+    "packages/schema/range",
+    "packages/value/bridge",
+    "packages/value/cost_basis",
+    "packages/value/reconciliation",
+    "packages/value/run_cost",
+    "packages/value/pipeline",
+    "pydantic",
+    "pytest"
+  ],
+  "used_by": [
+    "Not visible in the files shown."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 40,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3122f5a8ef9035e7",
+      "title": "Sets up sample run cost assumptions",
+      "what": "Sets fixed run cost assumptions for the tests: one model, fixed token counts per call, no caching or batching, a per-agent yearly cost for orchestration and for observability, and zero evaluation or maintenance staffing.",
+      "why": "Likely reason: fixed inputs make the expected figures in the tests exact.",
+      "watch_out": "With evaluation and maintenance set to zero, these tests do not check those cost lines."
+    },
+    {
+      "start": 41,
+      "end": 63,
+      "kind": "function",
+      "name": "basis",
+      "id": "s2",
+      "hash": "fb8f83e57b47c29c",
+      "title": "Builds a sample cost basis",
+      "what": "Builds a sample cost basis in pounds by default, with one model's prices and a default yearly cost per full-time role of 100,000. It can also be built with no prices.",
+      "why": "A shared helper so each test does not restate the basis.",
+      "watch_out": "A test that forgets to pass a currency quietly tests pounds only."
+    },
+    {
+      "start": 64,
+      "end": 76,
+      "kind": "class",
+      "name": "TestMoneyRefusesToMix",
+      "id": "s3",
+      "hash": "59e3fddf314d8362",
+      "title": "Money adds only within one currency",
+      "what": "Checks money adds when currencies match, refuses to add different currencies with a message saying no exchange rate exists, and rejects a lower-case currency code.",
+      "why": "The docstring says a currency that silently adds would be invisible in the rendered number.",
+      "watch_out": "Only the GBP and EUR pair is tested, so a new currency is not covered here."
+    },
+    {
+      "start": 77,
+      "end": 90,
+      "kind": "class",
+      "name": "TestTheBasisMustPriceSomething",
+      "id": "s4",
+      "hash": "34f79351bffa19d4",
+      "title": "A cost basis must give a default price",
+      "what": "Checks a cost basis without a default cost is refused, and that a role with no specific cost falls back to the default.",
+      "why": "Likely reason: without a default, some role would have no price and its cost would silently drop out.",
+      "watch_out": "The fallback figure is the sample value, not a real benchmark."
+    },
+    {
+      "start": 91,
+      "end": 122,
+      "kind": "class",
+      "name": "TestTheRunCostReportsWhatItCouldNotPrice",
+      "id": "s5",
+      "hash": "e2731d46a7a3a220",
+      "title": "Run cost reports what it could not price",
+      "what": "Checks that with no prices the run cost is marked unpriced rather than zero, inference cost scales in direct proportion to calls, the cache discount applies only to the cached share of input, and an estate with no traffic still has a run cost.",
+      "why": "The docstrings explain that applying a cache discount to all input makes it look like a discount on everything, and that zero inference is not zero run cost.",
+      "watch_out": "The expected cache figures assume the sample prices, so changing those prices changes the expected values."
+    },
+    {
+      "start": 123,
+      "end": 148,
+      "kind": "class",
+      "name": "TestTheLowCaseIsActuallyALowCase",
+      "id": "s6",
+      "hash": "fcc7ff13d3964824",
+      "title": "The low case takes costs at the opposite end",
+      "what": "Checks the walk from gross benefit to net: the low case uses low benefit with high costs, the base case uses base figures, and the net band is wider than the gross band.",
+      "why": "Likely reason: a low case should pair pessimistic benefit with pessimistic cost, so costs are taken at the other end from benefit.",
+      "watch_out": "A change in sign or ordering here would silently reverse the band."
+    },
+    {
+      "start": 149,
+      "end": 199,
+      "kind": "class",
+      "name": "TestReconciliationRefusesToInventAConglomerate",
+      "id": "s7",
+      "hash": "70a9b8daf74ba7ac",
+      "title": "Reconciliation refuses to combine clients",
+      "what": "Checks one client reconciles with no reason given. Checks several clients in different currencies are not summed, with a reason saying the combined figure does not exist. Checks a net above stated earnings is flagged as implausible rather than capped.",
+      "why": "Likely reason: summing clients would create a figure no client has, and an implausibly large net should be seen rather than hidden.",
+      "watch_out": "The implausibility flag is checked only against stated earnings in this class."
+    },
+    {
+      "start": 200,
+      "end": 226,
+      "kind": "class",
+      "name": "TestCostLinesCarryTheirCoarseness",
+      "id": "s8",
+      "hash": "fc422817bacc0549",
+      "title": "Cost lines are bands, not single points",
+      "what": "Checks a cost estimate becomes a low to high band rather than one number, the band is wider above the base than below it, and a zero cost stays zero.",
+      "why": "The docstring says a single number repeated three times claims a precision nobody has, and makes the low case read as if costs land exactly.",
+      "watch_out": "The test checks the relationship only, so the band percentages can change a lot without this test failing."
+    }
+  ],
+  "explained_at": "2026-11-12T01:05:22+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks money handling, the run cost of the AI estate, the low case, reconciliation to client figures, and the cost band rules, so currency, cost and downside figures cannot go wrong without notice.",
+  "purpose": "Guards the three risks named in the docstring: a currency that silently adds, a run cost that quietly reads zero, and a low case that pairs optimistic benefit with optimistic cost. It also checks reconciliation refuses to combine clients into one figure.",
+  "why": "The docstring explains that each of these failures would be invisible in a number that still displays correctly.",
+  "how": "1) Builds a sample cost basis and run cost assumptions with fixed numbers. 2) Checks money adds only in one currency, refuses to mix currencies, and rejects lower-case currency codes. 3) Checks a cost basis needs a default cost, and unknown roles fall back to it. 4) Checks run cost is marked unpriced when no prices are given, scales with calls, applies the cache discount only to the cached share, and still carries fixed costs with no traffic. 5) Checks the low case takes costs at the high end and the net band is wider than the gross band. 6) Checks reconciliation: one client is fine, several are not summed, and a net above stated earnings is flagged rather than capped. 7) Checks cost lines carry a band that is wider above than below, and zero stays zero.",
+  "inputs": "Hand-written money amounts, ranges, cost bases, run cost assumptions and client baselines.",
+  "outputs": "Pass or fail for each check.",
+  "risks": "Some checks use a private helper whose name starts with an underscore, which may change without notice. Expected figures are fixed by the sample inputs, so changing those inputs moves the expected values.",
+  "debug": "For money failures, check the money type's addition rule. For run cost failures, check whether prices are supplied and the cache share. For reconciliation failures, check the reason text and the flag. For band failures, check the estimate band constant in the pipeline.",
+  "summary_hash": "sha256:befd00c23be3beff89e4f50ea9e185dc071f23c3b39797b3c06a2dcd8618a175"
+}

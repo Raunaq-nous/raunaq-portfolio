@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/provenance.py",
+  "language": "Python",
+  "lines": 165,
+  "hash": "sha256:f9cada2ea83f30a91e55e17dccf56fa1ea4fd755c48941d80b47fbdf27051973",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The file says the conflict guard cannot fire in the current pipeline, so it is only exercised by hand-built ledgers.",
+      "The ledger is documented as unsafe to use from several threads at once.",
+      "Reading source code for fingerprints can fail, and the file does not handle that case."
+    ]
+  },
+  "terms": [
+    {
+      "term": "manifest",
+      "meaning": "the record written at the end of a run that describes what produced its results"
+    },
+    {
+      "term": "provenance",
+      "meaning": "a record of where a result came from and what produced it"
+    },
+    {
+      "term": "ledger",
+      "meaning": "a running list kept during a run, shared by all of its parts"
+    },
+    {
+      "term": "thread",
+      "meaning": "a separate worker that can run at the same time as other work"
+    },
+    {
+      "term": "coroutine",
+      "meaning": "a piece of code that can pause and resume, so that one program can interleave several tasks"
+    }
+  ],
+  "depends_on": [
+    "packages/agents/prompt.py",
+    "Python standard library (hashlib, inspect, json, dataclasses)",
+    "pydantic (used for type hints only)"
+  ],
+  "used_by": [
+    "packages/agents/base.py (BaseAgent._call, according to the module's own description)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 38,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "31f7514b0d3048c6",
+      "title": "Why this file exists",
+      "what": "Explains that the run record should say which model, which prompt wording and which cached prefix produced each agent's output. That lets a later difference be explained rather than only noticed.",
+      "why": "Stated in the file: the manifest previously held empty values for these three fields, which the file treats as a serious gap.",
+      "watch_out": "Values are collected during each call, so only calls that pass through the agent's call path are recorded."
+    },
+    {
+      "start": 39,
+      "end": 61,
+      "kind": "function",
+      "name": "prompt_version",
+      "id": "s2",
+      "hash": "0dc63f5653b92b8e",
+      "title": "Fingerprint of an agent's instructions",
+      "what": "Builds a short fingerprint from an agent's task wording and its expected output shape. The result is cached per agent, so it is computed once.",
+      "why": "Stated in the file: wording alone would miss a changed output field, and the source of the method is used so that per-process text does not create a new version each time.",
+      "watch_out": "The fingerprint is taken from the function's source code, so it fails if that source cannot be read."
+    },
+    {
+      "start": 62,
+      "end": 78,
+      "kind": "function",
+      "name": "collapse",
+      "id": "s3",
+      "hash": "382816c237848bbc",
+      "title": "Combining several values into one",
+      "what": "Returns the single value when there is only one. When there are several, returns a count followed by a fingerprint of the sorted set.",
+      "why": "Stated in the file: the count comes first so a reader knows the field is a summary and how many values it stands for.",
+      "watch_out": "A reader or program may mistake the count prefix for a real value, so anything consuming this field must handle that form."
+    },
+    {
+      "start": 79,
+      "end": 87,
+      "kind": "class",
+      "name": "CallProvenance",
+      "id": "s4",
+      "hash": "9e812c1f9eb83a7f",
+      "title": "The three values of one call",
+      "what": "Holds the model name, the prompt fingerprint and the prefix fingerprint from a single agent call.",
+      "why": "Likely reason: keeping the three values in one small fixed bundle means they are always recorded together.",
+      "watch_out": "The bundle is frozen, so it cannot be changed after it is recorded."
+    },
+    {
+      "start": 88,
+      "end": 106,
+      "kind": "class",
+      "name": "ProvenanceConflict",
+      "id": "s5",
+      "hash": "d94ca4f5c1d3aebc",
+      "title": "Guard against changing an agent mid-run",
+      "what": "Defines the error raised when one agent reports two different models or prompts during the same run. The check itself is made when a call is recorded.",
+      "why": "Stated in the file: the record holds one value per agent, so a second value would silently replace the first.",
+      "watch_out": "The file says this error cannot happen in the current pipeline. It will matter only if routing or retry behaviour changes later."
+    },
+    {
+      "start": 107,
+      "end": 165,
+      "kind": "class",
+      "name": "ProvenanceLedger",
+      "id": "s6",
+      "hash": "35db88e5b5850d55",
+      "title": "Recording every call in a run",
+      "what": "Collects each agent's model, prompt fingerprint and prefix over the whole run. It raises the conflict error when an agent's model or prompt changes, and provides sorted views for the manifest. It also reports how many distinct prefixes were used.",
+      "why": "Stated in the file: one ledger is shared across the whole run, because a ledger per process would record only the last process to finish.",
+      "watch_out": "The ledger has no lock, so calls must not be recorded from several threads at once. The prefix is not checked for changes within a run."
+    }
+  ],
+  "explained_at": "2026-11-12T01:18:02+00:00",
+  "explained_by": "haiku",
+  "summary": "Keeps a running record, for one run, of which model, prompt wording and cached prefix each agent used, so the run record can explain differences between runs.",
+  "purpose": "Supplies the model ids, prompt versions and prefix hash that go into the run manifest.",
+  "why": "Stated in the file: the manifest previously held empty values for these three fields, which the file treats as a defect. Recording them lets a changed result be explained rather than just observed.",
+  "how": "Each agent call records its model, prompt fingerprint and prefix fingerprint into one shared ledger for the run. The ledger raises an error if one agent reports two different models or prompts. The manifest then reads sorted views of the ledger, and several prefixes are shown as a count with a fingerprint.",
+  "inputs": "The agent name, model id, the task text and output type for the fingerprint, and the prefix fingerprint from each call.",
+  "outputs": "Sorted dictionaries of model ids and prompt fingerprints by agent, one combined prefix value, a count of distinct prefixes, and a check for whether the ledger is empty.",
+  "risks": "The conflict guard cannot fire in the current pipeline, per the file's own notes. The ledger is not thread-safe. Fingerprints are taken from the source code of a function, which can fail if that source cannot be read. A combined prefix value with a count prefix may confuse code that expects a plain fingerprint.",
+  "debug": "If the manifest shows a count prefix, the run used several cached prefixes; compare the agents to find which ones differ. If a value is missing, that agent did not record a call. If a conflict error appears, read which agent and which pair of values it names.",
+  "summary_hash": "sha256:f9cada2ea83f30a91e55e17dccf56fa1ea4fd755c48941d80b47fbdf27051973"
+}

@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "path": "tests/evals/test_mutation_lock.py",
+  "language": "Python",
+  "lines": 271,
+  "hash": "sha256:32992c122cdcdb09a69adfb406cedad56c67e706671e599e31119310f7c14bcb",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The last test needs a manual setup step in every fresh clone.",
+      "Some tests need git installed and a writable temporary folder.",
+      "Not run during this review."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Mutation testing",
+      "meaning": "Deliberately breaking the code in a small way, then checking that the tests notice."
+    },
+    {
+      "term": "Lock file",
+      "meaning": "A file whose presence signals that a process is running, so others should wait."
+    },
+    {
+      "term": "Pre-commit hook",
+      "meaning": "A script git runs before each commit, which can refuse the commit."
+    },
+    {
+      "term": "Dirty tree",
+      "meaning": "A project folder with uncommitted changes."
+    },
+    {
+      "term": "Porcelain output",
+      "meaning": "Git's plain, machine-readable status listing."
+    },
+    {
+      "term": "git check-ignore",
+      "meaning": "A git command that says whether a file is excluded from tracking, and by which rule."
+    },
+    {
+      "term": "core.hooksPath",
+      "meaning": "A git setting that says which folder holds the hook scripts."
+    }
+  ],
+  "depends_on": [
+    "evals/run.py",
+    "scripts/pre_commit_guard.py",
+    ".githooks/pre-commit",
+    ".gitignore",
+    "git"
+  ],
+  "used_by": [
+    "pytest (runs the test file directly; no other callers visible)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 33,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6cc401fd4daf4e19",
+      "title": "Setup and temporary-file rule",
+      "what": "Sets the repository and script paths, loads the guard and runner modules, and states that all tests use temporary files.",
+      "why": "The real lock may be held by a live run, so tests must not depend on it.",
+      "watch_out": "The file imports modules from folders outside the normal package path, so moving those folders breaks the import."
+    },
+    {
+      "start": 34,
+      "end": 80,
+      "kind": "class",
+      "name": "TestTheCommitGuard",
+      "id": "s2",
+      "hash": "20a823583d8f0a34",
+      "title": "Commit guard behaviour",
+      "what": "Checks that the guard allows commits when no lock exists, refuses while a lock is held, names the entry in flight, refuses a stale lock left by a crash, and exits with success when the lock is gone.",
+      "why": "The guard protects against committing a deliberately broken source file.",
+      "watch_out": "A stale lock after a crash blocks commits until someone deletes it."
+    },
+    {
+      "start": 81,
+      "end": 137,
+      "kind": "class",
+      "name": "TestTheHookIsInstallable (part 1)",
+      "id": "s3",
+      "hash": "d79ea2a10048564b",
+      "title": "Real hook and ignore rule",
+      "what": "Runs the real commit hook against a real lock file to check it refuses commits while a mutation is in flight, and asks git whether the lock file is ignored.",
+      "why": "The docstring says reading the hook's text proved nothing, so the test runs it.",
+      "watch_out": "This test creates and removes the real lock file at the repository root. It first confirms no lock exists, but running it during a mutation run would still interfere."
+    },
+    {
+      "start": 138,
+      "end": 142,
+      "kind": "method",
+      "name": "TestTheHookIsInstallable: test_the_default_lock_paths_agree",
+      "id": "s4",
+      "hash": "9affbee99c90e25e",
+      "title": "Matching lock paths",
+      "what": "Checks that the runner and the guard point to the same lock file path.",
+      "why": "The runner writes the lock and the guard reads it, so both must agree.",
+      "watch_out": "If only one path changes, the guard watches a file the runner never writes."
+    },
+    {
+      "start": 143,
+      "end": 195,
+      "kind": "class",
+      "name": "TestTheRunnerRefusesADirtyTree (part 1)",
+      "id": "s5",
+      "hash": "d1ffcf3b55ce6ddd",
+      "title": "Clean-tree detection",
+      "what": "Uses a throwaway git repository to check that edits to tracked files and new untracked files are reported, while ignored files are not.",
+      "why": "The runner restores files from memory, so uncommitted work in those files would be overwritten.",
+      "watch_out": "These tests call git, so git must be installed and the temporary folder must be writable."
+    },
+    {
+      "start": 196,
+      "end": 212,
+      "kind": "method",
+      "name": "TestTheRunnerRefusesADirtyTree: test_a_directory_that_is_not_a_repository_is_a_refusal",
+      "id": "s6",
+      "hash": "0411ab3c7a6769fe",
+      "title": "Non-repository and refusal message",
+      "what": "Checks that a folder which is not a git repository is treated as a refusal, and that any changed file listed by the check causes the runner to refuse and name the file.",
+      "why": "A promise to restore cannot be verified on a folder git cannot read, so it is not treated as safe.",
+      "watch_out": "The refusal test replaces the clean-tree check with a fake, so it proves the message, not the detection itself."
+    },
+    {
+      "start": 213,
+      "end": 236,
+      "kind": "class",
+      "name": "TestAHalfRestoredTreeHalts",
+      "id": "s7",
+      "hash": "d5426cd2ab32b7a8",
+      "title": "Half-restored file detection",
+      "what": "Checks that the runner can tell an original file from one that still holds the planted defect, and halts rather than grading a file that is already mutated.",
+      "why": "If a previous run crashed mid-way, the file holds the defect, and grading it would certify the defect as caught.",
+      "watch_out": "Detection is by matching the replacement text, so a reformatted defect might not be recognised."
+    },
+    {
+      "start": 237,
+      "end": 271,
+      "kind": "class",
+      "name": "TestTheRunnerRefusesToOpenAnUnwatchedWindow",
+      "id": "s8",
+      "hash": "236fd2bcc7083372",
+      "title": "Refusal when the guard is not installed",
+      "what": "Checks that the runner refuses to start when the hook path is not set or the hook file is missing, and that this checkout is set up correctly.",
+      "why": "Without the hook switched on, a commit made during a run would succeed silently.",
+      "watch_out": "The last test fails on every fresh clone until the setup command is run. That failure is intended, and the message names the command."
+    }
+  ],
+  "explained_at": "2026-11-12T00:45:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks the lock that stops commits while the mutation runner has a source file deliberately broken, and the checks that stop the runner from starting in an unsafe state.",
+  "purpose": "Tests the pre-commit guard, the lock helpers in the runner, the clean-tree check, the half-restored-file check, and the hook setup.",
+  "why": "During a mutation run a source file contains a planted defect. If someone commits in that window, the defect becomes the real code and the tests then pass on it. The guard prevents this.",
+  "how": "The tests create temporary lock files and temporary git repositories. They run the real guard and the real commit hook. They replace some runner functions with simple fakes to test the refusal messages. The last test checks that this checkout has the hook turned on.",
+  "inputs": "Temporary files and git repositories created by the tests, the real commit hook, and the git configuration of this checkout.",
+  "outputs": "Pass or fail results. The hook test briefly creates and removes the real lock file at the repository root.",
+  "risks": "The hook test creates the real lock file, so running it during a mutation run would disturb that run. A lock left behind by a crash blocks commits until someone removes it. The last test fails on every fresh clone until the setup command is run.",
+  "debug": "If commits are refused unexpectedly, look for the lock file at the repository root. If the armed check fails, run the git configuration command named in its message. If the clean-tree check fails, look at the uncommitted files it lists.",
+  "summary_hash": "sha256:32992c122cdcdb09a69adfb406cedad56c67e706671e599e31119310f7c14bcb"
+}

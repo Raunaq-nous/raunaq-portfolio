@@ -1,0 +1,215 @@
+{
+  "schema_version": 1,
+  "path": "tests/evals/test_confidence_reproduces.py",
+  "language": "Python",
+  "lines": 389,
+  "hash": "sha256:0eb5b03b8973216b9ecfc71c1712666e79d6e94d9b323efa7467562ffaf8eb21",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The golden record tests need generated files that git ignores, so they can fail or skip depending on run order.",
+      "One test counts call sites by searching text in the runner source, which is fragile.",
+      "Not run during this review."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Confidence block",
+      "meaning": "A record of how sure the app is about one part of an analysis, with a score and the evidence behind it."
+    },
+    {
+      "term": "Feature",
+      "meaning": "One input that goes into a confidence score, such as coverage or recency."
+    },
+    {
+      "term": "Golden record",
+      "meaning": "A saved, trusted example output that tests compare against."
+    },
+    {
+      "term": "Stand-in",
+      "meaning": "A simple fake object that has the same fields as the real thing but does no checking."
+    },
+    {
+      "term": "Gitignored",
+      "meaning": "Listed in git's ignore file, so git does not track it."
+    },
+    {
+      "term": "Defence in depth",
+      "meaning": "Extra protection kept even when the main protection should already prevent a problem."
+    },
+    {
+      "term": "CI",
+      "meaning": "Continuous integration: an automatic server that runs the tests on every change."
+    }
+  ],
+  "depends_on": [
+    "evals/run.py",
+    "packages/schema/confidence.py",
+    "packages/schema/enums.py",
+    "evals/golden/industry/a-case",
+    "evals/results/candidates"
+  ],
+  "used_by": [
+    "pytest (runs the test file directly; no other callers visible)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "564bb1b44f6d4e01",
+      "title": "Imports and file paths",
+      "what": "Loads the check, the confidence types, and the paths to the test case and the candidate records, and lists the three features that are measured.",
+      "why": "Shared setup used by the tests below.",
+      "watch_out": "The case path must exist for the check to run."
+    },
+    {
+      "start": 31,
+      "end": 43,
+      "kind": "function",
+      "name": "block",
+      "id": "s2",
+      "hash": "3e77f4179e87abb9",
+      "title": "Valid confidence block builder",
+      "what": "Builds a confidence block with safe default values, which each test can change for one specific fault.",
+      "why": "Lets each test vary a single field.",
+      "watch_out": "The defaults must stay valid, or many tests fail together for an unrelated reason."
+    },
+    {
+      "start": 44,
+      "end": 85,
+      "kind": "class",
+      "name": "Loose",
+      "id": "s3",
+      "hash": "4ff8b0b18e76f7a8",
+      "title": "Stand-in confidence object",
+      "what": "Provides an object with the same fields as a confidence block but with no validation, so impossible shapes can be given to the check.",
+      "why": "The real schema refuses these shapes. The docstring also admits that production code never reaches the feature audit today, so the stand-in is only for testing the check itself.",
+      "watch_out": "These tests prove the check's logic, not that real pipeline records can reach these states."
+    },
+    {
+      "start": 86,
+      "end": 97,
+      "kind": "function",
+      "name": "run",
+      "id": "s4",
+      "hash": "0bf50775f4573ff4",
+      "title": "Test runner helper",
+      "what": "Wraps a set of blocks in a fake record, runs the check, and returns whether it passed and its message.",
+      "why": "Keeps each test short.",
+      "watch_out": "The record is fake, so the check only sees what the test supplies."
+    },
+    {
+      "start": 98,
+      "end": 138,
+      "kind": "class",
+      "name": "TestTheArithmeticIsStillChecked (part 1)",
+      "id": "s5",
+      "hash": "e1bf909e281e00d3",
+      "title": "Arithmetic checks",
+      "what": "Checks that a correct score passes and reports the agreement as measured on zero of one, that a drifted score fails, and that a measured agreement is applied when declared.",
+      "why": "This is the check's original job, and it must not be lost when the feature audit was added.",
+      "watch_out": "The expected values are recomputed with the same formula the test assumes, so a wrong formula in both places would still agree."
+    },
+    {
+      "start": 139,
+      "end": 158,
+      "kind": "method",
+      "name": "TestTheArithmeticIsStillChecked: test_an_unmeasured_agreement_is_not_neutralised",
+      "id": "s6",
+      "hash": "20da21717bde278f",
+      "title": "Unmeasured agreement must not be neutralised",
+      "what": "Checks that a score computed the old way, with a fixed agreement value of 0.5 baked in, now fails.",
+      "why": "Stops a return to the older check that accepted fabricated values.",
+      "watch_out": "The test depends on the exact fixed value in the formula."
+    },
+    {
+      "start": 159,
+      "end": 207,
+      "kind": "class",
+      "name": "TestTheFeatureAccountIsAudited (part 1)",
+      "id": "s7",
+      "hash": "8406dfe011e810fb",
+      "title": "Feature audit checks",
+      "what": "Checks that a stored feature must be declared, a declared feature must be stored, an always-computable feature must be declared, and an unknown feature name fails.",
+      "why": "This audit is what the old check could not do, because it had no field to read.",
+      "watch_out": "The failures are matched by exact message text, so rewording a message breaks these tests."
+    },
+    {
+      "start": 208,
+      "end": 236,
+      "kind": "method",
+      "name": "TestTheFeatureAccountIsAudited: test_the_account_is_checked_before_the_arithmetic",
+      "id": "s8",
+      "hash": "721debdecea8d053",
+      "title": "Audit runs before arithmetic",
+      "what": "Checks that a block whose score matches its features exactly still fails when a feature is stored but not declared.",
+      "why": "Separates a score that reproduces from a score that is fully accounted for. The old check would have passed this block.",
+      "watch_out": "This is the test that distinguishes the new check from the old one, so it should not be weakened."
+    },
+    {
+      "start": 237,
+      "end": 290,
+      "kind": "class",
+      "name": "TestTheGoldenRecordsPass",
+      "id": "s9",
+      "hash": "d82ea3866fc0f8c6",
+      "title": "Golden records pass",
+      "what": "Runs the check over each saved golden record and confirms it reproduces and accounts for its features, and also confirms the set of records is not empty.",
+      "why": "The docstring explains that with no records the test list was empty, so the tests were silently skipped on a green run. The non-empty guard now fails loudly instead.",
+      "watch_out": "The records are generated by the pipeline and git ignores them, so this must run after the replay step. The docstring notes that CI once ran these tests before that step."
+    },
+    {
+      "start": 291,
+      "end": 344,
+      "kind": "class",
+      "name": "TestTheThinnessRuleIsMirroredInTheGate",
+      "id": "s10",
+      "hash": "42887ce360de2afc",
+      "title": "Thinness rule enforced in the gate",
+      "what": "Checks that a block with too few surviving items cannot declare a measured agreement, including when gaps reduce the count, and that two surviving items are enough.",
+      "why": "The rule is written in three documents but enforced in one place. The gate needs its own copy, because a second producer may appear later.",
+      "watch_out": "The count is of surviving items after gaps, not the number of citations. A block with five citations and four gaps counts as one item."
+    },
+    {
+      "start": 345,
+      "end": 369,
+      "kind": "class",
+      "name": "TestTheLooseStandInIsStillJustified",
+      "id": "s11",
+      "hash": "29ad6e56f08dc0e9",
+      "title": "Stand-in justification check",
+      "what": "Reads the runner's source text and requires exactly one line that calls the check.",
+      "why": "The stand-in docstring claims there is exactly one production call site, and this test makes that claim checkable.",
+      "watch_out": "This reads source text, which the file header says it avoids for the check itself. It is a text search, so a comment that repeats the call would be counted too."
+    },
+    {
+      "start": 370,
+      "end": 389,
+      "kind": "class",
+      "name": "TestARenamedFieldIsNotReadAsAbsent",
+      "id": "s12",
+      "hash": "f571ee3c462794f4",
+      "title": "Missing field is reported",
+      "what": "Checks that a confidence block without the agreement field is reported as a failure rather than quietly treated as having no agreement.",
+      "why": "If a field is renamed and the check reads it with a default value, the check would pass while auditing nothing.",
+      "watch_out": "The check must read the field directly. Adding a default value here would bring back the silent pass."
+    }
+  ],
+  "explained_at": "2026-11-12T00:45:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Feeds the confidence check deliberately wrong confidence blocks and confirms that it reports each kind of error.",
+  "purpose": "Tests the `check_confidence_reproduces` function in the evals runner.",
+  "why": "An earlier version of this check passed a score that was computed from fabricated inputs, because it trusted the inputs it was given. These tests make sure the check catches that kind of problem.",
+  "how": "Each test builds a confidence block with one specific fault, runs the check over it, and asserts that the report fails and names the expected problem. Some tests also recompute expected scores with the same formula. Some tests load the saved golden records and confirm they pass.",
+  "inputs": "Confidence blocks built in the test file, stand-in objects that skip validation, and saved golden records in the candidates folder.",
+  "outputs": "Pass or fail results from pytest. The file writes no files.",
+  "risks": "The stand-in objects skip the real validation, so the tests show the check's logic but not that production records can reach these faulty states. The golden record test depends on files that git ignores.",
+  "debug": "If the golden record tests fail with no records, run the pipeline replay step first. If a message-text assertion fails, check the wording in the check's detail text.",
+  "summary_hash": "sha256:0eb5b03b8973216b9ecfc71c1712666e79d6e94d9b323efa7467562ffaf8eb21"
+}

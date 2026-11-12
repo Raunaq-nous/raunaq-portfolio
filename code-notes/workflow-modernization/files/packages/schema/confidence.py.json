@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "path": "packages/schema/confidence.py",
+  "language": "Python",
+  "lines": 346,
+  "hash": "sha256:592d544a4ddc3e363bf92fbddd28540322a55d053d0ba5cb61f076fc5aa35ea1",
+  "area": "packages-schema",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The checks are explicit and the docstring explains each one.",
+      "The docstring refers to tests that are not visible in the packet, so they cannot be confirmed here.",
+      "Agreement is not measured in this build, so that branch of the checks is not exercised in normal use."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Coverage gate",
+      "meaning": "A rule that a block with no usable evidence cannot score above zero, whatever else is true."
+    },
+    {
+      "term": "Recency half-life",
+      "meaning": "The age at which an item's weight falls by half."
+    },
+    {
+      "term": "Critic",
+      "meaning": "A separate review step that challenges claims. It can remove evidence but cannot set confidence."
+    }
+  ],
+  "depends_on": [
+    "packages/schema/enums.py",
+    "pydantic",
+    "packages/knowledge/confidence.py (computes the values, per the docstring)"
+  ],
+  "used_by": [
+    "packages/schema/__init__.py",
+    "evals/run.py (named in comments as an independent checker)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 58,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "5baee91d00b5eb6b",
+      "title": "Where confidence comes from",
+      "what": "Explains that confidence is computed from evidence and never set by an agent. It also says agreement is not measured in this build, so the record stores it as absent rather than as a number. Sets up the allowed feature names, their order, and the minimum item count for agreement.",
+      "why": "The docstring says an earlier neutral value was indistinguishable from a real measurement, which is why unmeasured features are now excluded rather than replaced.",
+      "watch_out": "Confidence is kept per claim block, and the record-level figure is the lowest block, not an average. One weak block therefore lowers the whole record."
+    },
+    {
+      "start": 59,
+      "end": 67,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "07965bc8c25d0e82",
+      "title": "Features that can always be measured",
+      "what": "Names the two features that can be computed from any evidence set, including an empty one: coverage and recency. Agreement is not on this list.",
+      "why": "The docstring says agreement is a relationship between items, and this build records no stance signal, so there is nothing to measure.",
+      "watch_out": "Adding a feature to this list changes which records the checks accept, so it should not be done casually."
+    },
+    {
+      "start": 68,
+      "end": 127,
+      "kind": "class",
+      "name": "Confidence (part 1)",
+      "id": "s3",
+      "hash": "80e0aceee0e11573",
+      "title": "The confidence record: core fields",
+      "what": "Defines one confidence record with a score from 0 to 1, a count of distinct evidence items, a count of unresolved assumptions, the mean source age, and the optional agreement value. It is frozen and rejects unknown fields.",
+      "why": "The docstring says every input to the formula is stored, so the score can be recomputed and audited from the record alone.",
+      "watch_out": "Every stored input must be kept. Removing one would make the score impossible to audit."
+    },
+    {
+      "start": 128,
+      "end": 186,
+      "kind": "class",
+      "name": "Confidence (part 2)",
+      "id": "s4",
+      "hash": "7113dfb075256194",
+      "title": "The feature account and the method",
+      "what": "Defines the optional agreement value, which is empty when not measured, and the list of features that actually contributed to the score. The list must be stated explicitly and has no default. A method field is fixed to one value.",
+      "why": "The docstring says a default would let a producer claim an account nobody computed, which repeats the earlier defect the field was added to fix.",
+      "watch_out": "Any new producer of confidence must state the contributing features itself, because there is no default to fall back on."
+    },
+    {
+      "start": 187,
+      "end": 234,
+      "kind": "class",
+      "name": "Confidence (part 3)",
+      "id": "s5",
+      "hash": "1bbfb63d62c089b0",
+      "title": "Effective evidence count and feature ordering",
+      "what": "Derives the effective evidence count, which is the number of citations minus unresolved assumptions and is never below zero. Also puts the list of contributing features into the canonical formula order, and rejects any name the order list does not know.",
+      "why": "The docstring says an unordered set would make records that are equal in meaning compare unequal and serialise differently, which would break caching.",
+      "watch_out": "A new feature name must be added to the order list, or the validator rejects every record that uses it."
+    },
+    {
+      "start": 235,
+      "end": 289,
+      "kind": "method",
+      "name": "Confidence: _check_the_feature_account_is_consistent",
+      "id": "s6",
+      "hash": "e7f2cff9013138dc",
+      "title": "Check that the feature list matches the values",
+      "what": "Checks that coverage and recency are always listed, that agreement is listed exactly when a value is stored, and that agreement is listed only when at least two items survive. A mismatch raises an error.",
+      "why": "The docstring says the check stops a record from claiming a term was applied over a value that does not exist, or from hiding a value that entered the score without an account.",
+      "watch_out": "A block with fewer than two surviving items that lists agreement will fail, so producers must check the item count first."
+    },
+    {
+      "start": 290,
+      "end": 315,
+      "kind": "method",
+      "name": "Confidence: _check_zero_evidence_scores_zero",
+      "id": "s7",
+      "hash": "f1fbc0431a8a9bb3",
+      "title": "Check that zero evidence gives zero confidence",
+      "what": "Forces the score to be exactly zero when no effective evidence remains. The formula is multiplicative and coverage-gated, so no other term can lift the score above zero when there is no evidence.",
+      "why": "The docstring says this is arithmetic, not policy. A non-zero score with no evidence means the number was not computed by the formula.",
+      "watch_out": "The check uses the effective count, so a block whose citations were all struck or left ungrounded must still score zero."
+    },
+    {
+      "start": 316,
+      "end": 346,
+      "kind": "class",
+      "name": "Challenge",
+      "id": "s8",
+      "hash": "6720eeb64124f0ea",
+      "title": "The critic's challenge record",
+      "what": "Defines one objection a critic raises against a claim block. It names the block, the claim reference, the evidence link to remove (if any), the objection text, and whether the objection was upheld. The critic cannot set confidence or rewrite claims.",
+      "why": "The docstring says a downgrade should follow from the arithmetic after evidence is removed, not from an assertion. The critic is kept separate so it cannot become a self-declared confidence.",
+      "watch_out": "The upheld flag is set only by the revision pass. A critic that sets it would bypass the review step."
+    }
+  ],
+  "explained_at": "2026-11-12T01:12:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the computed confidence record for one claim block, plus the challenge a critic raises, with checks that the stored numbers match a real calculation.",
+  "purpose": "Keeps confidence honest. It is computed from evidence features and cannot be typed in by a model.",
+  "why": "The docstring says self-declared confidence tracked writing style rather than evidence. An earlier version also stored a fake neutral value for agreement, which hid the fact that agreement was never measured.",
+  "how": "Defines the allowed feature names, their order, the minimum number of items for agreement, and the features that are always measurable. Then defines the confidence record with its score, evidence count, load-bearing gaps, mean source age, optional agreement, a list of the features used, and a fixed method value. Three checks then confirm that the feature list matches the stored values, that agreement is only claimed with enough items, and that zero evidence gives a zero score. Last, defines the challenge record.",
+  "inputs": "Feature values computed by the knowledge code, and objections raised by the critic.",
+  "outputs": "Validated confidence and challenge records, or validation errors naming the broken rule.",
+  "risks": "Adding a feature name without adding it to the order list, which drops it from the account. Claiming a measured agreement over fewer than two items. A non-zero score with no evidence. A critic setting the upheld flag, which should only be set by the revision pass.",
+  "debug": "Find the check named in the error: feature list, agreement, or zero evidence. Then compare the stored values with the calculation in the knowledge module, which the docstring names as the place the number is computed.",
+  "summary_hash": "sha256:592d544a4ddc3e363bf92fbddd28540322a55d053d0ba5cb61f076fc5aa35ea1"
+}

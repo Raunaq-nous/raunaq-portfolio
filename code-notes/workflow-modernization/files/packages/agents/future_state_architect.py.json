@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/future_state_architect.py",
+  "language": "Python",
+  "lines": 230,
+  "hash": "sha256:a4cb8b57ca1499bb9ad17c7579c90bff3c2370146589c6ad4a02d0f6e1681251",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The rule against naming unknown systems is enforced only by the prompt, not by a check in this file.",
+      "Gaps in step numbering are not checked; only duplicate numbers are.",
+      "No test for this file is visible in the packet, so its behaviour is not confirmed here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "role",
+      "meaning": "a job title such as claims handler that says who does a step, without naming a specific tool or agent"
+    },
+    {
+      "term": "posture",
+      "meaning": "a label from a fixed list describing how far the redesign departs from today"
+    },
+    {
+      "term": "declared assumption",
+      "meaning": "a statement the design depends on, marked as proven, as needing a prerequisite, or as unsupported"
+    },
+    {
+      "term": "structured output",
+      "meaning": "a model response that must follow a fixed shape, so the code can check it"
+    }
+  ],
+  "depends_on": [
+    "packages/agents/base.py",
+    "packages/agents/payloads.py",
+    "packages/agents/routing.py",
+    "packages/schema",
+    "pydantic"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 51,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "6289bdd8e68a54bf",
+      "title": "Rules the redesign must follow",
+      "what": "This is the instruction text sent to the model. It tells the architect to design the new flow, name a role for each step, choose a posture, and avoid naming agents, estimating value, or naming systems that are not in the current state or evidence.",
+      "why": "Keeps design work separate from value estimation and agent design, so each stage stays inside its own job.",
+      "watch_out": "The rule about system names is only an instruction to the model here; nothing in this section checks it."
+    },
+    {
+      "start": 52,
+      "end": 82,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "104543c5623abfe8",
+      "title": "How to declare assumptions",
+      "what": "This text explains how the model must label each assumption the design rests on: as grounded with evidence, as a declared prerequisite that must land first, or as unsupported. It also says reassurance does not count as an answer.",
+      "why": "Likely reason: it stops the model from writing confident wording in place of evidence or a named prerequisite.",
+      "watch_out": "The no-objection text still asks the model to declare assumptions, so an empty objection list does not mean no assumptions are expected."
+    },
+    {
+      "start": 83,
+      "end": 96,
+      "kind": "class",
+      "name": "_ArchitectStep",
+      "id": "s3",
+      "hash": "f33388385d462297",
+      "title": "One redesigned step",
+      "what": "Describes the shape of a single future step: a sequence number, a name, the role that performs it, a description, and the evidence ids behind it. Any extra field is rejected.",
+      "why": "The performer is a role, not a named agent, so the architect cannot commit to capability the designer has not specified.",
+      "watch_out": "The sequence number is meant to have no gaps, but the check in this file only catches duplicates, so a gap will pass."
+    },
+    {
+      "start": 97,
+      "end": 118,
+      "kind": "class",
+      "name": "_ArchitectOutput",
+      "id": "s4",
+      "hash": "229aaa83b58aca87",
+      "title": "The whole redesign as one answer",
+      "what": "The complete structure the model must return: the future purpose, the list of steps, the posture, the declared assumptions and the overall evidence ids. It deliberately has no agents, no exception model and no value figures.",
+      "why": "Fields that are not offered cannot be filled, so value and agent design are out of the model's reach at this stage.",
+      "watch_out": "Adding a field here opens a door the architect was kept away from, so check the stage boundary before changing it."
+    },
+    {
+      "start": 119,
+      "end": 135,
+      "kind": "class",
+      "name": "ArchitectedFutureState",
+      "id": "s5",
+      "hash": "6842ea4493eaae89",
+      "title": "Redesign handed to the next stage",
+      "what": "The result this stage passes on: flow, posture and assumptions, with performers still shown as roles. It is a separate type from the full future state so that an incomplete design cannot look finished.",
+      "why": "Stated in the code: returning a half-filled full state would let an unfinished design flow onward as if it were complete.",
+      "watch_out": "Later code expects this type and not the full future state, so swapping them changes what downstream stages receive."
+    },
+    {
+      "start": 136,
+      "end": 171,
+      "kind": "class",
+      "name": "FutureStateArchitect (part 1)",
+      "id": "s6",
+      "hash": "0bf518822c8a65d8",
+      "title": "Setting up the architect's job",
+      "what": "Names the architect, sets its model tier and output limit, and builds the task text from the current steps, the workflow debt and the objections. The allowed postures and prerequisite kinds are written into that text.",
+      "why": "The task text is how the model learns the current process and which objections it must answer.",
+      "watch_out": "If there are no recorded steps, the text shows none recorded, which the model may read as a process with no steps at all."
+    },
+    {
+      "start": 172,
+      "end": 230,
+      "kind": "method",
+      "name": "FutureStateArchitect: _check_objections_answered",
+      "id": "s7",
+      "hash": "231dea62df9530d7",
+      "title": "Checking every objection was answered",
+      "what": "Before accepting a design, this checks that each objection raised has at least one declared assumption naming it. It also checks that step numbers are not duplicated. If an objection is unanswered, the run stops with an error.",
+      "why": "Matching is done by claim reference rather than wording, so an objection cannot be dismissed just by writing a polite sentence.",
+      "watch_out": "The match depends on the claim reference being copied exactly; a misspelled or blank reference fails the check even when the design is sound."
+    }
+  ],
+  "explained_at": "2026-11-12T01:18:02+00:00",
+  "explained_by": "haiku",
+  "summary": "Designs the future version of one process: its new steps, the role that performs each step, how far it moves from today, and the assumptions the design depends on.",
+  "purpose": "Turns the current state of one process, plus any structural objections raised against an earlier draft, into a redesigned flow that names roles rather than specific agents or value figures.",
+  "why": "The design is split from value estimation and agent design so the architect cannot invent capability or savings. The prompt and the code both enforce this split.",
+  "how": "Builds the task text from the current steps, the workflow debt and the objections. Asks the model for a typed answer. Checks that every objection is matched by a declared assumption and that step numbers are not duplicated. Returns a deliberately incomplete design type for the next stage.",
+  "inputs": "An ArchitectPayload: the current state of the process and any structural objections that must be answered.",
+  "outputs": "An ArchitectedFutureState: the future purpose, the steps with their performing roles, the posture, the declared assumptions and the evidence ids.",
+  "risks": "The rule against naming systems absent from the evidence exists only in the prompt, not in code. Gaps in step numbers are not caught, only duplicates. Objection matching depends on the claim reference being copied exactly. The output depends on the model returning the expected shape.",
+  "debug": "If a run stops with a boundary violation, read the list of unanswered objections in the message. If a numbering error appears, look for repeated sequence numbers in the steps. To check what the model was told, read the task text built by task_block. If assumptions look empty, check whether the objections were passed in.",
+  "summary_hash": "sha256:a4cb8b57ca1499bb9ad17c7579c90bff3c2370146589c6ad4a02d0f6e1681251"
+}

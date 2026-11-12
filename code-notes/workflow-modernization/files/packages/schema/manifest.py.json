@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "path": "packages/schema/manifest.py",
+  "language": "Python",
+  "lines": 186,
+  "hash": "sha256:510fe2b22fa4c24018bf1b1f2ebe34dc6408f98373ad0aaea72b828db76d0f42",
+  "area": "packages-schema",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The docstring records a serialisation failure that was found and fixed, which shows care.",
+      "The docstring says a test guards the cost basis exclusion, but that test is not in the packet.",
+      "Only a subset of the specified manifest is built, and no export path exists yet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Manifest",
+      "meaning": "A record of the settings a run used, kept so the run can be explained or repeated later."
+    },
+    {
+      "term": "Read-only mapping",
+      "meaning": "A dictionary that cannot be changed after it is created."
+    },
+    {
+      "term": "Serialise",
+      "meaning": "Convert an object into plain text or a file format that can be saved and read back."
+    },
+    {
+      "term": "Classification",
+      "meaning": "A handling label such as public, internal, confidential or restricted, which controls who may see the data."
+    },
+    {
+      "term": "Prefix hash",
+      "meaning": "A code that identifies the fixed starting text sent to the model, used to check whether caching is working."
+    },
+    {
+      "term": "Cost basis",
+      "meaning": "The rules that turn scores into money, which agents must not see."
+    }
+  ],
+  "depends_on": [
+    "pydantic",
+    "packages/schema/record.py"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 41,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "69919fbda9f35ab5",
+      "title": "Module purpose and planned fields",
+      "what": "Explains that the manifest is only partly built and lists the fields planned for later, such as cost basis and preflight checks. It also defines the manifest version, the depth tiers and the classification labels.",
+      "why": "The docstring says the planned fields depend on value and orchestration objects that do not exist yet.",
+      "watch_out": "The manifest version is separate from the record version, so both must be checked when reading old data."
+    },
+    {
+      "start": 42,
+      "end": 90,
+      "kind": "class",
+      "name": "RunManifest (part 1)",
+      "id": "s2",
+      "hash": "ab16aa1101c58b57",
+      "title": "Run manifest fields and checks",
+      "what": "Stores the identity and settings of a run and checks that the record version and manifest version are known to this build. It also makes the model and prompt dictionaries read-only.",
+      "why": "The docstring says a plain dictionary could be changed after creation, which would make the run's record unreliable.",
+      "watch_out": "Making a dictionary read-only is not the same as making the manifest frozen, so both protections are needed."
+    },
+    {
+      "start": 91,
+      "end": 139,
+      "kind": "class",
+      "name": "RunManifest (part 2)",
+      "id": "s3",
+      "hash": "68fe4f1271c39b2e",
+      "title": "Model and prompt hash checks",
+      "what": "Stores the model and prompt identifiers for each agent and the prefix hash, and makes the two dictionaries read-only when the manifest is created.",
+      "why": "The docstring explains that a prefix change within a run would silently lower the cache hit rate.",
+      "watch_out": "The read-only conversion happens in a validator, so bypassing validation would leave the dictionaries writable."
+    },
+    {
+      "start": 140,
+      "end": 168,
+      "kind": "method",
+      "name": "RunManifest: _thaw_mapping",
+      "id": "s4",
+      "hash": "6c6dd285f4fff6f5",
+      "title": "Saving the manifest and agent view",
+      "what": "Turns the read-only dictionaries back into plain dictionaries when the manifest is saved, and provides for_agents to return only the fields agents may see.",
+      "why": "The docstring explains that without this step the manifest cannot be written at all, which would make the run impossible to explain later.",
+      "watch_out": "Any new manifest field must be added to for_agents on purpose, or it stays hidden from agents without anyone deciding that."
+    },
+    {
+      "start": 169,
+      "end": 186,
+      "kind": "class",
+      "name": "AgentRunView",
+      "id": "s5",
+      "hash": "381c6fd89d39ff9a",
+      "title": "Restricted view for agents",
+      "what": "Defines the narrow record that agents receive, holding only run identity, depth, industry, taxonomy, ontology and knowledge snapshot. It rejects any extra field.",
+      "why": "The docstring says giving agents the whole manifest would make cost data reachable the day it is added, and a projection makes that impossible by design.",
+      "watch_out": "Adding a sensitive field to the manifest does not expose it to agents unless someone also adds it here, so keep this list minimal."
+    }
+  ],
+  "explained_at": "2026-11-12T01:13:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Records the settings and versions a run used, so its output can be explained and compared later, and provides a restricted view for agents that hides the cost basis.",
+  "purpose": "Lets someone later see exactly what inputs, model versions and prompts produced a result, and keeps cost information away from the agents.",
+  "why": "The docstring says the manifest makes two runs comparable, and a field that drifts during a run would make that comparison silently wrong.",
+  "how": "First, the manifest stores identity, timestamps, versions, engagement scope, classification, model names, prompt hashes and a prefix hash, and is frozen after creation. Second, validators check that the record and manifest versions are ones this build understands. Third, dictionaries of models and prompts are made read-only and turned back into plain dictionaries when written. Fourth, the for_agents method returns only a narrow view with the run identity, depth, industry, taxonomy, ontology and knowledge snapshot.",
+  "inputs": "Run identity, creation time, record and manifest versions, trace reference, engagement identifier, classification, industry, taxonomy and ontology versions, depth tier, knowledge snapshot, model identifiers, prompt hashes and prefix hash.",
+  "outputs": "A frozen manifest object, its serialised form, and an agent view that contains a subset of fields.",
+  "risks": "The manifest is only partly built. The docstring says cost basis and other fields are missing, and adding them will make old stored manifests unreadable unless a migration is written.",
+  "debug": "If a manifest fails to save, check the serialisation step for the read-only dictionaries. If a version error appears, check that the schema version is in the known list. If an agent sees an unexpected field, check that for_agents only passes the listed fields.",
+  "summary_hash": "sha256:510fe2b22fa4c24018bf1b1f2ebe34dc6408f98373ad0aaea72b828db76d0f42"
+}

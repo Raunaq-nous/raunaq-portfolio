@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "path": "packages/agents/process_assessor.py",
+  "language": "Python",
+  "lines": 164,
+  "hash": "sha256:64294b1f2fc148e1e45aae251fbe82656d014636b4ed9fe1e3c32cc48f5072f4",
+  "area": "packages-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Score direction for the inverted dimensions is not checked in code.",
+      "The banned-phrase check is shallow and only matches listed words.",
+      "No test for this file is visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "scorecard",
+      "meaning": "the set of nine scores that describe how a process rates on each dimension"
+    },
+    {
+      "term": "inverted dimension",
+      "meaning": "a score where a higher number means a worse situation, such as fragmentation"
+    },
+    {
+      "term": "rationale",
+      "meaning": "the short written reason the model gives with each score"
+    }
+  ],
+  "depends_on": [
+    "packages/agents/base.py",
+    "packages/agents/payloads.py",
+    "packages/agents/routing.py",
+    "packages/schema",
+    "pydantic"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 60,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "a2c88c0b0390c205",
+      "title": "The nine dimensions and four axes",
+      "what": "Describes the nine scores the model must give a process and the four positions on the type of work. It spells out that two of the nine run the opposite way, so a higher number is worse.",
+      "why": "Stated in the file: a model shown similar-looking fields would score them all in the same direction, so the reversal is written out.",
+      "watch_out": "The code does not check direction. A reversed score would silently change the ranking."
+    },
+    {
+      "start": 61,
+      "end": 96,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "70ec456c7b6afc70",
+      "title": "Rules and the process text",
+      "what": "Lists the rules for this stage: do not propose a redesign, do not give a value or ease score, and say why each score rather than the adjacent one. Builds the text describing the process, its steps and its debt. It also lists the words that must not appear in a reason.",
+      "why": "Stated in the file: these rules keep this stage from drifting into redesign or value work.",
+      "watch_out": "Banned words are matched as plain substrings, so an ordinary word containing one of them would trigger a violation."
+    },
+    {
+      "start": 97,
+      "end": 109,
+      "kind": "class",
+      "name": "_AssessorOutput",
+      "id": "s3",
+      "hash": "73fa043662037abe",
+      "title": "The scorecard and axes answer",
+      "what": "The model's answer: nine scores with reasons, and the four positions. It has no field for a value score, an ease score, a posture or a recommendation.",
+      "why": "Stated in the file: a field that is never offered cannot be filled, so value and redesign stay with the stages that own them.",
+      "watch_out": "A reason is required for each score, but the code checks only for banned words, not for whether the reason is any good."
+    },
+    {
+      "start": 110,
+      "end": 164,
+      "kind": "class",
+      "name": "ProcessAssessor",
+      "id": "s4",
+      "hash": "79a6b66db1270b32",
+      "title": "Scoring and placing a process",
+      "what": "Sets up the agent with the current state and builds the text for the steps and debt. When the model answers, it checks the reasons for banned words and then returns the scorecard and placement. It also re-exports the list of inverted dimensions so callers cannot miss it.",
+      "why": "Likely reason: a final guard against the model describing a redesign or a derived score inside a reason.",
+      "watch_out": "The guard only looks for listed phrases, so a redesign described in different words would pass."
+    }
+  ],
+  "explained_at": "2026-11-12T01:18:02+00:00",
+  "explained_by": "haiku",
+  "summary": "Scores one process on nine dimensions and places it on four axes of work, without proposing any redesign or computing any value.",
+  "purpose": "Produces the scorecard that the prioritisation matrix relies on, and the placement on the four axes.",
+  "why": "Stated in the file: no other listed agent scores the process, yet the process record requires a scorecard. This agent fills that gap.",
+  "how": "Shows the model the current state and workflow debt. Asks for nine whole-number scores with a written reason each, plus four positions. Checks the reasons for banned phrases. Returns the scorecard and the placement.",
+  "inputs": "A ProcessBrief for the process, and the CurrentState supplied when the agent is created.",
+  "outputs": "A pair: the Scorecard and the NatureOfWork.",
+  "risks": "Two dimensions run the opposite way from the rest, and the code cannot detect a reversed score because any whole number is allowed. The banned-phrase check is a plain text match. A reason can be present but weak.",
+  "debug": "If a process ranks oddly, check the direction of fragmentation and change_burden first. If a run fails with a boundary error, the message names the phrase that triggered it. To inspect the reasons, read the rationale text in the saved output.",
+  "summary_hash": "sha256:64294b1f2fc148e1e45aae251fbe82656d014636b4ed9fe1e3c32cc48f5072f4"
+}
