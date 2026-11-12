@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "path": "backend/services/llm_provider.py",
+  "language": "Python",
+  "lines": 361,
+  "hash": "sha256:5caacaa0ad1a2ea64b1c7a3c919e5d114fbbe759ce5e6e2fb6034ae56799a2fa",
+  "area": "backend-services",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Several providers are placeholders that raise errors for embeddings or completions.",
+      "The Google key is placed in the web address, which can leak into logs.",
+      "No tests or error-handling checks are visible in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "API",
+      "meaning": "a doorway other programs use to ask this app or an outside service for data"
+    },
+    {
+      "term": "Provider",
+      "meaning": "an AI company or local server that supplies the model"
+    },
+    {
+      "term": "Embedding",
+      "meaning": "a list of numbers that represents the meaning of a piece of text"
+    },
+    {
+      "term": "JSON mode",
+      "meaning": "a setting that asks the model to reply with machine-readable JSON"
+    },
+    {
+      "term": "Factory",
+      "meaning": "a helper that builds the right provider object from a name"
+    },
+    {
+      "term": "Retry",
+      "meaning": "trying a failed request again after a short wait"
+    },
+    {
+      "term": "Token",
+      "meaning": "a small chunk of text that AI services count and charge for"
+    }
+  ],
+  "depends_on": [
+    "openai",
+    "anthropic",
+    "httpx",
+    "tenacity"
+  ],
+  "used_by": [
+    "backend/services/model_manager.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "8b89702c10702193",
+      "title": "Imports and setup",
+      "what": "Brings in the libraries used to talk to AI services, retry failed calls, and measure time. It has no visible effect on the user beyond making the rest of the file work.",
+      "why": "Each provider needs its own client library and the shared retry and timing tools.",
+      "watch_out": ""
+    },
+    {
+      "start": 11,
+      "end": 41,
+      "kind": "class",
+      "name": "LLMProvider",
+      "id": "s2",
+      "hash": "eab11bde687a0827",
+      "title": "Shared provider blueprint",
+      "what": "Defines the required shape every provider must follow: a completion method and an embedding method. Any provider that does not implement both cannot be created.",
+      "why": "Lets the rest of the app treat all providers the same way.",
+      "watch_out": ""
+    },
+    {
+      "start": 42,
+      "end": 95,
+      "kind": "class",
+      "name": "OpenAIProvider",
+      "id": "s3",
+      "hash": "57fa9fb1529bd69e",
+      "title": "OpenAI provider",
+      "what": "Sends prompts to OpenAI chat models and returns the text with token counts and timing. It can ask for JSON output, and it also provides embeddings using a default embedding model.",
+      "why": "OpenAI is the main provider the app is set up for, so it is the most complete.",
+      "watch_out": "The embedding model name is chosen separately here and in other files, so changing one may not change the others."
+    },
+    {
+      "start": 96,
+      "end": 149,
+      "kind": "class",
+      "name": "AnthropicProvider",
+      "id": "s4",
+      "hash": "20a0d32fb3302ca5",
+      "title": "Anthropic (Claude) provider",
+      "what": "Sends prompts to Claude models. Because Claude has no built-in JSON mode, it adds an instruction to the system prompt asking for JSON only. It does not provide embeddings.",
+      "why": "Gives the app a second strong text model option.",
+      "watch_out": "The JSON request is only a wording instruction, so the reply can still include extra text that breaks JSON parsing."
+    },
+    {
+      "start": 150,
+      "end": 209,
+      "kind": "class",
+      "name": "GoogleProvider",
+      "id": "s5",
+      "hash": "7f89d65824927025",
+      "title": "Google Gemini provider",
+      "what": "Sends prompts to Gemini through a web request and reads back the text, token counts and finish reason. It supports a JSON response setting. Embeddings are not available yet.",
+      "why": "Offers Google models as another option. Reason for sending the key in the web address is not stated in the code.",
+      "watch_out": "The key is placed in the web address, so any log of web requests can expose it."
+    },
+    {
+      "start": 210,
+      "end": 266,
+      "kind": "class",
+      "name": "OllamaProvider (part 1)",
+      "id": "s6",
+      "hash": "b9463247e50c4707",
+      "title": "Local Ollama provider",
+      "what": "Sends chat messages to a model running on the user's own machine through Ollama and returns the reply with token counts. It waits up to five minutes for a reply, which suits slow local models.",
+      "why": "Lets the app run open-source models without sending data to an outside company.",
+      "watch_out": "Default model and address assume a local Ollama server on the standard port, so a missing server gives a connection error."
+    },
+    {
+      "start": 267,
+      "end": 286,
+      "kind": "method",
+      "name": "OllamaProvider: embed",
+      "id": "s7",
+      "hash": "55c585170f1c4225",
+      "title": "Ollama embeddings",
+      "what": "Turns each text into an embedding by asking the local Ollama server one text at a time. It returns the list of number lists in the same order as the input.",
+      "why": "Lets embeddings run locally. Reason for one request per text is not stated in the code.",
+      "watch_out": "The default embedding model here differs from the default chat model, so both must be installed in Ollama."
+    },
+    {
+      "start": 287,
+      "end": 328,
+      "kind": "class",
+      "name": "HuggingFaceProvider",
+      "id": "s8",
+      "hash": "f6e2c8c6de580624",
+      "title": "HuggingFace provider",
+      "what": "Gets embeddings from the HuggingFace inference web service, one text at a time, and requires an API key. Text completion is not implemented and raises an error telling the user to use Ollama or vLLM.",
+      "why": "Offers an open-source embedding option without running a model locally.",
+      "watch_out": "The web address used here may be outdated, and the model name must be set or requests will fail."
+    },
+    {
+      "start": 329,
+      "end": 361,
+      "kind": "class",
+      "name": "LLMProviderFactory",
+      "id": "s9",
+      "hash": "57644bbea359c7d7",
+      "title": "Provider factory",
+      "what": "Picks the right provider class from a name such as openai or ollama, filling in a default model and address when none is given. An unknown name raises an error. The result is what the rest of the app uses to talk to an AI service.",
+      "why": "Keeps the choice of provider in one place so other files do not need to know the details.",
+      "watch_out": "Some names the factory accepts, such as cohere or local, are not handled here, so they raise an error."
+    }
+  ],
+  "explained_at": "2026-11-12T00:08:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Gives the rest of the app one common way to ask different AI services (OpenAI, Anthropic, Google, Ollama, HuggingFace) for text completions and embeddings.",
+  "purpose": "Hides the differences between AI companies so the agents only call one interface and can switch providers through settings or a database entry.",
+  "why": "Each provider has its own request format, key handling and response shape. A shared interface with a factory keeps that difference in one file.",
+  "how": "A factory picks a provider by name and fills in a default model if none is given. Each provider builds its own request, sends it, measures how long it took, and returns the same result shape with the text and token counts. Completion calls retry up to three times with growing waits when they fail. Providers that cannot do something raise a clear error instead.",
+  "inputs": "A provider name, an API key where needed, a model name, and for Ollama a base address. Completion calls take a prompt, an optional system instruction, a temperature, a maximum output length, and a flag asking for JSON.",
+  "outputs": "A dictionary holding the generated text, prompt token count, completion token count, latency in milliseconds, and the finish reason. Embedding calls return lists of numbers.",
+  "risks": "The Google API key is sent as a web address parameter, which can leak into logs. Anthropic, Google and HuggingFace do not provide embeddings here. The HuggingFace base address looks outdated. No tests are visible in this file.",
+  "debug": "If a call fails, check the provider name and that the matching key is set. Check the model name against the provider's list. For Ollama, confirm the local server is running on the expected address. For Google, check the response shape if the text field is missing.",
+  "summary_hash": "sha256:5caacaa0ad1a2ea64b1c7a3c919e5d114fbbe759ce5e6e2fb6034ae56799a2fa"
+}

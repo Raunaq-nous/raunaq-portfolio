@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "path": "backend/models/panel.py",
+  "language": "Python",
+  "lines": 210,
+  "hash": "sha256:a3f6bfab53c963b841a353f94efa10bfd37ca511d75df0064add5582d85a8e0c",
+  "area": "backend-models",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only 5 of the 7 sections in this file were included in the packet. The Invitation and Incentive sections were not reviewed, so they have no notes.",
+      "Personal data is stored in plain text.",
+      "Panel counters need other code to stay correct.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Panel",
+      "meaning": "a named list of people the team can invite to surveys"
+    },
+    {
+      "term": "Contact",
+      "meaning": "one person in a panel, with their details and invitation history"
+    },
+    {
+      "term": "Opt-out",
+      "meaning": "a person asking not to be contacted again"
+    },
+    {
+      "term": "Bounce",
+      "meaning": "an invitation that could not be delivered, for example because the email address is invalid"
+    },
+    {
+      "term": "Fingerprint",
+      "meaning": "a value computed from someone's details, such as a hashed email, used to spot the same person appearing twice"
+    },
+    {
+      "term": "Hash",
+      "meaning": "a scrambled, one-way version of a value, so the original cannot easily be read back"
+    },
+    {
+      "term": "CRM",
+      "meaning": "customer relationship management, a business system that stores customer records"
+    }
+  ],
+  "depends_on": [
+    "database module (Base and is_sqlite)",
+    "sqlalchemy library"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 20,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4c6cc8ae4b738c4a",
+      "title": "Choosing column types for the database",
+      "what": "Chooses ID and list column types based on the database type. On SQLite, it uses text and JSON stand-ins.",
+      "why": "SQLite has no UUID or array types, so stand-ins let the same tables run on both databases.",
+      "watch_out": ""
+    },
+    {
+      "start": 21,
+      "end": 29,
+      "kind": "class",
+      "name": "ContactStatus",
+      "id": "s2",
+      "hash": "e4274889cc2ae6be",
+      "title": "Contact status labels",
+      "what": "Lists the possible states of a contact: active, bounced, opted out, duplicate, and blocked.",
+      "why": "Likely reason: stops the team from inviting people who have bounced, opted out, or are duplicates.",
+      "watch_out": "Status holds one value, but opt-out and bounce have their own timestamp fields, so a contact can show mixed signals unless other code keeps them in step."
+    },
+    {
+      "start": 30,
+      "end": 64,
+      "kind": "class",
+      "name": "Panel",
+      "id": "s3",
+      "hash": "8dddd7febab7a2dc",
+      "title": "Contact list record",
+      "what": "Stores one panel: its name, type (B2B, B2C or vendor), source, creator, and running counts of total, active, opted-out and bounced contacts.",
+      "why": "Likely reason: lets a list be found and summarised without counting every contact each time.",
+      "watch_out": "The counts are stored, not calculated, so they go out of date unless the code that changes contacts updates them."
+    },
+    {
+      "start": 65,
+      "end": 123,
+      "kind": "class",
+      "name": "Contact (part 1)",
+      "id": "s4",
+      "hash": "5e47401b2846d1c9",
+      "title": "Contact identity, fingerprints, and profile",
+      "what": "Stores one person's identity (email, phone, CRM ID, and panel respondent ID), fingerprints used to spot duplicates, and profile details for business or consumer surveys. Also holds status, invitation and response counts, and opt-out and bounce dates.",
+      "why": "The fields are labelled as dedupe fingerprints, so duplicates can be spotted without comparing raw personal data.",
+      "watch_out": "Raw email, phone, age, gender and income are stored in plain text, so this table needs protection."
+    },
+    {
+      "start": 124,
+      "end": 131,
+      "kind": "class",
+      "name": "Contact (part 2)",
+      "id": "s5",
+      "hash": "6bd2354e659ab764",
+      "title": "Extra fields and record dates",
+      "what": "Stores extra custom details in a flexible field, plus metadata and created and updated times for each contact.",
+      "why": "Likely reason: the flexible field lets each panel store details the fixed columns do not cover, and timestamps support audit and sorting.",
+      "watch_out": "The flexible field accepts any data, and this file does not check what gets stored in it."
+    },
+    {
+      "start": 132,
+      "end": 172,
+      "kind": "class",
+      "name": "Invitation",
+      "id": "s6",
+      "hash": "385886cfbfe06fec",
+      "title": "Study invitation record",
+      "what": "Defines the table that stores each invitation sent to a survey contact. It records the channel used (email, SMS or WhatsApp), when it was sent, delivered, opened, clicked, started and completed, and whether it bounced or was reminded.",
+      "why": "Likely reason: the app needs one place to track how far each invitation got, so response rates and reminders can be measured. Reason not stated in the code for the exact field list.",
+      "watch_out": "The status column is plain text, so a misspelled or new status value is accepted silently and will not show up in status-based filters."
+    },
+    {
+      "start": 173,
+      "end": 210,
+      "kind": "class",
+      "name": "Incentive",
+      "id": "s7",
+      "hash": "9ee0832b9342c557",
+      "title": "Incentive payment record",
+      "what": "Defines the table that tracks rewards promised to panel members, such as gift cards or points. It stores the amount, currency, status (pending, verified, paid or failed), payment method, payment reference and who verified it.",
+      "why": "Likely reason: payments need an audit trail of what was promised, checked and paid. Reason not stated in the code for the exact design.",
+      "watch_out": "The amount is a floating-point number, which can round small money values. Nothing in this file prevents an amount from being changed after it is marked paid."
+    }
+  ],
+  "explained_at": "2026-11-12T00:12:57+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the database tables for contact lists (panels) and the people in them, including profile details, duplicate-spotting fingerprints, and opt-out and bounce status.",
+  "purpose": "Stores the people the team can invite to surveys, and records who has opted out, bounced, or been counted as a duplicate.",
+  "why": "Likely reason: lets the team manage invitations while respecting opt-outs and avoiding duplicate invitations. The file does not state this directly.",
+  "how": "Defines a status list, then two tables: panels (contact lists with summary counts) and contacts (one row per person). The file picks column types based on the database type, and tables sit in the panels schema on PostgreSQL.",
+  "inputs": "Nothing directly. Other code writes rows to these tables.",
+  "outputs": "Two database tables, panels and contacts, in the panels schema on PostgreSQL. The status list is used to label each contact.",
+  "risks": "Raw email, phone, age, gender and income are stored in plain text, so this table holds sensitive personal data. Panel counts are stored, not calculated, so they go stale unless other code updates them. A contact's panel link is plain text with no enforced relationship.",
+  "debug": "If a panel's counts look wrong, recount its contacts and check the code that updates them. If a person was invited after opting out, check the contact's status and opt-out timestamp. If duplicates slip through, check the fingerprint fields the duplicate check uses.",
+  "summary_hash": "sha256:a3f6bfab53c963b841a353f94efa10bfd37ca511d75df0064add5582d85a8e0c"
+}

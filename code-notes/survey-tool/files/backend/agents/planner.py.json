@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/planner.py",
+  "language": "Python",
+  "lines": 165,
+  "hash": "sha256:f65ac1a1f8be4f8639ac9e7796449a250d5505ea0839e1a7f473f94cb234094e",
+  "area": "backend-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are caught and logged, which is good.",
+      "No tests are visible in this file.",
+      "The model's output is not checked against the expected structure.",
+      "The OpenAI call style should be verified against the installed library version; this code does not show that it works.",
+      "The model call blocks the server while it waits."
+    ]
+  },
+  "terms": [
+    {
+      "term": "LLM",
+      "meaning": "large language model, the AI system that writes the plan from the brief"
+    },
+    {
+      "term": "OpenAI",
+      "meaning": "the company whose AI service this code calls"
+    },
+    {
+      "term": "JSON",
+      "meaning": "a plain text format for structured data, with labelled fields and lists"
+    },
+    {
+      "term": "Temperature",
+      "meaning": "a setting that controls how random the model's wording is; lower means more predictable"
+    },
+    {
+      "term": "JSON mode",
+      "meaning": "a setting that asks the model to reply with JSON only"
+    },
+    {
+      "term": "Async",
+      "meaning": "a way of writing code that can pause while waiting for slow work, such as a network call"
+    }
+  ],
+  "depends_on": [
+    "config (settings)",
+    "agents/base.py",
+    "openai library"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 46,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7e40cb40ea10892d",
+      "title": "Setup, prompts, and imports",
+      "what": "Loads the libraries and settings this file needs. Holds the instructions sent to the model: a system prompt describing the required plan format, and a template that fills in the survey brief.",
+      "why": "Keeps the model instructions in one place so they are easy to find and change.",
+      "watch_out": "Other code, such as the validator, reads specific keys from the plan, so renaming a key in this prompt can break those checks without any error."
+    },
+    {
+      "start": 47,
+      "end": 104,
+      "kind": "class",
+      "name": "PlannerAgent (part 1)",
+      "id": "s2",
+      "hash": "f0a1fd3183d7f01a",
+      "title": "Building the request and calling the model",
+      "what": "Sets up the planner with the default model and provider from settings. The run step fills in the brief, using defaults for missing fields, then picks the call path by provider. It sends the request, then turns the answer into structured data.",
+      "why": "Defaults keep the planner working when a form field is left empty. Reason for the provider check not stated in the code beyond the error it raises for other providers.",
+      "watch_out": "Only the openai provider is handled, so any other setting fails with an error that is returned rather than shown."
+    },
+    {
+      "start": 105,
+      "end": 142,
+      "kind": "class",
+      "name": "PlannerAgent (part 2)",
+      "id": "s3",
+      "hash": "cb1d51a2615f1b09",
+      "title": "Recording the call and returning the result",
+      "what": "Saves each successful model call in the audit log, with its prompt, answer, token counts and speed, then returns the plan. On any error, it logs the failure and returns a failure result instead of crashing.",
+      "why": "Likely reason: the audit log supports reproducibility and debugging, as the audit model file describes.",
+      "watch_out": "If the failure happens before the prompt is built, the audit record is saved with an empty prompt, which makes that failure harder to trace."
+    },
+    {
+      "start": 143,
+      "end": 165,
+      "kind": "method",
+      "name": "PlannerAgent: _call_openai",
+      "id": "s4",
+      "hash": "c47658eee05c23ff",
+      "title": "The OpenAI call itself",
+      "what": "Sends the system prompt and the brief to OpenAI with low randomness, asks for JSON only, and returns the answer with token counts and time taken.",
+      "why": "Likely reason: low randomness and JSON mode make the plan predictable and easy to parse, as the code comment for temperature says.",
+      "watch_out": "The call blocks while it waits and the call style may not match the installed OpenAI library version, so verify it before relying on this path."
+    }
+  ],
+  "explained_at": "2026-11-12T00:11:10+00:00",
+  "explained_by": "haiku",
+  "summary": "Asks an OpenAI model to turn a survey brief into a structured survey plan and returns that plan as data.",
+  "purpose": "Takes the researcher's brief (goal, audience, markets, sample size, question budget, required items, sensitivity flags, languages, platform) and produces a survey specification that the rest of the system can use.",
+  "why": "Likely reason: a structured plan is needed so later agents (the validator and publisher) can read it. The file does not state why it was written as a separate agent.",
+  "how": "Fills the user message template with the brief, using defaults for any missing field. Sends it with the system prompt to OpenAI and asks for JSON only. Parses the returned text as JSON. Records the call in the audit log. Returns the plan with a task ID, or returns a failure with the error message.",
+  "inputs": "A dictionary with the brief fields. Missing fields fall back to defaults: B2C audience, US market, 100 respondents, 20 questions, English, and Qualtrics as the platform.",
+  "outputs": "A dictionary with spec, task_id, and success. On failure, spec is empty and error holds the message.",
+  "risks": "The model's answer is trusted without checking its shape, so a missing key can reach later steps. The OpenAI call is a blocking call inside an async function, which can slow the server. Only the OpenAI provider is handled; any other provider setting fails with an error. The call style may not match the installed OpenAI library version, and this code does not confirm it.",
+  "debug": "Read the error field in the returned result. For JSON errors, the model returned text that was not valid JSON; check the response saved in the model call audit record for this task ID. For failures on the first call, check the OpenAI library version, the API key in settings, and that default_llm_provider is set to openai.",
+  "summary_hash": "sha256:f65ac1a1f8be4f8639ac9e7796449a250d5505ea0839e1a7f473f94cb234094e"
+}

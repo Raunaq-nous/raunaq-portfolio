@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/validator.py",
+  "language": "Python",
+  "lines": 347,
+  "hash": "sha256:02983cc875d557aea8ca7ef938b50db265829bc19338714b00d0a5b0484c1b75",
+  "area": "backend-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The AI quality review appears to always fail because of how its prompt is formatted.",
+      "Required-item checks cannot pass for most items.",
+      "The fixed_survey copy is never repaired.",
+      "The strict flag is unused.",
+      "No tests are visible.",
+      "Errors are caught, so one failing check does not stop the others."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Rule-based check",
+      "meaning": "a check that follows fixed instructions, such as looking for a banned word, with no AI involved"
+    },
+    {
+      "term": "Regex (pattern)",
+      "meaning": "a short text pattern used to search for words or phrases"
+    },
+    {
+      "term": "Similarity ratio",
+      "meaning": "a score from 0 to 1 showing how alike two texts are, where 1 means identical"
+    },
+    {
+      "term": "Readiness score",
+      "meaning": "the overall quality score from the AI review, used to decide pass or fail"
+    },
+    {
+      "term": "Threshold",
+      "meaning": "the cutoff value a score must reach to pass"
+    },
+    {
+      "term": "Deep copy",
+      "meaning": "a full independent copy of the data, so changes to the copy do not touch the original"
+    }
+  ],
+  "depends_on": [
+    "config (settings)",
+    "agents/base.py",
+    "openai library",
+    "sqlalchemy library",
+    "difflib (standard library)"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 40,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "031705a10fe38c32",
+      "title": "Setup and the AI review instructions",
+      "what": "Brings in the libraries and holds the instructions for the AI quality review. The model is asked to score each question from 1 to 5 on clarity, neutrality, redundancy and coverage, and to reply with JSON.",
+      "why": "Gives the AI one fixed scoring scheme so results are comparable across surveys.",
+      "watch_out": "The example layout in these instructions contains curly braces that a later text formatting step reads as placeholders. This is the likely cause of the failing AI review."
+    },
+    {
+      "start": 41,
+      "end": 100,
+      "kind": "class",
+      "name": "ValidatorAgent (part 1)",
+      "id": "s2",
+      "hash": "06108a7a5bd5d034",
+      "title": "Running all checks in order",
+      "what": "Sets up the model settings, copies the survey, runs the rule checks, then tries the AI review. If the AI review fails, adds a warning and sets the score to zero. Counts the errors and decides pass or fail.",
+      "why": "Likely reason: rule checks are fast and always run. The AI review is an extra layer, so its failure does not stop the other checks.",
+      "watch_out": "When the AI review fails, the score drops to zero, so a passed result depends entirely on the AI review working."
+    },
+    {
+      "start": 101,
+      "end": 148,
+      "kind": "class",
+      "name": "ValidatorAgent (part 2)",
+      "id": "s3",
+      "hash": "aa52596f547c855f",
+      "title": "Returning results and checking question types",
+      "what": "Packages the results for the caller. Checks each question type against an approved list, and flags unlisted types as errors. The scale check runs but never flags anything.",
+      "why": "Reason not stated in the code for the scale check. Its comment says flexible scales are allowed.",
+      "watch_out": "The scale check is named as a check but does nothing, so a question with the wrong scale is never flagged."
+    },
+    {
+      "start": 149,
+      "end": 201,
+      "kind": "method",
+      "name": "ValidatorAgent: _check_duplicates",
+      "id": "s4",
+      "hash": "bcac5792040465d7",
+      "title": "Checking for duplicate and biased wording",
+      "what": "Compares every pair of question wordings and warns when two are highly similar. Also warns when a question uses a pushy or extreme word from a short list.",
+      "why": "Likely reason: duplicate questions waste respondents' time, and loaded wording can skew answers.",
+      "watch_out": "The word list is broad, so neutral questions with words such as should or must trigger warnings. Comparing every pair also gets slower as surveys grow."
+    },
+    {
+      "start": 202,
+      "end": 250,
+      "kind": "method",
+      "name": "ValidatorAgent: _check_policy_compliance",
+      "id": "s5",
+      "hash": "1cc1db39e372de8e",
+      "title": "Checking privacy and survey length",
+      "what": "Flags any question that asks for sensitive personal data, such as social security numbers or home addresses, as an error. Warns when the survey is more than 20 percent over its planned question count, or has too few questions.",
+      "why": "Likely reason: to protect respondent data and keep surveys within the planned length, which the planner prompt says helps avoid survey fatigue.",
+      "watch_out": "The privacy check only looks for a few phrases, so other sensitive requests will not be flagged."
+    },
+    {
+      "start": 251,
+      "end": 280,
+      "kind": "method",
+      "name": "ValidatorAgent: _check_required_items",
+      "id": "s6",
+      "hash": "b140a4c1b25feed4",
+      "title": "Checking that required items are present",
+      "what": "Collects the items the spec lists as must-include and compares them with the items found. Only NPS questions and sections with demographic in the title count as found. Anything missing is an error.",
+      "why": "Likely reason: makes sure the survey covers what the planner promised.",
+      "watch_out": "Only NPS and Demographics can ever be found, so any other required item is always reported as missing."
+    },
+    {
+      "start": 281,
+      "end": 325,
+      "kind": "method",
+      "name": "ValidatorAgent: _check_quality_llm",
+      "id": "s7",
+      "hash": "ee6bf5e8e37db9fc",
+      "title": "AI quality review",
+      "what": "Lists each question with its ID, sends the list with the research goal to the model, and reads back the scores. Questions with clarity or neutrality below 3 get a warning. Returns the overall score. For providers other than OpenAI, it returns a neutral score of 4 with no issues.",
+      "why": "Likely reason: rule checks cannot judge clarity or bias, so an AI reviewer covers those.",
+      "watch_out": "The prompt is built with a text formatting step that appears to fail on the braces in its example, so this check appears to always raise an error."
+    },
+    {
+      "start": 326,
+      "end": 347,
+      "kind": "method",
+      "name": "ValidatorAgent: _call_openai",
+      "id": "s8",
+      "hash": "51241fb5f586a39c",
+      "title": "Calling OpenAI for the review",
+      "what": "Sends the review prompt to OpenAI with low randomness and a JSON-only reply, then returns the text with token counts and timing.",
+      "why": "Likely reason: structured, predictable answers are easier to score, as with the planner.",
+      "watch_out": "The call blocks while it waits and the call style may not match the installed OpenAI library version. Verify it before relying on this path."
+    }
+  ],
+  "explained_at": "2026-11-12T00:11:10+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks a finished survey against simple rules and an AI quality review, then reports the problems and whether the survey passed.",
+  "purpose": "Catches problems before publishing: invalid question types, near-duplicate questions, pushy or biased wording, requests for sensitive personal data, length, missing required items, and low AI-rated quality.",
+  "why": "Reason not stated in the code, although the checks match rules in the planner and the corpus models.",
+  "how": "Copies the survey, runs the rule checks in order, then runs an AI quality review. Counts the errors. Passes only if there are zero errors and the readiness score meets the threshold. Returns the issues, a copy named fixed_survey, the score, and the pass flag.",
+  "inputs": "A dictionary with survey, spec (from the planner), and strict (a flag for strict checking).",
+  "outputs": "A dictionary with issues, fixed_survey, readiness_score (expected range 0 to 5), passed, task_id, and success.",
+  "risks": "The AI quality review appears to always fail, which sets the score to zero and passed to false. The fixed_survey copy is never changed, despite its name. Required items other than NPS and Demographics always show as missing. The strict flag is read but never used. Words such as should and must cause false alarms.",
+  "debug": "Read the issues list. A warning that says the LLM quality check failed means the AI review did not run. Compare readiness_score with the clarity threshold in settings. For missing item errors, check the must_include names in the spec. For odd duplicate warnings, check the duplicate similarity setting.",
+  "summary_hash": "sha256:02983cc875d557aea8ca7ef938b50db265829bc19338714b00d0a5b0484c1b75"
+}

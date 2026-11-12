@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "path": "backend/models/study.py",
+  "language": "Python",
+  "lines": 250,
+  "hash": "sha256:f914d954aa4f45541092feacce28835206e8e8aca816f98f8e9011fd458abc1d",
+  "area": "backend-models",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or migration files were shown for these tables.",
+      "Status and type fields for Stimulus and Response are plain text while Study uses enums, so the approach is inconsistent.",
+      "Several fields are unused or unclear from this file alone, such as the hashed respondent ID approach, which is only described in a comment."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ORM",
+      "meaning": "Object-relational mapper, a library that lets the app work with database rows as Python objects. Here it is SQLAlchemy."
+    },
+    {
+      "term": "Column",
+      "meaning": "One named field in a database table, such as name or status."
+    },
+    {
+      "term": "Enum",
+      "meaning": "A fixed list of allowed values, such as the study statuses."
+    },
+    {
+      "term": "JSON column",
+      "meaning": "A column that stores a structured blob of data, such as a dictionary or list, instead of a single value."
+    },
+    {
+      "term": "Schema",
+      "meaning": "A named group of tables inside one PostgreSQL database, used here to separate studies data from other data."
+    },
+    {
+      "term": "Foreign key",
+      "meaning": "A database rule that a value must match a row in another table."
+    },
+    {
+      "term": "SQLite",
+      "meaning": "A simple database stored in one local file, used for easy local setup."
+    },
+    {
+      "term": "PostgreSQL",
+      "meaning": "A full database server used for the main installation."
+    }
+  ],
+  "depends_on": [
+    "backend/database.py",
+    "sqlalchemy"
+  ],
+  "used_by": [
+    "backend/routers/studies.py",
+    "backend/services"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 21,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6b5a68be07fe5457",
+      "title": "Database compatibility setup",
+      "what": "Prepares the file so the same models work on both SQLite and PostgreSQL. When SQLite is used, it swaps in simpler stand-ins for the UUID and array types.",
+      "why": "The comment says SQLite does not support the PostgreSQL-specific types, so stand-ins are defined.",
+      "watch_out": "The stand-ins ignore the as_uuid option and store arrays as plain JSON, so results can differ between the two databases."
+    },
+    {
+      "start": 22,
+      "end": 32,
+      "kind": "class",
+      "name": "StudyStatus",
+      "id": "s2",
+      "hash": "18d7b04c50fc8913",
+      "title": "Study lifecycle stages",
+      "what": "Lists the stages a study moves through, from planning to ready, recruiting, running, analyzing, completed and archived.",
+      "why": "Gives each study a fixed, named stage so the app can enforce what happens next.",
+      "watch_out": "Stage values are stored as text, so renaming one later will break saved studies that use the old name."
+    },
+    {
+      "start": 33,
+      "end": 45,
+      "kind": "class",
+      "name": "StudyType",
+      "id": "s3",
+      "hash": "333cf6cdac0758cd",
+      "title": "Study type list",
+      "what": "Lists the kinds of research a study can be, such as customer satisfaction, brand tracking, concept test, ad test, pricing, UX test, persona, category discovery, and custom.",
+      "why": "Gives each study a fixed type so the app can choose the right method and questions.",
+      "watch_out": "Values like Brand_Tracker are stored in the database, so changing their text will orphan existing studies."
+    },
+    {
+      "start": 46,
+      "end": 104,
+      "kind": "class",
+      "name": "Study (part 1)",
+      "id": "s4",
+      "hash": "112574be7f7831ee",
+      "title": "Core study details",
+      "what": "Defines the main Study table. It holds the name, type, owner, team, targets such as sample size and markets, quotas, planned and actual dates, status, and consent and privacy settings. It also keeps progress counters for responses, completions and screen-outs.",
+      "why": "Holds everything about a study in one row so the app can show a single study page. Reason for the default retention of 2555 days is not stated in the code, though the settings file says it is about seven years.",
+      "watch_out": "The counters such as responses_count are stored separately from the response rows, so they can drift out of step if the app does not update both."
+    },
+    {
+      "start": 105,
+      "end": 116,
+      "kind": "class",
+      "name": "Study (part 2)",
+      "id": "s5",
+      "hash": "e9be641947a9b70f",
+      "title": "Study quality and metadata",
+      "what": "Holds quality checks such as attention checks and fraud detection results, a count of flagged responses, a free-form metadata field, and the created and updated times.",
+      "why": "Keeps quality information on the study itself so it can be reviewed without reading every response.",
+      "watch_out": "The metadata field is named record_metadata because metadata is a reserved name in SQLAlchemy. Renaming it back will break the code."
+    },
+    {
+      "start": 117,
+      "end": 154,
+      "kind": "class",
+      "name": "Stimulus",
+      "id": "s6",
+      "hash": "88ebeace5c9b3d0e",
+      "title": "Stimulus table",
+      "what": "Defines the table for items shown to participants, such as images, videos, prototypes or audio. It stores where the file lives, its type and size, display order, whether to randomize, and how many times it was shown.",
+      "why": "Likely reason: the app must track which stimulus each participant saw and in what order.",
+      "watch_out": "The uri field is described as S3 or similar but is free text, so a bad link is not caught at save time."
+    },
+    {
+      "start": 155,
+      "end": 212,
+      "kind": "class",
+      "name": "Response",
+      "id": "s7",
+      "hash": "d1563a67f9ccb307",
+      "title": "Individual response table",
+      "what": "Defines the table where each respondent's answers are stored. It includes status, answers as a single structured field, quality flags, fraud score, timing, device, location, language, source, and incentive status.",
+      "why": "Keeps all data about one person's attempt in one row, which makes it easy to filter and export.",
+      "watch_out": "Answers are stored as one structured blob keyed by question ID, so a typo in a question ID will not be caught by the database."
+    },
+    {
+      "start": 213,
+      "end": 250,
+      "kind": "class",
+      "name": "Interview",
+      "id": "s8",
+      "hash": "bcf8c34f730631c1",
+      "title": "AI interview table",
+      "what": "Defines the table for AI-led qualitative interviews. It stores start and end times, mode (chat, voice or SMS), the full transcript, extracted themes, sentiment, emotion, key quotes and a quality score.",
+      "why": "Likely reason: qualitative interviews need their own record separate from the survey answers, linked by the response ID.",
+      "watch_out": "The link to the response is only a text match, with no database rule enforcing it, so an interview can point to a response that does not exist."
+    }
+  ],
+  "explained_at": "2026-11-12T00:12:57+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the database tables for a research study and its parts: the study itself, the stimuli shown to people, individual responses, and AI interview sessions.",
+  "purpose": "Gives the rest of the app a fixed shape for storing study data, so the app can save, look up and update studies, stimuli, responses and interviews.",
+  "why": "Likely reason: each research study has several linked pieces of data, and a single shared model keeps them consistent. Reason not stated in the code for some choices, such as the 2555-day retention default.",
+  "how": "First it picks column types that work on both SQLite and PostgreSQL. Then it defines the allowed study statuses and study types. Then it defines the Study table with targeting, quotas, timeline, compliance, privacy and progress fields. Then it defines the Stimulus, Response and Interview tables. Each table has a public text ID and an internal ID.",
+  "inputs": "Data written by the app's study-related routers and services. Table names are study-scoped, such as studies.studies in PostgreSQL.",
+  "outputs": "Database tables and Python objects that the rest of the app reads and writes.",
+  "risks": "Changing a column name or type will break existing databases unless a migration is written. Several fields that look like links, such as response_id on Interview, are plain text with no foreign key, so a typo will not be caught.",
+  "debug": "If saving a study fails, check the study_type and status values against the enums in this file. If PostgreSQL reports a schema error, confirm the schema named in __table_args__ exists. If a list column behaves oddly on SQLite, remember it is stored as JSON.",
+  "summary_hash": "sha256:f914d954aa4f45541092feacce28835206e8e8aca816f98f8e9011fd458abc1d"
+}

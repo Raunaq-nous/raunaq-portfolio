@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "path": "backend/main.py",
+  "language": "Python",
+  "lines": 87,
+  "hash": "sha256:eece0fac0a632ff08e5da611e1043219dd811da0277bb506175348a93967ce93",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The health check uses a plain text SQL command that newer SQLAlchemy versions reject, so it is likely to report unhealthy even with a working database.",
+      "Table creation at startup is disabled.",
+      "The version number is written in two places and may drift."
+    ]
+  },
+  "terms": [
+    {
+      "term": "FastAPI",
+      "meaning": "The Python web framework that turns Python functions into web addresses the frontend can call."
+    },
+    {
+      "term": "Route",
+      "meaning": "A web address and action the API answers, such as a health check."
+    },
+    {
+      "term": "CORS",
+      "meaning": "A browser rule that decides which websites may call the API."
+    },
+    {
+      "term": "Router",
+      "meaning": "A group of related routes, such as all survey routes, attached to the main app."
+    },
+    {
+      "term": "Health check",
+      "meaning": "A simple route that reports whether the app and its database are working."
+    },
+    {
+      "term": "Uvicorn",
+      "meaning": "The server program that runs the API."
+    }
+  ],
+  "depends_on": [
+    "backend/config.py",
+    "backend/database.py",
+    "backend/routers/corpus.py",
+    "backend/routers/surveys.py",
+    "backend/routers/studies.py",
+    "backend/routers/agents.py",
+    "backend/routers/models.py"
+  ],
+  "used_by": [
+    "backend/Dockerfile",
+    "docker-compose.yml",
+    "setup_and_test.sh",
+    "setup_native.sh",
+    "setup_sqlite.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 40,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ea2e7e60db9fc532",
+      "title": "App setup, allowed websites and route groups",
+      "what": "Sets up logging, creates the web app with its documentation pages, allows browser requests from the configured websites, and connects the corpus, survey, study, agent and model route groups under their web addresses.",
+      "why": "Lets the frontend and other programs reach the right features under clear address prefixes.",
+      "watch_out": "Any website missing from the allowed origins list will be blocked by the browser."
+    },
+    {
+      "start": 41,
+      "end": 49,
+      "kind": "function",
+      "name": "startup_event",
+      "id": "s2",
+      "hash": "2f377d6562560af2",
+      "title": "Startup message",
+      "what": "Writes a log message when the app starts. The table creation line is commented out.",
+      "why": "Gives a clear sign in the logs that the app began.",
+      "watch_out": "Because table creation is off, a fresh database will have no tables until a setup script creates them."
+    },
+    {
+      "start": 50,
+      "end": 55,
+      "kind": "function",
+      "name": "shutdown_event",
+      "id": "s3",
+      "hash": "93ca572b796e7416",
+      "title": "Shutdown message",
+      "what": "Writes a log message when the app stops.",
+      "why": "Shows in the logs that the app stopped cleanly.",
+      "watch_out": "Only logs; it does not close database connections itself."
+    },
+    {
+      "start": 56,
+      "end": 66,
+      "kind": "function",
+      "name": "root",
+      "id": "s4",
+      "hash": "b8f0da2b6fdbc9b2",
+      "title": "Root information route",
+      "what": "Answers requests to the top address with the app name, version, running status and documentation address.",
+      "why": "Gives a quick way to check that the server responds.",
+      "watch_out": "The version here is typed in by hand and must be updated alongside the one in the app setup."
+    },
+    {
+      "start": 67,
+      "end": 84,
+      "kind": "function",
+      "name": "health_check",
+      "id": "s5",
+      "hash": "b5b177e33bf3a8f9",
+      "title": "Health check route",
+      "what": "Runs a quick database test and returns healthy if it works, or a service unavailable error if it fails.",
+      "why": "Used by the setup scripts and monitoring tools to decide whether the API is ready.",
+      "watch_out": "The test passes a plain text SQL command, which newer SQLAlchemy versions reject, so this check may report failure even when the database is fine."
+    },
+    {
+      "start": 85,
+      "end": 87,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s6",
+      "hash": "44db6dc595e5fb01",
+      "title": "Direct start entry point",
+      "what": "Starts the API server on port 8000 when the file is run directly.",
+      "why": "Lets the owner start the backend with one Python command without the Docker command.",
+      "watch_out": "Starting this way does not turn on automatic reloading, so code edits need a restart."
+    }
+  ],
+  "explained_at": "2026-11-12T00:12:57+00:00",
+  "explained_by": "haiku",
+  "summary": "The starting point of the backend API. It creates the web app, allows the frontend to call it, connects the route groups, and provides a root page and a health check.",
+  "purpose": "Brings all parts of the API together so one server can answer requests.",
+  "why": "Likely reason: a web app needs one entry point that sets up shared rules such as CORS and the route list.",
+  "how": "It configures logging and creates the FastAPI app with documentation at /api/docs. It allows requests from the origins in the settings, then attaches the corpus, surveys, studies, agents and models routes. On startup and shutdown it logs messages. The root route returns the app name, and the health route tests the database.",
+  "inputs": "The settings object, requests from the browser or other programs, and the database session.",
+  "outputs": "JSON replies from the root route and the health route, plus logs.",
+  "risks": "The health check passes a plain text SQL command, which SQLAlchemy 2 may reject, so the health check may always fail. Table creation at startup is commented out, so a new database will be empty. Allowed origins are set from the settings and must include the frontend address.",
+  "debug": "If the frontend cannot call the API, check the allowed origins in the settings. If the health check reports unhealthy, check the database connection and the logs for the error text. If the API will not start, check the logs for the first import error.",
+  "summary_hash": "sha256:eece0fac0a632ff08e5da611e1043219dd811da0277bb506175348a93967ce93"
+}

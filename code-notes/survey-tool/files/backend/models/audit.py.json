@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "path": "backend/models/audit.py",
+  "language": "Python",
+  "lines": 221,
+  "hash": "sha256:015c98c4af80d3058fa864d3501587ba2d617cb731f9c2d3bdfbaa0f8750b58c",
+  "area": "backend-models",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The temperature and top-p columns lose decimal values.",
+      "No tests are visible.",
+      "The column layout is clear and the compliance fields are present."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SQLAlchemy",
+      "meaning": "a Python library that maps Python classes to database tables"
+    },
+    {
+      "term": "Column",
+      "meaning": "one field in a database table, such as an email or a timestamp"
+    },
+    {
+      "term": "Schema",
+      "meaning": "a named group of tables inside a database, used here to keep the audit tables separate"
+    },
+    {
+      "term": "SQLite",
+      "meaning": "a small database stored in one file, often used for local work"
+    },
+    {
+      "term": "PostgreSQL",
+      "meaning": "a full database server used for the main app"
+    },
+    {
+      "term": "GDPR",
+      "meaning": "the European data protection law that includes a right to have personal data deleted"
+    },
+    {
+      "term": "Primary key",
+      "meaning": "the field that uniquely identifies each row in a table"
+    }
+  ],
+  "depends_on": [
+    "database module (Base and is_sqlite)",
+    "sqlalchemy library"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "58e2fceba14247b6",
+      "title": "Choosing column types for the database",
+      "what": "Chooses the column types for IDs and lists based on the database type. On SQLite it uses text and JSON stand-ins. On PostgreSQL it uses the real UUID and array types.",
+      "why": "The comment says SQLite has no UUID or array types, so stand-ins let the same tables run on both.",
+      "watch_out": "Lists stored as JSON on SQLite cannot be searched the same way, so queries that work on PostgreSQL may behave differently in local tests."
+    },
+    {
+      "start": 20,
+      "end": 63,
+      "kind": "class",
+      "name": "AuditLog",
+      "id": "s2",
+      "hash": "089da339db7983d5",
+      "title": "Audit log of actions",
+      "what": "Defines the table for significant actions: who did it, what it touched, what changed, whether it succeeded, and flags for personal data and sensitivity.",
+      "why": "The comments show it is meant as a compliance trail covering create, read, update, delete and export actions.",
+      "watch_out": "The details and changes fields are free-form, and nothing here stops personal data from being written into them."
+    },
+    {
+      "start": 64,
+      "end": 117,
+      "kind": "class",
+      "name": "ModelCall",
+      "id": "s3",
+      "hash": "2601f6b8573d8acb",
+      "title": "Record of each AI model call",
+      "what": "Stores every model call: provider, model, the full prompt and response, token use, speed, which agent made it, and any error.",
+      "why": "The docstring says it supports reproducibility, so a result can be reviewed or rerun from the saved prompt and response.",
+      "watch_out": "Temperature and top-p are stored as whole numbers, so decimal settings such as 0.3 are lost."
+    },
+    {
+      "start": 118,
+      "end": 155,
+      "kind": "class",
+      "name": "ConsentRecord",
+      "id": "s4",
+      "hash": "eb143ce730ac48d4",
+      "title": "Consent records",
+      "what": "Stores each consent a person gave: the study, the consent wording and version, when it was given, whether the person is a minor and whether a parent consented, and any later withdrawal.",
+      "why": "Likely reason: to prove that consent was given and to show what the person agreed to.",
+      "watch_out": "The parent email is stored in plain text, so this table holds a guardian's contact details."
+    },
+    {
+      "start": 156,
+      "end": 189,
+      "kind": "class",
+      "name": "DataAccess",
+      "id": "s5",
+      "hash": "9220f988fee7bef7",
+      "title": "Data access log",
+      "what": "Records each time someone views, exports, downloads or deletes a respondent record. Stores the person's ID, the resource, and the stated purpose.",
+      "why": "Likely reason: compliance, so the team can show who looked at sensitive data and why.",
+      "watch_out": "The purpose field is optional, so an access can be saved with no reason given."
+    },
+    {
+      "start": 190,
+      "end": 221,
+      "kind": "class",
+      "name": "Erasure",
+      "id": "s6",
+      "hash": "a98ccccecd67e715",
+      "title": "Erasure requests",
+      "what": "Tracks a request to delete a person's data under the right to be forgotten. Stores who asked, which person, which studies, the status, a 30-day deadline, and whether the deadline was met.",
+      "why": "The comments name GDPR and a 30-day deadline as the reason.",
+      "watch_out": "The deadline and the met-deadline flag are stored, but nothing in this file sets or checks them. Other code must do that."
+    }
+  ],
+  "explained_at": "2026-11-12T00:11:10+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the database tables that record who did what, every AI model call, consent given, data viewed, and data erasure requests.",
+  "purpose": "Keeps the audit trail for compliance, for example to show who viewed respondent data, when, and why.",
+  "why": "The file docstring says it is for audit and compliance. The table comments mention GDPR erasure and minors' consent, which are the likely reasons for the design.",
+  "how": "Each class describes one table and its columns. The file picks column types based on whether the database is SQLite (used for local work) or PostgreSQL. On PostgreSQL, the tables sit in an audit schema.",
+  "inputs": "Nothing directly. Other code creates rows in these tables.",
+  "outputs": "Five database tables: audit logs, model calls, consent records, data access records, and erasure requests.",
+  "risks": "Temperature and top-p are stored as whole numbers, so a value such as 0.3 is saved as 0. Personal data such as emails and parent emails is stored in these logs. The erasure deadline is a required field, but nothing in this file checks it.",
+  "debug": "If a saved value looks wrong, check the column type for that field. If a table is missing on PostgreSQL, check that the audit schema exists. If data looks different in local runs, check the database type setting.",
+  "summary_hash": "sha256:015c98c4af80d3058fa864d3501587ba2d617cb731f9c2d3bdfbaa0f8750b58c"
+}

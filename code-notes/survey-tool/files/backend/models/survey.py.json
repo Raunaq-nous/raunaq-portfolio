@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "path": "backend/models/survey.py",
+  "language": "Python",
+  "lines": 196,
+  "hash": "sha256:9c2ad25466c71fa0efc0cb761ded85c035c70c6a50521cad71dd6449e2ebc2b7",
+  "area": "backend-models",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or migrations were shown.",
+      "The survey_id link from Question uses the internal ID, which is easy to confuse with the public ID.",
+      "Some imported names are not used in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Foreign key",
+      "meaning": "A database rule that a value must match a row in another table."
+    },
+    {
+      "term": "Relationship",
+      "meaning": "A link set up in code so that a survey can list its questions as Python objects."
+    },
+    {
+      "term": "Cascade delete",
+      "meaning": "A rule that removes linked rows, such as questions, when their parent survey is deleted."
+    },
+    {
+      "term": "Version snapshot",
+      "meaning": "A full saved copy of a survey at one point in time."
+    },
+    {
+      "term": "Enum",
+      "meaning": "A fixed list of allowed values."
+    }
+  ],
+  "depends_on": [
+    "backend/database.py",
+    "backend/models/corpus.py",
+    "sqlalchemy"
+  ],
+  "used_by": [
+    "backend/routers/surveys.py",
+    "backend/routers/agents.py",
+    "backend/agents"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f4fb9a13d23a16af",
+      "title": "Shared setup for survey models",
+      "what": "Sets up the same database compatibility as the study models and imports the question type list from the corpus models.",
+      "why": "Keeps survey tables working on both SQLite and PostgreSQL, and reuses the shared question types.",
+      "watch_out": "The question type list comes from another file, so renaming it there will break this file on startup."
+    },
+    {
+      "start": 24,
+      "end": 37,
+      "kind": "class",
+      "name": "SurveyStatus",
+      "id": "s2",
+      "hash": "cfb607ab467e821d",
+      "title": "Survey lifecycle stages",
+      "what": "Lists the stages a survey moves through, from draft, planned, authored and validating through approved, published, active, paused, completed and archived.",
+      "why": "Lets the app enforce a clear order of work so a survey is not published before it is approved.",
+      "watch_out": "Values are stored as text, so renaming one will leave existing surveys with an unknown status."
+    },
+    {
+      "start": 38,
+      "end": 44,
+      "kind": "class",
+      "name": "Audience",
+      "id": "s3",
+      "hash": "bf1c14da1243bec6",
+      "title": "Audience types",
+      "what": "Lists the three audience choices for a survey: B2B (business), B2C (consumer) and Mixed.",
+      "why": "Lets the planner and author choose the right wording and sample rules for the audience.",
+      "watch_out": "Stored as text, so an unexpected audience value is rejected only if the app checks it first."
+    },
+    {
+      "start": 45,
+      "end": 95,
+      "kind": "class",
+      "name": "Survey",
+      "id": "s4",
+      "hash": "2ebd7698ddeb1e40",
+      "title": "Main survey record",
+      "what": "Defines the Survey table. It holds the name, audience, owner, status, the planning spec, the written sections, validation results, readiness score, publishing details, approval details and locked sections. It also links to its list of questions.",
+      "why": "Holds the whole survey in one place so each step of the workflow can read and update the same record.",
+      "watch_out": "The sections and spec are stored as large structured blobs, so a shape change in one agent can break another without a database error."
+    },
+    {
+      "start": 96,
+      "end": 146,
+      "kind": "class",
+      "name": "Question",
+      "id": "s5",
+      "hash": "b364b5e4cf36ecd0",
+      "title": "Individual survey question",
+      "what": "Defines the Question table. It stores each question's position, type, wording, answer options, scale, display logic, piped references, method details, source trace, quality scores, validation issues and lock flag.",
+      "why": "Keeps each question as its own row so it can be edited, scored and locked one at a time.",
+      "watch_out": "The survey link uses the internal ID of the survey, not its public survey ID, so code must use the right one."
+    },
+    {
+      "start": 147,
+      "end": 169,
+      "kind": "class",
+      "name": "SurveyVersion",
+      "id": "s6",
+      "hash": "6eb836e0871fd8c7",
+      "title": "Survey version history",
+      "what": "Defines the SurveyVersion table. Each row stores a full snapshot of a survey, the version number, who changed it, a description, and which agent or manual step made the change.",
+      "why": "Likely reason: lets the team look back at or undo earlier versions of a survey.",
+      "watch_out": "Snapshots can grow large over time, and nothing in this file limits how many are kept."
+    },
+    {
+      "start": 170,
+      "end": 196,
+      "kind": "class",
+      "name": "SurveyLogic",
+      "id": "s7",
+      "hash": "3c6fccff4bdbf3f4",
+      "title": "Survey logic rules",
+      "what": "Defines the SurveyLogic table. Each row stores a rule with a type (skip, branch, display, randomize or quota), the conditions that trigger it, the actions to take, the questions it affects, a priority and an active flag.",
+      "why": "Lets complex skip and display rules be stored as data rather than hard-coded.",
+      "watch_out": "The conditions and actions are free-form structures, so a malformed rule is saved without complaint and fails only when the survey runs."
+    }
+  ],
+  "explained_at": "2026-11-12T00:12:57+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the database tables for surveys, their questions, saved version history, and logic rules that control which questions appear.",
+  "purpose": "Gives the app a stored form of each survey so it can be planned, written, checked, published and tracked over time.",
+  "why": "Likely reason: a survey has many questions and rules, so they are kept as linked tables. Reason not stated in the code for the exact split.",
+  "how": "First it sets up the same SQLite and PostgreSQL compatibility as the study models. Then it defines the survey statuses and audiences. Then it defines the Survey table, which links to a list of Question rows. Then it defines the version history and the logic rule table.",
+  "inputs": "Survey data written by the planner, author, validator and publisher parts of the app.",
+  "outputs": "Database tables and Python objects for surveys, questions, versions and logic rules.",
+  "risks": "Question rows link to the survey by its internal ID, not by the public survey ID text. Mixing these up will attach questions to the wrong survey or none. Deleting a survey also deletes its questions.",
+  "debug": "If a question cannot be saved, check that its survey ID exists and that the question type is a known type. If a survey will not move to its next status, check the status values in SurveyStatus.",
+  "summary_hash": "sha256:9c2ad25466c71fa0efc0cb761ded85c035c70c6a50521cad71dd6449e2ebc2b7"
+}

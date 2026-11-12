@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "path": "backend/routers/models.py",
+  "language": "Python",
+  "lines": 306,
+  "hash": "sha256:dd889063fedcb61340a9e8f34fb04d5435a46754c259b5b0a68518c5aeb241e8",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Authentication is marked TODO.",
+      "The update route accepts any field without checks.",
+      "No tests are visible.",
+      "A plain GET request writes to the database on first use."
+    ]
+  },
+  "terms": [
+    {
+      "term": "provider",
+      "meaning": "The company or service that hosts the model."
+    },
+    {
+      "term": "temperature",
+      "meaning": "A setting that controls how varied a model's answers are. Lower values give steadier answers."
+    },
+    {
+      "term": "open-source model",
+      "meaning": "A model whose code and weights are free to download and run on your own machine."
+    },
+    {
+      "term": "catalogue",
+      "meaning": "The stored list of known models with their details. Also called the registry."
+    },
+    {
+      "term": "API key",
+      "meaning": "A secret code that proves to a paid service that a request is allowed to use it."
+    },
+    {
+      "term": "VRAM",
+      "meaning": "Graphics memory on a computer, which limits how large a model can run locally."
+    }
+  ],
+  "depends_on": [
+    "backend/database.py",
+    "backend/models/model_config.py",
+    "backend/services/model_manager.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "5fe6c9c1dad1a3f5",
+      "title": "Imports and router setup",
+      "what": "Brings in the web framework tools, database session, model data types and the model manager, then creates the router for model routes.",
+      "why": "Likely reason: the main app needs one router object for these routes.",
+      "watch_out": "Renaming any imported model type breaks the routes that use it."
+    },
+    {
+      "start": 14,
+      "end": 26,
+      "kind": "class",
+      "name": "ModelConfigCreate",
+      "id": "s2",
+      "hash": "37d00a8814bf4f18",
+      "title": "Model setup request shape",
+      "what": "Defines what a caller sends to set up a model for a task: task, kind, provider, model name, optional key and address, temperature, length limit and default flag.",
+      "why": "Likely reason: names the choices a user must make for each task.",
+      "watch_out": "The API key is sent in the request body, so requests should only travel over a secure connection. Temperature has no range check here."
+    },
+    {
+      "start": 27,
+      "end": 44,
+      "kind": "class",
+      "name": "ModelConfigResponse",
+      "id": "s3",
+      "hash": "1ddc8b460788adc2",
+      "title": "Model setup summary returned",
+      "what": "Defines the fields returned for a saved setup, including usage figures such as call count, average speed and success rate. The API key is not returned.",
+      "why": "Likely reason: keeps the key secret while still showing status.",
+      "watch_out": "The usage figures are only as accurate as the code that updates them, which is not shown here."
+    },
+    {
+      "start": 45,
+      "end": 69,
+      "kind": "class",
+      "name": "ModelRegistryResponse",
+      "id": "s4",
+      "hash": "85046ae77f21d2d4",
+      "title": "Model catalogue entry shape",
+      "what": "Defines the fields for one catalogue entry: name, provider, description, suitable tasks, limits, approximate costs, hardware needs and documentation link.",
+      "why": "Likely reason: lets users compare models before choosing one.",
+      "watch_out": "Cost and quality figures are stored values. Where they come from is not visible here."
+    },
+    {
+      "start": 70,
+      "end": 113,
+      "kind": "function",
+      "name": "create_model_config",
+      "id": "s5",
+      "hash": "915c605bcaebaf1d",
+      "title": "Create a model setup",
+      "what": "Passes a new setup to the model manager and returns its summary with a 201 created status.",
+      "why": "Likely reason: the route stays thin and the manager holds the logic.",
+      "watch_out": "The creator is fixed to system with a TODO, so every setup appears to be made by the system."
+    },
+    {
+      "start": 114,
+      "end": 147,
+      "kind": "function",
+      "name": "list_model_configs",
+      "id": "s6",
+      "hash": "0fb556cf6673846c",
+      "title": "List model setups",
+      "what": "Returns saved setups, optionally filtered by organization, task or kind.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The filters are passed to the manager unchecked, so their behavior is not visible here."
+    },
+    {
+      "start": 148,
+      "end": 202,
+      "kind": "function",
+      "name": "list_available_models",
+      "id": "s7",
+      "hash": "68107a5146902e12",
+      "title": "Browse model catalogue",
+      "what": "Returns catalogue entries, optionally filtered by task, kind or provider. If the catalogue is empty, it is filled with defaults first.",
+      "why": "Likely reason: a fresh install still has something to show.",
+      "watch_out": "A GET request writes to the database the first time, which can surprise people who expect reads to be harmless."
+    },
+    {
+      "start": 203,
+      "end": 256,
+      "kind": "function",
+      "name": "get_task_recommendations",
+      "id": "s8",
+      "hash": "88033618c08d9787",
+      "title": "Best models for one task",
+      "what": "For one task, returns up to three open-source and up to three paid models, with quality and cost details.",
+      "why": "The docstring says results are sorted by quality. The sorting happens in the manager, which is not shown. The three-item cap is probably there to keep the list short.",
+      "watch_out": "The cap applies after the manager's order, so the ranking is only as good as the manager."
+    },
+    {
+      "start": 257,
+      "end": 273,
+      "kind": "function",
+      "name": "update_model_config",
+      "id": "s9",
+      "hash": "6a67252d88c428bb",
+      "title": "Change a model setup",
+      "what": "Applies every field sent in the request to a saved setup and reports success. Returns not found if the setup does not exist.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Any field name is passed through without an allowed list, so a caller could change the API key or usage figures."
+    },
+    {
+      "start": 274,
+      "end": 289,
+      "kind": "function",
+      "name": "delete_model_config",
+      "id": "s10",
+      "hash": "70a4fe55521daca5",
+      "title": "Turn off a model setup",
+      "what": "Marks a setup as inactive instead of deleting it.",
+      "why": "Likely reason: keeps the record of past calls and results.",
+      "watch_out": "Whether lists hide inactive setups is decided in the manager, which is not shown here."
+    },
+    {
+      "start": 290,
+      "end": 306,
+      "kind": "function",
+      "name": "initialize_registry",
+      "id": "s11",
+      "hash": "3ea54ecdd49cd791",
+      "title": "Fill the model catalogue",
+      "what": "Asks the manager to fill the catalogue with default models, then reports how many entries exist.",
+      "why": "The docstring says to run it once during setup.",
+      "watch_out": "The route itself does not check for existing entries, so repeat calls may add duplicates depending on the manager."
+    }
+  ],
+  "explained_at": "2026-11-12T00:15:30+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the web addresses for creating, listing, changing, turning off and browsing model setups and model recommendations.",
+  "purpose": "Lets a user choose which language model each task uses and see the options available.",
+  "why": "Likely reason: model choices should change without editing code.",
+  "how": "Defines request and response shapes. Each route hands the work to the ModelManager class. Browse routes fill the catalogue first if it is empty.",
+  "inputs": "Task name, model kind, provider, model name, optional API key and address, temperature, length limit, default flag, organization filter, config ID, and arbitrary update fields.",
+  "outputs": "Setup summaries, catalogue entries, recommendation lists, success messages, and not found errors.",
+  "risks": "The API key travels in the request body and is stored. The update route accepts any field name. The creator is always set to system. There is no authentication. Browse routes write to the database.",
+  "debug": "If lists are empty, run the catalogue initialization route. Check that task names match the ModelTask values exactly. Check that a key is set for providers that need one. Look in ModelManager for the underlying logic.",
+  "summary_hash": "sha256:dd889063fedcb61340a9e8f34fb04d5435a46754c259b5b0a68518c5aeb241e8"
+}

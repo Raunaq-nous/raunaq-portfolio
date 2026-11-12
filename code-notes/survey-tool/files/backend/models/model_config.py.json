@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "path": "backend/models/model_config.py",
+  "language": "Python",
+  "lines": 191,
+  "hash": "sha256:d1003e1cb4cfa2904afac791775d39f7a1a72735a75f7f3a624c6b31535c2a50",
+  "area": "backend-models",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "API keys are stored as plain text in the database. The comment says they should be encrypted in production, but no encryption appears in this file.",
+      "Performance counters need other code to keep them up to date.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "API key",
+      "meaning": "a secret string that proves to an AI provider that a request is allowed and billed to the right account"
+    },
+    {
+      "term": "Enum",
+      "meaning": "a fixed list of allowed labels, so a typo cannot be saved"
+    },
+    {
+      "term": "Task",
+      "meaning": "a kind of job an AI model can be chosen for, such as planning or translation"
+    },
+    {
+      "term": "Registry",
+      "meaning": "a catalog of models with their known features and costs"
+    },
+    {
+      "term": "Top-p",
+      "meaning": "a setting that limits how many word choices the model considers, along with temperature"
+    },
+    {
+      "term": "Encrypted",
+      "meaning": "scrambled so it cannot be read without a secret key"
+    }
+  ],
+  "depends_on": [
+    "database module (Base and is_sqlite)",
+    "sqlalchemy library"
+  ],
+  "used_by": [
+    "agents/planner_v2.py (imports the task and type labels)",
+    "services/model_manager.py (likely; not visible in this packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 21,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f8b82974bc161116",
+      "title": "Choosing column types for the database",
+      "what": "Chooses ID and list column types based on the database type. On SQLite, it uses text and JSON stand-ins.",
+      "why": "SQLite has no UUID or array types, so stand-ins let the same tables run on both databases.",
+      "watch_out": "Lists are stored as JSON on SQLite, so searches on those lists behave differently in local tests."
+    },
+    {
+      "start": 22,
+      "end": 33,
+      "kind": "class",
+      "name": "ModelProvider",
+      "id": "s2",
+      "hash": "e0b12faedb2c0990",
+      "title": "Model provider labels",
+      "what": "Lists the companies and runtimes a model can come from, such as OpenAI, Anthropic, Google, Ollama, and local models.",
+      "why": "Keeps provider names consistent across the settings and performance tables.",
+      "watch_out": "Adding a provider here does not make it usable. The code that calls the provider must also support it."
+    },
+    {
+      "start": 34,
+      "end": 46,
+      "kind": "class",
+      "name": "ModelTask",
+      "id": "s3",
+      "hash": "77839a853b4f40ff",
+      "title": "Task labels",
+      "what": "Lists the jobs a model can be chosen for: planning, generation, validation, embedding, translation, sentiment, emotion, theme extraction, and summarization.",
+      "why": "Lets each task have its own model setting.",
+      "watch_out": "Only planning is used by the agent files in this packet. Whether the other tasks are used elsewhere is not visible here."
+    },
+    {
+      "start": 47,
+      "end": 52,
+      "kind": "class",
+      "name": "ModelType",
+      "id": "s4",
+      "hash": "d38148a87603e439",
+      "title": "Open source or paid label",
+      "what": "Marks whether a model is run by the team (open source) or bought as a service (paid).",
+      "why": "The planner v2 docstring says callers can prefer one kind, so this label supports that choice.",
+      "watch_out": "This is only a tag. Nothing in this file stops a paid model from being chosen when open source was preferred."
+    },
+    {
+      "start": 53,
+      "end": 101,
+      "kind": "class",
+      "name": "ModelConfig",
+      "id": "s5",
+      "hash": "ab31c777e4edbd5b",
+      "title": "Model settings for an organization",
+      "what": "Stores which model an organization uses for one task: provider, model name and version, API key, custom server address, randomness and length limits, plus usage counts and whether it is active or the default.",
+      "why": "Likely reason: lets each organization use its own model and its own keys.",
+      "watch_out": "The API key is stored unencrypted in this table."
+    },
+    {
+      "start": 102,
+      "end": 155,
+      "kind": "class",
+      "name": "ModelRegistry",
+      "id": "s6",
+      "hash": "2533200442da2e7b",
+      "title": "Catalog of available models",
+      "what": "Lists known models with what they can do (JSON output, function calling, streaming), which tasks they suit, speed, cost per thousand tokens, quality, and hardware needs.",
+      "why": "Helps the team pick a suitable model without trying each one.",
+      "watch_out": "Speed and cost values are entered by hand, so they can go out of date. Nothing in this file refreshes them."
+    },
+    {
+      "start": 156,
+      "end": 191,
+      "kind": "class",
+      "name": "ModelPerformanceLog",
+      "id": "s7",
+      "hash": "8aa0e7910e3f1214",
+      "title": "Performance log for each call",
+      "what": "Records each model call for a task: input and output sizes, token counts, speed, success, error text, estimated cost, and an optional user rating from 1 to 5.",
+      "why": "Likely reason: lets the team compare models using real results.",
+      "watch_out": "The rating and the estimated cost are plain stored values. Nothing here checks the rating range or calculates the cost."
+    }
+  ],
+  "explained_at": "2026-11-12T00:11:10+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the database tables that choose which AI model each task uses, the catalog of available models, and a log of how each call performed.",
+  "purpose": "Lets admins set and change the AI model for each task and organization, and tracks how well each model works.",
+  "why": "The file docstring says it holds the user's model configuration. The planner v2 file reads these types, which is the likely reason for the design.",
+  "how": "Defines three lists of labels (providers, tasks, and model types), then three tables: the model settings for each organization, the catalog of models, and a performance log with one row per call.",
+  "inputs": "Nothing directly. Other code writes rows to these tables.",
+  "outputs": "Three database tables in the public schema on PostgreSQL.",
+  "risks": "Each model setting stores its API key as plain text. The comment says keys should be encrypted in production, and no encryption appears in this file. Performance counters must be updated by other code. Links between tables use text model names, not enforced relationships.",
+  "debug": "If the wrong model runs, check the model settings row for the organization and task, and whether it is marked active and default. If costs look wrong, check the catalog values. If a provider rejects a key, check the stored key for that setting.",
+  "summary_hash": "sha256:d1003e1cb4cfa2904afac791775d39f7a1a72735a75f7f3a624c6b31535c2a50"
+}

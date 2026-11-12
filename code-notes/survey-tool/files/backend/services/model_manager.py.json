@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "path": "backend/services/model_manager.py",
+  "language": "Python",
+  "lines": 348,
+  "hash": "sha256:37deb32216649c725a17d24436f01609dfc9e32db4239b5f6e7ca8554042ac44",
+  "area": "backend-services",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "API keys are stored unencrypted in the database.",
+      "Some built-in defaults use provider names the provider factory does not handle, such as local.",
+      "No tests are visible in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Configuration",
+      "meaning": "a saved choice of which model and key to use for one task"
+    },
+    {
+      "term": "Registry",
+      "meaning": "a catalog of known models with their details and strengths"
+    },
+    {
+      "term": "Session",
+      "meaning": "the open connection to the database used to read and save records in one batch"
+    },
+    {
+      "term": "Moving average",
+      "meaning": "a running average that gives recent values more weight than old ones"
+    },
+    {
+      "term": "Enum",
+      "meaning": "a fixed list of allowed choices, such as task names or provider names"
+    }
+  ],
+  "depends_on": [
+    "sqlalchemy",
+    "models/model_config.py",
+    "services/llm_provider.py",
+    "services/model_registry_data.py",
+    "config.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3c58ec05056a2720",
+      "title": "Imports for model management",
+      "what": "Brings in the database session type, the model configuration records, the provider factory, and the built-in registry data. It has no direct effect on the user.",
+      "why": "The manager needs these pieces to store configurations, build providers, and seed the catalog.",
+      "watch_out": ""
+    },
+    {
+      "start": 11,
+      "end": 45,
+      "kind": "class",
+      "name": "ModelManager (part 1)",
+      "id": "s2",
+      "hash": "d9b67fa06044d2fe",
+      "title": "Starting point for choosing a provider",
+      "what": "Holds the database session and offers the main entry point that returns a ready provider for a task. It tries a saved configuration first and only falls back to the built-in defaults when none exists.",
+      "why": "Lets the owner override the default model per task without touching code.",
+      "watch_out": "The fallback path only runs when no saved configuration matches, so a stale saved configuration silently wins."
+    },
+    {
+      "start": 46,
+      "end": 99,
+      "kind": "method",
+      "name": "ModelManager: _get_active_config",
+      "id": "s3",
+      "hash": "3a9566e11c7d5345",
+      "title": "Finding the active saved configuration",
+      "what": "Looks for the active saved configuration for one task, narrowed by organization and model type when given. It prefers the one marked as default and otherwise takes any active match.",
+      "why": "Gives priority to the owner's explicit default choice.",
+      "watch_out": "If no organization is given, configurations for every organization can match, which may pick the wrong one."
+    },
+    {
+      "start": 100,
+      "end": 129,
+      "kind": "method",
+      "name": "ModelManager: _get_default_paid_provider",
+      "id": "s4",
+      "hash": "9d701bae538f7dc0",
+      "title": "Building a provider from a saved configuration",
+      "what": "Turns a saved configuration into a working provider object using its provider name, model name, key and address. It is a thin bridge to the provider factory.",
+      "why": "Keeps the stored settings and the provider construction in separate places.",
+      "watch_out": ""
+    },
+    {
+      "start": 130,
+      "end": 165,
+      "kind": "method",
+      "name": "ModelManager: create_config",
+      "id": "s5",
+      "hash": "70a67570756ca883",
+      "title": "Built-in defaults for open-source and paid models",
+      "what": "When nothing is saved, picks the best built-in open-source model for a task, falling back to a default local Llama model. A matching paid default is picked the same way, using the key from the app settings for the provider.",
+      "why": "Gives the app a sensible model for each task out of the box.",
+      "watch_out": "Fallbacks silently use a specific model, so a missing registry entry changes behavior without warning."
+    },
+    {
+      "start": 166,
+      "end": 209,
+      "kind": "method",
+      "name": "ModelManager: list_configs",
+      "id": "s6",
+      "hash": "1c11186d48c8eae0",
+      "title": "Creating a saved configuration",
+      "what": "Writes a new model configuration for a task to the database with a generated identifier, the chosen provider and model, and the key. The key is saved exactly as given.",
+      "why": "Lets the owner store a preferred model choice for later use.",
+      "watch_out": "The key is stored unencrypted, as the in-code note acknowledges."
+    },
+    {
+      "start": 210,
+      "end": 268,
+      "kind": "method",
+      "name": "ModelManager: log_performance",
+      "id": "s7",
+      "hash": "b39c9381d5819136",
+      "title": "Listing saved configurations",
+      "what": "Returns saved configurations, newest first, with optional filters for organization, task, model type, and whether only active ones are shown.",
+      "why": "Lets the app show the owner their current model choices.",
+      "watch_out": "Active-only is on by default, so inactive configurations stay hidden unless the caller turns it off."
+    },
+    {
+      "start": 269,
+      "end": 318,
+      "kind": "class",
+      "name": "ModelManager (part 7)",
+      "id": "s8",
+      "hash": "678c22e7d1a7cde3",
+      "title": "Updating a saved configuration",
+      "what": "Changes the fields of one saved configuration, identified by its identifier, and stamps the update time. It returns nothing if the identifier does not exist.",
+      "why": "Lets the owner change a model choice without creating a new record.",
+      "watch_out": "Any key that is not a real field is silently ignored."
+    },
+    {
+      "start": 319,
+      "end": 348,
+      "kind": "method",
+      "name": "ModelManager: get_available_models",
+      "id": "s9",
+      "hash": "487e9f3535e08981",
+      "title": "Recording model performance",
+      "what": "Adds a log entry for one model call with tokens, latency, success and any error, then updates the configuration's totals, average response time, success rate and last-used time. The success rate is a running average across all calls.",
+      "why": "Gives the owner evidence to judge which models perform well.",
+      "watch_out": "The success rate and response time are running averages, so a few early outliers can skew them for a long time."
+    }
+  ],
+  "explained_at": "2026-11-12T00:08:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Chooses which AI model to use for each task, from saved configurations or built-in defaults, and records how each model performs.",
+  "purpose": "Lets the owner set a preferred model per task and keeps usage statistics so model choice can be judged.",
+  "why": "Separates model selection and tracking from the agents that do the work, so the choice can change without code changes.",
+  "how": "When a task needs a model, the manager first looks for an active saved configuration for that task, optionally narrowed by organization and open-source or paid type. If none exists, it uses the best built-in default from the registry data. Saved configurations can be created, updated and listed. Each call can be logged with tokens, latency and success, and the configuration's running totals and averages are updated. Registry entries can be seeded once from the built-in data.",
+  "inputs": "A task such as planning, an optional organization identifier, a preferred model type, and the details for a new or changed configuration including the provider, model name, and API key.",
+  "outputs": "A ready-to-use provider object for the task, configuration records, and performance log entries.",
+  "risks": "API keys are saved in the database as plain text, as the code's own comment notes. Built-in defaults can name providers the factory does not handle, which causes an error when they are picked.",
+  "debug": "If a task gets an unexpected model, check the saved configurations for that task and whether any is marked as default. If a provider fails to build, check the provider name in the registry data and whether the key is stored for that configuration. If statistics look wrong, check the log entries for that configuration.",
+  "summary_hash": "sha256:37deb32216649c725a17d24436f01609dfc9e32db4239b5f6e7ca8554042ac44"
+}

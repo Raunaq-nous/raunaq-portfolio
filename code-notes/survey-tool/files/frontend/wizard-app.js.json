@@ -1,0 +1,485 @@
+{
+  "schema_version": 1,
+  "path": "frontend/wizard-app.js",
+  "language": "JavaScript",
+  "lines": 685,
+  "hash": "sha256:be31993ab752f74dd4af9c3a281f8765d23ff1b62382dc907b5f8dc007c1f2e3",
+  "area": "frontend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Work is not saved between page loads.",
+      "Server data is written as raw HTML.",
+      "The page-start document load can never run.",
+      "Only 22 of 35 sections were included in this review, so the later editing, validation and export parts are not covered here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "state",
+      "meaning": "values the program remembers while it runs, here workflowData and currentStep."
+    },
+    {
+      "term": "step",
+      "meaning": "one stage of the guided workflow, numbered from zero."
+    },
+    {
+      "term": "progress bar or stepper",
+      "meaning": "the visual row of steps that shows which stage the user is on."
+    },
+    {
+      "term": "export",
+      "meaning": "saving the finished survey to a file in a chosen format."
+    },
+    {
+      "term": "CSV",
+      "meaning": "a plain text table format where values are separated by commas."
+    },
+    {
+      "term": "Markdown",
+      "meaning": "a simple plain text format that uses symbols for headings and lists."
+    }
+  ],
+  "depends_on": [
+    "frontend/index.html (the classic page it links to)",
+    "backend API at localhost port 8000"
+  ],
+  "used_by": [
+    "Not visible in the packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ee932b4efa119951",
+      "title": "Setup and shared memory",
+      "what": "Holds the backend address, the current step number, and the in-memory record of documents, plan, questions and validation results.",
+      "why": "Likely reason: keeps the workflow's progress in one place so each step can read what earlier steps produced.",
+      "watch_out": "Everything here disappears on page reload."
+    },
+    {
+      "start": 11,
+      "end": 17,
+      "kind": "value",
+      "name": "workflowData",
+      "id": "s2",
+      "hash": "ff4ddc149e9de169",
+      "title": "Empty workflow record",
+      "what": "Defines the starting shape of the workflow record with empty document list, no plan, no questions and no validation results.",
+      "why": "Likely reason: gives a clean starting point, and startOver reuses the same shape.",
+      "watch_out": "Any new field must be added here and in startOver, or resets will be incomplete."
+    },
+    {
+      "start": 18,
+      "end": 28,
+      "kind": "event handler",
+      "name": "document DOMContentLoaded handler",
+      "id": "s3",
+      "hash": "44e3b974b541fc85",
+      "title": "Page start setup",
+      "what": "On load, checks backend status, starts the 30 second status timer, and would load documents if the user is past step one.",
+      "why": "Likely reason: same startup pattern as the classic page.",
+      "watch_out": "The step counter starts at zero, so the document load inside this block never runs on first load."
+    },
+    {
+      "start": 29,
+      "end": 48,
+      "kind": "function",
+      "name": "checkAPIStatus",
+      "id": "s4",
+      "hash": "d5340dd25f85edff",
+      "title": "Backend status check",
+      "what": "Asks the health address whether the backend is up and updates the footer badge to Online, Error or Offline.",
+      "why": "Likely reason: the wizard uses a dedicated health address, unlike the classic page.",
+      "watch_out": "Any successful response counts as online."
+    },
+    {
+      "start": 49,
+      "end": 55,
+      "kind": "function",
+      "name": "startWorkflow",
+      "id": "s5",
+      "hash": "4567a44e559ae347",
+      "title": "Starting the workflow",
+      "what": "Moves the user from the welcome screen to step one.",
+      "why": "Likely reason: the start button needs a single named action.",
+      "watch_out": "None."
+    },
+    {
+      "start": 56,
+      "end": 61,
+      "kind": "function",
+      "name": "nextStep",
+      "id": "s6",
+      "hash": "ba1f78caee344b06",
+      "title": "Moving forward",
+      "what": "Advances to the next step, but never past step five.",
+      "why": "Likely reason: the last step is the final stage, so the limit prevents going beyond it.",
+      "watch_out": "The limit is a fixed number, so adding a step needs this changed too."
+    },
+    {
+      "start": 62,
+      "end": 67,
+      "kind": "function",
+      "name": "previousStep",
+      "id": "s7",
+      "hash": "e05f4a1650d5ce51",
+      "title": "Moving back",
+      "what": "Returns to the previous step, but never before the welcome screen.",
+      "why": "Likely reason: lets the user correct earlier choices.",
+      "watch_out": "None."
+    },
+    {
+      "start": 68,
+      "end": 95,
+      "kind": "function",
+      "name": "goToStep",
+      "id": "s8",
+      "hash": "4f5cb50284f718c1",
+      "title": "Switching the visible step",
+      "what": "Hides the current step panel, shows the chosen one, updates the progress bar, scrolls to the top, and loads documents when step one opens.",
+      "why": "Likely reason: this is the single place where navigation happens, so all steps behave the same.",
+      "watch_out": "Only step one loads documents, so other steps must load their own data."
+    },
+    {
+      "start": 96,
+      "end": 107,
+      "kind": "function",
+      "name": "updateStepper",
+      "id": "s9",
+      "hash": "9b4256a8d5e0a85d",
+      "title": "Progress bar highlighting",
+      "what": "Marks the current step as active and earlier steps as completed.",
+      "why": "Likely reason: gives the user a sense of how far they have come.",
+      "watch_out": "It assumes the progress items appear in the same order as the step numbers."
+    },
+    {
+      "start": 108,
+      "end": 119,
+      "kind": "function",
+      "name": "startOver",
+      "id": "s10",
+      "hash": "4ddf5bff84008494",
+      "title": "Starting over",
+      "what": "After a confirmation prompt, clears all stored work and returns to the welcome screen.",
+      "why": "Likely reason: lets the user begin a new survey without reloading the page.",
+      "watch_out": "Typed text in form fields and displayed results are not cleared, only the stored data."
+    },
+    {
+      "start": 120,
+      "end": 123,
+      "kind": "function",
+      "name": "openClassicUI",
+      "id": "s11",
+      "hash": "cb9d236101093b79",
+      "title": "Switching to the classic page",
+      "what": "Opens the classic index page in the same window.",
+      "why": "Likely reason: lets users who prefer the single-page tool switch.",
+      "watch_out": "Stored work is lost when leaving this page."
+    },
+    {
+      "start": 124,
+      "end": 135,
+      "kind": "function",
+      "name": "showLoading",
+      "id": "s12",
+      "hash": "5d836eacb776474f",
+      "title": "Loading indicator",
+      "what": "Shows the full-screen spinner with a chosen message, updating the message text if that element exists.",
+      "why": "Likely reason: tells the user what is happening during long calls such as planning.",
+      "watch_out": "The overlay itself is looked up without a check, so a missing overlay causes an error."
+    },
+    {
+      "start": 136,
+      "end": 139,
+      "kind": "function",
+      "name": "hideLoading",
+      "id": "s13",
+      "hash": "2c7498929021a580",
+      "title": "Hiding the loading indicator",
+      "what": "Removes the spinner after a request finishes.",
+      "why": "Likely reason: pairs with the show function.",
+      "watch_out": "None."
+    },
+    {
+      "start": 140,
+      "end": 159,
+      "kind": "function",
+      "name": "showError",
+      "id": "s14",
+      "hash": "3cc4c86806a2289e",
+      "title": "Error display",
+      "what": "Turns errors into readable text and shows them in the chosen area in red.",
+      "why": "Likely reason: different error shapes need one display.",
+      "watch_out": "The message is inserted as raw HTML."
+    },
+    {
+      "start": 160,
+      "end": 208,
+      "kind": "function",
+      "name": "handleFileUpload (part 1)",
+      "id": "s15",
+      "hash": "619b080d8228bc53",
+      "title": "Choosing and sending documents",
+      "what": "Reads the selected files and document type, then uploads each file one at a time and collects successes and failures.",
+      "why": "Likely reason: one failing file should not stop the rest.",
+      "watch_out": "Long lists of files keep the spinner up for a long time."
+    },
+    {
+      "start": 209,
+      "end": 254,
+      "kind": "function",
+      "name": "handleFileUpload (part 2)",
+      "id": "s16",
+      "hash": "e8f060219c33eec8",
+      "title": "Showing upload results",
+      "what": "Lists uploaded files with their IDs and failed files with reasons, resets the form, and reloads the document list.",
+      "why": "Likely reason: gives clear per-file feedback before the user moves on.",
+      "watch_out": "Failure reasons from the server are inserted as raw HTML."
+    },
+    {
+      "start": 255,
+      "end": 277,
+      "kind": "function",
+      "name": "loadDocuments",
+      "id": "s17",
+      "hash": "8eaea64551f17176",
+      "title": "Loading the document list",
+      "what": "Asks the backend for uploaded documents and stores them, then displays them.",
+      "why": "Likely reason: keeps the list current after each upload.",
+      "watch_out": "Errors appear inside the list as raw HTML."
+    },
+    {
+      "start": 278,
+      "end": 311,
+      "kind": "function",
+      "name": "displayDocuments",
+      "id": "s18",
+      "hash": "95685587ab89c5a9",
+      "title": "Drawing document cards",
+      "what": "Creates a card per document with title, type, audience labels, version and upload date.",
+      "why": "Likely reason: a readable summary of what the user has uploaded.",
+      "watch_out": "Titles are inserted as raw HTML."
+    },
+    {
+      "start": 312,
+      "end": 366,
+      "kind": "function",
+      "name": "handlePlanSurvey (part 1)",
+      "id": "s19",
+      "hash": "1fa1c9c94872db22",
+      "title": "Requesting the survey plan",
+      "what": "Reads the goal, audience, required topics and model type, sends them to the planning endpoint, and shows the planned questions.",
+      "why": "Likely reason: the planning step turns the goal into questions, which later steps use.",
+      "watch_out": "Planned text from the backend is inserted as raw HTML."
+    },
+    {
+      "start": 367,
+      "end": 396,
+      "kind": "function",
+      "name": "handlePlanSurvey (part 2)",
+      "id": "s20",
+      "hash": "3161511204ddeb96",
+      "title": "Showing plan and saving questions",
+      "what": "Builds the plan cards, stores the planned questions for later steps, and shows the result or the raw data if the format is unexpected.",
+      "why": "Likely reason: saving the questions here is what makes the review step possible.",
+      "watch_out": "If the backend does not send a questions list, the review step has nothing to show."
+    },
+    {
+      "start": 397,
+      "end": 405,
+      "kind": "function",
+      "name": "acceptPlanAndContinue",
+      "id": "s21",
+      "hash": "8270bbbcefde511c",
+      "title": "Accepting the plan",
+      "what": "If questions exist, builds the review list and moves to step three, otherwise asks the user to plan first.",
+      "why": "Likely reason: stops the user from reviewing an empty list.",
+      "watch_out": "It checks only that questions exist, not that the plan is valid."
+    },
+    {
+      "start": 406,
+      "end": 443,
+      "kind": "function",
+      "name": "displayQuestionsForReview",
+      "id": "s22",
+      "hash": "1ce5a697fbd11cd2",
+      "title": "Building the review list",
+      "what": "Draws one card per question with its number, type, category, options and reasoning, plus Edit and Delete buttons.",
+      "why": "Likely reason: lets the user check and change each question before validation. The Edit and Delete functions are defined in a part of the file not included in this review.",
+      "watch_out": "Buttons refer to questions by position, so removing one can shift the positions the other buttons use, and the delete logic is not visible here. Question text is inserted as raw HTML."
+    },
+    {
+      "start": 444,
+      "end": 447,
+      "kind": "function",
+      "name": "editQuestion",
+      "id": "s23",
+      "hash": "ee2721bd650ab69b",
+      "title": "Edit question placeholder",
+      "what": "Shows a message that question editing is not built yet. Clicking edit does not change any question.",
+      "why": "Likely reason: a placeholder for a feature that has not been written yet.",
+      "watch_out": "Users may expect edits that never happen, because nothing is saved."
+    },
+    {
+      "start": 448,
+      "end": 454,
+      "kind": "function",
+      "name": "deleteQuestion",
+      "id": "s24",
+      "hash": "430f290fa573e165",
+      "title": "Delete question after confirmation",
+      "what": "Asks the user to confirm, then removes the chosen question from the working question list and redraws the review list.",
+      "why": "Reason not stated in the code. The confirmation likely prevents accidental deletes.",
+      "watch_out": "Removes the question only from workflowData.questions, so the saved survey plan may still contain it and the JSON export can still include it."
+    },
+    {
+      "start": 455,
+      "end": 462,
+      "kind": "function",
+      "name": "proceedToValidation",
+      "id": "s25",
+      "hash": "38dc1cd99c652124",
+      "title": "Move to validation after check",
+      "what": "Blocks the move to the Validate step with a message when there are no questions. Otherwise it jumps to step 4.",
+      "why": "Stops users from validating an empty survey.",
+      "watch_out": "The step number 4 is fixed in this function, so reordering the steps means changing it too."
+    },
+    {
+      "start": 463,
+      "end": 521,
+      "kind": "function",
+      "name": "runValidation (part 1)",
+      "id": "s26",
+      "hash": "21031ca212d40613",
+      "title": "Start validation and build results",
+      "what": "Sends the survey plan to the backend validation endpoint and starts building the results panel from the hard checks. Stops with a message if no plan exists.",
+      "why": "Likely reason: the plan must exist first, and the backend does the actual checking.",
+      "watch_out": "Issue text from the server is placed into the page as HTML without escaping, so any markup in it will be shown or run."
+    },
+    {
+      "start": 522,
+      "end": 569,
+      "kind": "function",
+      "name": "runValidation (part 2)",
+      "id": "s27",
+      "hash": "0052818581afd3d4",
+      "title": "Show quality scores and suggestions",
+      "what": "Adds color-coded quality scores out of 10 and suggestions to the results, then enables the Continue to Export button and hides the spinner. If the request fails, it shows an error in the results panel.",
+      "why": "Lets users see which quality areas need work at a glance. Scores are advice, and hard checks are the required ones.",
+      "watch_out": "The Continue to Export button is enabled even when the hard checks failed, and the scores are colored by fixed cutoffs of 7 and 5."
+    },
+    {
+      "start": 570,
+      "end": 608,
+      "kind": "function",
+      "name": "exportSurvey",
+      "id": "s28",
+      "hash": "99838ddcf8954463",
+      "title": "Choose export format and download",
+      "what": "Builds the file content for JSON, CSV, or Markdown and starts a download with a timestamped file name. Any other format shows a not-implemented message.",
+      "why": "One entry point so every export button uses the same steps.",
+      "watch_out": "JSON comes from the survey plan, while CSV and Markdown use the working question list, so the files can disagree after edits."
+    },
+    {
+      "start": 609,
+      "end": 619,
+      "kind": "function",
+      "name": "convertToCSV",
+      "id": "s29",
+      "hash": "2da06a5df6b560f9",
+      "title": "Turn questions into spreadsheet rows",
+      "what": "Builds a CSV file with a header row and one row per question containing its text, type, and category. Double quotes in the question text are doubled so the file stays valid.",
+      "why": "Quoting keeps commas and quote marks inside question text from breaking the columns.",
+      "watch_out": "Only the question text is escaped, so a type or category value containing a double quote would break the file."
+    },
+    {
+      "start": 620,
+      "end": 638,
+      "kind": "function",
+      "name": "convertToMarkdown",
+      "id": "s30",
+      "hash": "04a3c52852b9ebf2",
+      "title": "Turn plan into readable document",
+      "what": "Builds a Markdown document with the survey title, description, and each question with its type, category, options, and reasoning.",
+      "why": "Gives a human-readable copy for documentation.",
+      "watch_out": "The questions come from the working list rather than the plan, so this document may not match the JSON export."
+    },
+    {
+      "start": 639,
+      "end": 651,
+      "kind": "function",
+      "name": "downloadFile",
+      "id": "s31",
+      "hash": "56f25ee1ef6b613e",
+      "title": "Save text as file in browser",
+      "what": "Wraps the content in a file, creates a temporary link to it, clicks the link to start the download, then removes the link and the temporary address.",
+      "why": "A browser cannot save a file directly from script, so a hidden link is used.",
+      "watch_out": "This only works inside a browser. The file name is used exactly as the caller gives it."
+    },
+    {
+      "start": 652,
+      "end": 671,
+      "kind": "function",
+      "name": "downloadJSON",
+      "id": "s32",
+      "hash": "59efa9118fb08d4d",
+      "title": "Download plan as JSON file",
+      "what": "Saves the current survey plan as a JSON file. The file name starts with the label passed in, such as planner, plus a timestamp. Shows a message if there is no plan.",
+      "why": "Likely reason: a shortcut for the plan download button on the planning step.",
+      "watch_out": "It repeats the download steps from the file download function instead of reusing them, so a fix in one place may be missed in the other."
+    },
+    {
+      "start": 672,
+      "end": 678,
+      "kind": "function",
+      "name": "viewDashboard",
+      "id": "s33",
+      "hash": "265c596bfd215dcb",
+      "title": "Dashboard placeholder message",
+      "what": "Shows a coming soon message. No dashboard exists yet.",
+      "why": "Likely reason: a placeholder for a future feature.",
+      "watch_out": "Anything that links here will look like a working feature to users."
+    },
+    {
+      "start": 679,
+      "end": 682,
+      "kind": "function",
+      "name": "closeModal",
+      "id": "s34",
+      "hash": "cc3cac2e9d84d41f",
+      "title": "Hide a popup by its id",
+      "what": "Hides the popup with the given id by setting its display to none.",
+      "why": "Reusable, so every popup closes the same way.",
+      "watch_out": "Fails with an error if no element has that id."
+    },
+    {
+      "start": 683,
+      "end": 685,
+      "kind": "function",
+      "name": "showQuickTour",
+      "id": "s35",
+      "hash": "9a1468d4c0d6d1fe",
+      "title": "Open the quick tour popup",
+      "what": "Shows the element with id tourModal as a flex box.",
+      "why": "Likely reason: a help popup that was planned, or removed from the page.",
+      "watch_out": "The tourModal element does not appear in wizard.html as provided, so clicking the tour link would cause an error."
+    }
+  ],
+  "explained_at": "2026-11-12T00:07:16+00:00",
+  "explained_by": "haiku",
+  "summary": "Browser logic for the step-by-step version of the research tool, which walks the user through upload, planning, reviewing questions, validating and exporting a survey.",
+  "purpose": "Moves the user through numbered steps and keeps the work done so far in memory.",
+  "why": "Likely reason: a guided flow suits users new to survey design. Reason not stated in the code.",
+  "how": "On load it checks backend status. The step functions show the right panel and update the progress bar. Upload, planning and review functions call the backend and store results in workflowData. Later steps for review editing, validation, exporting and the dashboard are defined below the reviewed part.",
+  "inputs": "Form input, selected files, button clicks, and answers from the backend.",
+  "outputs": "Updated step panels, a progress indicator, stored data for later steps, and downloads.",
+  "risks": "All work is held only in memory, so a reload loses it. Server text is written as raw HTML. The initial document load on page start is never reached because the step counter starts at zero.",
+  "debug": "If a step does not appear, check that goToStep finds an element named with the step number. If progress is lost after reload, this is expected because nothing is saved. If the review step is empty, confirm the plan step stored questions.",
+  "summary_hash": "sha256:be31993ab752f74dd4af9c3a281f8765d23ff1b62382dc907b5f8dc007c1f2e3"
+}

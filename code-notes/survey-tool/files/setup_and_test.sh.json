@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "path": "setup_and_test.sh",
+  "language": "Shell script",
+  "lines": 276,
+  "hash": "sha256:9df6379bc6ccb082642cc23abfb90b0e815832163dc62959d7893e220ee2579b",
+  "area": "root-files",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The reset command deletes all local data without asking.",
+      "The key check only looks at two providers and can miss a missing key.",
+      "The script reports success based on the presence of text, so some failures may be shown as passing.",
+      "Several steps use fixed 30 second and 3 second waits, which can be too short on slow computers."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Shell script",
+      "meaning": "A text file of commands that a Linux or Mac terminal runs in order."
+    },
+    {
+      "term": "Health check",
+      "meaning": "A quick request to see whether a service is ready to answer."
+    },
+    {
+      "term": "Docker volume",
+      "meaning": "Storage kept by Docker that survives when containers restart, unless it is deleted."
+    },
+    {
+      "term": "jq",
+      "meaning": "A small tool that reads and pulls values out of JSON text."
+    }
+  ],
+  "depends_on": [
+    ".env.example",
+    "docker-compose.yml",
+    "backend/scripts/load_sample_data.py",
+    "examples/b2b_csat_example.py"
+  ],
+  "used_by": [
+    "Run by the owner from the project folder."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3f9e9700e869801f",
+      "title": "Script header and colors",
+      "what": "Gives the script its name, stops it on the first error, prints a title banner, and defines the colors used for messages.",
+      "why": "Makes the output easy to read and stops the script early if a command fails.",
+      "watch_out": "Because of the stop-on-error setting, a failing command ends the whole run without a friendly message in some steps."
+    },
+    {
+      "start": 17,
+      "end": 21,
+      "kind": "function",
+      "name": "print_success",
+      "id": "s2",
+      "hash": "5ca8542ede912904",
+      "title": "Success message helper",
+      "what": "Prints a green line starting with a check mark.",
+      "why": "Keeps the success output consistent across steps.",
+      "watch_out": "Relies on the terminal supporting color codes."
+    },
+    {
+      "start": 22,
+      "end": 25,
+      "kind": "function",
+      "name": "print_error",
+      "id": "s3",
+      "hash": "ef53fa89432b7860",
+      "title": "Error message helper",
+      "what": "Prints a red line starting with a cross mark.",
+      "why": "Makes failures easy to spot in the output.",
+      "watch_out": "The script continues after some errors, so a red line does not always mean the run stopped."
+    },
+    {
+      "start": 26,
+      "end": 78,
+      "kind": "function",
+      "name": "print_info (part 1)",
+      "id": "s4",
+      "hash": "87431c38211c79f0",
+      "title": "Docker check and settings file creation",
+      "what": "Checks that Docker, Docker Compose and the Docker service are present and running. If there is no settings file, it copies the template and asks the owner to add an API key.",
+      "why": "Docker must be running before any later step can work, and the settings file is needed by all services.",
+      "watch_out": "The prompt waits for the owner to press Enter, so the script stops until someone is at the keyboard."
+    },
+    {
+      "start": 79,
+      "end": 138,
+      "kind": "function",
+      "name": "print_info (part 2)",
+      "id": "s5",
+      "hash": "948123763ef81e96",
+      "title": "API key check and service start",
+      "what": "Checks whether the key placeholders are still present in the settings file, then resets the containers, starts them and waits 30 seconds.",
+      "why": "Likely reason: an empty key would make AI steps fail later, so the script tries to catch it early.",
+      "watch_out": "The reset command deletes all Docker data, including saved records. The key check only looks at OpenAI and Anthropic and treats a missing key as passing if either is set."
+    },
+    {
+      "start": 139,
+      "end": 197,
+      "kind": "function",
+      "name": "print_info (part 3)",
+      "id": "s6",
+      "hash": "6029655e689db492",
+      "title": "API health wait",
+      "what": "Checks the health address up to ten times, waiting 3 seconds between tries, and stops with an error if the API never reports healthy.",
+      "why": "Services take a moment to start, so the script waits instead of failing on the first attempt.",
+      "watch_out": "The health check looks for the word healthy in the reply. A reply that contains that word in an error message would count as a pass."
+    },
+    {
+      "start": 198,
+      "end": 238,
+      "kind": "function",
+      "name": "print_info (part 4)",
+      "id": "s7",
+      "hash": "03b4158018846189",
+      "title": "Model list and sample data loading",
+      "what": "Asks the API to set up the model list, reports how many models were found, then runs the sample data loader inside the backend container and reports whether it worked.",
+      "why": "The planner needs the model list and the question banks before it can produce a survey.",
+      "watch_out": "The model count is read from the reply text with a simple pattern, so a change in the reply format will show zero."
+    },
+    {
+      "start": 239,
+      "end": 276,
+      "kind": "function",
+      "name": "print_info (part 5)",
+      "id": "s8",
+      "hash": "800fec04dfc13950",
+      "title": "Data checks, test plan and summary",
+      "what": "Counts the question banks and models, sends a sample survey plan request for a B2B customer satisfaction study, reports how many sections it created, then prints a summary with useful links and commands.",
+      "why": "Gives a quick end-to-end check that the planner works, and lists the next steps for the owner.",
+      "watch_out": "The final message says all core tests passed even when earlier checks printed red errors, because the script does not track failures."
+    }
+  ],
+  "explained_at": "2026-11-12T00:12:57+00:00",
+  "explained_by": "haiku",
+  "summary": "A Linux or Mac script that checks Docker, creates the settings file, starts all services, checks the API, loads sample data and runs one survey planning test.",
+  "purpose": "Lets the owner set up and test the whole Docker version in one command.",
+  "why": "Likely reason: the setup has many steps, and a script avoids repeating them by hand.",
+  "how": "The script first checks that Docker and Docker Compose are installed and running. Then it creates the settings file from the template and asks for an API key. Next it resets and starts the containers. It then waits for the health check, loads the model list, loads sample question banks, and sends one test planning request. It prints a summary at the end.",
+  "inputs": "Your API key typed at the prompt, and the settings in the template file.",
+  "outputs": "Running Docker services, a settings file, and printed results with green checks or red errors.",
+  "risks": "The script removes all existing Docker data each time through the reset command, so saved studies and databases are deleted. It only checks two API key names for placeholders.",
+  "debug": "If a step fails, the script prints the command to run for logs. Check that Docker is running. If the API is not healthy after 10 tries, run the logs command for the backend. If sample data fails, check the backend container logs.",
+  "summary_hash": "sha256:9df6379bc6ccb082642cc23abfb90b0e815832163dc62959d7893e220ee2579b"
+}

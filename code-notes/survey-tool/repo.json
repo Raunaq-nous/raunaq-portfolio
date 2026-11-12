@@ -1,0 +1,349 @@
+{
+  "schema_version": 1,
+  "name": "Survey-Tool",
+  "commit": "2114806",
+  "synced_at": "2026-11-12T00:16:23+00:00",
+  "summary": "Survey-Tool is a platform that helps people design, write, check and publish research surveys with the help of AI models. A user describes what they want to learn, the system drafts a survey plan, writes the questions using a library of approved example questions and policy rules, checks the result, and can publish it to Qualtrics (a survey service). It also tracks studies, contact panels, audit records, and which AI model is used for each task. The backend is a Python web API and the frontend is a simple browser interface with two versions: a classic tabbed page and a step-by-step wizard.",
+  "who_its_for": "Market researchers and survey designers who want AI help building compliant surveys, plus the technical staff who set up and maintain the system. It is not clear from the summaries whether it is a finished product or an internal tool.",
+  "how_it_runs": "It normally runs as a group of Docker containers: a PostgreSQL database, a Redis helper, the backend API, a background worker and the frontend. Alternative setup scripts install it without Docker, either with a local PostgreSQL or with a single SQLite file.",
+  "start_here": [
+    "setup_and_test.sh",
+    ".env.example",
+    "docker-compose.yml",
+    "backend/main.py",
+    "backend/routers/agents.py",
+    "frontend/wizard.html",
+    "examples/b2b_csat_example.py"
+  ],
+  "areas": [
+    {
+      "id": "frontend",
+      "name": "frontend",
+      "match": [
+        "frontend/*"
+      ],
+      "summary": "The browser interface, in two forms: a classic five-tab page and a six-step wizard that goes from upload to export. It includes the pages, scripts, styles and a Dockerfile.",
+      "why": "This is what users actually see and click.",
+      "debug_tips": "If a button does nothing or a page looks wrong, check app.js or wizard-app.js and the browser's error console. Also confirm the backend is reachable."
+    },
+    {
+      "id": "backend-services",
+      "name": "backend/services",
+      "match": [
+        "backend/services/*"
+      ],
+      "summary": "The behind-the-scenes helpers: splitting documents, creating embeddings, searching the library, talking to different AI providers, and choosing which model to use.",
+      "why": "They hold the main logic that the web routes and agents depend on.",
+      "debug_tips": "For bad or missing search results, look at retrieval.py and embeddings.py. For wrong model choices or AI call failures, look at model_manager.py and llm_provider.py."
+    },
+    {
+      "id": "backend-agents",
+      "name": "backend/agents",
+      "match": [
+        "backend/agents/*"
+      ],
+      "summary": "Five AI workers that plan a survey, write questions, check them and publish them to Qualtrics, with a shared base. There are two planner versions, and the summaries do not say which one is used.",
+      "why": "They carry out the survey creation workflow.",
+      "debug_tips": "Poor questions point to author.py or the planner. Publishing failures point to publisher.py and the Qualtrics settings."
+    },
+    {
+      "id": "backend-models",
+      "name": "backend/models",
+      "match": [
+        "backend/models/*"
+      ],
+      "summary": "Database table definitions for surveys, studies, panels, the document library, model settings, and audit records.",
+      "why": "They define what information the system stores.",
+      "debug_tips": "If data is missing or saved wrongly, compare the relevant model file with the database. Table changes may need a database update, and the summaries do not mention how that is handled."
+    },
+    {
+      "id": "root-files",
+      "name": "(root files)",
+      "match": [
+        "*"
+      ],
+      "summary": "Project-level files: Docker Compose, the settings template, setup scripts for Docker, native and SQLite installs, and a sample data loader.",
+      "why": "They get the whole system installed and running.",
+      "debug_tips": "If setup fails, read the script output and check that .env is filled in. Make sure Docker is running if you use the Docker route."
+    },
+    {
+      "id": "backend",
+      "name": "backend",
+      "match": [
+        "backend/*"
+      ],
+      "summary": "The core backend files: the app entry point (main.py), settings (config.py), the database connection (database.py), the Dockerfile and the package list.",
+      "why": "Everything else in the backend starts from these.",
+      "debug_tips": "If the API will not start, check config.py settings and requirements.txt versions. The health page at the root helps confirm it is running."
+    },
+    {
+      "id": "backend-routers",
+      "name": "backend/routers",
+      "match": [
+        "backend/routers/*"
+      ],
+      "summary": "The web addresses (API routes) for agents, the document library, model setups, studies and surveys.",
+      "why": "They are the doorway between the frontend and the backend logic.",
+      "debug_tips": "If a request returns an error, find the matching router file and check what it expects. Note that the agents router summary says only part of it was visible."
+    },
+    {
+      "id": "examples",
+      "name": "examples",
+      "match": [
+        "examples/*"
+      ],
+      "summary": "Three runnable demo scripts: a B2B satisfaction survey, loading a sample library, and configuring models.",
+      "why": "They show how to use the system and work as quick checks.",
+      "debug_tips": "Run them against a running local server. If they fail to connect, the backend is probably not running."
+    },
+    {
+      "id": "devcontainer",
+      "name": ".devcontainer",
+      "match": [
+        ".devcontainer/*"
+      ],
+      "summary": "A startup script for the development container that waits for the database, begins filling the library, and prints local addresses.",
+      "why": "It makes a ready-to-use development environment.",
+      "debug_tips": "If the dev environment seems empty or stuck, check the script's output for database waiting or the catalogue fill."
+    },
+    {
+      "id": "github",
+      "name": ".github",
+      "match": [
+        ".github/*"
+      ],
+      "summary": "An automated workflow that builds the backend container image and publishes it to Docker Hub on pushes.",
+      "why": "It checks the build works and distributes the image.",
+      "debug_tips": "If the build fails, open the run in GitHub Actions and read the log. Publishing problems may involve Docker Hub login settings, which are not described."
+    },
+    {
+      "id": "database",
+      "name": "database",
+      "match": [
+        "database/*"
+      ],
+      "summary": "A setup script that enables two database extensions, creates six schemas and grants the app's user access.",
+      "why": "It prepares the database before the app uses it.",
+      "debug_tips": "Permission or missing schema errors point here. This script usually runs only on a fresh database."
+    },
+    {
+      "id": "other",
+      "name": "Everything else",
+      "match": [],
+      "summary": "",
+      "why": "",
+      "debug_tips": ""
+    }
+  ],
+  "decisions": [],
+  "readiness": {
+    "overall": "not-ready",
+    "summary": "Top three fixes: add real authentication and permissions, add logging with error tracking, and introduce database migrations with a backup plan. After that, expand tests beyond the single file and consolidate the setup docs into one start command.",
+    "checked_at": "2026-11-12T00:16:38+00:00",
+    "checks": [
+      {
+        "id": "starts",
+        "question": "Does the app build and start with one documented command?",
+        "status": "partial",
+        "evidence": "`README.md` documents several start paths (`python setup_sqlite.py`, `setup_native.sh`, `setup_native.bat`, manual uvicorn steps) and `docker-compose.yml` exists, but there is no single canonical command and the build was not run. Many overlapping setup docs add confusion.",
+        "next_step": "Pick one default path (e.g. `docker compose up`) and put it at the top of `README.md`; verify it on a clean machine."
+      },
+      {
+        "id": "tests",
+        "question": "Are there automated tests, and do they pass?",
+        "status": "unknown",
+        "evidence": "Not checked: tests were not run in this pass. Only one test file was found (`tests/test_workflow.py`), so coverage looks thin.",
+        "next_step": "Run the tests, add a CI step for them, and add tests for the API routes and validators."
+      },
+      {
+        "id": "errors",
+        "question": "When something goes wrong, does the app show a clear message instead of crashing or failing silently?",
+        "status": "unknown",
+        "evidence": "Not checked: static scan found 0 swallowed-error patterns, but no evidence of structured error handlers or user-facing messages was gathered.",
+        "next_step": "Review `backend/main.py` for exception handlers and make the frontend show clear error states."
+      },
+      {
+        "id": "inputs",
+        "question": "Does it check what people type or upload before using it?",
+        "status": "partial",
+        "evidence": "11 input validation matches in 3 files, so some validation exists (likely request models), but coverage across endpoints and any upload handling is unconfirmed.",
+        "next_step": "Confirm every endpoint uses typed request models with limits, and add file type and size checks to any upload route."
+      },
+      {
+        "id": "secrets",
+        "question": "Are passwords and API keys kept out of the code and out of git history?",
+        "status": "partial",
+        "evidence": "`.env.example` is the only tracked env file, `.gitignore` mentions `.env`, and no secret-looking strings were found in HEAD. Git history was not scanned.",
+        "next_step": "Run a history scan (e.g. gitleaks) and rotate any key that ever appeared in a commit."
+      },
+      {
+        "id": "access",
+        "question": "Can only the right people see and change things (sign-in and permissions)?",
+        "status": "fail",
+        "evidence": "0 auth, session or permission matches in the code. The README claims role-based B2B features and audit trails, but no sign-in or permission checks were found.",
+        "next_step": "Add authentication (e.g. OAuth2/JWT in FastAPI) and per-route permission checks before exposing the app beyond localhost."
+      },
+      {
+        "id": "data",
+        "question": "Is important data backed up, and are database changes made through migrations?",
+        "status": "fail",
+        "evidence": "No migrations folders were found despite the README listing 'database schemas and migrations'. No backup process is documented. The SQLite option keeps data in one folder with no backup routine.",
+        "next_step": "Adopt Alembic for schema changes and document a scheduled database backup and restore procedure."
+      },
+      {
+        "id": "dependencies",
+        "question": "Are third-party packages reasonably up to date and free of known security problems?",
+        "status": "unknown",
+        "evidence": "Not checked: dependency audit was not run. `backend/requirements.txt` and `requirements_minimal.txt` exist but there is no lockfile with pinned hashes and no frontend `package.json` was found, despite a `frontend/` folder.",
+        "next_step": "Run `pip-audit` on `backend/requirements.txt`, pin versions, and enable Dependabot."
+      },
+      {
+        "id": "logs",
+        "question": "If it breaks while people use it, will logs or alerts show what happened?",
+        "status": "fail",
+        "evidence": "0 logging matches in the code and no monitoring or alerting config was found.",
+        "next_step": "Add Python `logging` with request and error logs, and connect an error tracker such as Sentry."
+      },
+      {
+        "id": "performance",
+        "question": "Does it stay fast with realistic amounts of data and users?",
+        "status": "unknown",
+        "evidence": "Not checked: no load tests or profiling evidence. The SQLite option and LLM calls inside the agent workflow may limit concurrency.",
+        "next_step": "Run a basic load test on key endpoints and move long agent runs to background jobs."
+      },
+      {
+        "id": "deploy",
+        "question": "Is there a written, repeatable way to deploy it and to roll back a bad release?",
+        "status": "partial",
+        "evidence": "`.github/workflows/docker-build.yml`, `backend/Dockerfile`, `frontend/Dockerfile` and `docker-compose.yml` give a repeatable image build, but no deploy or rollback steps are documented.",
+        "next_step": "Write a short `DEPLOY.md` covering release, tagging images, and rolling back to the previous tag."
+      },
+      {
+        "id": "docs",
+        "question": "Could someone new run it and understand it from the docs alone?",
+        "status": "partial",
+        "evidence": "Many setup docs exist (`QUICKSTART.md`, `LOCAL_SETUP_NO_DOCKER.md`, `COMPLETE_SETUP_FROM_SCRATCH.md` and others), but they overlap and may disagree. No architecture or API overview was confirmed beyond the README directory list.",
+        "next_step": "Consolidate the setup guides into one and add a short architecture and API section."
+      }
+    ],
+    "method": "Static evidence only; tests, build and audit were not run in this pass."
+  },
+  "debug_playbook": [
+    {
+      "symptom": "The app will not start or the API does not respond",
+      "likely_area": "backend",
+      "where_to_look": [
+        "backend/config.py",
+        "backend/main.py",
+        "docker-compose.yml",
+        ".env.example"
+      ],
+      "steps": [
+        "Check that the settings file was created from .env.example and filled in.",
+        "Confirm the database container is running.",
+        "Open the root or health page to see if the API answers."
+      ]
+    },
+    {
+      "id": "",
+      "symptom": "Survey planning or writing returns an error or poor output",
+      "likely_area": "backend-agents",
+      "where_to_look": [
+        "backend/agents/planner.py",
+        "backend/agents/author.py",
+        "backend/services/llm_provider.py"
+      ],
+      "steps": [
+        "Check that the AI provider key is set in the settings file.",
+        "Look at the model call records to see what was sent and returned.",
+        "Check which model is chosen for the task in the model setup."
+      ]
+    },
+    {
+      "symptom": "Document upload works but searches find nothing",
+      "likely_area": "backend-services",
+      "where_to_look": [
+        "backend/services/document_ingestion.py",
+        "backend/services/embeddings.py",
+        "backend/services/retrieval.py"
+      ],
+      "steps": [
+        "Confirm the document was saved and split into chunks.",
+        "Check that embeddings were stored for each chunk.",
+        "Try loading the sample data to see if searching works at all."
+      ]
+    },
+    {
+      "symptom": "The web page loads but buttons or tabs fail",
+      "likely_area": "frontend",
+      "where_to_look": [
+        "frontend/app.js",
+        "frontend/wizard-app.js",
+        "backend/routers/agents.py"
+      ],
+      "steps": [
+        "Open the browser error console for messages.",
+        "Check that the frontend is pointing at the running backend.",
+        "Match the failing action to its route in the routers."
+      ]
+    },
+    {
+      "symptom": "Setup script fails partway",
+      "likely_area": "root-files",
+      "where_to_look": [
+        "setup_and_test.sh",
+        "setup_native.sh",
+        "setup_sqlite.py",
+        "database/init/01_init.sql"
+      ],
+      "steps": [
+        "Read the last lines of output to see which step failed.",
+        "Check that Docker or PostgreSQL is installed and running.",
+        "If Docker is a problem, try the SQLite setup as a simpler option."
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Agent",
+      "meaning": "An AI-driven worker that does one job, such as planning or validating a survey."
+    },
+    {
+      "term": "Embedding",
+      "meaning": "A list of numbers representing the meaning of text, used for meaning-based search."
+    },
+    {
+      "term": "Chunk",
+      "meaning": "A small piece of a larger document, stored so it can be searched."
+    },
+    {
+      "term": "Corpus",
+      "meaning": "The library of reference documents, question templates and policy rules."
+    },
+    {
+      "term": "Router",
+      "meaning": "A file that defines web addresses the app responds to."
+    },
+    {
+      "term": "Panel",
+      "meaning": "A contact list of people who may be invited to take surveys."
+    },
+    {
+      "term": "Qualtrics",
+      "meaning": "An outside survey platform where finished surveys are published."
+    },
+    {
+      "term": "Docker",
+      "meaning": "A tool that packages software and its needs so it runs the same everywhere."
+    },
+    {
+      "term": "LLM provider",
+      "meaning": "An AI service such as OpenAI, Anthropic, Google, Ollama or HuggingFace."
+    },
+    {
+      "term": "Schema",
+      "meaning": "A named section of a database that groups related tables."
+    }
+  ],
+  "skipped": []
+}

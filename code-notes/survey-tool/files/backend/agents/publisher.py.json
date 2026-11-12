@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/publisher.py",
+  "language": "Python",
+  "lines": 274,
+  "hash": "sha256:6a47f91a67cc1ea609df0cab07c1b8dc5e0edcafe8e74fb94730cffffe4f920a",
+  "area": "backend-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Retries and error handling are in place.",
+      "No tests are visible in this file.",
+      "Flow building is an empty step.",
+      "Unknown question types fall back to text entry without a warning.",
+      "Partial surveys are not cleaned up after a failure.",
+      "Survey activation is not confirmed by this code."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Qualtrics",
+      "meaning": "a commercial survey platform that this app sends surveys to"
+    },
+    {
+      "term": "API token",
+      "meaning": "a secret key that lets this app act inside the Qualtrics account"
+    },
+    {
+      "term": "Data center",
+      "meaning": "the regional Qualtrics server the account lives on"
+    },
+    {
+      "term": "Block",
+      "meaning": "a group of questions in a Qualtrics survey, often one page or part of the survey"
+    },
+    {
+      "term": "Retry",
+      "meaning": "trying a failed step again after a short wait"
+    },
+    {
+      "term": "Idempotency token",
+      "meaning": "a unique label sent with a request so the server can recognise a repeat of the same request"
+    },
+    {
+      "term": "Distribution",
+      "meaning": "the Qualtrics object that holds how a survey is shared, such as its link"
+    },
+    {
+      "term": "Survey flow",
+      "meaning": "the order of questions and the rules that decide what respondents see"
+    }
+  ],
+  "depends_on": [
+    "config (settings)",
+    "agents/base.py",
+    "httpx library",
+    "tenacity library",
+    "Qualtrics API"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a6542dcbd4ce223d",
+      "title": "Setup and imports",
+      "what": "Brings in the libraries for JSON, web requests, retries, the shared agent base, and settings.",
+      "why": "Likely reason: web requests need a client, and retry handling needs a library.",
+      "watch_out": ""
+    },
+    {
+      "start": 10,
+      "end": 67,
+      "kind": "class",
+      "name": "PublisherAgent (part 1)",
+      "id": "s2",
+      "hash": "4d4e5d0e1f75fe55",
+      "title": "Publishing the survey step by step",
+      "what": "Reads the Qualtrics token, data center and brand from settings and builds the base web address. The run step creates the survey, then goes through each section and question, builds the flow, activates the survey, and returns the link.",
+      "why": "Likely reason: each step is kept separate so it can be retried on its own.",
+      "watch_out": "A failure partway through leaves a partial survey in Qualtrics, because nothing removes what was already created."
+    },
+    {
+      "start": 68,
+      "end": 116,
+      "kind": "class",
+      "name": "PublisherAgent (part 2)",
+      "id": "s3",
+      "hash": "c51aaf8074c22280",
+      "title": "Creating the survey and its blocks",
+      "what": "Returns a failure result if any step fails. Creates the survey record in Qualtrics, then creates each block (section) inside it. Each request is retried up to four times with a growing wait.",
+      "why": "Likely reason: retries cover temporary network or server problems.",
+      "watch_out": "Retries also apply to errors that will never succeed, such as a wrong token, so those errors take longer to report."
+    },
+    {
+      "start": 117,
+      "end": 176,
+      "kind": "method",
+      "name": "PublisherAgent: _create_question",
+      "id": "s4",
+      "hash": "8b9dce19667849ae",
+      "title": "Sending a question and starting its format",
+      "what": "Sends one question to Qualtrics inside its block, with retries. Before sending, it converts the question into the format Qualtrics expects. This section covers the scale, matrix and NPS types.",
+      "why": "Qualtrics uses its own question formats, so each of this tool's question types needs a translation.",
+      "watch_out": "A retry after a lost reply can create the same question twice, because no duplicate check exists."
+    },
+    {
+      "start": 177,
+      "end": 229,
+      "kind": "class",
+      "name": "PublisherAgent (part 4)",
+      "id": "s5",
+      "hash": "73b512281e87b579",
+      "title": "Translating the remaining question types",
+      "what": "Continues the translation for text entry, single choice, multiple choice, ranking, MaxDiff and CBC. For MaxDiff and CBC, the design details are stored as text in the question description.",
+      "why": "Likely reason: MaxDiff and CBC designs have no native Qualtrics format, so their settings are saved as text so they are not lost, as the code comment indicates.",
+      "watch_out": "The design text is saved in the question description; whether respondents can see it is not stated in the code."
+    },
+    {
+      "start": 230,
+      "end": 274,
+      "kind": "class",
+      "name": "PublisherAgent (part 5)",
+      "id": "s6",
+      "hash": "8174389302e5b65b",
+      "title": "Pricing types, unknown types, and the link",
+      "what": "Maps the two pricing methods to single-choice questions. Sends any unlisted type as a plain text entry. The flow step does nothing yet. Then fetches the default distribution and returns a public link built from the survey ID.",
+      "why": "Likely reason: a simple first version. Comments mark the flow and logic as future work.",
+      "watch_out": "Sliders, heatmaps, card sorts, and first-click tests silently become plain text questions, and the link is returned without checking that the survey is live."
+    }
+  ],
+  "explained_at": "2026-11-12T00:11:10+00:00",
+  "explained_by": "haiku",
+  "summary": "Creates the survey in Qualtrics from the finished survey design, one block and question at a time, and returns a link to it.",
+  "purpose": "Pushes the designed survey into the Qualtrics survey platform so respondents can take it.",
+  "why": "The file docstring says it is the Qualtrics integration. The reason for the retry and token settings is not stated in the code.",
+  "how": "Creates the survey. For each section, creates a block and then adds each question, converting each question type into the Qualtrics format. Runs the flow step, which is currently empty. Fetches the default distribution and returns a public link built from the survey ID. Any failure returns a failure result.",
+  "inputs": "A survey object with sections and questions, a name, a description, and an optional client token that identifies the request.",
+  "outputs": "A dictionary with survey_id, survey_url, task_id, and success. On failure, survey_id and survey_url are empty and error holds the message.",
+  "risks": "A failure partway through leaves a half-built survey in Qualtrics, and nothing deletes it. Retries can create duplicate questions if Qualtrics saved one but the reply was lost. Unknown question types silently become plain text questions. The language is always English, whatever the brief asked for. This code does not change the survey status, so the survey may not be live when the link is returned.",
+  "debug": "Read the error field first. Find which step failed in the logs. Check the Qualtrics token and data center in settings. Open the survey in Qualtrics to see which blocks and questions exist. For wrong question formats, check the mapping for that type. For a link that does not work, check the survey status inside Qualtrics.",
+  "summary_hash": "sha256:6a47f91a67cc1ea609df0cab07c1b8dc5e0edcafe8e74fb94730cffffe4f920a"
+}

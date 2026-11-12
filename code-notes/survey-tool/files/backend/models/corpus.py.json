@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "path": "backend/models/corpus.py",
+  "language": "Python",
+  "lines": 229,
+  "hash": "sha256:0ca1fa0be1de1b18d17283190dceb3a3f2392d8eb2cb53725276bda7959c0987",
+  "area": "backend-models",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The pgvector fallback is silent.",
+      "Tags are copied rather than linked, so they can go stale.",
+      "No tests are visible.",
+      "The time-to-live is stored but not enforced in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Enum",
+      "meaning": "a fixed list of allowed labels, such as document types, so a typo cannot be saved"
+    },
+    {
+      "term": "Embedding",
+      "meaning": "a list of numbers that represents the meaning of a piece of text, so similar texts can be found"
+    },
+    {
+      "term": "Vector",
+      "meaning": "a database column type that stores embeddings and can search them quickly"
+    },
+    {
+      "term": "pgvector",
+      "meaning": "an optional PostgreSQL add-on that supports vector columns"
+    },
+    {
+      "term": "Chunk",
+      "meaning": "a small piece of a longer document, stored separately so it can be searched on its own"
+    },
+    {
+      "term": "Time-to-live",
+      "meaning": "how many days a deprecated item is kept before it can be removed"
+    },
+    {
+      "term": "Schema",
+      "meaning": "a named group of tables inside a database"
+    }
+  ],
+  "depends_on": [
+    "database module (Base and is_sqlite)",
+    "sqlalchemy library",
+    "pgvector library (optional)"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 28,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f54a7c86cf77f324",
+      "title": "Database type switch and vector support",
+      "what": "Chooses column types based on the database. Sets up the vector column for embeddings, and falls back to plain JSON if the pgvector library is missing.",
+      "why": "Same reason as the audit file, and the fallback keeps the app running without the library.",
+      "watch_out": "The fallback is silent, so a missing library gives no warning and embedding search quietly stops working."
+    },
+    {
+      "start": 29,
+      "end": 38,
+      "kind": "class",
+      "name": "DocType",
+      "id": "s2",
+      "hash": "de60e97548f42731",
+      "title": "Document type labels",
+      "what": "Lists the kinds of documents the library holds: question banks, templates, policies, method guides, past surveys, and industry packs.",
+      "why": "Likely reason: each document gets a fixed category so search can filter by it.",
+      "watch_out": "Changing these labels can break saved records that still use an old label."
+    },
+    {
+      "start": 39,
+      "end": 59,
+      "kind": "class",
+      "name": "QuestionType",
+      "id": "s3",
+      "hash": "891b05a8cd3e84dc",
+      "title": "Question type labels",
+      "what": "Lists the question formats the tool understands, such as Likert scales, NPS, MaxDiff and CBC.",
+      "why": "Likely reason: keeps question types consistent across the planner, validator and publisher.",
+      "watch_out": "These names must match the names used in the validator and publisher, and those lists are kept separately, so they can drift apart."
+    },
+    {
+      "start": 60,
+      "end": 100,
+      "kind": "class",
+      "name": "Document",
+      "id": "s4",
+      "hash": "6e7ab6a8fa7b53b9",
+      "title": "Library document record",
+      "what": "Stores one document: title, type, version, source and priority, the topics and audiences it covers, policy tags, full text, and whether it is active or deprecated.",
+      "why": "Documents carry the tags that search and policy checks rely on.",
+      "watch_out": "Source priority is a 0 to 1 number that nothing in this file uses. How it is applied is not stated in the code."
+    },
+    {
+      "start": 101,
+      "end": 146,
+      "kind": "class",
+      "name": "DocumentChunk",
+      "id": "s5",
+      "hash": "af812fd0fa03bfb3",
+      "title": "Searchable document chunk",
+      "what": "Stores a small piece of a document with its own embedding and quality numbers such as usage count and success rate. Copies the document's tags onto the chunk.",
+      "why": "Likely reason: search returns short pieces rather than whole documents, and copied tags let search filter without joining tables.",
+      "watch_out": "Tags are copied, so editing a document does not update its chunks automatically."
+    },
+    {
+      "start": 147,
+      "end": 195,
+      "kind": "class",
+      "name": "QuestionTemplate",
+      "id": "s6",
+      "hash": "4d573707ce6b3236",
+      "title": "Approved question templates",
+      "what": "Stores a reusable question with placeholders such as brand or category, its answer options and scale, display logic, method settings, and who approved it.",
+      "why": "Likely reason: lets the team reuse pre-approved wording instead of generating new questions every time.",
+      "watch_out": "Approval fields are optional, so a template can be used without an approval record unless other code checks for one."
+    },
+    {
+      "start": 196,
+      "end": 229,
+      "kind": "class",
+      "name": "PolicyRule",
+      "id": "s7",
+      "hash": "7407a490363bf6a6",
+      "title": "Policy rules",
+      "what": "Stores governance rules such as banned words or required consent, with the regions and audiences they apply to, their severity, and the action to take (reject, warn, redact or require approval).",
+      "why": "Likely reason: lets compliance rules live in data so they can change without code edits.",
+      "watch_out": "This file only records the action. Nothing here applies the rule."
+    }
+  ],
+  "explained_at": "2026-11-12T00:11:10+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the database tables for the library of reference content: documents, searchable pieces of them, approved question templates, and policy rules.",
+  "purpose": "Stores what the survey tool draws on: question banks, past surveys, method guides, policies, and industry packs.",
+  "why": "Likely reason: lets the planner and author use approved, classified content, and lets the validator apply policies. The file does not state this.",
+  "how": "Defines two lists of labels (document types and question types), then four tables: documents, document chunks with embedding vectors, question templates, and policy rules. On PostgreSQL, the chunk embedding uses a vector column if the pgvector library is installed.",
+  "inputs": "Nothing directly. Other code writes to these tables.",
+  "outputs": "Four database tables in the corpus schema on PostgreSQL.",
+  "risks": "If pgvector is missing, embeddings are stored as plain JSON and similarity search stops working, with no warning. Chunks copy the tags from their document, so they can drift out of date. Chunks link to documents by text ID with no enforced link. The time-to-live for deprecated documents is stored here but not enforced.",
+  "debug": "If similarity search returns nothing, check that pgvector is installed and that the embedding column is a vector type. If a chunk shows old tags, re-copy them from the parent document. If a deprecated document is still used, check the code that enforces time-to-live, which is not in this file.",
+  "summary_hash": "sha256:0ca1fa0be1de1b18d17283190dceb3a3f2392d8eb2cb53725276bda7959c0987"
+}

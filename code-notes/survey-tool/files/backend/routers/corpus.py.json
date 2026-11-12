@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "path": "backend/routers/corpus.py",
+  "language": "Python",
+  "lines": 155,
+  "hash": "sha256:b31edec6ba139631586b48be2fb03dbfe803810a22d3d7218197c99351af2d53",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "The upload route has no handling for files that are not UTF-8.",
+      "There is no access control.",
+      "The upload route returns 200 while the create route returns 201."
+    ]
+  },
+  "terms": [
+    {
+      "term": "endpoint",
+      "meaning": "A web address a program can call to ask the app for data or to send it data."
+    },
+    {
+      "term": "router",
+      "meaning": "A group of endpoints attached to the app as one unit."
+    },
+    {
+      "term": "request model",
+      "meaning": "A template that checks incoming data has the right fields and types before the code runs."
+    },
+    {
+      "term": "corpus",
+      "meaning": "The stored library of documents the app can draw on."
+    },
+    {
+      "term": "ingestion",
+      "meaning": "The process of taking a document in and preparing it for search and use."
+    },
+    {
+      "term": "UTF-8",
+      "meaning": "A common way of storing text as bytes so letters from many languages display correctly."
+    }
+  ],
+  "depends_on": [
+    "backend/database.py",
+    "backend/models/corpus.py",
+    "backend/services/document_ingestion.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e93cf1da795128bd",
+      "title": "Imports and router setup",
+      "what": "Brings in the web framework tools, the database session, the document types and the ingestion service, then creates the router that holds the corpus routes.",
+      "why": "Likely reason: the main app needs one router object to attach these routes.",
+      "watch_out": "The imported names must match the modules they come from, or the app will fail at startup."
+    },
+    {
+      "start": 14,
+      "end": 28,
+      "kind": "class",
+      "name": "DocumentCreate",
+      "id": "s2",
+      "hash": "04bc88610de68549",
+      "title": "Document upload request shape",
+      "what": "Defines the fields a caller sends to add a document: title, type, text, priority, and tag lists. Some fields are optional and have default values.",
+      "why": "Likely reason: the request model rejects badly formed input before the route runs.",
+      "watch_out": "The priority number has no range limit, and the policy tags field accepts any content."
+    },
+    {
+      "start": 29,
+      "end": 42,
+      "kind": "class",
+      "name": "DocumentResponse",
+      "id": "s3",
+      "hash": "90a6090209808ee3",
+      "title": "Document summary sent back",
+      "what": "Defines the fields returned for a document: ID, title, type, version, use cases, audiences and creation time. The full text is not included.",
+      "why": "Likely reason: keeps responses small and avoids sending whole documents back.",
+      "watch_out": ""
+    },
+    {
+      "start": 43,
+      "end": 80,
+      "kind": "function",
+      "name": "create_document",
+      "id": "s4",
+      "hash": "3c1a9597264e5842",
+      "title": "Add document to corpus",
+      "what": "Passes the submitted document to the ingestion service and returns a summary with a 201 created status.",
+      "why": "The docstring says ingestion prepares documents for retrieval. Likely reason: the route stays thin and the service holds the work.",
+      "watch_out": "Ingestion runs inside the request, so a large document could make the response slow."
+    },
+    {
+      "start": 81,
+      "end": 103,
+      "kind": "function",
+      "name": "get_document",
+      "id": "s5",
+      "hash": "fd58e9ac0367b116",
+      "title": "Fetch one document",
+      "what": "Looks up a document by ID and returns its summary, or a 404 error if none is found.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 104,
+      "end": 132,
+      "kind": "function",
+      "name": "list_documents",
+      "id": "s6",
+      "hash": "c8cf4469a1b900af",
+      "title": "List documents with filters",
+      "what": "Returns documents, optionally narrowed by type, use case or audience.",
+      "why": "Likely reason: lets someone browse what is in the library.",
+      "watch_out": "Filters are exact text matches, so a typo returns an empty list rather than an error."
+    },
+    {
+      "start": 133,
+      "end": 155,
+      "kind": "function",
+      "name": "upload_document",
+      "id": "s7",
+      "hash": "842dd30d42e54e63",
+      "title": "Upload a text file",
+      "what": "Accepts an uploaded file, reads it as text, adds it to the library using the file name as the title, and returns the new ID with a success message.",
+      "why": "Likely reason: gives a way to add documents without building a JSON request.",
+      "watch_out": "Files that are not UTF-8 fail while decoding, and the code does not handle that case. This route also sets no use cases or audiences."
+    }
+  ],
+  "explained_at": "2026-11-12T00:15:30+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the web addresses that let other programs add, look up, list and upload documents in the question and policy library.",
+  "purpose": "Gives the app a way to store document content so it can be used later when writing surveys.",
+  "why": "Reason not stated in the code beyond the file docstring. Likely reason: keeps document handling separate from surveys and models.",
+  "how": "Defines the request and response shapes. Each route checks its input, calls the ingestion service in the DocumentIngestionService class, and returns a summary.",
+  "inputs": "A title, document type, text content, version, priority number, and tag lists for use cases, audiences, categories, topics and policy. Also an uploaded file, and optional filters by type, use case or audience.",
+  "outputs": "Document summaries with ID, title, type, version, use cases, audiences and creation time. An upload returns an ID and a success message. Missing documents return a 404 error.",
+  "risks": "Upload assumes the file is UTF-8 text and has no handling for other encodings. Filters match plain text exactly. The priority number has no range check. No login or ownership check is visible.",
+  "debug": "Confirm the database and ingestion service are running. For failed creates, check DocumentIngestionService. For upload errors, test with a plain UTF-8 text file. For empty lists, check filter spelling.",
+  "summary_hash": "sha256:b31edec6ba139631586b48be2fb03dbfe803810a22d3d7218197c99351af2d53"
+}

@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/author.py",
+  "language": "Python",
+  "lines": 266,
+  "hash": "sha256:b318557d141b9f508caae17bc7a5288d3aac37a9915de432c73954a8ed7ad9d0",
+  "area": "backend-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "not-ready",
+    "reasons": [
+      "The OpenAI call uses a module-level style that likely does not exist in the current library, so it would probably fail on first use.",
+      "The prompt says to fail when constraints cannot be met, but no code checks for that.",
+      "One failed section stops the whole survey."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Agent",
+      "meaning": "a piece of code that does one job by calling an AI model and handling its reply"
+    },
+    {
+      "term": "Grounding",
+      "meaning": "tying an AI answer to supplied source material so it does not make things up"
+    },
+    {
+      "term": "Retrieval",
+      "meaning": "searching stored documents for pieces relevant to a question"
+    },
+    {
+      "term": "JSON",
+      "meaning": "a structured text format the model is asked to reply in, which the code can read as data"
+    },
+    {
+      "term": "Spec",
+      "meaning": "the written plan describing what the survey should contain"
+    }
+  ],
+  "depends_on": [
+    "openai",
+    "config.py",
+    "agents/base.py",
+    "services/retrieval.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 59,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "5d4b127d2cdc46da",
+      "title": "Instructions and templates for the model",
+      "what": "Holds the system instructions that tell the model how to write survey questions, including the required reply format, and the user message template that carries each section's details. These texts shape every question the agent produces.",
+      "why": "Keeps the instructions in one place so they can be reviewed and changed without touching the logic.",
+      "watch_out": "Changing the reply format here without changing the parser breaks the survey build."
+    },
+    {
+      "start": 60,
+      "end": 118,
+      "kind": "class",
+      "name": "AuthorAgent (part 1)",
+      "id": "s2",
+      "hash": "b633b78c90f2e34b",
+      "title": "Starting the question writing agent",
+      "what": "Sets up the agent with its settings and retrieval engine, and defines the main run method. The run method loops over the plan's sections, building a search query and retrieving matching sources for each one when retrieval is on.",
+      "why": "Breaks the job into one pass per section so each section gets its own sources.",
+      "watch_out": "Retrieval uses a fixed limit of ten pieces and a use case guessed from the title, so unusual titles get the default."
+    },
+    {
+      "start": 119,
+      "end": 171,
+      "kind": "class",
+      "name": "AuthorAgent (part 2)",
+      "id": "s3",
+      "hash": "d193d2c49d8da8f6",
+      "title": "Calling the model and reading its reply",
+      "what": "Fills the prompts with the retrieved sources and section details, sends them to the model, and parses the JSON reply. It tags each question with its source identifiers, adds the section results to the total, and records the call in the audit log.",
+      "why": "Ties the retrieved material to each question so the origin can be traced later.",
+      "watch_out": "Source tagging only covers the first section in the reply, so later sections in the same reply get no tags."
+    },
+    {
+      "start": 172,
+      "end": 228,
+      "kind": "class",
+      "name": "AuthorAgent (part 3)",
+      "id": "s4",
+      "hash": "a72c8b8e0bcb8a35",
+      "title": "Error handling and detecting the use case and question type",
+      "what": "Catches any failure in the run and returns an error result with the message, logging the failed call. It also contains helpers that guess the use case and question type from the section title and the method or topic keywords.",
+      "why": "Lets the rest of the app see a clear failure instead of a crash.",
+      "watch_out": "Some keyword checks are loose, for example the short word ad matches inside other words, so titles can be mislabelled."
+    },
+    {
+      "start": 229,
+      "end": 266,
+      "kind": "method",
+      "name": "AuthorAgent: _get_allowed_types",
+      "id": "s5",
+      "hash": "7082b9a915982b33",
+      "title": "Choosing the allowed question types",
+      "what": "Builds the list of question types the model may use. The basic types are always allowed, and advanced types are added only when the matching setting is on.",
+      "why": "Stops the model from using question types the owner has not enabled.",
+      "watch_out": "The spec is passed in but not used in the decision, so only the settings control the allowed types."
+    }
+  ],
+  "explained_at": "2026-11-12T00:08:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Writes survey questions section by section, using retrieved approved documents as examples and sending each section to an AI model.",
+  "purpose": "Turns a survey plan into finished question drafts that are grounded in the document library.",
+  "why": "Grounding the drafts in stored documents keeps wording and structure consistent with approved material.",
+  "how": "For each section of the plan, it builds a search query from the title and required topics, retrieves matching document pieces, and puts them into a system prompt. It fills a user prompt with the plan, the section focus and the allowed question types, then calls the model and parses the JSON reply. It tags each question with its source pieces and logs the call. Any failure in the loop ends the whole run with an error result.",
+  "inputs": "A survey specification with a list of sections, each with a title, target count, required topics and method, plus an optional audience and a flag to turn retrieval on or off.",
+  "outputs": "A dictionary with the generated sections, the source piece identifiers, a task identifier, and a success flag or error message.",
+  "risks": "The OpenAI call path likely does not match the library in use, so real runs may fail. A single bad section fails the whole survey. Plain strings are passed where the retrieval code expects typed values. The keyword matching for use case is loose.",
+  "debug": "If every run fails, read the error message in the result and check the OpenAI call path first. If a section is missing, check its JSON reply for an empty sections list. If questions have no sources, check the retrieval results and whether retrieval was turned on. If the wrong use case is chosen, check the section title keywords.",
+  "summary_hash": "sha256:b318557d141b9f508caae17bc7a5288d3aac37a9915de432c73954a8ed7ad9d0"
+}

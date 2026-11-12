@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "path": "backend/services/chunking.py",
+  "language": "Python",
+  "lines": 189,
+  "hash": "sha256:560fb098f51c77c582e520c5048a003f3ff4839ed8a65c75d2c5778969804aa3",
+  "area": "backend-services",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible for any splitter.",
+      "Size limits are not applied to templates, questions, or past surveys.",
+      "Question parsing always returns a result, so the empty check in the caller never removes anything."
+    ]
+  },
+  "terms": [
+    {
+      "term": "chunk",
+      "meaning": "a small piece of a larger document, sized for search"
+    },
+    {
+      "term": "regular expression",
+      "meaning": "a pattern used to find text that matches a shape, such as a question number"
+    },
+    {
+      "term": "document type",
+      "meaning": "the category a file belongs to, such as question bank or policy"
+    }
+  ],
+  "depends_on": [
+    "models.corpus",
+    "re"
+  ],
+  "used_by": [
+    "backend/services/document_ingestion.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "68238d0a450ca637",
+      "title": "Imports and module purpose",
+      "what": "Describes the file as document chunking methods and brings in the pattern tools, type hints, and document type list.",
+      "why": "Needed to find question markers and to know each document type.",
+      "watch_out": "Depends on models.corpus, so renaming a document type there breaks this file."
+    },
+    {
+      "start": 7,
+      "end": 39,
+      "kind": "function",
+      "name": "chunk_document",
+      "id": "s2",
+      "hash": "d5e34f4ca62e2a21",
+      "title": "Pick splitter by document type",
+      "what": "Looks at the document type and sends the text to the matching splitter, falling back to paragraph grouping for other types.",
+      "why": "Different documents need different splitting rules.",
+      "watch_out": "The size limit is passed on only to some splitters, so it does not apply to every type."
+    },
+    {
+      "start": 40,
+      "end": 68,
+      "kind": "function",
+      "name": "chunk_question_bank",
+      "id": "s3",
+      "hash": "9278b4865486a15c",
+      "title": "Split question banks into questions",
+      "what": "Finds markers such as Q1 or double hash marks and cuts the text into one piece per question. Without markers, it splits on blank lines.",
+      "why": "Each question should be its own searchable piece.",
+      "watch_out": "The blank-line fallback can turn ordinary paragraphs into questions."
+    },
+    {
+      "start": 69,
+      "end": 109,
+      "kind": "function",
+      "name": "parse_question_chunk",
+      "id": "s4",
+      "hash": "f9f16e04b53126d8",
+      "title": "Read labels from one question",
+      "what": "Reads the optional type, scale, and topic labels from one question, removes the type tag from the text, and records the first real line as the example.",
+      "why": "Labels are stored separately so they can be searched.",
+      "watch_out": "This function always returns a result, so the caller's check for empty results never removes any piece."
+    },
+    {
+      "start": 110,
+      "end": 118,
+      "kind": "function",
+      "name": "chunk_template",
+      "id": "s5",
+      "hash": "4e82a8e6e9d33389",
+      "title": "Keep template as one piece",
+      "what": "Returns the entire template as one chunk with its metadata.",
+      "why": "Likely reason: templates are complete forms, and splitting would break them.",
+      "watch_out": "A very long template becomes one large piece with no size limit."
+    },
+    {
+      "start": 119,
+      "end": 155,
+      "kind": "function",
+      "name": "chunk_method_guide",
+      "id": "s6",
+      "hash": "0a977c672728f6b6",
+      "title": "Split guides by section headings",
+      "what": "Splits the guide at second and third level headings, then splits any long section by paragraphs up to the size limit.",
+      "why": "Keeps each topic together while keeping pieces small enough to search.",
+      "watch_out": "The split removes the heading marker, so each piece starts with the heading words alone."
+    },
+    {
+      "start": 156,
+      "end": 165,
+      "kind": "function",
+      "name": "chunk_policy",
+      "id": "s7",
+      "hash": "16456d584b5f6a1a",
+      "title": "Policies use the guide splitter",
+      "what": "Passes policy text to the same heading-based splitter used for method guides.",
+      "why": "Likely reason: policies are organized much like guides.",
+      "watch_out": "Any change to guide splitting also changes how policies are split."
+    },
+    {
+      "start": 166,
+      "end": 171,
+      "kind": "function",
+      "name": "chunk_past_survey",
+      "id": "s8",
+      "hash": "0a593ea4ff6e5ca5",
+      "title": "Past surveys use the question splitter",
+      "what": "Passes past surveys to the question bank splitter.",
+      "why": "Past surveys are lists of questions as well.",
+      "watch_out": "The size limit is not used here, the same as for question banks."
+    },
+    {
+      "start": 172,
+      "end": 189,
+      "kind": "function",
+      "name": "chunk_semantic",
+      "id": "s9",
+      "hash": "38cbdc174a1901e8",
+      "title": "Generic paragraph splitter",
+      "what": "Groups paragraphs into chunks up to the size limit. Used for any document type not listed.",
+      "why": "Gives a sensible default for unknown types.",
+      "watch_out": "A single paragraph longer than the limit becomes an oversized chunk on its own."
+    }
+  ],
+  "explained_at": "2026-11-12T00:07:16+00:00",
+  "explained_by": "haiku",
+  "summary": "Splits uploaded documents into smaller pieces, using a method that fits each document type.",
+  "purpose": "Makes documents searchable in small units so the AI can find the right passage.",
+  "why": "Search and embedding work better on focused pieces than on whole files.",
+  "how": "chunk_document reads the document type and sends the text to a matching splitter. Question banks and past surveys are split by question. Method guides and policies are split by headings and paragraphs. Templates stay whole. Other types use paragraph grouping.",
+  "inputs": "The document text, its type, optional metadata, and a maximum chunk size.",
+  "outputs": "A list of pieces, each with content, type labels, scale, topics, and an example line where found.",
+  "risks": "Size limits are ignored for some types, so long templates or questions can become very large pieces. Question detection depends on the format of the text, so differently formatted files may be split wrongly.",
+  "debug": "Check the document's layout first, especially question markers and heading markers. Then test chunk_document on a sample text and inspect the piece count and lengths.",
+  "summary_hash": "sha256:560fb098f51c77c582e520c5048a003f3ff4839ed8a65c75d2c5778969804aa3"
+}

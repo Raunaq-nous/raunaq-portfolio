@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "path": "backend/services/document_ingestion.py",
+  "language": "Python",
+  "lines": 211,
+  "hash": "sha256:2e93f8a9f564b28f961443092295bdf45e505142e59c3ab5903139c30de3d4b2",
+  "area": "backend-services",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only part of the file was reviewed, so the later update and list functions are not covered here.",
+      "No error handling around embedding calls.",
+      "Document-level topics are usually overridden by the empty topic list from each chunk.",
+      "No duplicate check or tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "embedding",
+      "meaning": "a list of numbers that represents the meaning of a piece of text, so similar text can be found"
+    },
+    {
+      "term": "session",
+      "meaning": "the open connection to the database used to read and save records"
+    },
+    {
+      "term": "commit",
+      "meaning": "the step that makes saved changes permanent in the database"
+    },
+    {
+      "term": "chunk record",
+      "meaning": "a database row that stores one piece of a document along with its embedding"
+    }
+  ],
+  "depends_on": [
+    "models.corpus",
+    "services.embeddings",
+    "services.chunking",
+    "sqlalchemy"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ac43f3e28482d7a7",
+      "title": "Imports for ingestion",
+      "what": "Brings in the ID tool, date and type helpers, the database session type, document and chunk models, the embedding service, and the chunking function.",
+      "why": "Lets this service save documents and create their chunks.",
+      "watch_out": "Relies on one shared embedding service, so any setup problem there appears here."
+    },
+    {
+      "start": 12,
+      "end": 57,
+      "kind": "class",
+      "name": "DocumentIngestionService (part 1)",
+      "id": "s2",
+      "hash": "2a2b8550b5dff6e5",
+      "title": "Start a new document",
+      "what": "Creates the service with a database session and builds a unique ID for each document from its type and random characters.",
+      "why": "Unique IDs let each document be found later even if titles match.",
+      "watch_out": "No check for an existing document with the same content is visible, so repeat uploads create copies."
+    },
+    {
+      "start": 58,
+      "end": 102,
+      "kind": "class",
+      "name": "DocumentIngestionService (part 2)",
+      "id": "s3",
+      "hash": "9a73283151a65449",
+      "title": "Save document record",
+      "what": "Fills the document record with the title, type, version, priority, tags, and content, then saves and reloads it before splitting.",
+      "why": "Likely reason: the document must exist before its chunks can point to it.",
+      "watch_out": "If splitting fails afterward, the document stays saved without chunks."
+    },
+    {
+      "start": 103,
+      "end": 137,
+      "kind": "class",
+      "name": "DocumentIngestionService (part 3)",
+      "id": "s4",
+      "hash": "fbb0d07ec2105526",
+      "title": "Split and embed each piece",
+      "what": "Splits the content, creates an embedding for each piece, and saves each as a chunk record with its type and labels when they are valid.",
+      "why": "Embeddings let search match pieces by meaning.",
+      "watch_out": "Each piece takes the topic list from its own labels first, so document-level topics are usually ignored. Errors in the embedding call are not caught here."
+    },
+    {
+      "start": 138,
+      "end": 188,
+      "kind": "method",
+      "name": "DocumentIngestionService: update_document",
+      "id": "s5",
+      "hash": "0abcf0cb1df86295",
+      "title": "Updating and deprecating documents",
+      "what": "Changes the saved fields of one document, identified by its document ID. If the text content changed, it deletes the old pieces of that document and rebuilds them with fresh embeddings. The same section also holds a function that marks a document as deprecated and inactive, and a function that fetches one document by ID.",
+      "why": "Likely reason: re-embedding only when the text changes avoids paying for embedding calls when only metadata such as audience or use case is edited. Reason for the deprecation function not stated in the code.",
+      "watch_out": "Any key passed in that is not a real field on the document is silently ignored, so a typo in a field name will not raise an error."
+    },
+    {
+      "start": 189,
+      "end": 211,
+      "kind": "method",
+      "name": "DocumentIngestionService: list_documents",
+      "id": "s6",
+      "hash": "267f506fbeb5c0e8",
+      "title": "Listing active documents with filters",
+      "what": "Returns documents, newest first, optionally narrowed by document type, use case, and audience. By default it only returns documents that are still active, so deprecated documents are hidden from lists.",
+      "why": "Lets the app show the document library and pick documents for a given use case or audience without loading everything.",
+      "watch_out": "Passing active_only as false is the only way to see deprecated documents, and callers must remember that."
+    }
+  ],
+  "explained_at": "2026-11-12T00:08:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Saves an uploaded document to the database, splits it into chunks, and stores an embedding for each chunk.",
+  "purpose": "Puts documents into the corpus so the survey agents can search them later.",
+  "why": "Saving the document first gives each chunk a parent record to point to.",
+  "how": "ingest_document creates a unique ID and a document record, saves it, then calls the chunk and embed step. That step splits the text, creates an embedding for each piece, saves each piece, and commits them together.",
+  "inputs": "Document text, document type, title, version, priority, tags, audiences, categories, and an optional uploader name.",
+  "outputs": "A saved document record, plus chunk records in the database, each with an embedding.",
+  "risks": "The document is saved before chunks are created, so a failure part way leaves a document with missing chunks. Each embedding call is not wrapped in error handling. Re-uploading the same file creates a duplicate because no check exists.",
+  "debug": "If search finds nothing for a document, check whether chunk records exist for its ID. Then check the embedding step for errors and the chunk split for empty output.",
+  "summary_hash": "sha256:2e93f8a9f564b28f961443092295bdf45e505142e59c3ab5903139c30de3d4b2"
+}

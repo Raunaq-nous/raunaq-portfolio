@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "path": "backend/routers/agents.py",
+  "language": "Python",
+  "lines": 258,
+  "hash": "sha256:a2c712a0ccb8289f26fa48703913d675db1f0019372a41ceabd5c7ef88988090",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only six of eleven sections are visible here.",
+      "No tests were shown for these routes.",
+      "The workflow route, which is not shown here, may behave differently."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Agent",
+      "meaning": "A part of the app that uses an AI model to do one job, such as planning a survey."
+    },
+    {
+      "term": "Route",
+      "meaning": "A web address that the API answers when someone sends a request to it."
+    },
+    {
+      "term": "Request model",
+      "meaning": "A description of the fields a route expects, which the app checks before running."
+    },
+    {
+      "term": "Spec",
+      "meaning": "The written plan for a survey, such as its goal, audience and sections."
+    },
+    {
+      "term": "Dependency injection",
+      "meaning": "A FastAPI way of handing each route its database session automatically."
+    }
+  ],
+  "depends_on": [
+    "backend/database.py",
+    "backend/agents/planner.py",
+    "backend/agents/author.py",
+    "backend/agents/validator.py",
+    "backend/agents/publisher.py",
+    "backend/models/survey.py"
+  ],
+  "used_by": [
+    "backend/main.py",
+    "setup_and_test.sh (calls the plan route)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7e70fcead2a95176",
+      "title": "Imports and router setup",
+      "what": "Brings in the web tools, the database session helper, the four survey agents, the survey model, and creates the group of agent routes.",
+      "why": "Connects this file to the agents and database it needs.",
+      "watch_out": "If an agent file is renamed, this file will fail on import."
+    },
+    {
+      "start": 17,
+      "end": 30,
+      "kind": "class",
+      "name": "PlanRequest",
+      "id": "s2",
+      "hash": "2d082496816d447d",
+      "title": "Planning request shape",
+      "what": "Describes the fields a planning request must or may include: the goal, audience, markets, sample size, length budget, required topics, sensitivity, languages, platform and extra context. Most have defaults.",
+      "why": "Lets the app check planning requests and fill in sensible defaults.",
+      "watch_out": "The list fields accept any content, so wrong entries are not rejected here."
+    },
+    {
+      "start": 31,
+      "end": 36,
+      "kind": "class",
+      "name": "AuthorRequest",
+      "id": "s3",
+      "hash": "e6d7f98f914dd83c",
+      "title": "Authoring request shape",
+      "what": "Describes an authoring request, which carries a spec and a flag for whether to use retrieved question bank material.",
+      "why": "Gives the author agent the spec it needs and an option to use the question banks.",
+      "watch_out": "The spec is an open dictionary with no field checks."
+    },
+    {
+      "start": 37,
+      "end": 43,
+      "kind": "class",
+      "name": "ValidateRequest",
+      "id": "s4",
+      "hash": "70748d695d062cb9",
+      "title": "Validation request shape",
+      "what": "Describes a validation request, which carries the survey, its spec and a strict-mode switch.",
+      "why": "Lets the validator compare the survey with its plan and check it strictly if asked.",
+      "watch_out": "The strict flag defaults to off, so validation is lenient unless the caller asks."
+    },
+    {
+      "start": 44,
+      "end": 50,
+      "kind": "class",
+      "name": "PublishRequest",
+      "id": "s5",
+      "hash": "e4bd2e31cfcf77c1",
+      "title": "Publishing request shape",
+      "what": "Describes a publishing request, which carries the survey, a name and an optional description.",
+      "why": "Gives the publisher what it needs to create the live survey.",
+      "watch_out": "The survey is an open dictionary, so a missing section is not caught until publishing runs."
+    },
+    {
+      "start": 51,
+      "end": 82,
+      "kind": "function",
+      "name": "plan_survey",
+      "id": "s6",
+      "hash": "0353329fa917ff59",
+      "title": "Planning route",
+      "what": "Accepts a planning request, runs the planner agent with those details, and returns its result. If the planner reports failure, it returns a server error with the reason.",
+      "why": "Gives the frontend and setup scripts a single way to get a survey plan.",
+      "watch_out": "The planner is run from this route in the same request, so a slow AI call can make the request wait for a long time."
+    },
+    {
+      "start": 83,
+      "end": 106,
+      "kind": "function",
+      "name": "author_survey",
+      "id": "s7",
+      "hash": "c8492aaccdb2ec1e",
+      "title": "Author questions from a plan",
+      "what": "Takes a survey spec and asks the Author agent to write questions, optionally grounded in the document library. Returns the agent's result, or an error with status 500 if the agent fails.",
+      "why": "The docstring says questions are grounded in the corpus and adapted from templates. Likely reason: lets someone generate questions without running the full workflow.",
+      "watch_out": "When the agent fails, the caller receives the agent's error text as the error detail."
+    },
+    {
+      "start": 107,
+      "end": 128,
+      "kind": "function",
+      "name": "validate_survey",
+      "id": "s8",
+      "hash": "b9c9abc02f98bd33",
+      "title": "Quality check a survey",
+      "what": "Sends a survey, its spec and a strictness flag to the Validator agent and returns its verdict, including issues and a readiness score.",
+      "why": "The docstring says it runs fixed rule checks (scales, types, policy) and language-model checks (clarity, neutrality, redundancy).",
+      "watch_out": "Unlike the other endpoints, this one never checks whether the agent succeeded, so a failure is returned as a normal result."
+    },
+    {
+      "start": 129,
+      "end": 153,
+      "kind": "function",
+      "name": "publish_survey",
+      "id": "s9",
+      "hash": "5615c0342fa73244",
+      "title": "Send survey to Qualtrics",
+      "what": "Asks the Publisher agent to create the survey in Qualtrics, including its blocks, questions and flow. Returns the agent's result, or an error with status 500 if it fails.",
+      "why": "The docstring says publishing is idempotent with retry logic. Likely reason: a retry should not create a second copy of the survey.",
+      "watch_out": "This creates a real survey in an external account, so confirm the target before calling it."
+    },
+    {
+      "start": 154,
+      "end": 208,
+      "kind": "function",
+      "name": "run_full_workflow (part 1)",
+      "id": "s10",
+      "hash": "0938e7d1747046e5",
+      "title": "Start full workflow and plan",
+      "what": "Creates a survey record with a generated ID, runs the planner, saves the spec, then runs the author and saves the sections. The status is saved after each step so progress is visible.",
+      "why": "The docstring says it runs all agents from research goal to published survey. Likely reason: saving after each step leaves a readable record if a later step fails.",
+      "watch_out": "Any error inside this block resets the status to draft and re-raises it as a 500 error, including planning errors that were already HTTP errors."
+    },
+    {
+      "start": 209,
+      "end": 258,
+      "kind": "function",
+      "name": "run_full_workflow (part 2)",
+      "id": "s11",
+      "hash": "1fe754a50c6163d8",
+      "title": "Validate, publish and report result",
+      "what": "Runs the validator, saves its issues and score, sets the status to approved or validating, publishes only when validation passed, then returns everything.",
+      "why": "Likely reason: publishing is gated on validation so failing surveys do not reach Qualtrics.",
+      "watch_out": "If publishing fails, the survey stays approved with no Qualtrics link, yet the response still reports success as true."
+    }
+  ],
+  "explained_at": "2026-11-12T00:15:30+00:00",
+  "explained_by": "haiku",
+  "summary": "The API routes that start the AI agents for planning, writing, checking and publishing surveys, and a combined workflow. Only the first six sections are visible here.",
+  "purpose": "Lets the frontend or another program ask the AI agents to do their work on a survey.",
+  "why": "Likely reason: each survey stage is a separate agent, so each gets its own route.",
+  "how": "Each route receives a request with the needed details, passes them to the right agent, and returns the agent's result. If planning fails, the route returns a server error with the reason. The request shapes define which fields each route accepts.",
+  "inputs": "Request bodies such as goal, audience, markets, sample size and length budget for planning, and survey specs for the other stages.",
+  "outputs": "The agent's result as JSON, including the specification and which model was used.",
+  "risks": "Request fields such as markets and languages are loosely typed lists, so bad input is not rejected until the agent runs. Errors from the agent are passed to the user as text.",
+  "debug": "If planning returns a server error, read the detail text in the reply and check the agent logs. Check the request body fields and their types. Confirm the model list is loaded.",
+  "summary_hash": "sha256:a2c712a0ccb8289f26fa48703913d675db1f0019372a41ceabd5c7ef88988090"
+}

@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/planner_v2.py",
+  "language": "Python",
+  "lines": 160,
+  "hash": "sha256:5e3d85c5cc32e9ead162d0029284c7c0a6725711b18cfa85a0616e9acc53bf7c",
+  "area": "backend-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are caught and logged.",
+      "No tests are visible in this file.",
+      "The model manager and provider code are not included, so the full path cannot be checked here.",
+      "The prompt and the parsing logic are duplicated from planner.py, so fixes may need to be made in two places.",
+      "It is not stated in the code which of the two planner files the application actually uses."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Model manager",
+      "meaning": "the part of the app that chooses which AI model to use for a given task"
+    },
+    {
+      "term": "Provider",
+      "meaning": "a company or server that runs an AI model, such as OpenAI"
+    },
+    {
+      "term": "Configured model",
+      "meaning": "a model that an admin has set up in the database for a task or organization"
+    },
+    {
+      "term": "JSON mode",
+      "meaning": "a setting that asks the model to reply with JSON only"
+    }
+  ],
+  "depends_on": [
+    "models/model_config.py",
+    "agents/base.py",
+    "services/model_manager.py"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 46,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "57dc7a9b30fd8140",
+      "title": "Setup, prompts, and imports",
+      "what": "Loads the model selection types and the model manager. Holds the same model instructions and brief template as the original planner.",
+      "why": "Keeps the instructions in one place, as in the original planner.",
+      "watch_out": "The prompt text is duplicated from planner.py, so the two copies can drift apart when one is edited."
+    },
+    {
+      "start": 47,
+      "end": 106,
+      "kind": "class",
+      "name": "PlannerAgentV2 (part 1)",
+      "id": "s2",
+      "hash": "003ab7a65184e8e0",
+      "title": "Starting the planner and choosing a model",
+      "what": "Sets up the model manager. In run, asks it for the provider to use for planning, using any preferred model type and organization, then fills in the brief with defaults.",
+      "why": "Likely reason: lets each organization and task choose its own model without code changes.",
+      "watch_out": "If no planning model is set up, the error is caught and returned as a generic failure, which can hide the real cause."
+    },
+    {
+      "start": 107,
+      "end": 160,
+      "kind": "class",
+      "name": "PlannerAgentV2 (part 2)",
+      "id": "s3",
+      "hash": "c2ad1fa9fb02155c",
+      "title": "Calling the chosen model and returning the plan",
+      "what": "Sends the prompt to the chosen provider, parses the JSON answer, records the call in the audit log, and returns the plan with the provider and model used. Any error is logged with unknown provider and model, then returned as a failure.",
+      "why": "Keeps the same audit tracking as the original planner, and records which model produced the plan.",
+      "watch_out": "The provider name is derived from the class name by removing the word Provider, so the audit name depends on that naming convention."
+    }
+  ],
+  "explained_at": "2026-11-12T00:11:10+00:00",
+  "explained_by": "haiku",
+  "summary": "A newer version of the planner that asks a configured AI model, chosen at run time, to write the survey plan.",
+  "purpose": "Does the same job as planner.py, but the model is picked from the configured models for the planning task. Admins can change the model without code changes.",
+  "why": "Likely reason: support for several model providers and per-organization settings. The file does not state why it was split out from planner.py.",
+  "how": "Builds the same prompt as planner.py. Asks the model manager for a provider for the planning task, using any preferred model type and organization. Sends the prompt in JSON mode, parses the answer, records the call in the audit log, and returns the plan with the provider and model used.",
+  "inputs": "The same brief fields as planner.py, plus optional model_type and organization_id that influence which model is chosen.",
+  "outputs": "A dictionary with spec, task_id, success, and model_used (provider name, model name, and speed). On failure, spec and model_used are empty and error holds the message.",
+  "risks": "Which model actually runs depends on settings and the model manager, which are not visible here. If no planning model is set up, the planner fails. Failure records show unknown for provider and model, so the audit trail loses which model was tried. The prompt text is duplicated from planner.py.",
+  "debug": "On success, check model_used to see which provider and model ran. On failure, read the error field. Check the model manager's choice for this organization and the planning task. Search the audit log for failures recorded with unknown provider.",
+  "summary_hash": "sha256:5e3d85c5cc32e9ead162d0029284c7c0a6725711b18cfa85a0616e9acc53bf7c"
+}

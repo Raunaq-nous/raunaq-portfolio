@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "path": "backend/services/retrieval.py",
+  "language": "Python",
+  "lines": 225,
+  "hash": "sha256:baecd23983e38185115fbc7b75d98ee28e2b12baea6016321f51321d1d193c47",
+  "area": "backend-services",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Pieces without a source priority will cause an error during ranking.",
+      "Only two policy constraints are actually checked, and unknown constraints are ignored.",
+      "The recency boost is noted but not implemented, and no tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Embedding",
+      "meaning": "a list of numbers that represents the meaning of a piece of text"
+    },
+    {
+      "term": "Cosine similarity",
+      "meaning": "a score from about 0 to 1 that shows how alike two lists of numbers point, used here to compare meaning"
+    },
+    {
+      "term": "Reranking",
+      "meaning": "sorting an already chosen set of results again using a better score"
+    },
+    {
+      "term": "Policy veto",
+      "meaning": "removing a result because it breaks a rule, no matter how relevant it is"
+    },
+    {
+      "term": "Source priority",
+      "meaning": "a number on each piece saying how much its source should be trusted"
+    },
+    {
+      "term": "Corpus",
+      "meaning": "the full collection of stored document pieces"
+    }
+  ],
+  "depends_on": [
+    "sqlalchemy",
+    "numpy",
+    "models/corpus.py",
+    "services/embeddings.py",
+    "config.py"
+  ],
+  "used_by": [
+    "backend/agents/author.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "224d4f42c12f5657",
+      "title": "Imports and setup for retrieval",
+      "what": "Brings in the database query tools, the number library, the piece and type definitions, the shared embedding service, and the app settings. It has no direct effect on the user.",
+      "why": "The retrieval stages need these tools to filter, compare and read settings.",
+      "watch_out": ""
+    },
+    {
+      "start": 12,
+      "end": 69,
+      "kind": "class",
+      "name": "RetrievalEngine (part 1)",
+      "id": "s2",
+      "hash": "6314f0abfba71585",
+      "title": "Retrieval engine and its main entry point",
+      "what": "Creates the retrieval engine and its main method, which runs the four stages in order and returns the chosen pieces. Limits and thresholds come from the settings unless the caller overrides them.",
+      "why": "Gives the agents one call that does all the filtering and ranking.",
+      "watch_out": "Defaults that are zero are treated as missing, so passing zero as a threshold quietly falls back to the setting."
+    },
+    {
+      "start": 70,
+      "end": 106,
+      "kind": "class",
+      "name": "RetrievalEngine (part 2)",
+      "id": "s3",
+      "hash": "abbee46944ad6047",
+      "title": "Chaining the stages and trimming the result",
+      "what": "Runs the diversity and policy stages on the ranked pieces and then keeps the requested number. It is the part that connects the stages into one result.",
+      "why": "Keeps the stages separate so each can change without affecting the others.",
+      "watch_out": "The number kept is cut at the end, so a larger requested number than the ranking limit cannot return more pieces."
+    },
+    {
+      "start": 107,
+      "end": 144,
+      "kind": "method",
+      "name": "RetrievalEngine: _stage2_semantic_rerank",
+      "id": "s4",
+      "hash": "1cee7519b18d2ccf",
+      "title": "Ranking pieces by meaning",
+      "what": "Compares the query with each candidate piece by meaning, boosts pieces from higher-priority sources, and slightly adjusts for quality. It keeps the highest-scoring pieces. Recency boost is mentioned in a comment but not implemented.",
+      "why": "Puts the most relevant and trusted pieces first.",
+      "watch_out": "A piece with no source priority or a zero-length embedding will make the calculation fail."
+    },
+    {
+      "start": 145,
+      "end": 175,
+      "kind": "method",
+      "name": "RetrievalEngine: _stage3_diversity",
+      "id": "s5",
+      "hash": "f510eada1b2adea7",
+      "title": "Removing near-duplicate pieces",
+      "what": "Walks through the ranked pieces and keeps one only if it is not too similar to any piece already kept. The top piece is always kept.",
+      "why": "Stops the agents from receiving the same idea many times.",
+      "watch_out": "The similarity threshold decides how many pieces survive, so a loose setting can let duplicates through."
+    },
+    {
+      "start": 176,
+      "end": 210,
+      "kind": "method",
+      "name": "RetrievalEngine: _stage4_policy_veto",
+      "id": "s6",
+      "hash": "120b5c1e322fa310",
+      "title": "Applying policy rules",
+      "what": "Drops pieces that break two named rules: one about minors and one about personal data. If no rules are given, all pieces pass through.",
+      "why": "Keeps restricted or sensitive material out of generated surveys.",
+      "watch_out": "Any other constraint name is silently ignored, and a piece with no policy tags can raise an error."
+    },
+    {
+      "start": 211,
+      "end": 225,
+      "kind": "function",
+      "name": "build_retrieval_context",
+      "id": "s7",
+      "hash": "a93ba4cd00e88255",
+      "title": "Building the text block for the prompt",
+      "what": "Turns the chosen pieces into one numbered text block that shows each source, its question type, any example, and its content. The agents paste this block into the prompt.",
+      "why": "Gives the language model the sources in a clear, labelled format.",
+      "watch_out": "There is no length limit, so many large pieces can overflow the model's context window."
+    }
+  ],
+  "explained_at": "2026-11-12T00:08:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Finds the document pieces most relevant to a question by filtering on metadata, ranking by meaning, removing near-duplicates, and then removing pieces that break policy rules.",
+  "purpose": "Supplies the agents with the right source material so the questions they write are grounded in approved documents.",
+  "why": "Four stages let cheap filters run first and the costly comparisons run only on what remains. Reason for the exact order is only partly stated in the code.",
+  "how": "First the candidate pieces are filtered by audience, use case and question type. Each remaining piece is compared with the query by meaning and boosted by its source priority and quality. Pieces that are too similar to a higher-ranked one are dropped. Then policy rules remove pieces that break them. The top results are returned, and a helper turns them into one text block for the prompt.",
+  "inputs": "A search query, optional audience, use case and question type, optional policy constraints, and optional limits for how many results and how strict the duplicate check is.",
+  "outputs": "A list of document pieces, or a single text block that holds them numbered with their source and type.",
+  "risks": "Every active piece is loaded and compared in memory, which will slow down as the corpus grows. Missing source priority or quality values can crash the ranking. Policy rules are only checked for two named keys, so other constraints are silently ignored.",
+  "debug": "If results look irrelevant, check the query and the stored embeddings. If results are empty, check the metadata filters and whether the pieces are active. If a policy seems ignored, check the constraint names against the two handled keys. If the ranking crashes, check the source priority and policy tag values on the stored pieces.",
+  "summary_hash": "sha256:baecd23983e38185115fbc7b75d98ee28e2b12baea6016321f51321d1d193c47"
+}

@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "path": "backend/database.py",
+  "language": "Python",
+  "lines": 44,
+  "hash": "sha256:39e28146a965794f266366f3238e6fd785fbda2687f294e6c7c2f183a8d45c5d",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The table creation helper is not called anywhere on startup.",
+      "The base class comes from an older import path that may be deprecated.",
+      "Not tested in this review."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Engine",
+      "meaning": "The object that holds the connection details and sends commands to the database."
+    },
+    {
+      "term": "Session",
+      "meaning": "One working conversation with the database, where changes are staged and then saved."
+    },
+    {
+      "term": "Commit",
+      "meaning": "Saving staged changes into the database for good."
+    },
+    {
+      "term": "Connection pool",
+      "meaning": "A set of open database connections kept ready for reuse."
+    },
+    {
+      "term": "Thread",
+      "meaning": "A separate path of work inside a program, which can run at the same time as others."
+    }
+  ],
+  "depends_on": [
+    "backend/config.py",
+    "sqlalchemy"
+  ],
+  "used_by": [
+    "backend/main.py",
+    "backend/models",
+    "backend/routers",
+    "backend/services",
+    "setup_sqlite.py",
+    "setup_native.sh"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 32,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b5736c4bc81fc596",
+      "title": "Database engine and base class setup",
+      "what": "Decides whether to use SQLite or PostgreSQL, creates the matching connection, sets up the session factory, and creates the base class for all models.",
+      "why": "Makes the app work with a simple file database for easy setup or a full server for real use.",
+      "watch_out": "Changing the database address switches the whole app to a different database type, so existing data will not move over automatically."
+    },
+    {
+      "start": 33,
+      "end": 41,
+      "kind": "function",
+      "name": "get_db",
+      "id": "s2",
+      "hash": "6e329df309f7e3cb",
+      "title": "Per-request session helper",
+      "what": "Hands a fresh database session to a request, then closes it when the request finishes.",
+      "why": "Makes sure each request has its own session and that connections are not left open.",
+      "watch_out": "Any changes not committed before the request ends are lost."
+    },
+    {
+      "start": 42,
+      "end": 44,
+      "kind": "function",
+      "name": "init_db",
+      "id": "s3",
+      "hash": "ba6d4d3404bb1b17",
+      "title": "Table creation helper",
+      "what": "Creates every table known to the base class in the connected database.",
+      "why": "Used by setup scripts to build tables on a new database.",
+      "watch_out": "It does not change existing tables, so schema changes need a separate migration."
+    }
+  ],
+  "explained_at": "2026-11-12T00:12:57+00:00",
+  "explained_by": "haiku",
+  "summary": "Creates the database connection for the app, the session factory that starts each database conversation, and the base class all models inherit from.",
+  "purpose": "Provides the one connection point the rest of the app uses to read and write data.",
+  "why": "Likely reason: every database action needs a connection, and creating it in one place keeps the settings consistent.",
+  "how": "It checks whether the database address starts with sqlite. For SQLite it uses a single shared connection that allows several threads. For PostgreSQL it uses the default pool, or no pool when the environment is testing. It then builds a session factory and a base class. The get_db helper hands out one session per request and closes it afterwards. The init_db helper creates all tables.",
+  "inputs": "The database address from the settings.",
+  "outputs": "A database engine, a session factory, a base class for models, and the get_db and init_db helpers.",
+  "risks": "Sessions are not committed automatically, so forgetting to commit will lose changes. init_db is not called on startup in main.py, so tables must be created another way.",
+  "debug": "If the app cannot connect, check the database address and that the database is running. If data does not save, confirm the code commits its session. If a table is missing, run the table creation step.",
+  "summary_hash": "sha256:39e28146a965794f266366f3238e6fd785fbda2687f294e6c7c2f183a8d45c5d"
+}
