@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/cli.py",
+  "language": "Python",
+  "lines": 222,
+  "hash": "sha256:1429feb338b6a980fc8ba601903eee0bbf8547aa1c3c38e8dad41da75a01b46b",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet to show the commands work end to end.",
+      "Only OS and value errors are caught, so other failures produce raw tracebacks.",
+      "The inspect command leaves a temporary folder behind when no database path is given.",
+      "The browser launch evidence file is written only when an environment variable is set, and its purpose is not stated in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "CLI",
+      "meaning": "command-line interface, a program you run by typing commands in a terminal"
+    },
+    {
+      "term": "loopback address",
+      "meaning": "an address that only reaches the same computer, such as 127.0.0.1 or localhost, so other machines on the network cannot connect"
+    },
+    {
+      "term": "uvicorn",
+      "meaning": "a program that runs a Python web application so browsers can talk to it"
+    },
+    {
+      "term": "staging database",
+      "meaning": "a temporary local database file where the imported schedule is held while it is checked"
+    },
+    {
+      "term": "audit pack",
+      "meaning": "a zip file with the source facts, the import report, and attachments, kept as a record of how the viewer was built"
+    },
+    {
+      "term": "health check",
+      "meaning": "a quick request to a fixed address that asks whether the server is running and ready"
+    },
+    {
+      "term": "entry point",
+      "meaning": "the place where a program starts running when it is launched directly"
+    }
+  ],
+  "depends_on": [
+    "schedule3d.api.app",
+    "schedule3d.attachments",
+    "schedule3d.export.service",
+    "schedule3d.ingest.service",
+    "schedule3d.model.service",
+    "uvicorn",
+    "frontend/dist folder"
+  ],
+  "used_by": [
+    "Command line or scripts that run the schedule3d program"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 27,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "8c7e53f0de06ff2d",
+      "title": "Imports and setup constants",
+      "what": "Brings in the libraries and the app parts that the commands use, and defines the set of addresses treated as local-only.",
+      "why": "Defines the one list of local addresses that the server and the browser opener both check.",
+      "watch_out": "Adding a new local address here affects both the server start and the browser opener, so keep them consistent."
+    },
+    {
+      "start": 28,
+      "end": 62,
+      "kind": "function",
+      "name": "_parser",
+      "id": "s2",
+      "hash": "dff906f71e42f9b1",
+      "title": "Defining the command options",
+      "what": "Sets up the three commands and their options, including the default port of 8765, the frontend build location, and the rule that generate needs an output folder.",
+      "why": "Gives the user a clear help screen and rejects missing required inputs before any work starts.",
+      "watch_out": "The default frontend build location is set relative to this file, so moving the file breaks the default."
+    },
+    {
+      "start": 63,
+      "end": 103,
+      "kind": "function",
+      "name": "_wait_and_open",
+      "id": "s3",
+      "hash": "6a90eb8a62530341",
+      "title": "Opening the browser after the server starts",
+      "what": "Waits up to 30 seconds for the local server to answer its health check, then opens the app in the browser. If an evidence path is set, it also writes a small file recording the address and whether the browser opened.",
+      "why": "Likely reason: the launcher needs proof that the app actually opened for the user, so it writes a record it can check later.",
+      "watch_out": "If the server does not answer in 30 seconds, the browser simply does not open and no message is printed."
+    },
+    {
+      "start": 104,
+      "end": 116,
+      "kind": "function",
+      "name": "_inspect",
+      "id": "s4",
+      "hash": "2723269bc672a23e",
+      "title": "Inspecting a schedule file",
+      "what": "Reads a schedule file, writes its staging database and report, prints the report to the screen, and returns a success or cancelled code.",
+      "why": "Gives a quick way to see what the importer found in a schedule without starting the app.",
+      "watch_out": "When no database path is given, a new temporary folder is created and never removed."
+    },
+    {
+      "start": 117,
+      "end": 176,
+      "kind": "function",
+      "name": "_generate (part 1)",
+      "id": "s5",
+      "hash": "76747e25c901e42c",
+      "title": "Generating a project package, first half",
+      "what": "Imports the schedule, checks which project to use, and copies any attachments into the output folder with numbered names. If several projects exist and none is chosen, it prints the list and stops.",
+      "why": "Likely reason: a schedule can hold several projects, so the user must pick one before a single viewer can be built.",
+      "watch_out": "The import writes the staging database into the output folder before the project check, so a failed project check still leaves that database behind."
+    },
+    {
+      "start": 177,
+      "end": 190,
+      "kind": "function",
+      "name": "_generate (part 2)",
+      "id": "s6",
+      "hash": "41ccaad48156ef65",
+      "title": "Generating a project package, second half",
+      "what": "Builds the project model, adds attachment evidence, makes a safe file name from the project name, and writes the model file, the offline HTML viewer, and the audit zip. It then prints a short summary with counts of components and structures.",
+      "why": "Likely reason: the safe file name keeps project names with spaces or symbols from breaking file paths.",
+      "watch_out": "The HTML viewer needs the frontend build folder. If that folder is missing or empty, the export depends on how the export step handles it, which is not shown here."
+    },
+    {
+      "start": 191,
+      "end": 220,
+      "kind": "function",
+      "name": "main",
+      "id": "s7",
+      "hash": "9e65d6f16ee6b4f0",
+      "title": "Main command dispatcher",
+      "what": "Reads the command the user typed and runs the matching action. It refuses non-local server addresses, prints expected errors to the error output, and exits with a code that tells the caller whether it worked.",
+      "why": "Gives one place where every command's errors are handled and turned into a clear message and exit code.",
+      "watch_out": "Only OS and value errors are caught here, so any other kind of error shows a full traceback instead of a clean message."
+    },
+    {
+      "start": 221,
+      "end": 222,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s8",
+      "hash": "b60851f8e384a572",
+      "title": "Program start point",
+      "what": "Runs the main function only when this file is started directly, not when another program imports it.",
+      "why": "Standard Python practice so that importing this file does not start the server or run a command by accident.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T01:46:52+00:00",
+  "explained_by": "haiku",
+  "summary": "This is the command-line entry point for Schedule3D. It starts the local web app, inspects a schedule file, or builds a complete offline package from one schedule.",
+  "purpose": "Gives a person or a script three ways to use the app without the browser: run the local server, check a schedule file and print a summary, or produce the offline HTML viewer and audit zip for one project.",
+  "why": "Likely reason: keeping all command handling in one place lets the same steps run the same way on a laptop, in a script, or in an automated check. The code states that it is a reproducible local workflow boundary.",
+  "how": "The program first reads the command the user typed and its options. For serve, it refuses any address other than the local machine, optionally opens a browser after the server answers a health check, and starts the web server. For inspect, it reads the schedule, writes a staging database and a report, and prints the report. For generate, it reads the schedule, chooses one project, copies any attachments, builds the project model, adds the attachment evidence, and writes the HTML viewer and the audit zip. Any expected error is printed to the error stream with exit code 1.",
+  "inputs": "Command words serve, inspect, or generate, plus their options: host and port for serve, the schedule file for inspect and generate, an optional project name, repeated attachment files, an output folder, and the frontend build folder.",
+  "outputs": "A running local web server, a printed JSON summary, a saved ingestion report, a staging database, an offline HTML viewer, a model JSON file, an audit zip file, and optionally a launch evidence file written by the browser opener.",
+  "risks": "The generate command writes into the output folder and can overwrite files with the same names. The inspect command can leave a temporary folder behind when no database path is given. Only OS and value errors are caught in the main function, so other failures show a raw traceback. Only one project per run is possible.",
+  "debug": "If serve will not start, check that the host is one of the local addresses. If the browser does not open, check whether the health check at the local address answers within 30 seconds. If generate prints a project selection error, rerun with the project option set to one of the listed names. If the viewer is missing, check that the frontend build folder exists and contains its files. Errors raised for an unknown project come from the generate step itself.",
+  "summary_hash": "sha256:1429feb338b6a980fc8ba601903eee0bbf8547aa1c3c38e8dad41da75a01b46b"
+}

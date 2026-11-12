@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/ingest/contracts.py",
+  "language": "Python",
+  "lines": 119,
+  "hash": "sha256:c0405931950b53811cf0802f120bb01c4851f43c5dbf7f98a1124d167f6813ef",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The definitions are clear and limits are explicit.",
+      "No tests are visible in the packet.",
+      "The schema version is a fixed text value that must be kept in step with changes by hand."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Pydantic model",
+      "meaning": "a Python data shape that checks the types of its fields when a record is created"
+    },
+    {
+      "term": "Schema version",
+      "meaning": "a version label that tells consumers which layout of results they are reading"
+    },
+    {
+      "term": "Warning severity",
+      "meaning": "how serious a warning is: information, warning or error"
+    },
+    {
+      "term": "Enum",
+      "meaning": "a fixed list of named choices, such as the supported file formats"
+    }
+  ],
+  "depends_on": [
+    "pydantic"
+  ],
+  "used_by": [
+    "backend/schedule3d/ingest/combine.py",
+    "backend/schedule3d/ingest/dates.py",
+    "backend/schedule3d/ingest/encoding.py",
+    "backend/schedule3d/ingest/store.py",
+    "backend/schedule3d/ingest/tabular.py",
+    "backend/schedule3d/ingest/xer.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "527a6add8f57b886",
+      "title": "Module purpose and schema version",
+      "what": "Introduces the shared data shapes that the ingestion layer returns, and sets the schema version to 1.0.",
+      "why": "Likely reason: one agreed format lets every reader return results the same way, and the version lets consumers detect layout changes.",
+      "watch_out": ""
+    },
+    {
+      "start": 15,
+      "end": 22,
+      "kind": "class",
+      "name": "SourceFormat",
+      "id": "s2",
+      "hash": "3656c358ee1ee919",
+      "title": "Supported schedule file types",
+      "what": "Lists the five formats the app accepts: XER, P6 XML, XLSX, CSV and TSV.",
+      "why": "Gives other code one fixed list to check against.",
+      "watch_out": "Adding a format here does not add a reader; the dispatch file must also change."
+    },
+    {
+      "start": 23,
+      "end": 28,
+      "kind": "class",
+      "name": "WarningSeverity",
+      "id": "s3",
+      "hash": "e42040d56be79fc2",
+      "title": "Warning severity levels",
+      "what": "Defines three levels for warnings: info, warning and error.",
+      "why": "Lets the app show how serious each message is.",
+      "watch_out": ""
+    },
+    {
+      "start": 29,
+      "end": 39,
+      "kind": "class",
+      "name": "IngestionWarning",
+      "id": "s4",
+      "hash": "1d973979a334db1f",
+      "title": "Single warning record",
+      "what": "Describes one warning with a code, a message, a severity, and optional table, row and extra detail fields. Any unexpected field is refused.",
+      "why": "Gives every warning the same shape so the app can list and filter them.",
+      "watch_out": "Because extra fields are refused, a new field must be added in every place a warning is built."
+    },
+    {
+      "start": 40,
+      "end": 78,
+      "kind": "class",
+      "name": "WarningCollector",
+      "id": "s5",
+      "hash": "d44f7f2abdd69df8",
+      "title": "Warning collector with limits",
+      "what": "Keeps the first examples of each warning type up to set limits, and counts the rest. When finished, it adds one summary line per warning type that was cut short.",
+      "why": "Likely reason: a file with huge numbers of bad rows must not fill memory or flood the report, while the true count is still kept.",
+      "watch_out": "The summary lines are added at the end and are not counted against the example limits."
+    },
+    {
+      "start": 79,
+      "end": 94,
+      "kind": "class",
+      "name": "ProjectReference",
+      "id": "s6",
+      "hash": "403d082f330e9dc7",
+      "title": "Project summary record",
+      "what": "Describes one project found in a file: its ID, name, date span, data date, and counts of activities that are dated, baseline, forecast or actual.",
+      "why": "Lets the app show a project list and its counts without re-reading the database.",
+      "watch_out": ""
+    },
+    {
+      "start": 95,
+      "end": 119,
+      "kind": "class",
+      "name": "IngestionReport",
+      "id": "s7",
+      "hash": "56055e7bdd9c9b1c",
+      "title": "Full ingestion result record",
+      "what": "Describes everything an ingestion returns: source details, fingerprint, the staging database path, counts, projects, warnings, and flags for cancellation or needed column mapping. It also offers a helper that turns the stored path text into a path object, and a progress callback type is defined at the end.",
+      "why": "It is the single hand-off object between the parsers and the rest of the app.",
+      "watch_out": "The database path is stored as text, so the file must still exist when the report is used."
+    }
+  ],
+  "explained_at": "2026-11-12T01:51:04+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the shared data shapes that every schedule reader returns: warnings, project summaries and the full ingestion report.",
+  "purpose": "Gives the parsers and the rest of the app one agreed format for results, so they can pass information without guessing its structure.",
+  "why": "Strict shapes that refuse unexpected fields catch mistakes early. The warning collector keeps memory bounded when a file has very many problems.",
+  "how": "The file defines the supported formats and severity levels, then a warning record, a collector that keeps a limited number of examples per warning type and counts the rest, a project summary record, and a final report record that combines everything an ingestion returns.",
+  "inputs": "Values created by the readers in the ingest package, such as warnings, project details and counts.",
+  "outputs": "Validated records of the types defined here, plus a combined list of warnings with summary lines for any that were cut short.",
+  "risks": "Adding a field to a record requires updating every place that builds it, since extra fields are refused. Changing the schema version number without need can confuse consumers.",
+  "debug": "If a report fails to build, check that every field a record needs is supplied and that no extra field was added. If warnings look incomplete, check the example limits in the collector.",
+  "summary_hash": "sha256:c0405931950b53811cf0802f120bb01c4851f43c5dbf7f98a1124d167f6813ef"
+}

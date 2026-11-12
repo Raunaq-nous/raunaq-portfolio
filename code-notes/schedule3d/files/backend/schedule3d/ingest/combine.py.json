@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/ingest/combine.py",
+  "language": "Python",
+  "lines": 194,
+  "hash": "sha256:b87f0d9561cb26ac1c00f827497b164c21741725b8c5546f7deb783d0302f22e",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Clear error messages exist for cancellation, mapping and too few files.",
+      "No tests are visible in the packet.",
+      "Files with the same name before the extension can produce colliding project IDs that the rename step does not separate."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SQLite",
+      "meaning": "a small database stored in a single file, used here as a temporary working store"
+    },
+    {
+      "term": "Staging database",
+      "meaning": "a working database that holds cleaned schedule data before the rest of the app uses it"
+    },
+    {
+      "term": "Surrogate key",
+      "meaning": "an internal number a database assigns to a row, which carries no meaning from the source file"
+    },
+    {
+      "term": "XER",
+      "meaning": "the text export format used by Primavera P6 scheduling software"
+    },
+    {
+      "term": "Ingestion report",
+      "meaning": "the summary object describing what was read from a file and what problems were found"
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/ingest/contracts.py",
+    "backend/schedule3d/ingest/service.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4ca8b0836fdc6582",
+      "title": "Module purpose and imports",
+      "what": "States the job of combining several schedule files and loads the helpers it needs. It also sets a short list of the project columns that may need renaming.",
+      "why": "The module description says projects keep their source identity and no links are created between files.",
+      "watch_out": ""
+    },
+    {
+      "start": 24,
+      "end": 31,
+      "kind": "function",
+      "name": "_file_sha256",
+      "id": "s2",
+      "hash": "a7c1eaebd8518ae6",
+      "title": "Computing a whole-file fingerprint",
+      "what": "Produces a SHA-256 fingerprint of a complete file by reading it in one-megabyte pieces. This fingerprint identifies each source file.",
+      "why": "Likely reason: reading in pieces keeps memory use low for large uploads.",
+      "watch_out": ""
+    },
+    {
+      "start": 32,
+      "end": 41,
+      "kind": "function",
+      "name": "_tables",
+      "id": "s3",
+      "hash": "a8bdffaae8edd83b",
+      "title": "Listing tables in a database",
+      "what": "Returns the names of all user tables in a SQLite database, skipping SQLite's own internal tables. It can read the main database or an attached one.",
+      "why": "The merge and rename steps need to walk every table without knowing the names in advance.",
+      "watch_out": ""
+    },
+    {
+      "start": 42,
+      "end": 45,
+      "kind": "function",
+      "name": "_columns",
+      "id": "s4",
+      "hash": "639e959c48353e38",
+      "title": "Listing columns of a table",
+      "what": "Returns the column details for one table, including each column's name, type and whether it is part of the primary key.",
+      "why": "The merge step uses this to find integer key columns so it can skip them.",
+      "watch_out": ""
+    },
+    {
+      "start": 46,
+      "end": 62,
+      "kind": "function",
+      "name": "_rename_projects",
+      "id": "s5",
+      "hash": "3746297a00273266",
+      "title": "Renaming duplicate project IDs",
+      "what": "Changes project IDs that appear in more than one file so each carries the file label as a prefix, in every table with a project column. It does nothing when there is nothing to rename.",
+      "why": "Keeps projects from different files separate even when they share an ID.",
+      "watch_out": "Only the listed project columns are renamed, so a table that stores a project reference under another column name would be missed."
+    },
+    {
+      "start": 63,
+      "end": 96,
+      "kind": "function",
+      "name": "_merge_into",
+      "id": "s6",
+      "hash": "1ba95e84d0671a30",
+      "title": "Merging one database into another",
+      "what": "Copies all rows from a second staging database into the first, creating any table the first one lacks. Source count summaries are added together instead of copied one by one.",
+      "why": "Likely reason: this lets many uploaded files end up in one database. Integer key columns are skipped because the target database assigns new numbers.",
+      "watch_out": "If a project ID is repeated after merging, the insert fails, so the rename step must run first."
+    },
+    {
+      "start": 97,
+      "end": 156,
+      "kind": "function",
+      "name": "ingest_schedules (part 1)",
+      "id": "s7",
+      "hash": "d7088176790ec47c",
+      "title": "Parsing each file on its own",
+      "what": "Checks that at least two files were given and removes any previous output. Each upload is parsed alone into a temporary staging database, and the run stops with an error if a file was cancelled or needs column mapping.",
+      "why": "Each file is understood separately first, so its format quirks are handled by its own reader.",
+      "watch_out": "Any file that needs column mapping blocks the whole combine, so that file must be uploaded alone first."
+    },
+    {
+      "start": 157,
+      "end": 186,
+      "kind": "function",
+      "name": "ingest_schedules (part 2)",
+      "id": "s8",
+      "hash": "e4cd5bfa4d77e368",
+      "title": "Assembling one combined report",
+      "what": "For each file, renames colliding projects, adds the file label to project names and warning messages, and adds up table counts. The first file's database becomes the base and later ones are merged into it. The combined report then gets one fingerprint built from all source hashes.",
+      "why": "The user gets one database and one report instead of one per file.",
+      "watch_out": "The report's source format and encoding summary come from the first file or the set of encodings, so mixed inputs are described only loosely."
+    },
+    {
+      "start": 187,
+      "end": 194,
+      "kind": "function",
+      "name": "_display, _label",
+      "id": "s9",
+      "hash": "1059faeeae2a2497",
+      "title": "Display name and file label",
+      "what": "Produces the file name shown to users with any three-digit upload-order prefix removed, and a label from it without the extension. The label is used as the project name prefix.",
+      "why": "Likely reason: the app adds order prefixes to keep uploads sorted, and users should not see them.",
+      "watch_out": "Two files with the same name before the extension get the same label, so their project IDs may collide."
+    }
+  ],
+  "explained_at": "2026-11-12T01:51:04+00:00",
+  "explained_by": "haiku",
+  "summary": "Combines several schedule files into one staging database, keeping each file's projects separate and labelled by file name.",
+  "purpose": "Lets someone upload several separate schedule files and work with them together as one dataset, without linking activities between files.",
+  "why": "Each file is parsed on its own first so the normal reader for its format handles it. Projects keep their own identity, and no relationships are created across files, as the module description states.",
+  "how": "First it checks there are at least two files and removes any old output database. Then it parses each file into its own temporary staging database, stopping if a file was cancelled or needs column mapping. It renames project IDs that appear in more than one file, adds the file label to project names, and copies the first file's database as the base. Later files are merged into it. Finally it builds one combined report with a single fingerprint.",
+  "inputs": "A list of at least two schedule file paths (XER, P6 XML, XLSX, CSV or TSV), a target database path, and optional progress and cancel callbacks.",
+  "outputs": "One combined staging database file and an ingestion report that lists all projects, summed table counts, labelled warnings and a combined fingerprint.",
+  "risks": "The target database is deleted before work starts. Two files with the same name before the extension get the same label, which can cause project IDs to collide. Files that need column mapping are refused and must be uploaded alone first.",
+  "debug": "Read the error message: it says whether the run was cancelled, a file needs mapping, or fewer than two files were given. For project collisions, check the file names. If a run crashed, look for leftover combine temporary folders beside the target database.",
+  "summary_hash": "sha256:b87f0d9561cb26ac1c00f827497b164c21741725b8c5546f7deb783d0302f22e"
+}

@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/bim/service.py",
+  "language": "Python",
+  "lines": 682,
+  "hash": "sha256:55d3cc516a47f5b57e563886a4c71674037f9355d26f358541a72c0051a7c650",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the helper functions and the component property list were read.",
+      "The main export steps were not read for these notes.",
+      "No test is visible in the portion provided."
+    ]
+  },
+  "terms": [
+    {
+      "term": "IFC4",
+      "meaning": "the version 4 standard of the IFC building-model format"
+    },
+    {
+      "term": "STEP",
+      "meaning": "the text format used inside IFC files, where each entry has a number"
+    },
+    {
+      "term": "GUID",
+      "meaning": "a globally unique identifier, here a 22 character code"
+    },
+    {
+      "term": "property set",
+      "meaning": "a named group of properties attached to an IFC item"
+    },
+    {
+      "term": "read-only database",
+      "meaning": "a database opened so the export can read it but never change it"
+    },
+    {
+      "term": "provenance",
+      "meaning": "a record of where a value came from and why it was accepted"
+    }
+  ],
+  "depends_on": [
+    "schedule3d.bim.contracts",
+    "schedule3d.bim.parts",
+    "schedule3d.model.contracts",
+    "schedule3d.sqlite_paths",
+    "sqlite3",
+    "json",
+    "math",
+    "uuid",
+    "datetime"
+  ],
+  "used_by": [
+    "backend/schedule3d/bim/__init__.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d0ae1d208ab84b52",
+      "title": "Imports and encoding alphabet",
+      "what": "Loads the tools the exporter needs and defines a 64 character set used to build IFC identifiers. Users do not see this.",
+      "why": "IFC identifiers must use this exact alphabet.",
+      "watch_out": "Changing the alphabet changes every identifier, so earlier exports would no longer match."
+    },
+    {
+      "start": 20,
+      "end": 37,
+      "kind": "function",
+      "name": "_step_text",
+      "id": "s2",
+      "hash": "e6bbf2ca33f5216c",
+      "title": "Safe text for IFC",
+      "what": "Turns any value into a quoted IFC text value. It doubles backslashes and apostrophes, keeps plain printable characters, and writes other characters using IFC hex escape codes.",
+      "why": "Stops names with quotes or accented letters from breaking the file.",
+      "watch_out": "One unescaped backslash or apostrophe makes the whole file unreadable."
+    },
+    {
+      "start": 38,
+      "end": 46,
+      "kind": "function",
+      "name": "_guid",
+      "id": "s3",
+      "hash": "5c0833530eaf13a7",
+      "title": "Stable identifiers",
+      "what": "Makes a 22 character identifier from a seed text, using a fixed namespace, so the same input always gives the same identifier.",
+      "why": "Likely reason: stable identifiers let a re-export match the earlier one.",
+      "watch_out": "Changing the namespace text or the seed format changes every identifier."
+    },
+    {
+      "start": 47,
+      "end": 50,
+      "kind": "function",
+      "name": "_iso",
+      "id": "s4",
+      "hash": "1b4dbf681f7fa2cc",
+      "title": "Date text",
+      "what": "Returns the ISO date text, or an empty text when there is no date.",
+      "why": "Dates are sometimes missing from the schedule.",
+      "watch_out": "The empty text can end up in a date field, which may be an invalid date value."
+    },
+    {
+      "start": 51,
+      "end": 90,
+      "kind": "class",
+      "name": "_IfcDocument",
+      "id": "s5",
+      "hash": "b21b4e65310925da",
+      "title": "Writer for the IFC document",
+      "what": "Keeps the list of lines and adds entries with increasing numbers. It can add one property and a property set linked to a target item.",
+      "why": "Makes the file a plain numbered list of lines.",
+      "watch_out": "Numbers and whole numbers are written without quotes, so a non-number value there produces an invalid line."
+    },
+    {
+      "start": 91,
+      "end": 99,
+      "kind": "function",
+      "name": "_provenance_text",
+      "id": "s6",
+      "hash": "b41a6200fd45fb3e",
+      "title": "Provenance wording",
+      "what": "Turns a provenance record into one line with its kind, rationale, source and range.",
+      "why": "Lets a reader see where a value came from.",
+      "watch_out": "The separator is a vertical bar, so a source name containing a bar is hard to split again."
+    },
+    {
+      "start": 100,
+      "end": 107,
+      "kind": "function",
+      "name": "_profile_entries",
+      "id": "s7",
+      "hash": "ed8f75dde6b5a905",
+      "title": "Property values for fingerprinting",
+      "what": "Keeps the typed property values as plain text so the fingerprint covers exactly what is written to the file.",
+      "why": "Ensures the fingerprint matches the written content.",
+      "watch_out": "Two values that print the same are treated as equal, even if their types differ."
+    },
+    {
+      "start": 108,
+      "end": 148,
+      "kind": "function",
+      "name": "_component_properties",
+      "id": "s8",
+      "hash": "e5b9cd34a36cb0e3",
+      "title": "Property list for each component",
+      "what": "Builds the named properties for one component: identifiers, work area, class, phase, discipline, material, quantities, planned, baseline, forecast and actual dates, status rule, evidence IDs, provenance text, confidence, and a fixed limitation statement.",
+      "why": "Gives BIM users the schedule and evidence data inside the file, and the limitation statement says plainly what the file is not.",
+      "watch_out": "Planned dates are typed as dates while the other dates are typed as text, and an empty date text in a date field is risky."
+    },
+    {
+      "start": 149,
+      "end": 182,
+      "kind": "function",
+      "name": "_component_geometry",
+      "id": "s9",
+      "hash": "afacbfce6210f4ba",
+      "title": "Simple box shape for one component",
+      "what": "Builds the simple box-shaped body for one component that has no explicit parts. The box sits at the component's position, its width and depth come from the floor footprint, and its height comes from the vertical size. A component with a missing, negative or non-finite size is refused with an error.",
+      "why": "Likely reason: the app stores a schematic box for each component without detailed parts, and IFC needs an actual shape for every element. The code swaps the app's Y and Z axes, which fits IFC's Z-up convention, but the code does not state this reason directly.",
+      "watch_out": "Sizes are raised to at least 0.001 metres, so a very thin component is drawn slightly thicker than its data says."
+    },
+    {
+      "start": 183,
+      "end": 242,
+      "kind": "function",
+      "name": "export_conceptual_ifc (part 1)",
+      "id": "s10",
+      "hash": "96727e3c3e0e1ed2",
+      "title": "Building the project's spatial skeleton",
+      "what": "Writes the fixed top levels of the IFC file: the project, a site, a building and a storey, linked in that order. Every component and task is placed inside these containers. The site is labelled as not surveyed, and the storey is labelled as non-design.",
+      "why": "Per the code comment, the model is re-checked before export because callers may change nested data after it is built. The labels suggest the output is a planning picture, not a design drawing.",
+      "watch_out": "Identifiers for these containers are derived from the project id, so changing the project id changes every identifier in the file."
+    },
+    {
+      "start": 243,
+      "end": 302,
+      "kind": "function",
+      "name": "export_conceptual_ifc (part 2)",
+      "id": "s11",
+      "hash": "c0317ba3999b4b1f",
+      "title": "Writing each component and its properties",
+      "what": "For every component, writes one IFC element that represents it, with a stable identifier made from the project id and component id. Components with explicit parts get only a placement, not a box. Components with a parametric contract also get a property group recording their asset key, instance key, raw geometry text and where their numbers came from.",
+      "why": "Likely reason: a stable identifier lets later exports and other tools match the same component. The reason for the extra property group is not fully stated beyond its name.",
+      "watch_out": "Contract components must carry their quantity provenance; if it is missing, the export stops with an assertion error instead of a clear message."
+    },
+    {
+      "start": 303,
+      "end": 362,
+      "kind": "function",
+      "name": "export_conceptual_ifc (part 3)",
+      "id": "s12",
+      "hash": "9c43fc5bd8316d44",
+      "title": "Recording component data and its parts",
+      "what": "Stores the component's property group and records its box data for the later content fingerprint. Then writes each explicit part as its own IFC child element with its own property group. Parts are placed relative to their parent, and each part notes that it inherits timing from its parent and has no timing of its own.",
+      "why": "The records feed the fingerprint and later checks. The code states that parts are not separately installed inventory, which explains the wording of the notes.",
+      "watch_out": "A part's schedule comes only from its parent asset, so changing a part's dates alone will not change its schedule."
+    },
+    {
+      "start": 363,
+      "end": 422,
+      "kind": "function",
+      "name": "export_conceptual_ifc (part 4)",
+      "id": "s13",
+      "hash": "c27ff22bd9210885",
+      "title": "Grouping parts and opening the schedule database",
+      "what": "Groups each component's parts under that component, then places all components into the storey in one containment record. It then opens the schedule database read-only and starts reading activities, each of which becomes a task in the file.",
+      "why": "Likely reason: opening the source read-only protects the schedule data from being changed by the export. The code does not state this reason.",
+      "watch_out": "Everything after this point depends on the schedule database existing and being readable; a failure here stops the whole export."
+    },
+    {
+      "start": 423,
+      "end": 482,
+      "kind": "function",
+      "name": "export_conceptual_ifc (part 5)",
+      "id": "s14",
+      "hash": "f61b42c6eb932693",
+      "title": "Writing schedule activities as tasks",
+      "what": "For each schedule activity in this project, writes one IFC task with its name, code and status. Each task also gets a property group with its planned, baseline, forecast and actual dates, its work breakdown location, and the evidence ids that support it. The code then reads every schedule link that touches this project.",
+      "why": "Likely reason: keeping dates and evidence on each task lets someone trace it back to the source schedule. The label P6 appears to name a scheduling tool, but the code does not define it.",
+      "watch_out": "When an activity has no temporal record, its provenance falls back to fixed text, so the file can look fully sourced when it is not."
+    },
+    {
+      "start": 483,
+      "end": 542,
+      "kind": "function",
+      "name": "export_conceptual_ifc (part 6)",
+      "id": "s15",
+      "hash": "db4181606f6079a3",
+      "title": "Writing outside activities and link types",
+      "what": "When a schedule link points to an activity in another project, creates a stub task for that outside activity and marks it as external, so the link can still be shown. It then builds the table that maps scheduling link types to IFC link types, with unknown types treated as user-defined.",
+      "why": "The code describes the stub as retained for incident programme logic, so outside activities are kept for incident analysis. The reason for the type table is not stated.",
+      "watch_out": "The evidence id for a stub is looked up by project and activity with no fallback, so a missing entry raises an uncaught error. The omitted-external counter is never increased in the visible code, so it always stays zero."
+    },
+    {
+      "start": 543,
+      "end": 601,
+      "kind": "function",
+      "name": "export_conceptual_ifc (part 7)",
+      "id": "s16",
+      "hash": "c42cb4b23dd0fa83",
+      "title": "Writing schedule links and activity assignments",
+      "what": "Writes one IFC sequence link for each schedule relationship, with the lag in hours stored as text. It then closes the database and writes one assignment for each mapping that ties a component to the task that builds it. Each assignment stores quantity, unit, segment fraction and reveal rule as text.",
+      "why": "The code stores the lag and assignment details as text so the validator can read them back and compare them. The reason for using text rather than numbers is not stated.",
+      "watch_out": "If a mapping points to a missing task or component, the whole export stops, so one bad mapping blocks all output."
+    },
+    {
+      "start": 602,
+      "end": 637,
+      "kind": "function",
+      "name": "export_conceptual_ifc (part 8)",
+      "id": "s17",
+      "hash": "76ddafb16c95af1a",
+      "title": "Writing limitations and project summary",
+      "what": "Creates a plain-language list of limitations. It says the file is a conceptual coordination model, not design, survey, fabrication or as-built data, and that it may include outside task stubs. It then stores the facility label, its confidence, the suitability label and the link counts on the project, plus all evidence records as text.",
+      "why": "The code writes the limitations into the file so anyone opening it sees its scope. The reason for storing all evidence as text is not stated; it likely lets the validator recheck sources.",
+      "watch_out": "The suitability label is fixed in the code, so the file always says conceptual only, even if the model were used for something more detailed."
+    },
+    {
+      "start": 638,
+      "end": 682,
+      "kind": "function",
+      "name": "export_conceptual_ifc (part 9)",
+      "id": "s18",
+      "hash": "398a584db0174da1",
+      "title": "Writing the file and its fingerprint",
+      "what": "Writes the complete IFC text to the requested location, with a fixed header that includes the file name, the IFC4 schema label and a fixed timestamp of 2000-01-01. It then computes a SHA-256 content fingerprint and returns a summary with counts, the fingerprint and the limitations.",
+      "why": "Likely reason: the fixed timestamp makes the same model produce the same bytes each time, which makes outputs easy to compare. The code does not state this.",
+      "watch_out": "The file is written directly to its final location, so an interrupted write can leave a partly written file in place."
+    }
+  ],
+  "explained_at": "2026-11-12T01:44:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Writes the conceptual IFC file for one project. This file holds helpers that make text safe for the file, create stable identifiers, and build property sets for each component. The main export steps are only partly visible in these notes.",
+  "purpose": "Produces a building-model file that other tools can open. It carries each component's schedule dates and provenance, and is for coordination only.",
+  "why": "The module describes a deterministic, property-rich IFC4 export. The limitation text says the file is not survey, fabrication or design-authoring BIM.",
+  "how": "The export loads the project model, writes spatial and component entries, adds property sets from each component's data, adds task and relationship data, writes geometry for parts, and fingerprints the content for the summary. These notes cover only the helpers at the start of the file. The export steps after line 182 were not read for these notes.",
+  "inputs": "A job folder, a project ID, a project model, and a schedule database opened read-only.",
+  "outputs": "An IFC text file and an export summary. The full set of outputs is not visible in these notes.",
+  "risks": "Text encoding must stay correct or the file will not open. Numbers in property sets are written without quotes. Empty dates are written as text.",
+  "debug": "If a file fails to open in an IFC viewer, check text quoting and any empty date values. Compare the counts in the export summary with the project model.",
+  "summary_hash": "sha256:55d3cc516a47f5b57e563886a4c71674037f9355d26f358541a72c0051a7c650"
+}

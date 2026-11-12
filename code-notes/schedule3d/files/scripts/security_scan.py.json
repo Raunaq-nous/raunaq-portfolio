@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "path": "scripts/security_scan.py",
+  "language": "Python",
+  "lines": 98,
+  "hash": "sha256:9af852ebc38f0003d0155944dc8d9f7e20302c58dd939e74434c1365ed7d451c",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Rules are text matches, so they can pass or fail for reasons unrelated to security.",
+      "The sensitive data rule accepts any mention of the word sensitive in the upload view, which is a loose test.",
+      "Dependency audits are only listed in the report, not run by this script."
+    ]
+  },
+  "terms": [
+    {
+      "term": "static analysis",
+      "meaning": "checking code by reading its text, without running it"
+    },
+    {
+      "term": "regular expression",
+      "meaning": "a compact pattern used to search text, such as finding a particular call"
+    },
+    {
+      "term": "CORS",
+      "meaning": "the browser rule that controls which websites may call the app's server"
+    },
+    {
+      "term": "loopback address",
+      "meaning": "the address 127.0.0.1, which only accepts connections from the same computer"
+    },
+    {
+      "term": "XML bomb",
+      "meaning": "a small XML file crafted to expand into huge memory use when parsed"
+    },
+    {
+      "term": "zip bomb",
+      "meaning": "a small compressed file crafted to expand into a huge file when opened"
+    },
+    {
+      "term": "Content Security Policy",
+      "meaning": "a browser header that limits which resources a page may load"
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/api/app.py",
+    "backend/schedule3d/cli.py",
+    "backend/schedule3d/ingest/xml.py",
+    "backend/schedule3d/ingest/encoding.py",
+    "backend/schedule3d/api/jobs.py",
+    "backend/schedule3d/ingest/tabular.py",
+    "backend/schedule3d/export/service.py",
+    "scripts/task.py",
+    "frontend/src/UploadView.tsx"
+  ],
+  "used_by": [
+    "scripts/task.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "257dc0a39d87b9d9",
+      "title": "Setup and output location",
+      "what": "Sets the project root and the path of the security report file. It prepares the file for the rest of the script.",
+      "why": "Reason not stated in the code, though the report path matches the other verification outputs.",
+      "watch_out": "The script writes to build/verification, so that folder must be allowed to be created."
+    },
+    {
+      "start": 14,
+      "end": 17,
+      "kind": "function",
+      "name": "_text",
+      "id": "s2",
+      "hash": "89e4905d7c7f871b",
+      "title": "Reading a project file as text",
+      "what": "Reads a named project file and returns its text, using UTF-8 encoding.",
+      "why": "Used by every rule that checks one specific file, so each check reads files the same way.",
+      "watch_out": "A wrong or renamed path makes the script crash before any rule is checked."
+    },
+    {
+      "start": 18,
+      "end": 29,
+      "kind": "function",
+      "name": "_runtime_sources",
+      "id": "s3",
+      "hash": "550c14110643579c",
+      "title": "Collecting runtime source files",
+      "what": "Collects every Python, TypeScript, JavaScript, and HTML file in the backend, frontend source, and scripts folders, excluding this script itself.",
+      "why": "Likely reason: this script contains the search patterns, so scanning itself would cause false matches.",
+      "watch_out": "Only the frontend source folder is scanned, so files outside it are not checked by the broad rules."
+    },
+    {
+      "start": 30,
+      "end": 89,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s4",
+      "hash": "bec8dc6d3ee54964",
+      "title": "Running the security rules",
+      "what": "Reads the key source files and runs about eighteen rules covering local-only binding, upload limits, safe XML and spreadsheet handling, frozen dependency installs, content security policy, escaping, banned dynamic code, and secret leaks. It records each result.",
+      "why": "Likely reason: each rule guards a specific protection that a previous change or review wanted to keep.",
+      "watch_out": "The dynamic code rule looks for patterns like eval or innerHTML, so a harmless use of the same word could be flagged."
+    },
+    {
+      "start": 90,
+      "end": 96,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s5",
+      "hash": "f6d977ef96ce3662",
+      "title": "Writing the report and failing on errors",
+      "what": "Lists the failed rules, writes the JSON report, and stops with an error naming any failed rule. If all rules pass, it prints the number of checks and files.",
+      "why": "Likely reason: the report must exist even when checks fail, so the release record shows the failure.",
+      "watch_out": "The report file is written before the failure is raised, so a file showing complete false can exist after a failed run."
+    },
+    {
+      "start": 97,
+      "end": 98,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s6",
+      "hash": "b60851f8e384a572",
+      "title": "Starting the script directly",
+      "what": "Runs the main function only when the file is started directly from the command line, not when it is imported.",
+      "why": "Standard Python pattern so other scripts can import this file without running the checks.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T02:45:50+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs a set of about eighteen text-based security rules over the project's source files, writes a JSON report, and fails the build if any rule is broken.",
+  "purpose": "Catches regressions in security settings, such as a server that listens on all network interfaces or an upload size limit that was removed.",
+  "why": "Likely reason: the release gate must stop when a known security protection disappears. The script writes its report before it raises the failure, so the failure is recorded.",
+  "how": "The script reads a fixed list of backend and frontend files, joins the source text of all runtime files, then runs each rule as a text or pattern match. It collects the names of failed rules, writes build/verification/security.json, and exits with an error if any rule failed. Otherwise it prints how many checks passed.",
+  "inputs": "The project source files at fixed paths. No command line arguments.",
+  "outputs": "The file build/verification/security.json with each check result, the list of failures, and the dependency audit commands. A pass or failure message in the terminal.",
+  "risks": "Each rule is a text match, not a behaviour test. A rule passes if a phrase appears anywhere, even in an unused comment or dead code. A rule can also break simply because a file was renamed. The file is not a substitute for a real security review or the dependency audits.",
+  "debug": "If a rule fails, open build/verification/security.json and find the name in the failures list. Then search the named file for the phrase the rule expects. If the script stops with a missing file error, a path in main has changed.",
+  "summary_hash": "sha256:9af852ebc38f0003d0155944dc8d9f7e20302c58dd939e74434c1365ed7d451c"
+}

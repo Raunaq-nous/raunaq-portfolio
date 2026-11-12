@@ -1,0 +1,368 @@
+{
+  "schema_version": 1,
+  "path": "tests/test_package_archive.py",
+  "language": "Python",
+  "lines": 311,
+  "hash": "sha256:1a731a6b3d7ba64cf61df52fa76b6e8ad219dada38d38cabd0ab696b0080aade",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Tests were not run while writing these notes.",
+      "Coverage is broad and targets many known attack patterns, but that is not proof of safety."
+    ]
+  },
+  "terms": [
+    {
+      "term": "zip",
+      "meaning": "a common container format that bundles many files into one"
+    },
+    {
+      "term": "DEFLATE",
+      "meaning": "the compression method most zip files use"
+    },
+    {
+      "term": "CRC",
+      "meaning": "a checksum that detects whether file contents were changed"
+    },
+    {
+      "term": "central directory",
+      "meaning": "the index at the end of a zip that lists every file"
+    },
+    {
+      "term": "ZIP64",
+      "meaning": "an extended zip format for very large archives"
+    },
+    {
+      "term": "data descriptor",
+      "meaning": "a size and checksum stored after a file's data instead of before it"
+    },
+    {
+      "term": "budget",
+      "meaning": "a limit on size, count or time that stops the check"
+    },
+    {
+      "term": "receipt",
+      "meaning": "a saved record of what the check did and whether it finished"
+    },
+    {
+      "term": "zip bomb",
+      "meaning": "a small file that expands into a very large one"
+    },
+    {
+      "term": "symbolic link",
+      "meaning": "a file entry that points to another location"
+    }
+  ],
+  "depends_on": [
+    "schedule3d.packages.archive",
+    "pytest",
+    "zipfile",
+    "zlib",
+    "struct"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 21,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d5b0d74e45a9b85a",
+      "title": "Imports and shared test tools",
+      "what": "Brings in the zip, compression and testing tools and the archive checker and its error types.",
+      "why": "Likely reason: the tests build fake zip files by hand to see how the checker reacts.",
+      "watch_out": "Renaming any name imported from the archive module stops every test in this file."
+    },
+    {
+      "start": 22,
+      "end": 29,
+      "kind": "function",
+      "name": "archive",
+      "id": "s2",
+      "hash": "1a38244aad59f71a",
+      "title": "Builds a normal zip in memory",
+      "what": "Takes names and contents and returns the bytes of a finished zip file.",
+      "why": "Likely reason: many tests need a valid small zip without writing anything to disk.",
+      "watch_out": "It uses standard compression, so it cannot produce the unusual entries the hand-built tests need."
+    },
+    {
+      "start": 30,
+      "end": 35,
+      "kind": "function",
+      "name": "run",
+      "id": "s3",
+      "hash": "9686a530155450e4",
+      "title": "Runs the checker on a test zip",
+      "what": "Writes the given bytes to a file in a temporary folder and runs the inventory checker on it, writing results to an inventory folder.",
+      "why": "Likely reason: gives every test the same setup.",
+      "watch_out": ""
+    },
+    {
+      "start": 36,
+      "end": 72,
+      "kind": "function",
+      "name": "test_nested_references_retained_and_office_is_leaf",
+      "id": "s4",
+      "hash": "3c0f1a2414c52ffb",
+      "title": "Repeated files counted once, nested zips kept",
+      "what": "Puts the same nested zip in three places, plus a loose copy of a file and a spreadsheet holding the same bytes. Checks that six leaf references are found, three unique contents, three marked as duplicates, and one reference shows its nested chain. The spreadsheet is counted as one final file, not opened as a container.",
+      "why": "Likely reason: so duplicate content is reported accurately and nested archives are traced.",
+      "watch_out": ""
+    },
+    {
+      "start": 73,
+      "end": 86,
+      "kind": "function",
+      "name": "test_unsafe_paths_rejected",
+      "id": "s5",
+      "hash": "7279cfdf98b2c968",
+      "title": "Dangerous file names refused",
+      "what": "Feeds in names that could escape a folder, use reserved Windows names, contain a NUL character, or use look-alike slashes. Each must be refused with an Unsafe error and nothing is written.",
+      "why": "Likely reason: so extracting an archive can never write outside its target folder.",
+      "watch_out": "Any new allowed name pattern should be checked against this list."
+    },
+    {
+      "start": 87,
+      "end": 91,
+      "kind": "function",
+      "name": "test_collisions_rejected",
+      "id": "s6",
+      "hash": "6d033ca81fc3de1b",
+      "title": "Names that clash are refused",
+      "what": "Rejects pairs of entries that would land on the same file, such as names differing only by capitals or by accent form.",
+      "why": "Likely reason: Windows and Mac file names ignore case, so two entries could overwrite each other.",
+      "watch_out": "Name matching must stay consistent with the case and accent handling here or clashes will slip through."
+    },
+    {
+      "start": 92,
+      "end": 102,
+      "kind": "function",
+      "name": "test_links_rejected",
+      "id": "s7",
+      "hash": "4ffe8041b4315cc0",
+      "title": "Symbolic links refused",
+      "what": "Refuses an archive entry that is a link to another location and reports it as a link.",
+      "why": "Likely reason: a link could point to files outside the folder being checked.",
+      "watch_out": ""
+    },
+    {
+      "start": 103,
+      "end": 111,
+      "kind": "function",
+      "name": "test_budgets_fail_closed",
+      "id": "s8",
+      "hash": "1cbaa2efbe834a34",
+      "title": "Each size limit stops the check safely",
+      "what": "For five limits (single entry size, decompressed bytes, outer size, entry count, central directory size), sets that limit to one byte and confirms a budget error occurs and a receipt marked not complete is saved.",
+      "why": "Likely reason: an oversized or hostile archive must never be read in full.",
+      "watch_out": "A receipt must always be written on failure, and this test checks that, so the reason for stopping stays visible."
+    },
+    {
+      "start": 112,
+      "end": 120,
+      "kind": "function",
+      "name": "test_depth_and_cancel",
+      "id": "s9",
+      "hash": "b4d0df833eabbe72",
+      "title": "Nesting depth limit enforced",
+      "what": "Places a zip inside a zip with the depth limit set to zero and expects a depth error.",
+      "why": "Likely reason: stops zips nested inside zips from running without limit.",
+      "watch_out": ""
+    },
+    {
+      "start": 121,
+      "end": 126,
+      "kind": "function",
+      "name": "test_cancel_writes_failed_receipt",
+      "id": "s10",
+      "hash": "76545e20a08904ba",
+      "title": "Cancel leaves a failed receipt",
+      "what": "Cancels a check immediately and confirms the cancel error is raised and the receipt is not marked complete.",
+      "why": "Likely reason: a user can stop a long check, and the saved result must not look like success.",
+      "watch_out": ""
+    },
+    {
+      "start": 127,
+      "end": 135,
+      "kind": "function",
+      "name": "test_crc_failure_not_inventoried_as_success",
+      "id": "s11",
+      "hash": "b4107d34f9ef3e08",
+      "title": "Checksum failure is never success",
+      "what": "Changes a stored file's content so its checksum no longer matches and confirms the check fails and the receipt is not marked complete.",
+      "why": "Likely reason: a damaged file must never be reported as good.",
+      "watch_out": ""
+    },
+    {
+      "start": 136,
+      "end": 185,
+      "kind": "function",
+      "name": "forged_member",
+      "id": "s12",
+      "hash": "2aa81ab3c000596d",
+      "title": "Hand-built zip entries for edge cases",
+      "what": "Creates one zip entry where the caller sets the size, checksum, compression method and flags, so tests can present false claims about content.",
+      "why": "Likely reason: normal zip tools will not write invalid entries, so a builder is needed.",
+      "watch_out": "Its byte layout must match the zip format exactly, or the tests fail for the wrong reason."
+    },
+    {
+      "start": 186,
+      "end": 190,
+      "kind": "function",
+      "name": "deflate",
+      "id": "s13",
+      "hash": "6cb59ce0c714ef50",
+      "title": "Raw compression helper",
+      "what": "Compresses bytes in the raw DEFLATE form, without the usual header and checksum wrapper, for use in hand-built entries.",
+      "why": "Likely reason: zip entries store raw compressed data, and the tests need that form.",
+      "watch_out": ""
+    },
+    {
+      "start": 191,
+      "end": 202,
+      "kind": "function",
+      "name": "test_understated_size_and_prefix_crc_rejected",
+      "id": "s14",
+      "hash": "6898941c9fc71fbf",
+      "title": "Lying size and checksum are caught",
+      "what": "For stored and compressed entries, declares a size smaller than the real content and sets the checksum to match only the short part. Confirms the check reports the real length mismatch and marks the file failed.",
+      "why": "Likely reason: a file could otherwise hide extra data behind a small declared size.",
+      "watch_out": ""
+    },
+    {
+      "start": 203,
+      "end": 212,
+      "kind": "function",
+      "name": "test_actual_decode_budget_ignores_small_declared_size",
+      "id": "s15",
+      "hash": "eb656829efec0419",
+      "title": "Real decompressed size counts, not claimed size",
+      "what": "Sends a compressed entry that claims one byte but expands to three megabytes, with a one-megabyte limit, and expects a decompressed budget error.",
+      "why": "Likely reason: a small claimed size must not let a zip bomb through.",
+      "watch_out": "Size must be measured as bytes are produced, not taken from the header."
+    },
+    {
+      "start": 213,
+      "end": 225,
+      "kind": "function",
+      "name": "test_large_deflate_stream_decoded_completely",
+      "id": "s16",
+      "hash": "865614768ab9ba1f",
+      "title": "Large compressed file fully decoded",
+      "what": "Stores three megabytes of repeated data and confirms the whole content is decoded and the full size is reported.",
+      "why": "Likely reason: makes sure the streaming decoder does not stop early on large files.",
+      "watch_out": ""
+    },
+    {
+      "start": 226,
+      "end": 230,
+      "kind": "function",
+      "name": "test_invalid_deflate_framing",
+      "id": "s17",
+      "hash": "1ad40a06b39ea6b9",
+      "title": "Broken compressed streams give clear messages",
+      "what": "Tests a truncated compressed stream and one with extra trailing bytes, expecting a specific error message for each.",
+      "why": "Likely reason: so a damaged file is reported with a reason a person can act on.",
+      "watch_out": ""
+    },
+    {
+      "start": 231,
+      "end": 241,
+      "kind": "function",
+      "name": "test_zlib_failure_has_actionable_receipt",
+      "id": "s18",
+      "hash": "ff6ab1bd681130f3",
+      "title": "Decode error leaves a useful receipt",
+      "what": "Feeds an invalid compressed block and checks that the error is raised and the receipt names the file, the failure phase, and that it is a file-level failure.",
+      "why": "Likely reason: so a person can see which file broke and at what step.",
+      "watch_out": ""
+    },
+    {
+      "start": 242,
+      "end": 251,
+      "kind": "function",
+      "name": "test_nested_siblings_cannot_exceed_global_entry_budget",
+      "id": "s19",
+      "hash": "ba275c5091cbb785",
+      "title": "Nested zips share one entry budget",
+      "what": "Puts two entries inside a nested zip next to two outer entries, with four entries allowed in total. Expects the cumulative budget error and a receipt counting no more than four entries.",
+      "why": "Likely reason: stops a zip from hiding many entries across nesting levels.",
+      "watch_out": ""
+    },
+    {
+      "start": 252,
+      "end": 258,
+      "kind": "function",
+      "name": "test_understated_central_entry_count_rejected_before_zipfile",
+      "id": "s20",
+      "hash": "31b15cd382495e1a",
+      "title": "Understated entry count caught early",
+      "what": "Changes the entry count in the zip's index to one while the archive holds two, and expects an error before the standard zip reader runs.",
+      "why": "Likely reason: the standard zip reader trusts that count, so the checker verifies it first.",
+      "watch_out": "This check must run before the standard zip reader opens the file, or the protection is lost."
+    },
+    {
+      "start": 259,
+      "end": 265,
+      "kind": "function",
+      "name": "test_zip64_locator_with_normal_eocd_rejected",
+      "id": "s21",
+      "hash": "f71399aa428b8b3b",
+      "title": "Unexpected ZIP64 marker refused",
+      "what": "Inserts a ZIP64 locator (a large-archive marker) into a normal-sized archive and expects a rejection.",
+      "why": "Likely reason: a mixed-format file could confuse parsing, so it is refused.",
+      "watch_out": ""
+    },
+    {
+      "start": 266,
+      "end": 285,
+      "kind": "function",
+      "name": "test_final_publication_checks_cancel_and_deadline",
+      "id": "s22",
+      "hash": "0aacbe61f0bf2445",
+      "title": "Last-moment cancel or time limit blocks publication",
+      "what": "Runs the check with a cancel signal or an expired time limit right after the walk finishes, and confirms the result is refused and the receipt is not complete.",
+      "why": "Likely reason: a result must not be published if the user cancelled or time ran out at the final step.",
+      "watch_out": ""
+    },
+    {
+      "start": 286,
+      "end": 290,
+      "kind": "function",
+      "name": "test_encrypted_member_rejected",
+      "id": "s23",
+      "hash": "3d771a13f746a3e8",
+      "title": "Encrypted entries refused",
+      "what": "Creates an entry with the encryption flag set and expects an Encrypted error.",
+      "why": "Likely reason: the checker cannot read encrypted content, so it refuses rather than guessing.",
+      "watch_out": ""
+    },
+    {
+      "start": 291,
+      "end": 311,
+      "kind": "function",
+      "name": "test_streaming_data_descriptors",
+      "id": "s24",
+      "hash": "c46b1e2b9b41a84d",
+      "title": "Streamed entries with trailers checked",
+      "what": "Builds entries whose size and checksum follow the data instead of preceding it, with and without the optional signature. A correct trailer passes; a wrong checksum, wrong size, or overlapping data each fail with a descriptor error.",
+      "why": "Likely reason: many zip writers stream files this way, so the checker must handle that layout safely.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T02:41:10+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests that the zip inventory checker refuses hostile or broken archives safely and always leaves an honest receipt.",
+  "purpose": "Confirms that the package reader never trusts what a zip file claims about itself and stays within its size, depth and time limits.",
+  "why": "Likely reason: zip files arrive from outside the app and can be built to attack or mislead. Reason not stated in the code beyond this.",
+  "how": "Most tests build a small zip, sometimes by hand with exact byte values, run the inventory checker on it, and then check either the error message or the receipt file written to a temporary folder.",
+  "inputs": "Hand-built zip byte strings and the limit settings chosen in each test.",
+  "outputs": "Pass or fail results from pytest. Each test reads an inventory receipt file in a temporary folder.",
+  "risks": "If a check is removed or weakened, a hostile file could pass. The tests write only to temporary folders.",
+  "debug": "Start with the failing test name, then open its receipt file in the temporary folder. Compare the error text the test expects against what the checker produced.",
+  "summary_hash": "sha256:1a731a6b3d7ba64cf61df52fa76b6e8ad219dada38d38cabd0ab696b0080aade"
+}

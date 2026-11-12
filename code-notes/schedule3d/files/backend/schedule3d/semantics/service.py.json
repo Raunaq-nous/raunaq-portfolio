@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/semantics/service.py",
+  "language": "Python",
+  "lines": 360,
+  "hash": "sha256:dea1715de047eeaa41ab77c443b99ce1860e2881cd44634ea38ed145a48b146f",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Cancellation and closing the database connection are handled in the code.",
+      "No tests are visible in the packet, so the batch logic and scoring rules are not shown to be verified.",
+      "A run that fails mid-way leaves partial rows, and the packet does not show a recovery step."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SQLite",
+      "meaning": "A small database stored in a single file, used here to hold results for each project."
+    },
+    {
+      "term": "Batch",
+      "meaning": "A fixed group of activities processed and saved together, here 5000 at a time."
+    },
+    {
+      "term": "Union-find",
+      "meaning": "A method for merging linked items into groups, used here to find clusters of dependent activities."
+    },
+    {
+      "term": "Singleton",
+      "meaning": "A group that holds only one activity."
+    },
+    {
+      "term": "Coverage",
+      "meaning": "The share of all activities that a grouping strategy manages to label."
+    },
+    {
+      "term": "Scorer version",
+      "meaning": "A label that records which version of the scoring rules produced a saved report."
+    }
+  ],
+  "depends_on": [
+    "sqlite3",
+    "json",
+    "schedule3d.normalize.service",
+    "schedule3d.semantics.archetypes",
+    "schedule3d.semantics.classifier",
+    "schedule3d.semantics.contracts",
+    "schedule3d.semantics.grouping"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 27,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "9c19e9995a37b455",
+      "title": "Setup, version and batch size",
+      "what": "Loads the tools and shared pieces, sets the scorer version to 1.1.0, sets the batch size to 5000, and defines the progress callback type.",
+      "why": "Likely reason: the version and batch size are kept at the top so they are easy to find and record.",
+      "watch_out": "Changing the scorer version does not rerun old reports, so saved results can keep the older scoring."
+    },
+    {
+      "start": 28,
+      "end": 31,
+      "kind": "class",
+      "name": "GenerationCancelled",
+      "id": "s2",
+      "hash": "73e32a457f643b4c",
+      "title": "Cancellation error",
+      "what": "Defines the error raised when a user cancels generation at a safe batch boundary.",
+      "why": "Likely reason: a named error lets the caller tell a cancel apart from a real failure.",
+      "watch_out": "This error inherits from the general value error, so any handler that catches value errors will also catch cancellations."
+    },
+    {
+      "start": 32,
+      "end": 70,
+      "kind": "function",
+      "name": "_insert_dependency_communities",
+      "id": "s3",
+      "hash": "ab198febd06f50bc",
+      "title": "Dependency communities",
+      "what": "Groups activities linked by predecessor and successor relationships into clusters, and saves each cluster as one grouping named after the dependency community.",
+      "why": "Likely reason: work that is chained together is often the same area or sequence, so the cluster is a useful grouping in its own right.",
+      "watch_out": "Every link merges two activities into one cluster, so a long chain of links can produce one very large group."
+    },
+    {
+      "start": 71,
+      "end": 116,
+      "kind": "function",
+      "name": "_initialize",
+      "id": "s4",
+      "hash": "7e5a86d65791f15a",
+      "title": "Preparing the database tables",
+      "what": "Creates the four result tables if they are missing and deletes any earlier results for the project.",
+      "why": "Likely reason: a rerun must start clean, so old rows for the project are removed first.",
+      "watch_out": "The deletion happens without a backup, so a rerun replaces the earlier results for that project."
+    },
+    {
+      "start": 117,
+      "end": 156,
+      "kind": "function",
+      "name": "_score_strategy (part 1)",
+      "id": "s5",
+      "hash": "288ee808a6976c56",
+      "title": "Grouping statistics, part one",
+      "what": "Counts, for one grouping strategy, the matched activities, the groups, the singletons, the largest group, the usable groups and the average number of phases per group.",
+      "why": "Likely reason: these counts show whether a grouping is useful, with too many singletons or one huge group counting against it.",
+      "watch_out": "Groups with more than 500 activities do not count as usable, so very large valid groups lower the score."
+    },
+    {
+      "start": 157,
+      "end": 210,
+      "kind": "function",
+      "name": "_score_strategy (part 2)",
+      "id": "s6",
+      "hash": "2e2cbf9d0254486d",
+      "title": "Grouping score, part two",
+      "what": "Counts dependency links that stay inside a group, adds a bonus for spatial strategies, applies penalties, and builds the score card with its rationale text.",
+      "why": "Likely reason: a good grouping keeps linked work together and spans many phases, and the weights reflect that judgement.",
+      "watch_out": "The weights are fixed numbers chosen by the code author, so changing one shifts every project's choice."
+    },
+    {
+      "start": 211,
+      "end": 270,
+      "kind": "function",
+      "name": "analyze_project (part 1)",
+      "id": "s7",
+      "hash": "74cfda26a3304ded",
+      "title": "Main analysis pass, part one",
+      "what": "For each activity, classifies it, counts physical and abstract activities, marks low-confidence ones for review, collects its words, and stages its rows for saving, flushing every 5000 activities.",
+      "why": "Likely reason: each activity is read once, which keeps the work fast and avoids loading the whole project at once.",
+      "watch_out": "Words are counted across all activities, so the facility guess depends on the complete set, not on one batch."
+    },
+    {
+      "start": 271,
+      "end": 304,
+      "kind": "function",
+      "name": "analyze_project (part 2)",
+      "id": "s8",
+      "hash": "3968b0a3cf954097",
+      "title": "Main analysis pass, part two",
+      "what": "Saves the last batch, records dependency communities, reports progress, and checks for cancellation before scoring.",
+      "why": "Likely reason: cancellation is checked at safe points so the database is never left half written.",
+      "watch_out": "Cancellation is only checked at batch edges, so a large batch will not stop immediately."
+    },
+    {
+      "start": 305,
+      "end": 360,
+      "kind": "function",
+      "name": "analyze_project (part 3)",
+      "id": "s9",
+      "hash": "e2de734adabb35a9",
+      "title": "Choosing the grouping and saving the report",
+      "what": "Scores every strategy, keeps only those with at least 20 percent coverage, between 2 and 5000 groups, and a score of at least 10, and picks the best. It then classifies the facility, builds the report, saves it, and closes the database.",
+      "why": "Likely reason: the rules block groupings that are too thin, too fragmented or too weak to use.",
+      "watch_out": "If no strategy passes, the selected grouping is empty and the review count rises by one, so the project needs a person to check it."
+    }
+  ],
+  "explained_at": "2026-11-12T02:10:36+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the full semantic analysis for one project: classifies every activity, saves the results, scores the possible groupings, picks the best one and saves a report in a local database.",
+  "purpose": "Produces the saved semantic report that the rest of the app reads when it builds a project's 3D view.",
+  "why": "Likely reason: the work is done in batches and saved as it goes, so a long project does not need to fit in memory and can be cancelled safely.",
+  "how": "Clears any earlier results for the project. Then reads each activity, classifies it, and stages its rows, saving every batch of activities. It groups activities linked by dependencies, scores each grouping strategy, picks the best one that meets the rules, classifies the facility type, and saves the final report.",
+  "inputs": "A path to the local database file, a project identifier, an optional progress callback and an optional cancel check.",
+  "outputs": "A semantic report object, and rows written to the activity, assignment and report tables in the database.",
+  "risks": "Earlier results for the project are deleted at the start. Cancellation is only checked between batches, so a long batch delays it. A failed run can leave the project with partial results.",
+  "debug": "If the report is missing, check that the run finished and that the report table has a row for the project. If the selected grouping is empty, look at the scores and the rule that filters them. If results look stale, confirm the scorer version and that the run was not cancelled.",
+  "summary_hash": "sha256:dea1715de047eeaa41ab77c443b99ce1860e2881cd44634ea38ed145a48b146f"
+}

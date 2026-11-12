@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/ingest/store.py",
+  "language": "Python",
+  "lines": 571,
+  "hash": "sha256:0e6806076c41e95cb64e1cacd17809e7b0cc7c788cb8e1ad3be94be505fcac08",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Warnings for missing links and loops are reported.",
+      "No tests are visible in the packet.",
+      "Version numbers must be changed by hand when the layout changes."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SQLite",
+      "meaning": "a small database stored in a single file"
+    },
+    {
+      "term": "WAL",
+      "meaning": "write-ahead logging, a database mode that records changes in a side log before saving them"
+    },
+    {
+      "term": "Schema",
+      "meaning": "the layout of tables, columns and indexes in a database"
+    },
+    {
+      "term": "Index",
+      "meaning": "a lookup aid that speeds up searches on chosen columns"
+    },
+    {
+      "term": "Primary key",
+      "meaning": "the column or columns that uniquely identify a row"
+    },
+    {
+      "term": "Foreign key",
+      "meaning": "a column that refers to a row in another table"
+    },
+    {
+      "term": "WBS",
+      "meaning": "work breakdown structure, the tree of work groups a project is divided into"
+    },
+    {
+      "term": "Fingerprint",
+      "meaning": "a short code computed from the full structure, used to detect changes"
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/ingest/contracts.py"
+  ],
+  "used_by": [
+    "backend/schedule3d/ingest/tabular.py",
+    "backend/schedule3d/ingest/xer.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 39,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "5770a39563fbdad1",
+      "title": "Fixed fields and structure version",
+      "what": "Lists the activity fields that get their own columns, and sets the database structure version to 3. Any other field is kept aside as extra data.",
+      "why": "Fixed columns make dates and statuses searchable, while extra data keeps unusual fields.",
+      "watch_out": "Adding a core field changes the structure, so the structure version and parser version must be raised together."
+    },
+    {
+      "start": 40,
+      "end": 90,
+      "kind": "function",
+      "name": "database_schema_fingerprint",
+      "id": "s2",
+      "hash": "bdce27408e0e4df1",
+      "title": "Structure fingerprint",
+      "what": "Builds one fingerprint covering the database's tables, columns, indexes, foreign keys and version number. The same structure always gives the same fingerprint.",
+      "why": "Likely reason: lets the app confirm a stored database matches the current layout before reusing it.",
+      "watch_out": "Any layout change, even a change in column order, changes the fingerprint."
+    },
+    {
+      "start": 91,
+      "end": 150,
+      "kind": "class",
+      "name": "StagingStore (part 1)",
+      "id": "s3",
+      "hash": "14a72679c4f27187",
+      "title": "Opening and creating the store",
+      "what": "Opens or creates a staging database, turns on write-ahead logging with light syncing, and creates the project, work breakdown and activity tables when they do not yet exist. It can be used in a with block that closes it safely.",
+      "why": "Likely reason: write-ahead logging is faster for many small writes, and the with block avoids leaving the file open.",
+      "watch_out": "Opening the store creates the file and its parent folder if they are missing."
+    },
+    {
+      "start": 151,
+      "end": 203,
+      "kind": "class",
+      "name": "StagingStore (part 2)",
+      "id": "s4",
+      "hash": "8bfc0aa77a68ad66",
+      "title": "Remaining tables and closing",
+      "what": "Creates the relationship, raw record and row count tables, along with indexes for common lookups. It stores the structure version, and provides commit, close and a way to save row counts.",
+      "why": "These tables hold the rest of the data needed for schedule views and reports.",
+      "watch_out": ""
+    },
+    {
+      "start": 204,
+      "end": 242,
+      "kind": "method",
+      "name": "StagingStore: upsert_project",
+      "id": "s5",
+      "hash": "da9285b2f6061083",
+      "title": "Adding or updating a project",
+      "what": "Adds a project, or updates it if it exists. An existing good name is kept when the new name is blank or only the ID, and dates or extra data are replaced only when new values are present.",
+      "why": "Several rows for one project can each fill in details without erasing earlier values.",
+      "watch_out": "Earlier values are kept if a later row leaves them empty, so the first good value usually stays."
+    },
+    {
+      "start": 243,
+      "end": 302,
+      "kind": "method",
+      "name": "StagingStore: insert_wbs",
+      "id": "s6",
+      "hash": "2299085b79fee63a",
+      "title": "Adding work groups and activities",
+      "what": "Stores one work breakdown node, skipping it if it already exists, and reports whether it was new. Also stores one activity, filling in core fields, keeping non-empty extra fields as JSON, and skipping any repeated activity ID.",
+      "why": "Repeated rows in a source file should not create duplicates.",
+      "watch_out": "A repeated activity or work node is skipped silently, so the first copy wins."
+    },
+    {
+      "start": 303,
+      "end": 361,
+      "kind": "class",
+      "name": "StagingStore (part 5)",
+      "id": "s7",
+      "hash": "ecda6315ca0b6afe",
+      "title": "Adding relationships and raw records",
+      "what": "Stores one relationship between two activities, such as a finish-to-start link with a lag, and one raw source record kept for reference. A missing cross-project reference defaults to the same project.",
+      "why": "Relationships drive scheduling logic, and raw records keep source detail for later checks.",
+      "watch_out": "Relationships are not checked when inserted; the integrity step checks them afterwards."
+    },
+    {
+      "start": 362,
+      "end": 415,
+      "kind": "method",
+      "name": "StagingStore: resolve_wbs_paths",
+      "id": "s8",
+      "hash": "9b1253c2a1d4f38e",
+      "title": "Building work breakdown paths",
+      "what": "Builds a readable path for each work breakdown node, such as parent name then child name, and writes it onto each activity. A loop in the tree is reported as a warning rather than causing a hang.",
+      "why": "Users see where each activity sits in the project's work breakdown.",
+      "watch_out": "At a detected loop the path is cut short at that node, so the displayed path may be incomplete."
+    },
+    {
+      "start": 416,
+      "end": 475,
+      "kind": "method",
+      "name": "StagingStore: integrity_warnings",
+      "id": "s9",
+      "hash": "da4d24c36057feb4",
+      "title": "Checking links and data dates",
+      "what": "Counts relationships that point at missing activities, and projects that have actual dates but no data date, and reports each as a warning.",
+      "why": "These problems would make charts and date calculations misleading.",
+      "watch_out": "The rows are kept, so the user must act on the warnings."
+    },
+    {
+      "start": 476,
+      "end": 528,
+      "kind": "class",
+      "name": "StagingStore (part 8)",
+      "id": "s10",
+      "hash": "b5c53d55244ef405",
+      "title": "Building the project list",
+      "what": "Builds one summary per project with activity and relationship counts, a date span, the data date, and counts of dated, baseline, forecast and actual activities. Missing project dates fall back to the earliest start and latest finish among activities.",
+      "why": "Feeds the project summaries shown in reports.",
+      "watch_out": "Shown project dates may come from activities rather than the project's own record."
+    },
+    {
+      "start": 529,
+      "end": 558,
+      "kind": "method",
+      "name": "StagingStore: table_counts",
+      "id": "s11",
+      "hash": "f75c409cdc42988b",
+      "title": "Row counts and reading activities",
+      "what": "Returns stored row counts per table, streams one project's activities in planned-start order and its relationships, and offers a simple count query helper.",
+      "why": "Lets the app read large data without loading it all at once.",
+      "watch_out": "Activities with no planned date sort last, because a placeholder date is used for ordering."
+    },
+    {
+      "start": 559,
+      "end": 571,
+      "kind": "function",
+      "name": "expected_database_schema_fingerprint",
+      "id": "s12",
+      "hash": "3616b74df79ec2e0",
+      "title": "Reference structure fingerprint",
+      "what": "Creates an in-memory database with the current structure and returns its fingerprint. The result is computed once and reused.",
+      "why": "Gives a reference fingerprint to compare stored databases against.",
+      "watch_out": "The result is cached for the running process, so a structure change needs a restart to take effect."
+    }
+  ],
+  "explained_at": "2026-11-12T01:51:04+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the staging database: its tables, how rows are written, and how projects, work breakdown paths and data warnings are worked out.",
+  "purpose": "Gives every format reader one common place to store cleaned activities, relationships and projects, so the rest of the app reads one consistent structure.",
+  "why": "Fixed columns make dates and statuses searchable. Extra source fields are kept as JSON so nothing is lost. A structure fingerprint lets the app detect a mismatch.",
+  "how": "On opening, the store creates its tables and indexes, turns on write-ahead logging, and stores a structure version. Writers add projects, work breakdown nodes, activities, relationships and raw records. After loading, it fills in each node's full path, checks for missing links and missing data dates, and builds the project list and counts. A fingerprint of the full structure can be compared with a reference copy.",
+  "inputs": "Rows and records from the readers, plus project, WBS, activity and relationship values.",
+  "outputs": "A SQLite staging file, project summaries, data warnings, row counts, and a structure fingerprint.",
+  "risks": "Changing the table layout without raising the structure version or the parser version leads to stale or broken results. Duplicate activities and WBS nodes are silently skipped after the first.",
+  "debug": "If a database fails to open, check whether it was made by an older structure. If project dates look wrong, check whether they came from activities rather than the project record. If paths are odd, check the WBS data for loops.",
+  "summary_hash": "sha256:0e6806076c41e95cb64e1cacd17809e7b0cc7c788cb8e1ad3be94be505fcac08"
+}

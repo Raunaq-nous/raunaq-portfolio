@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/model/grounding_assembly.py",
+  "language": "Python",
+  "lines": 177,
+  "hash": "sha256:a47f1d309a95d9ba2ac333dd345540443ac71bdcf70b0bf26b9d59fd563e77cc",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test or other evidence of correctness is visible in this file.",
+      "It depends on private helpers borrowed from another module, which may change without notice.",
+      "Matching depends on activity names, so a rename silently removes the grid."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Grounding grid",
+      "meaning": "A buried network of copper conductors and rods that connects electrical equipment to the earth for safety."
+    },
+    {
+      "term": "DXF",
+      "meaning": "A common drawing file format, exported from computer-aided design (CAD) software, that stores lines and shapes."
+    },
+    {
+      "term": "Segment",
+      "meaning": "One straight line taken from the drawing, which becomes one route part."
+    },
+    {
+      "term": "Burial depth",
+      "meaning": "How far below ground level the grid sits, as stated by the study."
+    },
+    {
+      "term": "Provenance",
+      "meaning": "A note saying where a value came from and how it was produced."
+    },
+    {
+      "term": "Aggregate timing",
+      "meaning": "A single time span for a whole group of work, not dates for each piece."
+    }
+  ],
+  "depends_on": [
+    "schedule3d.model.contracts",
+    "schedule3d.model.identities",
+    "schedule3d.model.package_assemblies",
+    "schedule3d.packages.grounding"
+  ],
+  "used_by": [
+    "Not visible in this file"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 20,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6e9da1d9c3a854c0",
+      "title": "Imports and borrowed helpers",
+      "what": "Brings in the tools the grounding step needs: the model data shapes, the identity maker, a few private helpers from the package builder, and the grounding layout type. Nothing visible to the user happens here.",
+      "why": "Likely reason: reuses the same part and provenance builders as the rest of the package code so records look identical.",
+      "watch_out": "The borrowed helpers are private, so a rename in the package builder will break this file."
+    },
+    {
+      "start": 21,
+      "end": 80,
+      "kind": "function",
+      "name": "refine_grounding_assembly (part 1)",
+      "id": "s2",
+      "hash": "571872aa22560bba",
+      "title": "Find the one substation scope and start routes",
+      "what": "Confirms the layout belongs to this project and its source facts are still eligible. It then looks for components linked only to onsite, physical substation construction activities. If exactly one exists, it becomes the grounding grid and gets a new stable id. Each drawing line then starts to become a thin copper cylinder, with its length taken from the drawing.",
+      "why": "The docstring says the drawing attaches to an existing work scope, so it is shown only when that scope is unambiguous.",
+      "watch_out": "The match relies on activity names beginning with substation construction, so a renamed activity makes the grid disappear."
+    },
+    {
+      "start": 81,
+      "end": 140,
+      "kind": "function",
+      "name": "refine_grounding_assembly (part 2)",
+      "id": "s3",
+      "hash": "d0f88393dbe13ea1",
+      "title": "Record where routes and the grid came from",
+      "what": "Gives each route its source reference and inferred notes on origin, position and direction. Then it sets the overall grid box, places the grid at the study's burial depth if known or at a zero datum with a note if not, and records that timing covers only the whole substation construction interval. The drawing facts are added to the evidence list.",
+      "why": "The notes say the depth is illustrative unless the source states it, and no per-part dates are invented.",
+      "watch_out": "Burial depth is applied as a downward offset, so a sign change would place the grid above ground."
+    },
+    {
+      "start": 141,
+      "end": 177,
+      "kind": "function",
+      "name": "refine_grounding_assembly (part 3)",
+      "id": "s4",
+      "hash": "455c6c00be9611f2",
+      "title": "Replace old links and add a review note",
+      "what": "Replaces the review item for this grounding drawing, rewrites every link that pointed at the old component id across structures, mappings, stories and playlists, adds a limitation saying the routes are inferred rather than accepted CAD geometry, and returns a freshly checked copy of the model.",
+      "why": "Likely reason: the component id changes when the grid is named, so every link has to follow it or the model fails its checks.",
+      "watch_out": "Any link missed in the rewrite leaves a dangling id, which the final model check will reject."
+    }
+  ],
+  "explained_at": "2026-11-12T01:55:38+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns a grounding (earthing) layout extracted from a drawing into one 3D display component, attached to an existing substation construction activity, with the routes drawn as thin copper cylinders.",
+  "purpose": "Lets the viewer show the grounding grid routes from a drawing, clearly labelled as inferred rather than surveyed or engineered.",
+  "why": "The module docstring describes it as an inferred drawing route attached to an existing work scope. The provenance notes repeat that the routes are not accepted CAD geometry or exact dimensions.",
+  "how": "It first confirms the layout belongs to this project and that its source facts are still eligible. It then looks for components linked only to onsite, physical substation construction activities. If exactly one exists, that component becomes the grounding grid. Each drawing line becomes a copper cylinder part. The overall box, burial depth, timing notes and evidence are set, the review item is replaced, every old link to the component is rewritten, a limitation note is added, and the model is checked again.",
+  "inputs": "A ProjectModel and a GroundingLayout that holds the drawing lines, the drawing scale and origin, the burial depth, the study facts, and the association and unit basis texts.",
+  "outputs": "Returns a new, checked ProjectModel copy in which one component is the grounding grid, with its route parts, provenance, review item and limitation note. If no unique target exists, it returns a copy with only a limitation note added.",
+  "risks": "A wrong drawing scale makes every route the wrong length while still looking plausible. The match depends on activity names starting with substation construction, so a renamed activity hides the grid. The component id changes, so any link not rewritten breaks the model. The copper thickness is exaggerated for display.",
+  "debug": "If the grid is missing, read the limitation note for the reason it stayed evidence only, then check that exactly one component links only to matching onsite substation construction activities. If loading fails with a missing reference, check the rewriting of links in structures, mappings, stories and playlists. If route lengths look wrong, check the scale and origin in the layout. If burial depth is missing, check whether the study supplied one.",
+  "summary_hash": "sha256:a47f1d309a95d9ba2ac333dd345540443ac71bdcf70b0bf26b9d59fd563e77cc"
+}

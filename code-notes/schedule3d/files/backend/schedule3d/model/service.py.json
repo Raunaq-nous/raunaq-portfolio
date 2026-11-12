@@ -1,0 +1,694 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/model/service.py",
+  "language": "Python",
+  "lines": 1815,
+  "hash": "sha256:69238b9e7e576e0c4c1b045e36c22486a90538cb9cc0b2ead6d258edf038892e",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test or other verification evidence is visible in the packet.",
+      "Only 43 of the 49 sections were provided, so the final part of the model assembly is not reviewed.",
+      "Keyword rules make many placement, material and location decisions, and these need a person to check them.",
+      "An activity with only one planned date is counted in its group but later dropped, which is inconsistent.",
+      "Several computed values are never used in the visible sections."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SQLite",
+      "meaning": "a small database kept in a single file that the app reads from"
+    },
+    {
+      "term": "schedule",
+      "meaning": "the project's plan of work, listing activities and their dates"
+    },
+    {
+      "term": "activity",
+      "meaning": "one row of work in the schedule, such as installing a pump"
+    },
+    {
+      "term": "materiality",
+      "meaning": "whether an activity creates physical work (physical) or is only a planning item (abstract)"
+    },
+    {
+      "term": "phase",
+      "meaning": "the stage of the project an activity belongs to, such as foundations or piping"
+    },
+    {
+      "term": "WBS",
+      "meaning": "work breakdown structure, the nested grouping used in schedules, shown as paths with slashes"
+    },
+    {
+      "term": "provenance",
+      "meaning": "a record of where a value came from and how sure the app is of it"
+    },
+    {
+      "term": "evidence record",
+      "meaning": "a stored statement tied to its source, with a fingerprint and a review status"
+    },
+    {
+      "term": "SHA-256",
+      "meaning": "a fingerprint of a file; if the file changes, the fingerprint changes"
+    },
+    {
+      "term": "primitive",
+      "meaning": "a basic 3D shape, such as a block or a pipe run"
+    },
+    {
+      "term": "archetype",
+      "meaning": "a pattern describing a typical facility type and where its typical parts sit"
+    },
+    {
+      "term": "chunk",
+      "meaning": "a small batch of activities for one phase, so one component stays a manageable size"
+    },
+    {
+      "term": "deterministic",
+      "meaning": "producing the same output every time for the same input"
+    },
+    {
+      "term": "predecessor",
+      "meaning": "an activity that must finish or start before another activity can proceed"
+    }
+  ],
+  "depends_on": [
+    "schedule3d.evidence",
+    "schedule3d.model.contracts",
+    "schedule3d.model.industry_layout",
+    "schedule3d.model.site_layout",
+    "schedule3d.model.templates",
+    "schedule3d.normalize.contracts",
+    "schedule3d.normalize.service",
+    "schedule3d.semantics.archetypes",
+    "schedule3d.semantics.classifier",
+    "schedule3d.semantics.contracts",
+    "schedule3d.semantics.service",
+    "schedule3d.sqlite_paths"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 60,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "bb7b924cbb7973e9",
+      "title": "Module purpose and imported parts",
+      "what": "Gives the file its one-line description and brings in the helpers it uses, including evidence records, data contracts, layout rules and the schedule loader. Nothing the user sees happens in these lines by themselves.",
+      "why": "Reason not stated in the code for each import; the imports supply the types and helper functions the rest of the file calls.",
+      "watch_out": ""
+    },
+    {
+      "start": 61,
+      "end": 95,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "a97388234b963329",
+      "title": "Fixed limits and phase explanations",
+      "what": "Sets the size limits the model uses, such as 250 activities per component chunk and the 100,000 activity cap. It also gives each construction phase a plain sentence on why it matters, and those sentences appear in the story text.",
+      "why": "Likely reason: the limits keep the viewer and the database queries bounded, and the sentences give every phase a readable explanation.",
+      "watch_out": "Every construction phase needs its own sentence here, or building a story for a missing phase will fail."
+    },
+    {
+      "start": 96,
+      "end": 131,
+      "kind": "setup",
+      "name": "File setup (part 3)",
+      "id": "s3",
+      "hash": "f70c8fd192de2dc3",
+      "title": "Timeline nearest-date queries",
+      "what": "Holds two database queries that find the nearest earlier or later date for one date basis (planned, baseline, forecast or actual). The timeline uses them to jump to the previous or next event.",
+      "why": "Likely reason: one query works for all four date bases by passing the basis name in, instead of four separate queries.",
+      "watch_out": "Dates are compared as text, so every stored date must use the same text format or the jump will give wrong results."
+    },
+    {
+      "start": 132,
+      "end": 138,
+      "kind": "class",
+      "name": "SupportedActivity",
+      "id": "s4",
+      "hash": "c73df9e8d0ff2e58",
+      "title": "Activity with its support details",
+      "what": "Groups one schedule activity with its discipline and the evidence words that justified its classification. It is used while building component groups.",
+      "why": "Likely reason: keeps the three pieces together so later steps do not need to look them up again.",
+      "watch_out": ""
+    },
+    {
+      "start": 139,
+      "end": 148,
+      "kind": "class",
+      "name": "StoryInput",
+      "id": "s5",
+      "hash": "1a192ff885661d22",
+      "title": "Inputs for story creation",
+      "what": "Bundles one activity with its phase, how material it is, its discipline, the words that led to its classification, and the written reason. Each activity becomes one of these before its story is built.",
+      "why": "Likely reason: collects the classification results in one place so story building works from one object per activity.",
+      "watch_out": ""
+    },
+    {
+      "start": 149,
+      "end": 169,
+      "kind": "class",
+      "name": "GroupAccumulator",
+      "id": "s6",
+      "hash": "80439f0a1bb5e304",
+      "title": "Running totals for one group",
+      "what": "Keeps a running tally for one group of work, such as a facility area or system. It records counts per phase, source keys, dates, disciplines and words. The viewer uses these tallies to decide what to draw and how to label it.",
+      "why": "Likely reason: grouping is done in one pass over all activities, so the totals must be kept as the pass goes.",
+      "watch_out": "Abstract counts are included in the group totals but not in the physical count, so checks must use the correct number."
+    },
+    {
+      "start": 170,
+      "end": 184,
+      "kind": "function",
+      "name": "_merge_group",
+      "id": "s7",
+      "hash": "3947e1aa9857ccc8",
+      "title": "Combining two groups into one",
+      "what": "Adds one group's totals, names, dates and links into another group. It is used when small groups are merged so the scene stays readable.",
+      "why": "Likely reason: lets the viewer fold small groups together without losing their counts.",
+      "watch_out": "This adds totals only, so the caller must remove the old group and update its links."
+    },
+    {
+      "start": 185,
+      "end": 218,
+      "kind": "function",
+      "name": "_consolidate_for_viewer (part 1)",
+      "id": "s8",
+      "hash": "469ecaa004566269",
+      "title": "Merging the smallest groups for display",
+      "what": "When there are more physical groups than the scene can show, merges the smallest ones into a single group labelled as low-support systems. This keeps the 3D scene at a readable size and reports whether a merge happened.",
+      "why": "Likely reason: the group budget comes from the square root of the assigned activities, so the scene grows slowly as the schedule grows.",
+      "watch_out": "The merged group uses a fixed name, so a real group with that exact name could be overwritten."
+    },
+    {
+      "start": 219,
+      "end": 262,
+      "kind": "function",
+      "name": "_consolidate_for_viewer (part 2)",
+      "id": "s9",
+      "hash": "537643dc7573797f",
+      "title": "Size table for block shapes",
+      "what": "A lookup table giving three numbers for each named shape kind, used to size the 3D blocks. Despite its section name, this is a size table rather than merge logic.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The three numbers are not labelled here, so confirm their unit and axis in the viewer before changing them."
+    },
+    {
+      "start": 263,
+      "end": 285,
+      "kind": "function",
+      "name": "_row_activity",
+      "id": "s10",
+      "hash": "81e31bc6e954d811",
+      "title": "Turning a database row into an activity",
+      "what": "Reads one row from the schedule table and builds an activity with its dates, status, task type and extra fields. Later steps work from this object rather than raw database rows.",
+      "why": "Likely reason: converts stored text and numbers once, in one place, so other code does not repeat the work.",
+      "watch_out": "Malformed extra-fields text stops the read, because it is parsed as JSON with no fallback."
+    },
+    {
+      "start": 286,
+      "end": 302,
+      "kind": "function",
+      "name": "_timeline_lane_item",
+      "id": "s11",
+      "hash": "7d5421fc6c5923b0",
+      "title": "Timeline bar entry for an activity",
+      "what": "Builds one entry for the timeline lane from an activity and its phase, carrying all four date bases. This is what the timeline screen shows for each item.",
+      "why": "Likely reason: the lane needs only some activity fields, so this copies just those.",
+      "watch_out": ""
+    },
+    {
+      "start": 303,
+      "end": 339,
+      "kind": "function",
+      "name": "load_timeline_lane_page",
+      "id": "s12",
+      "hash": "b666d514806e17da",
+      "title": "Paged list of abstract timeline items",
+      "what": "Returns one page of abstract (non-physical) activities for the timeline lane, ordered by planned start, along with the total count so the viewer can page through them. The page size is capped at 500.",
+      "why": "Likely reason: a large schedule cannot be sent to the viewer all at once, so it is read in pages.",
+      "watch_out": "Items with no planned date sort to the end, and page order stays stable only while the sort fields do not change between requests."
+    },
+    {
+      "start": 340,
+      "end": 367,
+      "kind": "function",
+      "name": "load_adjacent_timeline_event",
+      "id": "s13",
+      "hash": "81c157ddf7d381af",
+      "title": "Finding the previous or next event",
+      "what": "Finds the nearest earlier or later date for a chosen basis, relative to a timestamp, so the timeline can jump to it. It rejects unknown basis or direction names and timestamps that include a timezone.",
+      "why": "Likely reason: each click on the timeline needs one clear answer for where to jump.",
+      "watch_out": "Unlike the lane page, this opens the database without the read-only helper, so a wrong file path can silently create a new empty database."
+    },
+    {
+      "start": 368,
+      "end": 427,
+      "kind": "function",
+      "name": "_iter_supported_chunks (part 1)",
+      "id": "s14",
+      "hash": "0617819649871210",
+      "title": "Splitting activities into phase chunks, part one",
+      "what": "For one group, finds its physical planned activities, skipping offsite work, ordered by phase and start date, and starts splitting them into chunks. Each chunk holds one phase and up to 250 activities so that each component stays bounded.",
+      "why": "Likely reason: the viewer shows each phase of a component as a separate step, and chunking keeps each piece small.",
+      "watch_out": "The group key must be built exactly as the grouping step builds it, or activities silently disappear from the model."
+    },
+    {
+      "start": 428,
+      "end": 441,
+      "kind": "function",
+      "name": "_iter_supported_chunks (part 2)",
+      "id": "s15",
+      "hash": "586a628663a60a87",
+      "title": "Splitting activities into phase chunks, part two",
+      "what": "Adds each activity, with its discipline and evidence, to the current chunk. It starts a new chunk when the phase changes or the size limit is reached, and returns the last chunk.",
+      "why": "Likely reason: finishing the split makes sure the final partial chunk is not lost.",
+      "watch_out": "Evidence text is parsed as JSON for every row, so one malformed record can stop the whole group."
+    },
+    {
+      "start": 442,
+      "end": 446,
+      "kind": "function",
+      "name": "_stable_structure_id",
+      "id": "s16",
+      "hash": "38d97b188a24842b",
+      "title": "Stable structure identifier",
+      "what": "Creates a short ID with the prefix STR- and eight characters, made from a group's name. The same group name always gives the same ID, even when the model is rebuilt.",
+      "why": "Likely reason: lets saved references to a structure survive when the model is rebuilt.",
+      "watch_out": "Renaming a group changes its ID, which breaks any saved reference to the old ID."
+    },
+    {
+      "start": 447,
+      "end": 450,
+      "kind": "function",
+      "name": "_confidence_value",
+      "id": "s17",
+      "hash": "21d2501eddde18af",
+      "title": "Turning confidence labels into scores",
+      "what": "Maps the three confidence labels (high, medium and low) to scores of 0.9, 0.7 and 0.4 for the review queue.",
+      "why": "Likely reason: the review queue ranks items by a number, so labels are converted once here.",
+      "watch_out": "A new confidence label added without a score here will cause a lookup error."
+    },
+    {
+      "start": 451,
+      "end": 466,
+      "kind": "function",
+      "name": "_facility_area",
+      "id": "s18",
+      "hash": "58c4f1bd747c8686",
+      "title": "Choosing a readable facility area name",
+      "what": "Picks a human-friendly area name from a schedule path such as project, plant, area. It skips generic words such as project or engineering and placeholder text, and it is used to label groups.",
+      "why": "Likely reason: schedule paths often end in generic words, so the search starts from the deepest part and moves upward.",
+      "watch_out": "Path levels must be separated by slashes, otherwise the whole path is treated as one name."
+    },
+    {
+      "start": 467,
+      "end": 496,
+      "kind": "function",
+      "name": "_role_for",
+      "id": "s19",
+      "hash": "71d365daa28f1676",
+      "title": "Matching a group to an asset role",
+      "what": "Scores each possible asset role from the facility archetype by how many of the group's activity words match its evidence words, then returns the best role and up to eight matching words. Returns nothing if no word matches.",
+      "why": "Likely reason: lets each group use a known placement pattern for its facility type, while unclear groups fall back to a generic position.",
+      "watch_out": "Prefix matching on words of four or more letters can match unrelated words, and ties go to the role with the alphabetically earlier ID."
+    },
+    {
+      "start": 497,
+      "end": 553,
+      "kind": "function",
+      "name": "_primitive_for",
+      "id": "s20",
+      "hash": "4dd13446f633a21a",
+      "title": "Choosing the basic shape",
+      "what": "Decides which basic 3D shape a component uses. It looks first at the construction phase (enabling work becomes an open area, for example), then at the matched role, and finally at the structure class.",
+      "why": "Likely reason: the phase says more reliably what kind of object something is than the words in its name do.",
+      "watch_out": "Phase rules run before role rules, so a specific role shape is ignored in phases such as enabling work."
+    },
+    {
+      "start": 554,
+      "end": 558,
+      "kind": "function",
+      "name": "_min_date",
+      "id": "s21",
+      "hash": "e8c4fbe8c99a2371",
+      "title": "Earliest date from a list",
+      "what": "Returns the earliest date in a list, skipping empty entries, or nothing if every entry is empty. It is used when combining group date ranges.",
+      "why": "Likely reason: group dates can be missing, so empty values are skipped before comparing.",
+      "watch_out": ""
+    },
+    {
+      "start": 559,
+      "end": 563,
+      "kind": "function",
+      "name": "_max_date",
+      "id": "s22",
+      "hash": "8683ce69bd3f464a",
+      "title": "Latest date from a list",
+      "what": "Returns the latest date in a list, skipping empty entries, or nothing if every entry is empty. It is used when combining group date ranges.",
+      "why": "Likely reason: group dates can be missing, so empty values are skipped before comparing.",
+      "watch_out": ""
+    },
+    {
+      "start": 564,
+      "end": 583,
+      "kind": "function",
+      "name": "_connected_lanes",
+      "id": "s23",
+      "hash": "0fa78a85c5612f7b",
+      "title": "Grouping linked groups into lanes",
+      "what": "Gives each group a lane number so that groups linked by schedule dependencies share a lane, and each separate cluster gets its own. Lane numbers later set how far apart groups sit across the scene.",
+      "why": "Likely reason: keeps linked work visually together and separates unrelated work.",
+      "watch_out": "Groups with no recorded dependencies each form their own lane, so the scene can spread out widely when links are missing."
+    },
+    {
+      "start": 584,
+      "end": 643,
+      "kind": "function",
+      "name": "_spatial_position (part 1)",
+      "id": "s24",
+      "hash": "d8c40a53249a1de5",
+      "title": "Fallback placement on the floor plan",
+      "what": "When no asset role places a group, computes a floor position and a short reason. It uses a route distance for chainage labels, a grid reference such as A-12, a level number, or otherwise the schedule order and lane. Each result is marked as inferred or rule-based, not surveyed.",
+      "why": "Likely reason: schedule data rarely includes real coordinates, so the function builds a stand-in that is clearly labelled.",
+      "watch_out": "A grid reference that does not match the expected pattern silently falls back to the default placement with no warning."
+    },
+    {
+      "start": 644,
+      "end": 644,
+      "kind": "function",
+      "name": "_spatial_position (part 2)",
+      "id": "s25",
+      "hash": "da39a3ee5e6b4b0d",
+      "title": "Blank line after placement function",
+      "what": "Contains no code. It is a blank line where the placement function ends, and nothing runs here.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 645,
+      "end": 678,
+      "kind": "function",
+      "name": "_layout_edges",
+      "id": "s26",
+      "hash": "780822cba4c3f0ef",
+      "title": "Dependency links between groups",
+      "what": "Counts how many schedule dependency links run from one group to another, producing a neighbour map and a link count for each group. The layout and the merge step use this map to decide which groups belong together and how strongly they connect.",
+      "why": "Likely reason: the layout follows how work actually depends on other work, instead of invented coordinates.",
+      "watch_out": "Links inside a single group are ignored, and a group missing from the assignment table drops out of the map silently."
+    },
+    {
+      "start": 679,
+      "end": 686,
+      "kind": "function",
+      "name": "_file_sha256",
+      "id": "s27",
+      "hash": "3d510005b17944f6",
+      "title": "File fingerprint calculation",
+      "what": "Computes a SHA-256 fingerprint of the schedule file, reading it in 1 MB pieces. The fingerprint is stored with evidence so the source can be checked later.",
+      "why": "Likely reason: reading in pieces keeps memory use low for large schedule files.",
+      "watch_out": "If the file changes while it is being read, the fingerprint will not match the file's final contents."
+    },
+    {
+      "start": 687,
+      "end": 722,
+      "kind": "function",
+      "name": "_schedule_fact",
+      "id": "s28",
+      "hash": "71afc7fd649397eb",
+      "title": "Evidence record for a schedule activity",
+      "what": "Creates a recorded fact that the schedule states a given activity. It stores the source file, its fingerprint, the row number, and a fixed status marking the fact as accepted, source-stated and fully confident. Later conclusions link back to these records.",
+      "why": "Likely reason: lets every story claim trace back to a row in the schedule.",
+      "watch_out": "Because the record is fixed as accepted with full confidence, an import error passes unnoticed unless someone checks the source row."
+    },
+    {
+      "start": 723,
+      "end": 767,
+      "kind": "function",
+      "name": "_material_for",
+      "id": "s29",
+      "hash": "77f2da0451ca12a0",
+      "title": "Guessing a material from words",
+      "what": "Chooses a material label, such as concrete, asphalt, galvanized steel or envelope, for a component. It uses the shape type and the words in its label, area and path, and falls back to painted steel when nothing matches.",
+      "why": "Likely reason: the schedule does not state materials, so a rule-based label gives the viewer something to display.",
+      "watch_out": "This is a keyword guess, and the painted steel default can be wrong for any shape the rules do not cover."
+    },
+    {
+      "start": 768,
+      "end": 780,
+      "kind": "function",
+      "name": "_location_context",
+      "id": "s30",
+      "hash": "1d5252f575cd3738",
+      "title": "Deciding onsite, offsite or abstract",
+      "what": "Labels each activity as onsite, offsite or abstract using keywords. Offsite work such as factory, vendor, delivery or shop fabrication gets no 3D geometry. Install-type words followed by onsite or field are treated as onsite.",
+      "why": "Likely reason: work done away from the site cannot honestly be drawn at a site position.",
+      "watch_out": "A single keyword such as delivery removes an activity from the 3D model, so an unusual activity name can hide real work."
+    },
+    {
+      "start": 781,
+      "end": 840,
+      "kind": "function",
+      "name": "_phase2_story_data (part 1)",
+      "id": "s31",
+      "hash": "48bdbfd0cda7a0c4",
+      "title": "Activity evidence and component links, part one",
+      "what": "Creates an evidence record for each activity. It then sets each component's class, material and linked evidence, and writes a link between each supporting activity and each component it changes, keeping the activity's dates.",
+      "why": "Likely reason: the viewer needs to show which activity causes which component to change, and when.",
+      "watch_out": "This step changes the component objects it receives in place, so running it twice or in a different order changes the result."
+    },
+    {
+      "start": 841,
+      "end": 897,
+      "kind": "function",
+      "name": "_phase2_story_data (part 2)",
+      "id": "s32",
+      "hash": "97b9d4de035d17ed",
+      "title": "Schedule relationships and outside links",
+      "what": "Records each dependency as a predecessor or successor for this project's activities. Links to other projects carry a project prefix, and evidence is added for those outside activities. The build stops if an outside activity is missing from staging.",
+      "why": "Likely reason: a story should say what comes before and after it, even across project boundaries.",
+      "watch_out": "A dependency on an activity from another project that was never staged stops the whole build with an error."
+    },
+    {
+      "start": 898,
+      "end": 957,
+      "kind": "function",
+      "name": "_phase2_story_data (part 3)",
+      "id": "s33",
+      "hash": "4441fc1ec17e5b4d",
+      "title": "Building each activity's story",
+      "what": "Creates one story per activity with a sequence number, location context, discipline, the reasons, plain text on what is happening and why it matters, and the components it changes. It also lists up to 12 other activities that start on the same day.",
+      "why": "Likely reason: gives the user a readable account of each activity that links to the 3D evidence.",
+      "watch_out": "Only the first changed component supplies the geometry and position provenance, so the others are not shown on the story."
+    },
+    {
+      "start": 958,
+      "end": 1017,
+      "kind": "function",
+      "name": "_phase2_story_data (part 4)",
+      "id": "s34",
+      "hash": "8df11c47526dbe10",
+      "title": "Completing story fields and conclusions",
+      "what": "Fills in each story's dates, predecessors, successors, concurrent activities, three explanation levels (beginner, professional and audit), and the accuracy limit that a schedule is not proof of installed progress. For each story it also adds an automatic conclusion record with a fixed confidence of 0.5.",
+      "why": "Likely reason: three explanation levels let one story serve different readers, and the accuracy limit reminds them that a schedule is a plan.",
+      "watch_out": "Conclusions are accepted automatically with no human review, so the notes are the only sign that nobody checked them."
+    },
+    {
+      "start": 1018,
+      "end": 1058,
+      "kind": "function",
+      "name": "_phase2_story_data (part 5)",
+      "id": "s35",
+      "hash": "14c0ba67f648a573",
+      "title": "Building the playlists",
+      "what": "Finishes the list of physical story IDs, keeps one representative component per class, and builds five playlists: every activity, major build film, component school, every represented asset, and programme film. Returns the evidence, links, stories and playlists together.",
+      "why": "Likely reason: playlists give the viewer ready-made sequences for different ways of watching the build.",
+      "watch_out": "The every-activity and programme-film playlists contain the same stories, so they duplicate each other, and component school keeps only the first component of each class."
+    },
+    {
+      "start": 1059,
+      "end": 1118,
+      "kind": "function",
+      "name": "build_project_model (part 1)",
+      "id": "s36",
+      "hash": "e87682b37864e0f4",
+      "title": "Entry point and activity count guard",
+      "what": "Starts the full model build for one project. It first counts the project's activities and refuses more than 100,000, asking for paged mode instead. It then loads the project, checks the fingerprint format, and runs semantic analysis to choose a grouping method.",
+      "why": "Likely reason: a very large schedule would take too much memory and time to draw as one model.",
+      "watch_out": "The main query uses a plain database connection while the count uses the read-only helper, so the two reads are not treated the same way."
+    },
+    {
+      "start": 1119,
+      "end": 1178,
+      "kind": "function",
+      "name": "build_project_model (part 2)",
+      "id": "s37",
+      "hash": "6cb1407d80182bdd",
+      "title": "Reading activities and collecting date ranges",
+      "what": "Reads all the project's activities, with the grouping if one was chosen. For each activity it widens the date range of every date basis and the overall schedule span, and it builds the story input and flags low-confidence classifications.",
+      "why": "Likely reason: the viewer needs the date span of each basis to set its timeline range.",
+      "watch_out": "Stored phase and materiality text must match a known value exactly, or reading that row fails."
+    },
+    {
+      "start": 1179,
+      "end": 1226,
+      "kind": "function",
+      "name": "build_project_model (part 3)",
+      "id": "s38",
+      "hash": "2f20dd20f89cf68d",
+      "title": "Sorting activities into abstract and skipped",
+      "what": "Continues the loop. Works out each activity's group, adds low-confidence classifications to a capped review list, and counts abstract activities for the timeline lane and their group. Offsite physical work is recorded as skipped, with a reason.",
+      "why": "Likely reason: offsite and abstract work should be visible to the user without being invented as geometry.",
+      "watch_out": "Abstract activities still add to their group's totals, so they can change how groups are ranked even though they draw nothing."
+    },
+    {
+      "start": 1227,
+      "end": 1279,
+      "kind": "function",
+      "name": "build_project_model (part 4)",
+      "id": "s39",
+      "hash": "83d87c1dc442b709",
+      "title": "Adding physical activities to groups",
+      "what": "For physical activities, assigns a fallback group when no grouping value exists, and skips activities with no usable planned dates. It adds each remaining activity's counts, dates, words and disciplines to its group, reports progress every 5,000 rows, and checks for cancellation at those points.",
+      "why": "Likely reason: each activity must land in one group and carry its reasons with it, so gaps stay visible.",
+      "watch_out": "An activity with only one planned date is counted here, but it is later dropped when components are built because both dates are required."
+    },
+    {
+      "start": 1280,
+      "end": 1326,
+      "kind": "function",
+      "name": "build_project_model (part 5)",
+      "id": "s40",
+      "hash": "f189c6151b13a8ed",
+      "title": "Preparing layout and merge settings",
+      "what": "Lists the groups that have physical work and builds the dependency map when a grouping method exists. It computes the display budget from the square root of assigned activities, merges small groups unless schedule-first mode is on, and sets lanes and order. It also picks the archetype, using the unknown archetype when facility confidence is low.",
+      "why": "Likely reason: the display budget keeps the scene size proportional to the schedule, and the unknown archetype stops a weak guess from driving the layout.",
+      "watch_out": "If the chosen grouping method is not found among the candidates, the budget silently uses the total activity count instead."
+    },
+    {
+      "start": 1327,
+      "end": 1371,
+      "kind": "function",
+      "name": "build_project_model (part 6)",
+      "id": "s41",
+      "hash": "a8b17db29a42abc7",
+      "title": "Review notes about simplifications",
+      "what": "Adds review items that explain three simplifications: low-confidence activity decisions left out of the in-model list, groups merged for display, and activities placed in a fallback project-level group. Each item has a message and a confidence score.",
+      "why": "Likely reason: the owner needs to know where the model was simplified, rather than discovering it later.",
+      "watch_out": "These messages are the only record that groups were merged or that fallback groups were used, so removing them would hide those simplifications."
+    },
+    {
+      "start": 1372,
+      "end": 1419,
+      "kind": "function",
+      "name": "build_project_model (part 7)",
+      "id": "s42",
+      "hash": "4d86203861588380",
+      "title": "Positioning each group in order",
+      "what": "Walks through the groups in start-date order, checking for cancellation first. For each group it assigns a stable ID, a shape class from its words, its main facility area, and its best-matching asset role. A matched role is placed at that role's fixed spot, with an offset for repeats; otherwise the fallback placement is used.",
+      "why": "Likely reason: groups are handled in time order so earlier work comes first, and repeated shapes stack in a predictable line.",
+      "watch_out": "Each repeat of a role is offset by a fixed step of 18, so many repeats form one long row."
+    },
+    {
+      "start": 1420,
+      "end": 1479,
+      "kind": "function",
+      "name": "build_project_model (part 8)",
+      "id": "s43",
+      "hash": "586d35c56e6d6d54",
+      "title": "Placing schedule-only groups and building chunks",
+      "what": "For schedule-first layouts, places each group at its planned spot or in an editable area spot, marked as assumed rather than surveyed. It then loads the group's phase chunks, removes any activity missing a start or finish date and records it as unrepresented, and keeps the rest.",
+      "why": "Likely reason: the viewer must not show a date range that the schedule does not fully give.",
+      "watch_out": "Phase offsets are built from the group's phase tallies, so if the chunk query ever returns a phase the tallies lack, the lookup fails."
+    },
+    {
+      "start": 1480,
+      "end": 1539,
+      "kind": "function",
+      "name": "build_project_model (part 9)",
+      "id": "s44",
+      "hash": "96f92081b8331788",
+      "title": "Splitting activities into physical chunks",
+      "what": "Takes a group of activities and works out the dates for one chunk of physical work, then gives it a shape, size and ID. Chunks with no valid planned dates are listed as unrepresented instead of being drawn.",
+      "why": "Likely reason: a component needs a valid date range to appear on the timeline, so undated work is reported rather than made up.",
+      "watch_out": "Unrepresented chunks do not appear in the 3D view, so the accuracy figures depend on them being recorded."
+    },
+    {
+      "start": 1540,
+      "end": 1599,
+      "kind": "function",
+      "name": "build_project_model (part 10)",
+      "id": "s45",
+      "hash": "7f40e58f7221af16",
+      "title": "Gathering dates and building the component record",
+      "what": "Collects the planned, actual, baseline and forecast dates for each chunk and builds the component record with its label, schedule details, shape and position.",
+      "why": "Likely reason: keeping each date type separate lets the viewer show planned, actual, baseline and forecast information without mixing them.",
+      "watch_out": "When no site layout is given, the position comes from fixed rules, which are schematic and not surveyed."
+    },
+    {
+      "start": 1600,
+      "end": 1644,
+      "kind": "function",
+      "name": "build_project_model (part 11)",
+      "id": "s46",
+      "hash": "453e430765c93c59",
+      "title": "Setting size, rotation and detail of components",
+      "what": "Sets each component's drawn size, rotation, how it is revealed on screen, and how much detail it gets. It also records that the shape came from a rule and not from measured data.",
+      "why": "Likely reason: each component must say how its geometry was chosen so it can be labelled as a rule, not a measurement.",
+      "watch_out": "The detail budget is 4,000 or 1,200 depending on whether the shape matches the role, so changing it changes rendering cost."
+    },
+    {
+      "start": 1645,
+      "end": 1703,
+      "kind": "function",
+      "name": "build_project_model (part 12)",
+      "id": "s47",
+      "hash": "a35309f737f5464a",
+      "title": "Building structure records and their review items",
+      "what": "Builds one structure record per schedule group, with its class, dates, duration, links to neighbouring structures and layout reasons. A review item is added when the classification is weak (confidence below 0.6) or has no supporting evidence.",
+      "why": "Review items make uncertain classifications visible to the owner instead of hiding them.",
+      "watch_out": "The duration is set to 0.0 when a date is missing, which a reader could mistake for a real zero-day duration."
+    },
+    {
+      "start": 1704,
+      "end": 1763,
+      "kind": "function",
+      "name": "build_project_model (part 13)",
+      "id": "s48",
+      "hash": "317275fa51cfdffe",
+      "title": "Facility and grouping review items, and counts",
+      "what": "Adds review items when the facility classification is weak or no grouping signal was found. It also counts how many physical activities are accounted for against the total, and records any mismatch as a limitation.",
+      "why": "The grouping message says physical geometry was not invented when no grouping signal exists, so the system states its limits instead of guessing.",
+      "watch_out": "A count mismatch is shown as a limitation and does not stop the build, so it is easy to miss."
+    },
+    {
+      "start": 1764,
+      "end": 1815,
+      "kind": "function",
+      "name": "build_project_model (part 14)",
+      "id": "s49",
+      "hash": "cf94e5c3ed78c797",
+      "title": "Assembling the final project model",
+      "what": "Puts the structures, components, accuracy figures, limitations and evidence into the final project model, and returns it. The database connection is closed whatever happens.",
+      "why": "Closing the connection in a finally block makes sure it is released even when the build fails.",
+      "watch_out": "The accuracy figures are only as reliable as the counts calculated earlier in the function."
+    }
+  ],
+  "explained_at": "2026-11-12T02:02:12+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the 3D facility model, the activity stories and the timeline lookups for one project from its staged schedule data.",
+  "purpose": "Turns the schedule's activities into what the viewer draws and explains: groups, components with shapes and materials, story text for each activity, playlists, and review notes about anything left out or simplified. It also answers timeline page requests and nearest-event requests.",
+  "why": "Likely reason: the file keeps every visible object tied back to a schedule row and records how sure it is, so the owner can judge the result. The module docstring describes the model as deterministic, meaning the same input should give the same output.",
+  "how": "1. Count the activities and stop if there are more than the limit. 2. Load the project and fingerprint the source file. 3. Run semantic analysis to choose a grouping method. 4. Read the activities and their meanings in planned-date order, collecting date ranges and story inputs. 5. Sort each activity into physical, abstract, offsite or unrepresented, and tally physical work into groups. 6. Merge small groups for display, then compute layout order and lanes. 7. For each group, pick a shape, material, role and position, and build components. 8. Build evidence records, activity stories, links and playlists. 9. Return the model. The timeline helpers run separately and each reads one page or one nearest date.",
+  "inputs": "A SQLite database file holding the activities, activity meanings, candidate grouping assignments and relationships. Also a project ID, an optional source name, an optional lowercase SHA-256 fingerprint, optional progress and cancel callbacks, and a schedule-first switch. The timeline helpers take a date basis, a timestamp without a timezone, a direction, and a page offset and size.",
+  "outputs": "A project model holding components, structures, activity stories, links between activities and components, playlists, review items and a record of activities that were not drawn, with reasons. The timeline helpers return one page of timeline items or one nearest event time. The end of the model assembly is in sections not provided, so the exact final fields are not confirmed here.",
+  "risks": "Schedules above 100,000 activities are refused. Unknown phase or materiality values, and links to outside activities that were never staged, stop the build with an error. Keyword rules guess materials, location and roles, so some results can be wrong. Schedule-only positions are assumed, not surveyed. Activities with only one planned date are dropped when components are built. Cancellation is checked only at set points, so a cancel can take time to take effect. Some values are computed but not used in the visible sections, including class confidence, alternate class, class scores and phase index.",
+  "debug": "Start with the review items and the reasons for activities not drawn, since they explain most gaps and simplifications. If a group or component is missing, check that its activities are physical, not offsite, and have both planned dates, and that their group key matches the grouping step. If a story has a wrong or missing sentence, check the phase explanation table. If the error says an outside activity is missing, the other project was not staged. If the error says a phase or materiality value is not known, check the stored value. If a timeline jump is wrong, check the date text format in the database. If the model is refused for size, use the paged programme mode.",
+  "summary_hash": "sha256:69238b9e7e576e0c4c1b045e36c22486a90538cb9cc0b2ead6d258edf038892e"
+}

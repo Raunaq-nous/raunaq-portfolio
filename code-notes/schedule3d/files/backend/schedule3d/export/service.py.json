@@ -1,0 +1,319 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/export/service.py",
+  "language": "Python",
+  "lines": 592,
+  "hash": "sha256:f2d383e7f0ea4120439dfdf7daab564ebeb000a0204a2003f99cdbe01afdc52b",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in this packet.",
+      "Temporary staging folder is not cleaned up if an error occurs before the final step.",
+      "Optional files (building and contract) are skipped silently when the database is missing, so the verification summary may not show why."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Offline",
+      "meaning": "Able to run with no network connection, because everything needed is inside one file."
+    },
+    {
+      "term": "Content security policy",
+      "meaning": "A browser rule set that limits where a page may load data or code from."
+    },
+    {
+      "term": "IFC",
+      "meaning": "Industry Foundation Classes, a standard file format for building models."
+    },
+    {
+      "term": "Staging folder",
+      "meaning": "A temporary folder where files are gathered before being moved to their final place."
+    },
+    {
+      "term": "Spreadsheet formula injection",
+      "meaning": "A risk where a cell beginning with an equals sign runs as a formula when opened in a spreadsheet."
+    },
+    {
+      "term": "Deterministic",
+      "meaning": "Producing the same output every time from the same input."
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/bim",
+    "backend/schedule3d/ingest/contracts.py",
+    "backend/schedule3d/integrations",
+    "backend/schedule3d/model/contracts.py",
+    "backend/schedule3d/render/service.py"
+  ],
+  "used_by": [
+    "backend/schedule3d/export/__init__.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 35,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a50ee370abaeb2f0",
+      "title": "Imports and text patterns",
+      "what": "Loads the tools for zip files, CSV, HTML, and database reading, and two patterns that find the script and stylesheet links in the built frontend page.",
+      "why": "Likely reason: the offline export has to find and inline the built frontend files.",
+      "watch_out": "The patterns assume a specific link format, so a different build output may stop matching."
+    },
+    {
+      "start": 36,
+      "end": 62,
+      "kind": "class",
+      "name": "_RuntimeAssetInspector",
+      "id": "s2",
+      "hash": "42c2e8a37581efa9",
+      "title": "Finds outside links in HTML",
+      "what": "Scans HTML tags for links to outside files, such as script, stylesheet, image, video, audio and frame sources, and skips inline data and in-page anchors.",
+      "why": "Likely reason: the offline file must make no outside requests, so this checks for that.",
+      "watch_out": "Only the listed tags and attributes are checked, so a new kind of tag could slip past."
+    },
+    {
+      "start": 63,
+      "end": 68,
+      "kind": "function",
+      "name": "_external_runtime_assets",
+      "id": "s3",
+      "hash": "d3594b6c4fdbb967",
+      "title": "Lists outside links in a page",
+      "what": "Runs the scanner over a page and returns the outside links it found.",
+      "why": "Likely reason: gives the export a simple list to report when it refuses to write a file.",
+      "watch_out": ""
+    },
+    {
+      "start": 69,
+      "end": 76,
+      "kind": "function",
+      "name": "_asset_path",
+      "id": "s4",
+      "hash": "eb41f332fcda9877",
+      "title": "Keeps file lookups inside the build",
+      "what": "Turns a link from the built page into a file path and refuses any path that leaves the frontend build folder.",
+      "why": "Likely reason: prevents a crafted link from reading other files on the machine.",
+      "watch_out": "Links with unusual encoding or query strings should be tested, since the check depends on resolved paths."
+    },
+    {
+      "start": 77,
+      "end": 81,
+      "kind": "function",
+      "name": "_safe_script_json",
+      "id": "s5",
+      "hash": "a69448cdec7f1068",
+      "title": "Safe model data for embedding",
+      "what": "Converts the project model to JSON text and escapes characters that could close the script tag early or break the script.",
+      "why": "Likely reason: the model data is placed inside a script tag in the HTML file.",
+      "watch_out": "Any new special characters in the data need the same escaping, or the page can break."
+    },
+    {
+      "start": 82,
+      "end": 91,
+      "kind": "function",
+      "name": "frontend_shell_path",
+      "id": "s6",
+      "hash": "34822211702339c9",
+      "title": "Finds the frontend entry page",
+      "what": "Returns the page to use as the base for the offline file, checking the shell file first and then the normal index page. Fails with a clear message if neither has been built.",
+      "why": "Likely reason: the app must be built before it can be exported.",
+      "watch_out": "Export stops until the frontend has been built."
+    },
+    {
+      "start": 92,
+      "end": 133,
+      "kind": "function",
+      "name": "export_offline_html",
+      "id": "s7",
+      "hash": "f93ca89e24357abb",
+      "title": "Builds the one-file app",
+      "what": "Creates one HTML file that contains the app styles, scripts and the project model, with a policy that blocks network access. Checks for leftover outside links before writing the file.",
+      "why": "Stated in the code: the docstring says the output is one network-free HTML file.",
+      "watch_out": "If the frontend build changes its layout, the matching steps may fail and the export raises an error."
+    },
+    {
+      "start": 134,
+      "end": 141,
+      "kind": "function",
+      "name": "_csv_text",
+      "id": "s8",
+      "hash": "02cefc96c82214d8",
+      "title": "Builds CSV text in memory",
+      "what": "Creates CSV text from a header row and data rows, making each cell safe for spreadsheets first.",
+      "why": "Likely reason: used for the smaller tables that are built in memory.",
+      "watch_out": ""
+    },
+    {
+      "start": 142,
+      "end": 150,
+      "kind": "function",
+      "name": "_spreadsheet_safe_cell",
+      "id": "s9",
+      "hash": "82cb948129125887",
+      "title": "Stops spreadsheet formula injection",
+      "what": "Adds a leading apostrophe to text that starts with an equals sign, plus, minus, at sign, tab or carriage return, so spreadsheets show it as text rather than running it as a formula.",
+      "why": "Likely reason: protects people who open the CSV files in a spreadsheet.",
+      "watch_out": "Plain text starting with a minus sign also gets the apostrophe, so some labels will look altered."
+    },
+    {
+      "start": 151,
+      "end": 154,
+      "kind": "function",
+      "name": "_spreadsheet_safe_row",
+      "id": "s10",
+      "hash": "9865bbea539072a8",
+      "title": "Applies cell safety to a row",
+      "what": "Applies the spreadsheet safety check to every value in a row.",
+      "why": "Likely reason: keeps every CSV path handled the same way.",
+      "watch_out": ""
+    },
+    {
+      "start": 155,
+      "end": 164,
+      "kind": "function",
+      "name": "_zip_text",
+      "id": "s11",
+      "hash": "d804fbfe25e09812",
+      "title": "Adds a text file to the archive",
+      "what": "Writes a text file into the zip with a fixed date and compression, so the same content always produces the same archive.",
+      "why": "Likely reason: fixed dates make the export repeatable.",
+      "watch_out": "Every file carries the same fixed date, so file dates do not show when the export was made."
+    },
+    {
+      "start": 165,
+      "end": 170,
+      "kind": "function",
+      "name": "_zip_bytes",
+      "id": "s12",
+      "hash": "b0af85cac2e1fefa",
+      "title": "Adds a binary file to the archive",
+      "what": "Writes raw bytes, such as the building file, into the zip with the same fixed date.",
+      "why": "Likely reason: same repeatability as text files.",
+      "watch_out": "The fixed date is not the export time, so do not use archive dates to judge freshness."
+    },
+    {
+      "start": 171,
+      "end": 187,
+      "kind": "function",
+      "name": "_zip_csv",
+      "id": "s13",
+      "hash": "f55dbade15aeb514",
+      "title": "Streams a CSV into the archive",
+      "what": "Writes a CSV straight into the zip row by row, with spreadsheet-safe cells, instead of building the whole file in memory first.",
+      "why": "Likely reason: keeps large tables from using too much memory.",
+      "watch_out": "If the row source fails partway, the archive can contain a partly written entry."
+    },
+    {
+      "start": 188,
+      "end": 214,
+      "kind": "function",
+      "name": "_project_guide",
+      "id": "s14",
+      "hash": "09d0816ed35ee52b",
+      "title": "Writes the guide page",
+      "what": "Builds the project guide HTML page with a short user journey, project counts, the audit file list and the known limitations, escaping project names.",
+      "why": "Stated in the code: the guide is shipped inside the audit pack to explain it.",
+      "watch_out": "The guide describes the model as schedule-derived, not survey or BIM geometry; keep that wording when editing."
+    },
+    {
+      "start": 215,
+      "end": 274,
+      "kind": "function",
+      "name": "export_audit_pack (part 1)",
+      "id": "s15",
+      "hash": "13855c523e23f968",
+      "title": "Audit pack setup and structure table",
+      "what": "Creates a temporary staging folder and builds the structures table, with one row for each structure group showing its class, confidence, activity counts and planned dates.",
+      "why": "Likely reason: files are gathered in a temporary folder first so a failed export does not leave a finished-looking archive.",
+      "watch_out": "The staging folder is only removed at the very end, so an error partway through can leave it behind."
+    },
+    {
+      "start": 275,
+      "end": 334,
+      "kind": "function",
+      "name": "export_audit_pack (part 2)",
+      "id": "s16",
+      "hash": "63d72537e6ac7794",
+      "title": "Components and unrepresented activities tables",
+      "what": "Builds the components table with material, quantity, dates and provenance labels, a table of physical activities that have no model shape and the reason, and a map from each activity to its components. Starts the verification summary.",
+      "why": "Likely reason: records what is shown in the model and what is deliberately left out.",
+      "watch_out": "Provenance labels are copied as stored, so they are only as accurate as the earlier steps."
+    },
+    {
+      "start": 335,
+      "end": 394,
+      "kind": "function",
+      "name": "export_audit_pack (part 3)",
+      "id": "s17",
+      "hash": "333c949db5d8bbf1",
+      "title": "Verification checks and optional building files",
+      "what": "Completes the verification summary with checks such as unique component IDs, finite coordinates and each activity being counted once. When a database exists, writes a conceptual IFC building file, reopens it to validate it, and writes an alignment contract.",
+      "why": "Stated in the code: a building file that fails independent reopen validation stops the export with an error.",
+      "watch_out": "Without a database, the building and contract files are left out silently, and the summary does not explain why."
+    },
+    {
+      "start": 395,
+      "end": 454,
+      "kind": "function",
+      "name": "export_audit_pack (part 4)",
+      "id": "s18",
+      "hash": "2c66c92bc61c88d3",
+      "title": "Adds the remaining files to the archive",
+      "what": "Adds the remaining JSON and text files, the optional ingestion report, the building and contract files when present, and the geometry provenance table to the archive.",
+      "why": "Likely reason: gives a complete record of how each object was placed and built.",
+      "watch_out": "The guide refers to several file names by name, so renaming a file breaks those references."
+    },
+    {
+      "start": 455,
+      "end": 514,
+      "kind": "function",
+      "name": "export_audit_pack (part 5)",
+      "id": "s19",
+      "hash": "2f8a7f62856a744c",
+      "title": "Activity to component mapping and database tables",
+      "what": "Writes the table linking each activity to the components it drives. When a database exists, opens it and writes the normalized activities and relationships for this project.",
+      "why": "Likely reason: shows exactly which activity is responsible for each component.",
+      "watch_out": "The database connection is opened here and only closed in the final cleanup step, so an error in between leaves it open."
+    },
+    {
+      "start": 515,
+      "end": 574,
+      "kind": "function",
+      "name": "export_audit_pack (part 6)",
+      "id": "s20",
+      "hash": "319f228656bd280e",
+      "title": "Accountability and relationship tables",
+      "what": "Reads activities, relationships and their semantic classifications for this project from the database, and writes the relationship table and the start of the accountability table.",
+      "why": "Likely reason: lets someone trace each activity from the schedule to the model.",
+      "watch_out": "Only relationships where this project is the predecessor or successor are included."
+    },
+    {
+      "start": 575,
+      "end": 592,
+      "kind": "function",
+      "name": "export_audit_pack (part 7)",
+      "id": "s21",
+      "hash": "660fd1952ad168b9",
+      "title": "Accountability rows and final move",
+      "what": "Adds each activity's rendered component IDs and its reason for having no shape to the accountability table, closes the database, moves the finished zip into place and deletes the staging folder.",
+      "why": "Likely reason: the final move means the destination appears only when the archive is complete.",
+      "watch_out": "Moving to an existing destination replaces the old file without warning."
+    }
+  ],
+  "explained_at": "2026-11-12T01:48:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Creates the two export products: a single offline HTML app that works without a network, and a zip audit pack of tables, JSON files and optional building and contract files.",
+  "purpose": "Lets a project be shared, reviewed and audited without a server or internet access.",
+  "why": "Stated in the code: the offline export is described as one network-free HTML file, and the audit pack is described as a deterministic, self-contained export. Spreadsheet safety and fixed archive dates are present in the code, and their reasons are likely about safe sharing and repeatable output.",
+  "how": "Offline HTML: 1. Checks the render manifest for the model. 2. Reads the built frontend shell page. 3. Inlines the stylesheet and script that the build references, after checking each path stays inside the build folder. 4. Embeds the model data safely in the page. 5. Adds a content security policy that blocks network access. 6. Scans the result for remaining outside links and refuses to write the file if any exist. Audit pack: 1. Creates a temporary staging folder. 2. Builds CSV tables for structures, components, provenance, mappings and unrepresented activities. 3. Builds a verification summary. 4. If a database exists, writes a conceptual building file, reopens it to validate it, and writes an alignment contract. 5. Writes JSON files, the guide page, and database tables into a zip. 6. Moves the zip into place and removes the staging folder.",
+  "inputs": "A validated project model, the built frontend folder, a destination path. The audit pack also accepts an optional database, ingestion report and attachment list.",
+  "outputs": "A single HTML file for offline export, and a zip archive named by the destination for the audit pack. The audit pack contains about 20 files, some optional.",
+  "risks": "If an error happens partway through the audit pack, the temporary staging folder is not removed, because cleanup runs only at the very end. Without a database, the building and contract files are silently omitted. Writing to an existing destination replaces it without warning. The offline file depends on the frontend build layout staying the same.",
+  "debug": "If offline export fails, check that the frontend was built and that its script and style links match the patterns at the top of the file. If the audit pack is missing files, check whether a database was passed in. If a leftover folder starting with .audit- appears, an earlier export failed partway. If a CSV opens with an apostrophe in front of a value, that is the spreadsheet safety rule working.",
+  "summary_hash": "sha256:f2d383e7f0ea4120439dfdf7daab564ebeb000a0204a2003f99cdbe01afdc52b"
+}

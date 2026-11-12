@@ -1,0 +1,463 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/model/contracts.py",
+  "language": "Python",
+  "lines": 843,
+  "hash": "sha256:019a2b3c387ba4db1ee176582e11a90efdf4684a0a4424b2315e76ce78ffad98",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The rules that are visible are explicit and cover many invalid cases.",
+      "No tests are visible in the packet.",
+      "Only 12 of 32 sections were reviewed, including the ProjectModel section, so the rest of the file is not assessed."
+    ]
+  },
+  "terms": [
+    {
+      "term": "provenance",
+      "meaning": "a note saying where a value came from, such as a measurement, a source document, a rule, or a guess."
+    },
+    {
+      "term": "evidence record",
+      "meaning": "a stored fact taken from a source, with its value, unit, and type."
+    },
+    {
+      "term": "parameter binding",
+      "meaning": "a link saying one geometry value was derived from one or more evidence facts."
+    },
+    {
+      "term": "schema version",
+      "meaning": "a number that tells readers which set of rules the data follows."
+    },
+    {
+      "term": "activity",
+      "meaning": "one scheduled task from the project plan."
+    },
+    {
+      "term": "4D model",
+      "meaning": "a 3D model that also shows time, so the build-up can be viewed over the schedule."
+    },
+    {
+      "term": "enum",
+      "meaning": "a fixed list of allowed named values."
+    },
+    {
+      "term": "confidence",
+      "meaning": "a number from zero to one showing how sure the code is about a value."
+    }
+  ],
+  "depends_on": [
+    "math",
+    "datetime",
+    "enum",
+    "typing",
+    "pydantic",
+    "schedule3d.evidence",
+    "schedule3d.evidence.units",
+    "schedule3d.model.assembly_contracts",
+    "schedule3d.model.identities",
+    "schedule3d.model.part_validation",
+    "schedule3d.semantics.contracts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 26,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "53ab652ca030895c",
+      "title": "Setup and schema version",
+      "what": "Brings in the tools and the evidence, unit, assembly, identity, validation, and semantics helpers. Sets the schema version to 1.0.",
+      "why": "Likely reason: the version number lets readers tell which rules a saved file was written under.",
+      "watch_out": "Changing the version number does not convert old data by itself, and no conversion step is shown in these sections."
+    },
+    {
+      "start": 27,
+      "end": 36,
+      "kind": "class",
+      "name": "ProvenanceKind",
+      "id": "s2",
+      "hash": "b7b0f89ca77a2738",
+      "title": "Provenance labels",
+      "what": "Lists the seven labels for where a value came from: measured, source, inferred, typical, rule, rule-staggered, and abstract.",
+      "why": "Likely reason: labels make it clear how much to trust each value.",
+      "watch_out": "The measured and source labels have strict rules in the part checks, so applying them incorrectly will fail validation."
+    },
+    {
+      "start": 37,
+      "end": 45,
+      "kind": "class",
+      "name": "Provenance",
+      "id": "s3",
+      "hash": "d133c64fb77689de",
+      "title": "Provenance note",
+      "what": "Stores one provenance label together with a required written reason and optional source and range text.",
+      "why": "Likely reason: a written reason makes each value explainable to a reviewer.",
+      "watch_out": "The rationale is required, so every value needs an explanation."
+    },
+    {
+      "start": 46,
+      "end": 53,
+      "kind": "class",
+      "name": "Vector3",
+      "id": "s4",
+      "hash": "77771a00f914e943",
+      "title": "Three-value vector",
+      "what": "Holds three numbers for x, y, and z. It does not check them itself.",
+      "why": "Likely reason: a simple shared shape for position, size, and rotation.",
+      "watch_out": "Finite-number checks are not made here; the geometry model does them."
+    },
+    {
+      "start": 54,
+      "end": 65,
+      "kind": "class",
+      "name": "GeometryPlan",
+      "id": "s5",
+      "hash": "3049896d6512894c",
+      "title": "Planned shape plan",
+      "what": "Describes a planned shape with a primitive name, position, dimensions, rotation, reveal style, a triangle budget that defaults to 2000, and a level of detail. It is not used in the sections shown.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The primitive here is free text, unlike the geometry model, which allows only box or cylinder."
+    },
+    {
+      "start": 66,
+      "end": 95,
+      "kind": "class",
+      "name": "PartGeometry",
+      "id": "s6",
+      "hash": "4b0c5ece7f06d2fd",
+      "title": "Physical part geometry",
+      "what": "Describes one solid in metres, with a position, size, and rotation in radians. Checks that all numbers are finite, that sizes are above zero, and that a cylinder's X and Z sizes match.",
+      "why": "Likely reason: the checks stop impossible or invisible shapes from reaching the viewer.",
+      "watch_out": "Values must be in metres and radians, not millimetres or degrees, or the shape will be wrong."
+    },
+    {
+      "start": 96,
+      "end": 153,
+      "kind": "class",
+      "name": "ParameterSourceBinding",
+      "id": "s7",
+      "hash": "dd5a0889b9224c90",
+      "title": "Link from a geometry value to evidence",
+      "what": "Ties one geometry value, such as a size or position, to the evidence facts it came from, with a scale factor and offset. It can check that the stored value matches the facts after unit conversion, within a very small tolerance.",
+      "why": "Likely reason: this proves a value really comes from the source and is not a typed-in guess.",
+      "watch_out": "A zero factor is rejected, and a mismatch between the value and its facts raises an error."
+    },
+    {
+      "start": 154,
+      "end": 213,
+      "kind": "class",
+      "name": "ParametricPart (part 1)",
+      "id": "s8",
+      "hash": "d073fd4282a88c7f",
+      "title": "One part, first set of rules",
+      "what": "Describes one display or export part: its ID format, slot, role, geometry, material, five provenance notes, evidence bindings, manual parameters, and per-axis provenance. Checks that every named parameter is allowed, that source-stated axes have an unscaled binding, and that manual values do not keep evidence links.",
+      "why": "Likely reason: a part can mix source-backed and manually edited values, so each axis needs its own label and its own link check.",
+      "watch_out": "There are many interacting rules, so one change to a label can break several other checks."
+    },
+    {
+      "start": 214,
+      "end": 259,
+      "kind": "class",
+      "name": "ParametricPart (part 2)",
+      "id": "s9",
+      "hash": "7e3f15f7c5950a76",
+      "title": "One part, second set of rules",
+      "what": "Continues the part checks. New parts cannot claim measured provenance. A value labelled as source must have all three axis bindings for its group, and scaled or offset bindings are allowed only for rule or inferred values.",
+      "why": "Likely reason: a partly sourced value must not be presented as fully sourced.",
+      "watch_out": "Source labels on dimensions, position, or rotation need all three axes bound, so partial evidence cannot be labelled as source."
+    },
+    {
+      "start": 260,
+      "end": 275,
+      "kind": "class",
+      "name": "ComponentSchedule",
+      "id": "s10",
+      "hash": "3e5c88306a0f12de",
+      "title": "Component schedule times",
+      "what": "Holds the activities supporting a component and its planned start and finish, plus optional actual, baseline, forecast, and data date values, and a status rule that defaults to planned interval.",
+      "why": "Likely reason: the 4D view needs the planned times, while the other times are optional extras.",
+      "watch_out": "Only the planned start and finish are required, so code reading the optional times must handle missing values."
+    },
+    {
+      "start": 276,
+      "end": 301,
+      "kind": "class",
+      "name": "ActivityComponentMapping",
+      "id": "s11",
+      "hash": "8b9bb905f41ab3ef",
+      "title": "Link between activity and component",
+      "what": "Describes one link saying how much of a component an activity covers, with a quantity, a fraction up to one, a reveal rule, optional dates, provenance, confidence, and source facts. The docstring calls this one edge in a many-to-many temporal truth graph.",
+      "why": "Likely reason: a component can be built by several activities and an activity can build several components, so each pairing is stored as its own link.",
+      "watch_out": "The segment fraction must be above zero and at most one, and the reveal rule is free text, so a typo is not caught."
+    },
+    {
+      "start": 302,
+      "end": 309,
+      "kind": "class",
+      "name": "ExplanationLevels",
+      "id": "s12",
+      "hash": "4486e12413779550",
+      "title": "Three levels of explanation",
+      "what": "Holds one explanation text each for beginners, construction professionals, and engineering auditors.",
+      "why": "Likely reason: the same finding is shown at a level that suits each reader.",
+      "watch_out": "All three texts are required, so each explanation must be written at every level."
+    },
+    {
+      "start": 310,
+      "end": 348,
+      "kind": "class",
+      "name": "ActivityStory",
+      "id": "s13",
+      "hash": "15b04169b061d402",
+      "title": "Activity story record",
+      "what": "Holds the app's written explanation of one schedule activity: what is happening, why it matters, its phase, its dates in several versions (planned, baseline, forecast, actual), links to earlier and later activities, and the components it changes. Viewers show this text when a user looks at an activity.",
+      "why": "Likely reason: keeps an activity's story and dates together so the timeline and explanations read from one place. The strict extra-field rule is likely there to reject malformed saved files.",
+      "watch_out": "Any new field must be added here, and older saved files must still load, because unknown fields are rejected."
+    },
+    {
+      "start": 349,
+      "end": 366,
+      "kind": "function",
+      "name": "story_conclusion_value",
+      "id": "s14",
+      "hash": "08c9d29460816a75",
+      "title": "Conclusion text used to check evidence",
+      "what": "Builds a fixed text summary of the interpretive parts of a story (material, phase, location, provenance, discipline and semantic rules). The model later compares this text with a recorded conclusion fact, which confirms the story still matches the evidence behind it.",
+      "why": "The docstring says it keeps the interpretations separate from the raw schedule row, so narration cannot quietly change the underlying facts.",
+      "watch_out": "Adding, removing or renaming a field in this list changes the text, so existing evidence records stop matching and saved models fail validation."
+    },
+    {
+      "start": 367,
+      "end": 376,
+      "kind": "class",
+      "name": "Playlist",
+      "id": "s15",
+      "hash": "acc9db7cdebe0d63",
+      "title": "Playlist of stories and components",
+      "what": "A named list of activity stories and 3D components that the viewer can play in order, such as a film of every activity. The kind text says which playlist it is.",
+      "why": "Reason not stated in the code beyond the field names. It groups items so users can watch a chosen subset of the model.",
+      "watch_out": "Every story and component listed must exist in the model, which is checked later in the project model."
+    },
+    {
+      "start": 377,
+      "end": 389,
+      "kind": "class",
+      "name": "SitePlanExtent",
+      "id": "s16",
+      "hash": "a1a3aa06c454e3f0",
+      "title": "Site plan size record",
+      "what": "Stores the overall width and depth of the site plan, with its unit and the evidence facts that support it. Layout code uses it to size the ground area.",
+      "why": "Likely reason: lets the site be drawn at the real scale of the source drawing while recording where that size came from.",
+      "watch_out": "The unit is free text, so code that reads it must expect the same spelling; enrichment only treats ft specially and assumes anything else is meters."
+    },
+    {
+      "start": 390,
+      "end": 439,
+      "kind": "class",
+      "name": "ModelComponent (part 1)",
+      "id": "s17",
+      "hash": "21557a634e5c3b3d",
+      "title": "Main 3D component record",
+      "what": "Describes one 3D object in the model: where it sits in its structure, its phase and discipline, what kind of thing it is, how many there are, its material, how sure the app is, its schedule, its shape, and where each fact came from. Optional groups are left out of the saved file when empty.",
+      "why": "Likely reason: one record carries everything the viewer needs for an object, and empty optional fields are dropped to keep saved files smaller.",
+      "watch_out": "Confidence and evidence terms have no default, so any code that creates a component must supply them or the record will not build."
+    },
+    {
+      "start": 440,
+      "end": 450,
+      "kind": "method",
+      "name": "ModelComponent: has_parametric_contract",
+      "id": "s18",
+      "hash": "bc209c251954a85c",
+      "title": "Check for a parametric asset",
+      "what": "Answers yes when a component has any detailed build information: parts, quantity evidence, an asset key, an instance key, or quantity provenance. A component that answers no is treated as a plain generic object.",
+      "why": "Likely reason: lets the rest of the app tell a component built from a defined asset apart from a placeholder.",
+      "watch_out": "Any new kind of detail that should count as parametric must be added to this check, or it will be treated as generic."
+    },
+    {
+      "start": 451,
+      "end": 479,
+      "kind": "class",
+      "name": "StructureRecord",
+      "id": "s19",
+      "hash": "bbbc68c92f652993",
+      "title": "Structure group record",
+      "what": "Describes one structure, a group of components such as an area or building. It holds classification scores, activity counts, planned dates, duration, layout reasoning and the list of component ids in the group.",
+      "why": "Reason not stated in the code beyond the field names. It gives the viewer a grouped view of related components.",
+      "watch_out": "The list of component ids must match exactly the components that point to this structure, which the project model checks."
+    },
+    {
+      "start": 480,
+      "end": 486,
+      "kind": "class",
+      "name": "DateBasisBounds",
+      "id": "s20",
+      "hash": "97c395a6cba40d96",
+      "title": "Start and finish dates for a timeline basis",
+      "what": "A simple pair of optional start and finish dates that marks the span of one timeline basis, such as planned or actual dates.",
+      "why": "Reason not stated in the code beyond the names. It is a small shared shape for date ranges.",
+      "watch_out": ""
+    },
+    {
+      "start": 487,
+      "end": 504,
+      "kind": "class",
+      "name": "TimelineLaneItem",
+      "id": "s21",
+      "hash": "fbff28c2f505bc06",
+      "title": "One row in the timeline lane",
+      "what": "One activity shown as a bar in the timeline, with its name, code, phase, and planned, actual, baseline and forecast dates. Its materiality label defaults to abstract, meaning it is not treated as physical work.",
+      "why": "Likely reason: gives the timeline everything it needs for one row without loading the full story.",
+      "watch_out": "The default abstract label hides physical work unless the caller sets materiality explicitly."
+    },
+    {
+      "start": 505,
+      "end": 513,
+      "kind": "class",
+      "name": "TimelineLanePage",
+      "id": "s22",
+      "hash": "a2803b04d370c605",
+      "title": "One page of timeline rows",
+      "what": "Packages a page of timeline rows with the total count and the offset and limit used to request it, so the viewer can page through a long list.",
+      "why": "Likely reason: long activity lists are sent in pages so the viewer does not load every row at once.",
+      "watch_out": "The total is stored, not computed here, so the code that builds the page must keep it accurate."
+    },
+    {
+      "start": 514,
+      "end": 517,
+      "kind": "class",
+      "name": "TimelineAdjacentEvent",
+      "id": "s23",
+      "hash": "c707dbcdc5e12103",
+      "title": "Timestamp of a nearby event",
+      "what": "Holds only an optional timestamp for an event next to the one being viewed. Its exact use is not visible in this section.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 518,
+      "end": 527,
+      "kind": "class",
+      "name": "ReviewQueueItem",
+      "id": "s24",
+      "hash": "44c9b7b23d75afdc",
+      "title": "Item waiting for human review",
+      "what": "One flagged issue that a person should check, with an id, a kind, a plain message, a confidence score and the evidence fact ids behind it. Enrichment and grounding code add these items.",
+      "why": "Likely reason: keeps uncertain findings visible to the owner instead of silently accepting or dropping them.",
+      "watch_out": "The confidence number has no range check in this record, so an out-of-range value is not caught here."
+    },
+    {
+      "start": 528,
+      "end": 536,
+      "kind": "class",
+      "name": "AccuracyDimension",
+      "id": "s25",
+      "hash": "67a064fedbe06ffc",
+      "title": "One accuracy measure",
+      "what": "A single accuracy result written as a count out of a total, with a label and the limitations that apply to it.",
+      "why": "Likely reason: shows accuracy as an honest fraction with its caveats rather than one bare percentage.",
+      "watch_out": "Nothing here stops the total from being zero, so code that turns this into a percentage must handle that case."
+    },
+    {
+      "start": 537,
+      "end": 545,
+      "kind": "class",
+      "name": "AccuracyReport",
+      "id": "s26",
+      "hash": "8d07def5693002aa",
+      "title": "Group of four accuracy measures",
+      "what": "Bundles four accuracy measures for the model: parsing integrity, semantic classification, spatial provenance and temporal mapping. The viewer can show all four together.",
+      "why": "The four names show the model is judged on separate questions, each with its own limits.",
+      "watch_out": "All four fields are required, so any code that builds a report must fill each one."
+    },
+    {
+      "start": 546,
+      "end": 598,
+      "kind": "class",
+      "name": "ProjectModel (part 1)",
+      "id": "s27",
+      "hash": "c57e3551d39ff3d2",
+      "title": "Saved project model core fields",
+      "what": "The top-level record for an entire saved project: name and ids, facility, components, structures, timeline, review items, evidence, stories and playlists, plus saved edit overrides. It also checks that saved overrides use only known fields and known component ids. If a file holds edits from a newer version, loading stops with a message and nothing is changed.",
+      "why": "Likely reason: the whole project is saved as one file, so this record is the single entry point for loading and checking it. The override check avoids silently dropping edits made in a newer version.",
+      "watch_out": "Any new top-level field needs a default value so that older saved files still load."
+    },
+    {
+      "start": 599,
+      "end": 658,
+      "kind": "method",
+      "name": "ProjectModel: validate_phase2_references",
+      "id": "s28",
+      "hash": "544c9df530976a1d",
+      "title": "Reference checks, first half",
+      "what": "Runs after a project is loaded and checks the first group of links. Assembly template names and ids must be unique, evidence fact ids must be unique and every referenced fact must exist, and each parametric asset needs a valid size and correctly named parts. Any failure stops the load with a plain error.",
+      "why": "Likely reason: a saved file that points at missing evidence or duplicate ids would show wrong or broken geometry, so it is rejected early.",
+      "watch_out": "Every new kind of reference must be added to these checks, or a broken link will load without warning."
+    },
+    {
+      "start": 659,
+      "end": 713,
+      "kind": "class",
+      "name": "ProjectModel (part 3)",
+      "id": "s29",
+      "hash": "7ef6822566670227",
+      "title": "Reference checks, ids and structures",
+      "what": "Continues the checks. Component ids and structure ids must be unique, each component must belong to a known structure, each structure's component list must match exactly, and activity-to-component mapping ids and links must be unique and point at real components.",
+      "why": "Likely reason: the viewer finds things by id, so duplicate or dangling ids would show the wrong object or nothing.",
+      "watch_out": "A structure whose component list is out of step with its components fails the whole load, so code that adds components must also update the structure."
+    },
+    {
+      "start": 714,
+      "end": 773,
+      "kind": "class",
+      "name": "ProjectModel (part 4)",
+      "id": "s30",
+      "hash": "e7c5eb71d57f31a0",
+      "title": "Reference checks, activities and stories",
+      "what": "Checks that activity story ids and activity ids are unique and belong to this project, that mappings point at known activities, and that each story's changed components match its mapping links exactly. It also checks that each component's supporting activities agree with the mappings.",
+      "why": "Likely reason: story and mapping links must agree so the timeline and 3D views tell the same story about each component.",
+      "watch_out": "A component that a story lists as changed must have a matching mapping link, and both must be updated together."
+    },
+    {
+      "start": 774,
+      "end": 833,
+      "kind": "class",
+      "name": "ProjectModel (part 5)",
+      "id": "s31",
+      "hash": "e05f2d9337789afe",
+      "title": "Evidence eligibility and story conclusions",
+      "what": "Makes sure every fact that drives the model is marked eligible. Then checks that each activity story has exactly one matching conclusion evidence fact whose text equals the story's conclusion summary, and checks playlist story references.",
+      "why": "Likely reason: the app should show model content only when accepted evidence backs it, and each story must tie to exactly one recorded conclusion.",
+      "watch_out": "Editing a story's interpretive text without also updating its evidence fact makes the model fail to load."
+    },
+    {
+      "start": 834,
+      "end": 843,
+      "kind": "class",
+      "name": "ProjectModel (part 6)",
+      "id": "s32",
+      "hash": "1a23151560487bbb",
+      "title": "Reference checks, playlist components",
+      "what": "Finishes the playlist checks: component ids in each playlist must be unique and must exist in the model. If every check passes, the project model is returned as valid.",
+      "why": "Likely reason: a playlist naming a missing component would fail to play, so it is caught on load.",
+      "watch_out": "This is the last check, so any new check must go before the final return."
+    }
+  ],
+  "explained_at": "2026-11-12T01:55:38+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the data shapes and checks for the 3D and 4D model that the viewer and exporters read. Only the first 12 of 32 sections were reviewed here.",
+  "purpose": "Sets the rules for parts, geometry, provenance, schedule times, activity-to-component links, and explanations, so that invalid or unsupported claims are rejected.",
+  "why": "The file header says it is the versioned contract consumed by renderers and exporters. Likely reason: a single shared contract stops the viewer and exports from disagreeing.",
+  "how": "Defines enumerated labels for where data came from, then builds up from simple vectors to geometry, to parts with evidence bindings, to schedules and links between activities and components, and finally to explanations. Each model checks its own rules on creation.",
+  "inputs": "Values from the ingest and semantics steps, from manual edits, and from saved files.",
+  "outputs": "Validated model objects that renderers and exporters can rely on.",
+  "risks": "The provenance rules are interlinked, so a small change to one rule can break many models. The schema version is a fixed text value, and the code shown does not include a migration step for old data.",
+  "debug": "Read the validation error for the rule broken. For a part, check its provenance labels against its evidence bindings and manual parameters. Check that times are real date-time values.",
+  "summary_hash": "sha256:019a2b3c387ba4db1ee176582e11a90efdf4684a0a4424b2315e76ce78ffad98"
+}

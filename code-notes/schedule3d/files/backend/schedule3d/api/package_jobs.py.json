@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/api/package_jobs.py",
+  "language": "Python",
+  "lines": 321,
+  "hash": "sha256:f1c3d9d6420d005a18f588cf9712f25aa4d0c83a10686129e83230462be533d9",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only sections s1 to s6 were in the packet. Sections s7 to s13 were not provided, so their behaviour is not described here.",
+      "The slot handling is commented clearly: the slot is released on failure and handed over on success.",
+      "The packet shows no tests for this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "thread",
+      "meaning": "a separate line of work inside the program that runs alongside the main one"
+    },
+    {
+      "term": "semaphore",
+      "meaning": "a counter that limits how many tasks may hold a resource at once"
+    },
+    {
+      "term": "generation",
+      "meaning": "one build of a project model, given its own ID so older builds are not overwritten"
+    },
+    {
+      "term": "ZIP",
+      "meaning": "a single compressed file that holds several files together"
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/api/jobs.py",
+    "backend/schedule3d/ingest/contracts.py",
+    "backend/schedule3d/model/contracts.py",
+    "backend/schedule3d/packages/archive.py",
+    "backend/schedule3d/packages/extraction.py",
+    "backend/schedule3d/packages/modeling.py",
+    "backend/schedule3d/packages/paths.py",
+    "backend/schedule3d/packages/worker.py"
+  ],
+  "used_by": [
+    "backend/schedule3d/api/app.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4de439925a70c6ed",
+      "title": "Imports and worker limits",
+      "what": "Brings in the job store, the report and model formats, and the package helpers. Sets one package worker at a time and two report readers at a time.",
+      "why": "Likely reason: the limits stop heavy package jobs from using up memory and processing time together.",
+      "watch_out": "Raising either limit can let package jobs compete for memory and disk."
+    },
+    {
+      "start": 26,
+      "end": 29,
+      "kind": "class",
+      "name": "PackageReportBusy",
+      "id": "s2",
+      "hash": "88aa8acce2b6472c",
+      "title": "Busy report error",
+      "what": "A special error for report requests that arrive while too many report reads are already running. The caller is told to retry later.",
+      "why": "Likely reason: answering try again is clearer than letting requests pile up without limit.",
+      "watch_out": "The app turns this error into a 429 reply only in routes that catch it, so other routes would show a generic error."
+    },
+    {
+      "start": 30,
+      "end": 37,
+      "kind": "class",
+      "name": "PackageModelTask",
+      "id": "s3",
+      "hash": "9c034a8558f6f856",
+      "title": "Package model task record",
+      "what": "Holds the details of one model generation task: its generation ID, its thread, the path of the model it produced, and any error.",
+      "why": "Likely reason: the waiting web request can read the result once the thread finishes.",
+      "watch_out": "The model path stays empty until the task finishes, so callers must check the error and path after the thread is joined."
+    },
+    {
+      "start": 38,
+      "end": 41,
+      "kind": "function",
+      "name": "reserve_package_worker",
+      "id": "s4",
+      "hash": "8a78ef5ecd0b23cf",
+      "title": "Reserving the package worker",
+      "what": "Tries to take the single package worker slot without waiting, so a second package request is refused at once.",
+      "why": "Likely reason: refusing immediately is clearer than hiding a wait in a queue.",
+      "watch_out": "The slot must be given back exactly once, or package processing stops working until restart."
+    },
+    {
+      "start": 42,
+      "end": 45,
+      "kind": "function",
+      "name": "release_package_worker",
+      "id": "s5",
+      "hash": "c305fd2a99be0fc0",
+      "title": "Giving back the package worker",
+      "what": "Releases the single worker slot so another package can start.",
+      "why": "Likely reason: paired with the reservation step, so the slot returns after use.",
+      "watch_out": "Releasing a slot that was never taken raises an error, so every release must match a reservation."
+    },
+    {
+      "start": 46,
+      "end": 95,
+      "kind": "class",
+      "name": "PackageRunner (part 1)",
+      "id": "s6",
+      "hash": "8cd0013eea60650f",
+      "title": "Background runner and shutdown",
+      "what": "Starts each package in its own thread that keeps the process alive until it finishes, and tracks active threads. During shutdown it requests cancellation for each active job and waits up to 15 seconds per thread. It refuses new starts once shutdown begins. Its start of the model generation step also creates a generation ID.",
+      "why": "Likely reason: a background thread lets the upload request return early, and tracking allows a clean shutdown.",
+      "watch_out": "If a package thread does not finish within the wait, shutdown raises an error rather than forcing the thread to stop."
+    },
+    {
+      "start": 96,
+      "end": 134,
+      "kind": "method",
+      "name": "PackageRunner: run",
+      "id": "s7",
+      "hash": "fba2729b593a9a92",
+      "title": "Starting the background package model run",
+      "what": "Starts a separate thread that builds the 3D model for one chosen project from an analysed package upload, so the rest of the app keeps responding. The job is marked as generating before the thread starts.",
+      "why": "Likely reason: model building can take a long time, so it runs off to the side. The lock and the active-job check stop two builds of the same job from running at once. If the thread fails to start, the previous saved state is restored.",
+      "watch_out": "The job slot is only freed by the thread's own cleanup, so the start and the active marking must stay in step or a job can look busy forever."
+    },
+    {
+      "start": 135,
+      "end": 194,
+      "kind": "function",
+      "name": "process_package_model (part 1)",
+      "id": "s8",
+      "hash": "1f5b87eee0d8438b",
+      "title": "Building and checking the package model",
+      "what": "Does the work of making one project's model from a package. It writes a request, runs the model stage while reporting progress, checks that the output belongs to the chosen project, checks that a receipt hash matches the model file, and then records the job as ready. If anything fails or is cancelled, the job is marked failed or cancelled instead.",
+      "why": "Each check stops a partial, mismatched or cancelled output from being shown as a model. The code comment says the final state save is the only thing that makes a model visible.",
+      "watch_out": "Cancellation is checked at several points; a cancel that arrives after the final commit is not undone, so the commit must stay the single point of visibility."
+    },
+    {
+      "start": 195,
+      "end": 205,
+      "kind": "function",
+      "name": "process_package_model (part 2)",
+      "id": "s9",
+      "hash": "8612a65819bb2bd1",
+      "title": "Finishing or failing the model run",
+      "what": "Returns the path of the finished model file on success. On any error it records the job as cancelled or failed with the error text, passes the error on, and always frees the shared worker slot.",
+      "why": "Likely reason: the slot must always be freed, even after an error, so that later jobs are not blocked.",
+      "watch_out": "The error is raised again after being saved, so callers must handle it or the thread simply ends with it."
+    },
+    {
+      "start": 206,
+      "end": 265,
+      "kind": "function",
+      "name": "process_package (part 1)",
+      "id": "s10",
+      "hash": "045adff7b97e0fb7",
+      "title": "Analysing an uploaded package",
+      "what": "Works through an uploaded package in stages: it lists the files, finds the single schedule file (XER), copies it out, runs schedule and document extraction, and stops with a clear error if any document failed. Progress is written to the job as it goes.",
+      "why": "Only one schedule is accepted, so the code refuses to merge several rather than guess. Failed documents are treated as an incomplete result, not a finished model.",
+      "watch_out": "Schedules are counted by their file fingerprint, so identical copies of the same file count as one and do not trigger the one-schedule rule."
+    },
+    {
+      "start": 266,
+      "end": 286,
+      "kind": "function",
+      "name": "process_package (part 2)",
+      "id": "s11",
+      "hash": "f7303f01e858989d",
+      "title": "Recording analysis results and freeing the worker",
+      "what": "On success saves the list of projects found, the record count and a message asking the user to review and pick a project. On error it marks the job failed or cancelled. It frees the worker slot if this run took it.",
+      "why": "Analysis stops at evidence review because the user must choose a project before any model is built.",
+      "watch_out": "The slot is freed only when this run acquired it, so the reserved flag passed in by callers must be correct."
+    },
+    {
+      "start": 287,
+      "end": 295,
+      "kind": "function",
+      "name": "package_report",
+      "id": "s12",
+      "hash": "6860a909934d27e1",
+      "title": "Limiting concurrent report reads",
+      "what": "Allows only a small number of report reads at the same time. An extra request is turned away at once with a busy message asking the user to retry.",
+      "why": "Reading large reports uses a lot of memory and time, so the number of simultaneous reads is capped. The exact reason for the cap is not stated in the code.",
+      "watch_out": "Callers must handle the busy error and retry; the slot is freed in a cleanup step, so it is not leaked on errors."
+    },
+    {
+      "start": 296,
+      "end": 321,
+      "kind": "function",
+      "name": "_read_package_report",
+      "id": "s13",
+      "hash": "3f99b1e1b3980172",
+      "title": "Reading one page of the package report",
+      "what": "Reads the package inventory and extraction files and returns one page of their documents or references, with totals and the offset of the next page. Missing files are skipped. If neither file exists, it reports that the inventory is not yet available.",
+      "why": "Reports can be large, so the reader returns bounded pages of 1 to 100 items rather than the whole file.",
+      "watch_out": "Offsets below zero and limits outside 1 to 100 are rejected, but a large offset quietly returns an empty page rather than an error."
+    }
+  ],
+  "explained_at": "2026-11-12T01:42:21+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs ZIP project packages in background threads, allowing only one package analysis at a time.",
+  "purpose": "Coordinates package analysis, model generation, cancellation and report reading for package uploads.",
+  "why": "Likely reason: package reading can be slow and heavy, so it runs off the web request thread and is limited.",
+  "how": "1. A single worker slot is reserved when a package is uploaded. 2. The runner starts a background thread that does the processing and hands the slot over. 3. Model generation runs as its own tracked task. 4. Report reads are limited to two at a time.",
+  "inputs": "A stored ZIP package, the job state, and the job folder.",
+  "outputs": "Package inventory and reports, generated model results, updated job status, and published model folders.",
+  "risks": "Only one package runs at a time, so a stuck job blocks others until it is cancelled or the server restarts. Shutdown waits up to 15 seconds for each thread.",
+  "debug": "If uploads return 429, a package is probably still running or the slot was not released. Look for a stuck job in the job list and cancel it. A shutdown error means a package thread did not finish in time.",
+  "summary_hash": "sha256:f1c3d9d6420d005a18f588cf9712f25aa4d0c83a10686129e83230462be533d9"
+}

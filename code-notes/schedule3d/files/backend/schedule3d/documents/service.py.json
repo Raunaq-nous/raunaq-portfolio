@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/documents/service.py",
+  "language": "Python",
+  "lines": 502,
+  "hash": "sha256:da6aab95b63a6f4dc29facb572c308477980f87d297c264c81bc732d28b61e41",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The design is careful, with budgets on size, pages, objects, text, operators, images, time, and memory.",
+      "No test evidence is visible in the packet.",
+      "Memory limits are not enforced on systems other than Windows and Linux.",
+      "The detailed stream accounting in the other file is not used on the default PDF path shown here.",
+      "The working folder location depends on the current directory when the program runs."
+    ]
+  },
+  "terms": [
+    {
+      "term": "PDF",
+      "meaning": "a portable document file format used to store drawings and documents"
+    },
+    {
+      "term": "worker process",
+      "meaning": "a separate program started by the main program to do risky work, so a crash or hang does not take down the main program"
+    },
+    {
+      "term": "pdfium and pypdf",
+      "meaning": "two separate libraries that read PDF files, used here to cross-check each other and to get text and layout"
+    },
+    {
+      "term": "XObject",
+      "meaning": "a reusable named piece inside a PDF page, such as an image or a form"
+    },
+    {
+      "term": "form",
+      "meaning": "a reusable block of drawing content that can hold its own images"
+    },
+    {
+      "term": "JPEG and PNG",
+      "meaning": "two common picture file formats"
+    },
+    {
+      "term": "fingerprint (SHA-256)",
+      "meaning": "a code computed from file contents that identifies the exact file"
+    },
+    {
+      "term": "RSS",
+      "meaning": "the amount of computer memory a running program is currently using"
+    },
+    {
+      "term": "classification",
+      "meaning": "deciding what kind of document it is, by matching keywords in its name and text"
+    }
+  ],
+  "depends_on": [
+    "pypdfium2",
+    "pypdf",
+    "schedule3d.documents.contracts",
+    "schedule3d.documents.pdf_streams"
+  ],
+  "used_by": [
+    "backend/schedule3d/documents/__init__.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 46,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "dd14497e04a01909",
+      "title": "Imports and safety limits",
+      "what": "Brings in the libraries and sets the safety limits: file size, page count, object count, nesting depth, image count, total content size, text length, drawing command count, pixel count, worker memory, worker time, and result size. It also sets accepted file types and the drawing command pattern.",
+      "why": "These limits keep one hostile or oversized file from using up the machine.",
+      "watch_out": "Raising any limit lets larger or more complex files through, so each change should be deliberate."
+    },
+    {
+      "start": 47,
+      "end": 66,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "a2994dd6986286ba",
+      "title": "Document category keyword rules",
+      "what": "Lists the keywords for each document category, in a fixed priority order, such as grounding, one-line, conceptual layout, and plot plan.",
+      "why": "Gives a simple, explainable way to label a document from its name and text.",
+      "watch_out": "The first matching category wins, so the order of this list decides ties between categories."
+    },
+    {
+      "start": 67,
+      "end": 74,
+      "kind": "function",
+      "name": "_sha256",
+      "id": "s3",
+      "hash": "8f31d2307a871791",
+      "title": "File fingerprint",
+      "what": "Computes a SHA-256 fingerprint of a file by reading it in one-megabyte pieces.",
+      "why": "Lets every extracted fact name the exact file it came from, so the source can be verified later.",
+      "watch_out": "The fingerprint is computed separately from the reading step, so a file that changes in between would have a mismatched fingerprint."
+    },
+    {
+      "start": 75,
+      "end": 90,
+      "kind": "function",
+      "name": "_classify",
+      "id": "s4",
+      "hash": "83769feddc37bf3e",
+      "title": "Classifying a document",
+      "what": "Checks the file name and the first 100,000 characters of text against the keyword rules. It returns the first matching category, with a confidence that rises with the number of matched words. If nothing matches, an image becomes a reference image at moderate confidence and any other file becomes unknown.",
+      "why": "Gives each document a category that the rest of the app can use to decide how to read its facts.",
+      "watch_out": "The confidence is a rough rule-of-thumb score, not a measured probability, and text beyond the first 100,000 characters is never checked."
+    },
+    {
+      "start": 91,
+      "end": 95,
+      "kind": "function",
+      "name": "_resolved_object",
+      "id": "s5",
+      "hash": "e6ea4f5ad368512f",
+      "title": "Following object references",
+      "what": "If a value is a reference to a PDF object, returns the object it points to. Otherwise returns the value unchanged.",
+      "why": "PDF objects are often stored by reference, so this step is needed before reading them.",
+      "watch_out": "This is the same job as a helper in the stream file, so the two must stay consistent."
+    },
+    {
+      "start": 96,
+      "end": 137,
+      "kind": "function",
+      "name": "_count_image_objects",
+      "id": "s6",
+      "hash": "dcabd96bde70bfc6",
+      "title": "Counting images on a page",
+      "what": "Counts image objects listed in a page's resources, and goes into reusable forms to count the images they hold. It stops when the nesting depth or the object budget is exceeded, and skips objects it has already visited.",
+      "why": "Image counts help decide whether a page is a picture, a drawing, or a mix, which decides whether a person must review it.",
+      "watch_out": "Only images listed in the resource dictionary are counted, so any image embedded directly in the page drawing commands is not counted here."
+    },
+    {
+      "start": 138,
+      "end": 153,
+      "kind": "function",
+      "name": "_page_content",
+      "id": "s7",
+      "hash": "854f82d8fa20d48e",
+      "title": "Reading a page's content with the simple method",
+      "what": "Gets a page's drawing content in one go, shortens it to the maximum size, and adds a warning if it was shortened. If reading fails, it returns nothing and a warning naming the error type.",
+      "why": "Lets a damaged page be recorded as a warning rather than stopping the whole document.",
+      "watch_out": "When content is shortened, the drawing command count for that page may be incomplete, which the warning mentions."
+    },
+    {
+      "start": 154,
+      "end": 166,
+      "kind": "function",
+      "name": "_content_layer",
+      "id": "s8",
+      "hash": "e3a045d870e008b7",
+      "title": "Deciding a page's content type",
+      "what": "Looks at whether a page has text, drawing commands, or images, and returns text, vector, image, mixed, or empty.",
+      "why": "This is the page-level label that decides whether the page can be trusted from its text alone.",
+      "watch_out": "A page with any two kinds of content is labeled mixed, so a page with a small image and lots of text is labeled mixed rather than text."
+    },
+    {
+      "start": 167,
+      "end": 226,
+      "kind": "function",
+      "name": "_extract_pdf (part 1)",
+      "id": "s9",
+      "hash": "bce7d467490d38aa",
+      "title": "Reading PDF pages, first half",
+      "what": "Opens the file with the first PDF library and checks it is not encrypted, the page count is within limits, and the object count is within limits. Then it opens the same file with the second library and checks the page counts agree. For each page in range, it checks the time budget, counts drawing commands, images, and sizes, and adds them to running totals that must stay within the aggregate limits.",
+      "why": "Two independent readers that agree on the page count reduce the chance that one library's misreading goes unnoticed.",
+      "watch_out": "The detailed stream accounting is only used when a specific option is turned on, and the main PDF path shown in this file does not turn it on."
+    },
+    {
+      "start": 227,
+      "end": 282,
+      "kind": "function",
+      "name": "_extract_pdf (part 2)",
+      "id": "s10",
+      "hash": "69ffe40fef1b60de",
+      "title": "Reading PDF pages, second half",
+      "what": "For each page, reads its text with the second library, shortens overly long text with a warning, and adds to the running text total. It then decides the content type, marks pages that need visual review (picture-only, empty, or picture-heavy with little text), and records a page summary with its size, rotation, and counts. Warnings are passed on, and an error is raised if there are no pages.",
+      "why": "Creates the reviewable page summary that the rest of the app uses to decide what can be trusted without a person looking.",
+      "watch_out": "The running totals are only copied back to the caller at the very end, so a failure part way through does not update them."
+    },
+    {
+      "start": 283,
+      "end": 321,
+      "kind": "function",
+      "name": "_jpeg_dimensions",
+      "id": "s11",
+      "hash": "c7ba9e066ebfbf1e",
+      "title": "Reading JPEG picture size",
+      "what": "Walks through the marker segments of a JPEG file until it finds the frame segment that holds the picture width and height, and returns those two numbers.",
+      "why": "Lets an image be checked for its size against the pixel limit without decoding the whole picture.",
+      "watch_out": "This is a hand-written parser, so unusual or damaged JPEG files will raise an error rather than being read."
+    },
+    {
+      "start": 322,
+      "end": 329,
+      "kind": "function",
+      "name": "_image_dimensions",
+      "id": "s12",
+      "hash": "7286126b63822e80",
+      "title": "Reading picture size for PNG or JPEG",
+      "what": "Reads the width and height from the header of a PNG, after checking its signature, or uses the JPEG reader for anything else.",
+      "why": "Gives a single entry point that works for both picture types the app accepts.",
+      "watch_out": "The choice is based on the file extension only, so a file with the wrong extension will be read with the wrong parser and fail."
+    },
+    {
+      "start": 330,
+      "end": 349,
+      "kind": "function",
+      "name": "_extract_image",
+      "id": "s13",
+      "hash": "4b7950637f1c49b4",
+      "title": "Handling a picture file",
+      "what": "Reads the picture file, gets its size, refuses pictures over the pixel limit, and creates one page that is always flagged for visual review. It returns that page with a warning saying the pixels are not interpreted as facts until a person or OCR review checks them.",
+      "why": "Pictures are kept as reviewable material, never as accepted facts, until a person checks them.",
+      "watch_out": "The whole picture file is read into memory, which is fine for the size limit but means large pictures use memory."
+    },
+    {
+      "start": 350,
+      "end": 381,
+      "kind": "function",
+      "name": "_extract_document_direct",
+      "id": "s14",
+      "hash": "9c5f12a8f83a00e6",
+      "title": "Full extraction for one document, inside the worker",
+      "what": "Checks that the path exists, that the file type is allowed, and that the size is within limits. It then reads PDF pages or picture pages, classifies the document from its text, computes its fingerprint, and builds the checked document summary. This is the step the worker process runs.",
+      "why": "Keeps the reading logic in one place, with the outer boundary handling the supervision.",
+      "watch_out": "Classification is based on the joined text of all pages, so a long document with unrelated pages can be classified from the wrong words."
+    },
+    {
+      "start": 382,
+      "end": 397,
+      "kind": "function",
+      "name": "_document_worker",
+      "id": "s15",
+      "hash": "753807bb3590226c",
+      "title": "Worker process entry point",
+      "what": "Runs the full extraction and writes its result, or an error message, to a result file. If the result is too large to pass safely, it replaces it with a short error message.",
+      "why": "Lets the main program read the outcome from a file instead of trusting the worker to stay alive.",
+      "watch_out": "Only ordinary errors are caught, so a worker that crashes hard produces no result file and the main program reports an exit code instead."
+    },
+    {
+      "start": 398,
+      "end": 436,
+      "kind": "function",
+      "name": "_process_rss_bytes",
+      "id": "s16",
+      "hash": "fae2720f26a64614",
+      "title": "Measuring a process's memory use",
+      "what": "Returns how much memory a process is using. On Windows it asks the operating system directly, on Linux it reads the process status file, and on any other system it returns zero.",
+      "why": "Lets the main program stop a worker that is using too much memory.",
+      "watch_out": "On macOS and other systems this returns zero, so the memory limit is never triggered there."
+    },
+    {
+      "start": 437,
+      "end": 496,
+      "kind": "function",
+      "name": "extract_document (part 1)",
+      "id": "s17",
+      "hash": "acd1ff8bb0a3d16f",
+      "title": "Public extraction function, PDF path",
+      "what": "For PDFs, creates a working folder, starts a separate worker process, and checks it every 50 milliseconds for cancellation, time over budget, and memory over budget. It stops the worker if a limit is passed, reads the result file if it exists and is within size, and returns the checked document summary or raises an error with the reason.",
+      "why": "Likely reason: a PDF parser is the riskiest part of the app, so it is kept in a process the main program can always stop.",
+      "watch_out": "The working folder is placed under the current directory, so running the program from a different folder moves where its temporary files go."
+    },
+    {
+      "start": 497,
+      "end": 498,
+      "kind": "function",
+      "name": "extract_document (part 2)",
+      "id": "s18",
+      "hash": "adc83b19e793491b",
+      "title": "Blank space after extraction function",
+      "what": "Contains only blank lines and no logic.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 499,
+      "end": 502,
+      "kind": "function",
+      "name": "inspect_documents",
+      "id": "s19",
+      "hash": "816c07ed404795db",
+      "title": "Inspecting several documents in order",
+      "what": "Runs the public extraction function on each path in the order given and returns the results as a list in that same order.",
+      "why": "Keeps audit output in a predictable order, as its own note says.",
+      "watch_out": "There is no catch for a single failing document, so one bad file stops the whole list and the other results are lost."
+    }
+  ],
+  "explained_at": "2026-11-12T01:46:52+00:00",
+  "explained_by": "haiku",
+  "summary": "This file is the main reader for uploaded source documents. It opens PDFs and images, classifies them, measures their size and content, and returns a checked summary, running PDFs in a separate, time- and memory-limited process.",
+  "purpose": "Lets the app accept a PDF or image of a schedule drawing or study and say what kind of document it is, how many pages, what layers each page has, and whether a person must review it, while keeping a bad or huge file from harming the machine.",
+  "why": "Likely reason: PDF parsing libraries can be slow or fail on hostile files, so the file puts the whole PDF reading step in a separate process that can be stopped on time or memory limits.",
+  "how": "For a PDF, it starts a separate worker process, which reads the file with two PDF libraries, checks the page count agrees, and works through each page. For each page it reads the text, counts drawing and image objects, decides the content type and whether a person must review it, and records warnings. The worker writes its result to a file. The main process watches the worker for cancellation, time, and memory, stops it if a limit is passed, and reads and checks the result. Images are read directly, with their size taken from their header and a single page created that is always flagged for visual review. The document is then classified from its file name and text.",
+  "inputs": "A file path for a PDF, JPEG, or PNG, and an optional cancellation check.",
+  "outputs": "A checked document summary with its file name, fingerprint, size, media type, category, confidence, matched words, pages, and warnings. It raises an error for files that are missing, unsupported, too large, too complex, or that exceed the time or memory budget.",
+  "risks": "Memory measurement only works on Windows and Linux. Elsewhere the memory check reads zero, so the memory limit is silently not enforced. The default path for PDFs does not turn on the detailed stream accounting that exists in the other file, so that protection is not active on this path. Working files are placed under a folder relative to the current directory. Images are not interpreted, so picture-only content is only flagged for review, never read.",
+  "debug": "If a PDF is rejected with a time budget or memory budget message, the file is large or complex, or the machine is busy. Check the source file's page count and size. If the worker exits with a code, the PDF library crashed on that file. If the document has no pages, check that the source is a real PDF. For a wrong category, check the matched terms in the summary, since category comes from the first matching rule. The working folder under the current directory must be writable.",
+  "summary_hash": "sha256:da6aab95b63a6f4dc29facb572c308477980f87d297c264c81bc732d28b61e41"
+}

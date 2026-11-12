@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/packages/pdf.py",
+  "language": "Python",
+  "lines": 138,
+  "hash": "sha256:0f2ee804aa8171c3598d4d61f311dc03b4b19385e91198ae67833d5f17251e0a",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test of the warning capture is visible in the packet.",
+      "Relies on an outside PDF library whose behaviour can change between versions.",
+      "Errors from the reader are raised to the caller, whose handling is not in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "PDF",
+      "meaning": "a page-based document format"
+    },
+    {
+      "term": "pypdf",
+      "meaning": "a Python library that reads PDF files and writes warnings to a log"
+    },
+    {
+      "term": "pypdfium2",
+      "meaning": "a Python library that opens PDF pages"
+    },
+    {
+      "term": "logging handler",
+      "meaning": "a hook that receives messages a library writes to its log"
+    },
+    {
+      "term": "page batch",
+      "meaning": "a block of up to a fixed number of pages read together"
+    },
+    {
+      "term": "classification",
+      "meaning": "the app's guess at what kind of document it is, with a confidence score"
+    },
+    {
+      "term": "thread",
+      "meaning": "one stream of work running inside a program"
+    }
+  ],
+  "depends_on": [
+    "pypdfium2",
+    "pypdf (its log messages only)",
+    "logging",
+    "threading",
+    "schedule3d.documents.contracts",
+    "schedule3d.documents.service"
+  ],
+  "used_by": [
+    "backend/schedule3d/packages/extraction.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 22,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "21b8d907d24cb47c",
+      "title": "File purpose and imports",
+      "what": "States that the module reads PDF pages in batches without lifting the limits that apply to a single batch. Imports the PDF library and the shared document limits and reader.",
+      "why": "The docstring states the aim: keep each batch within existing limits while covering the whole file.",
+      "watch_out": "The limits come from the documents service, so changing them there also changes this reader."
+    },
+    {
+      "start": 23,
+      "end": 57,
+      "kind": "class",
+      "name": "_PdfDiagnostics",
+      "id": "s2",
+      "hash": "0426e0ae5fa1aeea",
+      "title": "Warning collector",
+      "what": "A log hook that records warnings and errors from the PDF library. It keeps a total count and up to 64 distinct messages, each cut to 2000 characters. When no other log handler would show a message, it passes the message to the default fallback log so that nothing disappears.",
+      "why": "Likely reason: the library reports problems through its log rather than through exceptions, so the code must capture them to report them.",
+      "watch_out": "Only messages from the thread that created the collector are kept, so warnings on other threads are counted but their text is lost."
+    },
+    {
+      "start": 58,
+      "end": 90,
+      "kind": "function",
+      "name": "extract_package_pdf",
+      "id": "s3",
+      "hash": "5dbcd7c84f2b25ee",
+      "title": "Public PDF entry point",
+      "what": "Attaches the warning collector, runs the real page reader, and always detaches the collector. If warnings exist, sends them to the caller's sink, adds them to the document, and marks every page as needing review. Notes that page attribution is unavailable.",
+      "why": "Likely reason: a warning cannot be tied to one page, so the cautious choice is to review all pages.",
+      "watch_out": "Any warning, even a harmless one, makes every page need review, so PDFs with routine noise need more manual checking."
+    },
+    {
+      "start": 91,
+      "end": 138,
+      "kind": "function",
+      "name": "_extract_package_pdf",
+      "id": "s4",
+      "hash": "fcd50660b6d871f0",
+      "title": "Batch reader and size checks",
+      "what": "Checks the file is non-empty and under the source size limit, then counts the pages. Reads them in batches with shared counters, stopping if total extracted text passes the aggregate limit. Finally classifies the document from its text and fills in its details.",
+      "why": "Batching keeps any one read within the page limit, while the shared counters keep the whole document within the overall limits.",
+      "watch_out": "The text limit is checked after each batch, so a very large document is read for at least one batch before it is refused."
+    }
+  ],
+  "explained_at": "2026-11-12T02:06:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads PDF pages in batches, records the parser's warnings for each document, and marks every page for review when the parser reported a problem.",
+  "purpose": "Turns a PDF into page text and a document classification, while keeping track of parser warnings so the app can say when a person needs to check the PDF.",
+  "why": "Likely reason: the PDF reader can log warnings without raising errors, so the code captures them. Batching keeps large files within limits.",
+  "how": "1. Check the file size is in range. 2. Count the pages. 3. Attach a warning collector to the pypdf logger. 4. Read pages in batches with shared limits, checking total text. 5. Classify the document from its text. 6. Detach the collector in every case. 7. If any warnings occurred, attach them and mark every page for review.",
+  "inputs": "A PDF file path, a checkpoint callback, and an optional sink that receives the warnings for the document's receipt.",
+  "outputs": "A DocumentExtraction with the source name, fingerprint, size, media type, pages, classification, confidence, terms and warnings. The sink receives the warning count and messages.",
+  "risks": "Any parser warning flags every page, which is cautious but can create a lot of review work. Warnings are kept only from the thread that owns the collector; other threads' warnings are counted but their text is lost. A PDF over the size, page or text limits is refused with an error.",
+  "debug": "Check the warning count and messages in the document receipt. If every page is marked for review, look for a parser warning in those messages. If a PDF is refused for size, compare it with the source byte limit.",
+  "summary_hash": "sha256:0f2ee804aa8171c3598d4d61f311dc03b4b19385e91198ae67833d5f17251e0a"
+}

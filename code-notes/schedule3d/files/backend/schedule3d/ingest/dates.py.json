@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/ingest/dates.py",
+  "language": "Python",
+  "lines": 87,
+  "hash": "sha256:7e7d2f68cd43a707817caff2cbe98bae3e3739ffbe2c6af321c6a13bdbd1be1b",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Unreadable values are handled and reported.",
+      "No tests are visible in the packet.",
+      "Ambiguous dates are dropped without a warning from the number converter."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ISO date",
+      "meaning": "the standard text form for dates and times, such as 2026-11-12 14:30:00"
+    },
+    {
+      "term": "UTC",
+      "meaning": "Coordinated Universal Time, the reference time zone used for storing dates"
+    },
+    {
+      "term": "Time zone",
+      "meaning": "an offset from UTC that some dates carry"
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/ingest/contracts.py"
+  ],
+  "used_by": [
+    "backend/schedule3d/ingest/tabular.py",
+    "backend/schedule3d/ingest/xer.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f8f180e54697793c",
+      "title": "Accepted date patterns",
+      "what": "Lists the date patterns the app tries, in order, when a date is not already in standard form. They cover several day-month-year and month-day-year styles with and without times.",
+      "why": "Schedule exports come from different tools and regions, so several patterns are needed.",
+      "watch_out": "Patterns are tried in order, so a broad pattern placed early could match before a more specific one."
+    },
+    {
+      "start": 24,
+      "end": 55,
+      "kind": "function",
+      "name": "normalize_date",
+      "id": "s2",
+      "hash": "81fa08f91db84513",
+      "title": "Converting a date to standard form",
+      "what": "Turns a date from any source into one standard text form with no time zone, or returns nothing when it cannot. Dates with a zone are converted to UTC first. Slash dates where day and month could be swapped are rejected.",
+      "why": "Likely reason: rejecting ambiguous slash dates avoids guessing the wrong month.",
+      "watch_out": "Dates such as 03/04/2020 are rejected, so a change to this rule changes which rows lose their dates."
+    },
+    {
+      "start": 56,
+      "end": 79,
+      "kind": "function",
+      "name": "normalize_date_with_warning",
+      "id": "s3",
+      "hash": "279696031e00730a",
+      "title": "Converting a date and recording failures",
+      "what": "Does the same conversion, and when a non-empty value cannot be read, records a warning naming the field and row.",
+      "why": "So bad dates appear in the report instead of disappearing silently.",
+      "watch_out": "Long bad values are shortened in the warning text, so the full original value is not kept in the report."
+    },
+    {
+      "start": 80,
+      "end": 87,
+      "kind": "function",
+      "name": "normalize_number",
+      "id": "s4",
+      "hash": "7c83e7663ef0e997",
+      "title": "Converting numbers",
+      "what": "Turns a text or number cell into a decimal, returning nothing for blank, unreadable or infinite values.",
+      "why": "Numeric fields such as lag hours arrive as text in many exports.",
+      "watch_out": "Unlike dates, a bad number returns nothing without any warning being recorded."
+    }
+  ],
+  "explained_at": "2026-11-12T01:51:04+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns dates and numbers from schedule files into one standard form, and reports dates that cannot be read.",
+  "purpose": "Makes dates from many export styles comparable and sortable, so the rest of the app can work with them.",
+  "why": "Schedule exports use many date styles. A single standard form keeps the database consistent.",
+  "how": "For a date, it first accepts real date objects, then standard ISO text, then a list of known patterns tried in order. Slash dates whose day and month could be swapped are rejected. A wrapper adds a warning when a non-empty value cannot be read. A separate function converts numbers and rejects blank or infinite values.",
+  "inputs": "Raw cell values of any type, from spreadsheets, text files or XER records.",
+  "outputs": "A date as standard text without a time zone, or nothing. Numbers as decimals, or nothing.",
+  "risks": "Ambiguous slash dates are dropped rather than guessed, so some rows lose their dates. Times with a zone are converted to UTC, which shifts the stored time.",
+  "debug": "If dates are missing, look for a matching invalid_date warning and check the raw value. For ambiguous dates, check whether the source uses day-first or month-first slashes.",
+  "summary_hash": "sha256:7e7d2f68cd43a707817caff2cbe98bae3e3739ffbe2c6af321c6a13bdbd1be1b"
+}

@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/bim/parts.py",
+  "language": "Python",
+  "lines": 73,
+  "hash": "sha256:1582a39438a5f239dcd898fd94dadff545475a4e561e1decb2d26eaef9547401",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The conventions are documented in the code.",
+      "No test is visible in this file, so the rotation maths is not verified here.",
+      "Shapes other than box are silently treated as circles."
+    ]
+  },
+  "terms": [
+    {
+      "term": "IFC",
+      "meaning": "a standard file format for describing buildings"
+    },
+    {
+      "term": "Three.js",
+      "meaning": "the 3D graphics library the viewer is built on"
+    },
+    {
+      "term": "Euler angles",
+      "meaning": "a way of describing a rotation as three turns around three axes"
+    },
+    {
+      "term": "local placement",
+      "meaning": "a position described relative to a parent position"
+    },
+    {
+      "term": "extruded solid",
+      "meaning": "a flat shape pushed out into a solid, like a stamp pressed up through clay"
+    },
+    {
+      "term": "profile",
+      "meaning": "the flat outline of a shape before it is extruded"
+    }
+  ],
+  "depends_on": [
+    "schedule3d.model.contracts",
+    "math"
+  ],
+  "used_by": [
+    "backend/schedule3d/bim/service.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "049ad00644905a42",
+      "title": "Module purpose and imports",
+      "what": "Explains the coordinate conventions at the top of the file and loads the part data types.",
+      "why": "The conventions are needed to read the rotation and position maths correctly.",
+      "watch_out": "The coordinate note is the only written record of the axis mapping, so keep it current with the code."
+    },
+    {
+      "start": 15,
+      "end": 18,
+      "kind": "class",
+      "name": "Document",
+      "id": "s2",
+      "hash": "2aecffddab0a058e",
+      "title": "Writer interface",
+      "what": "Defines the expected shape of the writer object: something that can add one line of IFC text and return its entity number.",
+      "why": "Lets the same code write into any writer that follows this shape.",
+      "watch_out": "The writer must return a new number each time, or references between entries break."
+    },
+    {
+      "start": 19,
+      "end": 22,
+      "kind": "function",
+      "name": "number",
+      "id": "s3",
+      "hash": "0c3b0b8356bbc617",
+      "title": "Number formatting",
+      "what": "Writes numbers with twelve decimal places and turns very small values into zero.",
+      "why": "Keeps the text consistent and avoids writing negative zero.",
+      "watch_out": "A NaN or infinite value would be written as text that IFC cannot read."
+    },
+    {
+      "start": 23,
+      "end": 32,
+      "kind": "function",
+      "name": "placement_values",
+      "id": "s4",
+      "hash": "9ae3361a44d39c12",
+      "title": "Converting position and rotation to IFC values",
+      "what": "Turns a viewer position and set of three rotations into nine IFC numbers: the position, an axis direction and a reference direction.",
+      "why": "Converts the viewer's coordinate convention to the IFC one, so exported parts face the same way as in the viewer.",
+      "watch_out": "A sign error here moves or mirrors every part, so this is the first place to check after a geometry complaint."
+    },
+    {
+      "start": 33,
+      "end": 42,
+      "kind": "function",
+      "name": "placement",
+      "id": "s5",
+      "hash": "05f174d9e7390a5e",
+      "title": "Building a placement in the IFC file",
+      "what": "Writes a point, two directions, a frame and a local placement. A parent placement can be given, and it must already exist in the file.",
+      "why": "IFC needs this chain of entries to position an object.",
+      "watch_out": "A parent number that does not exist in the file leaves a broken reference."
+    },
+    {
+      "start": 43,
+      "end": 61,
+      "kind": "function",
+      "name": "solid",
+      "id": "s6",
+      "hash": "3b4453affa6c1cbe",
+      "title": "Writing a solid shape for a part",
+      "what": "Writes a rectangle or circle profile, extrudes it by the part's height from its base, and wraps the result in a body shape and a product shape.",
+      "why": "Viewer primitives are centred on their middle, but IFC extrusions start at the base, so the start is moved down by half the height.",
+      "watch_out": "Only box and circle are handled. Any other primitive is treated as a circle, using half the x dimension as its radius."
+    },
+    {
+      "start": 62,
+      "end": 73,
+      "kind": "function",
+      "name": "geometry_values",
+      "id": "s7",
+      "hash": "bb71940445ad376f",
+      "title": "Geometry values for comparison",
+      "what": "Returns the primitive name and the three dimensions as text.",
+      "why": "Likely reason: used to compare or fingerprint part shapes. The calling code is not visible in this file.",
+      "watch_out": "Values are rounded the same way as in the file, so very small differences are hidden in the comparison."
+    }
+  ],
+  "explained_at": "2026-11-12T01:42:21+00:00",
+  "explained_by": "haiku",
+  "summary": "Converts explicit model parts into IFC text: a placement (position and orientation), a box or circle solid, and the geometry values, while keeping the viewer's coordinate convention.",
+  "purpose": "Lets exported IFC files show each part at the same position and orientation as the 3D viewer.",
+  "why": "The module says the viewer uses X right, Y up and Z toward the viewer, while IFC uses X, minus Z and Y. Rotations follow the Three.js convention. No geometry recipe is inferred here.",
+  "how": "Converts the viewer position and rotation into IFC values. Writes a point, two directions and a frame, and combines them into a local placement. For a shape, writes a profile, extrudes it upward from its base, and links it to a representation and a product shape.",
+  "inputs": "A part's position, rotation, dimensions and primitive kind, and a writer object that adds IFC lines and returns their numbers.",
+  "outputs": "IFC lines written to the document with their entity numbers, and plain text values for geometry.",
+  "risks": "The rotation calculation is the most error-prone part. A sign error would tilt or mirror every part. Any primitive other than box is written as a circle.",
+  "debug": "Compare one exported part's position with the viewer. If parts sit at the wrong height, check the base offset. If rotated parts look mirrored, check the axis conversion.",
+  "summary_hash": "sha256:1582a39438a5f239dcd898fd94dadff545475a4e561e1decb2d26eaef9547401"
+}

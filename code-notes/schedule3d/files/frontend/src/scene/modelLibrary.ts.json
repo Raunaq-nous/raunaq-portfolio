@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "path": "frontend/src/scene/modelLibrary.ts",
+  "language": "TypeScript",
+  "lines": 127,
+  "hash": "sha256:fa96990ee5025fd4e68c708ea47bc89cdb7981981b81c06e15701f92f236b6c7",
+  "area": "frontend-src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are caught and the scene falls back to simple shapes, so the app does not crash.",
+      "Only fake geometry is tested. Real loading, the retry path and failure handling have no tests in the packet.",
+      "One failed file fails the whole library, which is a broad failure mode."
+    ]
+  },
+  "terms": [
+    {
+      "term": "GLB",
+      "meaning": "a common 3D model file format used for the detailed element models"
+    },
+    {
+      "term": "Manifest",
+      "meaning": "a small index file listing each model's name, file and size"
+    },
+    {
+      "term": "Loader",
+      "meaning": "the tool that reads a GLB file and turns it into 3D objects"
+    },
+    {
+      "term": "Material",
+      "meaning": "the surface look (colour, shine) applied to a mesh"
+    },
+    {
+      "term": "File protocol",
+      "meaning": "the way a page opened straight from a local file (not a web server) reaches its files, which blocks downloads"
+    }
+  ],
+  "depends_on": [
+    "three",
+    "three/examples/jsm/loaders/GLTFLoader.js",
+    "assets/blender/build_library.py",
+    "models folder with manifest.json and GLB files (not in this packet)"
+  ],
+  "used_by": [
+    "frontend/src/scene/primitives.ts",
+    "frontend/src/scene/modelLibrary.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "98c0d763721f50e4",
+      "title": "Imports for 3D and file loading",
+      "what": "Brings in the three.js library and the GLB file reader.",
+      "why": "Needed to build and load the models.",
+      "watch_out": ""
+    },
+    {
+      "start": 4,
+      "end": 16,
+      "kind": "type",
+      "name": "LibraryEntry",
+      "id": "s2",
+      "hash": "fe347a154698dc75",
+      "title": "Description of one library model",
+      "what": "Records the model's file name, its own size in viewer axes, and optional repeat settings (axis and spacing).",
+      "why": "Tells the fitter how to size and repeat each model.",
+      "watch_out": "The native size must match the real file, or every element built from it will be scaled wrongly."
+    },
+    {
+      "start": 17,
+      "end": 22,
+      "kind": "type",
+      "name": "Template",
+      "id": "s3",
+      "hash": "209930062236ed6a",
+      "title": "Stored model ready for copying",
+      "what": "Pairs a loaded model with its settings and the centre point that copies are re-centred on.",
+      "why": "Work done once at load time is reused for every element.",
+      "watch_out": "The centre is measured once when the model is registered. Changing the model later does not update it."
+    },
+    {
+      "start": 23,
+      "end": 28,
+      "kind": "value",
+      "name": "templates, LibraryStatus",
+      "id": "s4",
+      "hash": "a2f4fa29d07cff8d",
+      "title": "Shared store and loading state",
+      "what": "Holds the loaded models by name, the load in progress, and the current status. The status can be idle, loading, ready or failed.",
+      "why": "One shared place lets every scene read the same loaded models.",
+      "watch_out": "The store is shared by the whole app, so a failed load changes what every scene sees."
+    },
+    {
+      "start": 29,
+      "end": 32,
+      "kind": "function",
+      "name": "modelLibraryStatus",
+      "id": "s5",
+      "hash": "3d4a7cbb68b8bfbd",
+      "title": "Read the loading state",
+      "what": "Returns the current status word so the screen can tell whether models are ready.",
+      "why": "Lets callers check without starting a new load.",
+      "watch_out": "While loading, it reports loading, so callers must wait for ready or failed before assuming the outcome."
+    },
+    {
+      "start": 33,
+      "end": 38,
+      "kind": "function",
+      "name": "registerLibraryModel",
+      "id": "s6",
+      "hash": "7b30ad864237d4f8",
+      "title": "Store a loaded model",
+      "what": "Saves a model under its primitive name with its settings and its measured centre.",
+      "why": "Used by the real loader and by the tests.",
+      "watch_out": "Registering the same name again silently replaces the earlier model."
+    },
+    {
+      "start": 39,
+      "end": 41,
+      "kind": "value",
+      "name": "LIBRARY_RETRY_DELAYS_MS",
+      "id": "s7",
+      "hash": "e926d87003f8befc",
+      "title": "Retry pauses for failed loads",
+      "what": "Two pauses, one second then three seconds, before a failed load is tried again.",
+      "why": "Recovers from a short network drop without repeatedly hammering the server.",
+      "watch_out": "Changing the list changes how many attempts happen. After the list ends, the load gives up."
+    },
+    {
+      "start": 42,
+      "end": 53,
+      "kind": "function",
+      "name": "loadOnce",
+      "id": "s8",
+      "hash": "ad276ace84358567",
+      "title": "Fetch the manifest and each model",
+      "what": "Downloads the manifest, then loads each model file listed and stores it, skipping any already stored.",
+      "why": "Loads everything in one pass so the scene can be built from the full library.",
+      "watch_out": "One failing file makes the whole pass fail, so one bad file sends every element to the simple shapes."
+    },
+    {
+      "start": 54,
+      "end": 83,
+      "kind": "function",
+      "name": "loadModelLibrary",
+      "id": "s9",
+      "hash": "2fbc28f59a54679c",
+      "title": "Load all models with retries",
+      "what": "Starts the load once, retries failed attempts, and reports ready or failed. It never throws an error, so the scene can still draw simple shapes. Offline files are not retried.",
+      "why": "The comments say the scene should still draw, and retrying an offline export only delays it.",
+      "watch_out": "Repeated callers receive the same pending load. After a failure, the next call starts a fresh load."
+    },
+    {
+      "start": 84,
+      "end": 87,
+      "kind": "function",
+      "name": "hasLibraryModel",
+      "id": "s10",
+      "hash": "719b0c5e9d779ce4",
+      "title": "Check whether a model is loaded",
+      "what": "Says whether a primitive name has a loaded model stored.",
+      "why": "Lets the builder choose between a detailed model and a simple shape.",
+      "watch_out": "It only checks that the name is registered, not that the model is valid."
+    },
+    {
+      "start": 88,
+      "end": 102,
+      "kind": "function",
+      "name": "instance",
+      "id": "s11",
+      "hash": "c32b0f2554cc1f54",
+      "title": "Copy a model with its own materials",
+      "what": "Makes a deep copy of a stored model, gives each mesh its own copy of its material, remembers the material name, and turns on shadows.",
+      "why": "The comments say status colouring changes materials per element, so shared materials would colour every copy together.",
+      "watch_out": "Non-standard materials are replaced by a plain grey one, which loses their original look."
+    },
+    {
+      "start": 103,
+      "end": 127,
+      "kind": "function",
+      "name": "buildLibraryModel",
+      "id": "s12",
+      "hash": "623ddf210899e9ef",
+      "title": "Fit a model to an element's size",
+      "what": "Builds the group for one element. A normal model is scaled to the requested size. A repeating model is copied along its chosen axis at the set spacing. Everything is centred on the origin and the group is tagged with the model name. Returns nothing for unknown names.",
+      "why": "Lets long elements such as rows and track look correct without one copy being stretched.",
+      "watch_out": "Repeats are capped at 200 copies. Beyond that, each copy is stretched rather than repeated at the set spacing."
+    }
+  ],
+  "explained_at": "2026-11-12T02:29:56+00:00",
+  "explained_by": "haiku",
+  "summary": "Loads the detailed 3D model files once, then makes correctly sized, centred copies of them for each element in the scene, and falls back to simple shapes when loading fails.",
+  "purpose": "Turn shipped model files (GLB, made in Blender by assets/blender/build_library.py) into objects that fit each element's real dimensions.",
+  "why": "Likely reason: loading each large file once and copying it is faster than loading it per element. Repeat settings let long items such as tracker rows, track and tunnels look right without stretching a single copy.",
+  "how": "First, the manifest file listing the models is downloaded. Second, every GLB listed is loaded once and stored under its name. Third, for each element, a copy is made, optionally repeated along one axis at the set spacing, scaled to the element's size, and centred on the origin. Each copy gets its own copy of its materials, so status colouring of one element does not change others. Loading retries twice after failure, with pauses of one and three seconds, and then reports failed.",
+  "inputs": "The base address of the models folder, the manifest.json file, and each element's primitive name and x, y, z dimensions.",
+  "outputs": "A loading status (idle, loading, ready or failed), and a group of 3D objects for an element, or nothing when no model exists for that name.",
+  "risks": "One bad file fails the whole load, so every element falls back to simple shapes. Offline exports skip retries by design. Repeat counts are capped at 200, and beyond that each copy is stretched rather than repeated. The fallback is only visible through the console message.",
+  "debug": "If models do not appear, check the status value and the browser console for the error about the model library. Confirm that manifest.json and the GLB files exist in the models folder and that the native sizes in the manifest match the real files. When opened from a local file, loading is blocked by design, so use the served app to test.",
+  "summary_hash": "sha256:fa96990ee5025fd4e68c708ea47bc89cdb7981981b81c06e15701f92f236b6c7"
+}

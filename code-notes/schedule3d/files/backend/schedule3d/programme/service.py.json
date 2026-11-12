@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/programme/service.py",
+  "language": "Python",
+  "lines": 416,
+  "hash": "sha256:3ebcaa6c0a0e4b8addde1b074936a11e2b86af1ebce7c29b97bbc26bf40d815a",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Input limits and conflicting-evidence checks are in place.",
+      "The lookup of projects in the report has no error handling, so a mismatch would fail with an unclear error.",
+      "No tests are visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SQLite",
+      "meaning": "A small database stored in a single file that Python can read without a separate server."
+    },
+    {
+      "term": "Read-only",
+      "meaning": "Opened so that the code can read the data but cannot change it."
+    },
+    {
+      "term": "Ingestion report",
+      "meaning": "The summary produced when the source file was loaded, listing its name, fingerprint and projects."
+    },
+    {
+      "term": "Evidence record",
+      "meaning": "A stored note that says where a value came from, such as a specific source table row."
+    },
+    {
+      "term": "Grid position",
+      "meaning": "A simple row and column placement used to space projects on screen. It says nothing about real location."
+    },
+    {
+      "term": "Digest",
+      "meaning": "A fingerprint computed over a whole list, used to prove that a page was taken from the full list."
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/evidence.py",
+    "backend/schedule3d/ingest/contracts.py",
+    "backend/schedule3d/model/contracts.py",
+    "backend/schedule3d/programme/contracts.py",
+    "backend/schedule3d/sqlite_paths.py"
+  ],
+  "used_by": [
+    "backend/schedule3d/programme/__init__.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 36,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c1345be8e69c28e4",
+      "title": "Imports and page size limits",
+      "what": "Brings in the libraries and shared models, and sets the largest page size allowed, which is 5000 records for both activities and relationships.",
+      "why": "Likely reason: a fixed page size keeps memory use predictable on large schedules.",
+      "watch_out": "Raising the limit here will also need the matching limit in the contracts file."
+    },
+    {
+      "start": 37,
+      "end": 42,
+      "kind": "function",
+      "name": "_connection",
+      "id": "s2",
+      "hash": "673f013fdcf86342",
+      "title": "Read-only database connection",
+      "what": "Opens the schedule database in read-only mode and lets results be read by column name.",
+      "why": "Likely reason: protects the source file from accidental changes during a build.",
+      "watch_out": ""
+    },
+    {
+      "start": 43,
+      "end": 58,
+      "kind": "function",
+      "name": "_source",
+      "id": "s3",
+      "hash": "0705eb744cde0408",
+      "title": "Source reference builder",
+      "what": "Creates a provenance note that names the source file, its fingerprint, the table and the row a value came from, marked as a schedule record.",
+      "why": "Likely reason: every value shown must be traceable to the place it came from.",
+      "watch_out": ""
+    },
+    {
+      "start": 59,
+      "end": 82,
+      "kind": "function",
+      "name": "_fact",
+      "id": "s4",
+      "hash": "7d0d38cc3dc7e7b5",
+      "title": "Evidence record builder",
+      "what": "Wraps a single value in an evidence record that is marked as accepted, fully confident and stated by the source.",
+      "why": "Likely reason: lets schedule values be stored in the same evidence format as document facts.",
+      "watch_out": "Confidence is always set to full. The code does not check whether a value is actually reliable."
+    },
+    {
+      "start": 83,
+      "end": 86,
+      "kind": "function",
+      "name": "_datetime",
+      "id": "s5",
+      "hash": "0c2d0140b57f65f7",
+      "title": "Date text converter",
+      "what": "Turns a stored date text into a date and time value, or leaves it empty when the value is blank or missing.",
+      "why": "Likely reason: the database stores dates as text, and the rest of the code needs real date values.",
+      "watch_out": "A malformed date text raises an error with no fallback, which will stop the build."
+    },
+    {
+      "start": 87,
+      "end": 107,
+      "kind": "function",
+      "name": "_activity_register_sha256",
+      "id": "s6",
+      "hash": "7a0618d2480b70ca",
+      "title": "Activity register digest",
+      "what": "Reads every activity in a fixed order and feeds each one, as a sorted text record, into a single running fingerprint.",
+      "why": "Likely reason: lets the page of activities be checked against the complete register without loading all of it.",
+      "watch_out": "Any field added to the query must also be added to this digest, or changes to it will go unnoticed."
+    },
+    {
+      "start": 108,
+      "end": 127,
+      "kind": "function",
+      "name": "_relationship_register_sha256",
+      "id": "s7",
+      "hash": "53261de8ec7c2144",
+      "title": "Relationship register digest",
+      "what": "Reads every relationship in key order and feeds each one into a single running fingerprint, including its source extension data.",
+      "why": "Likely reason: the same check as for activities, applied to links between activities.",
+      "watch_out": "Like the activity digest, the field list must stay in step with the query."
+    },
+    {
+      "start": 128,
+      "end": 170,
+      "kind": "function",
+      "name": "build_programme_model (part 1)",
+      "id": "s8",
+      "hash": "96c5ffe39406006c",
+      "title": "Programme builder first part",
+      "what": "Checks that the paging numbers are valid, merges document evidence supplied for each project while rejecting conflicting duplicates, and prepares empty lists to fill.",
+      "why": "Likely reason: stops bad paging requests and conflicting evidence before any data is read.",
+      "watch_out": "Two different documents with the same fact identifier will stop the build."
+    },
+    {
+      "start": 171,
+      "end": 224,
+      "kind": "function",
+      "name": "build_programme_model (part 2)",
+      "id": "s9",
+      "hash": "bc08c2b8024456ea",
+      "title": "Programme builder project listing",
+      "what": "Opens the database, lists every project in name order, checks the optional project filter, and creates each project's record with its dates, its fidelity level, its grid position and its evidence references.",
+      "why": "Likely reason: projects are the top level of the view, and their grid spacing is a simple layout, not real location data.",
+      "watch_out": "The lookup into the ingestion report has no safety check. A project in the database that is missing from the report would stop the build with an unclear error."
+    },
+    {
+      "start": 225,
+      "end": 284,
+      "kind": "function",
+      "name": "build_programme_model (part 3)",
+      "id": "s10",
+      "hash": "7eb9b0ad48b81976",
+      "title": "Programme builder totals and digests",
+      "what": "Counts all activities and relationships, either for the whole database or for the filtered project, finds the earliest and latest planned dates, computes both register digests, and builds the query used to read one page of activities.",
+      "why": "Likely reason: totals and digests are computed before paging so the page can be checked against the complete register.",
+      "watch_out": "The filtered and unfiltered queries are kept as separate versions, so a change to one must be made to the other."
+    },
+    {
+      "start": 285,
+      "end": 328,
+      "kind": "function",
+      "name": "build_programme_model (part 4)",
+      "id": "s11",
+      "hash": "5944ec1ee1dbf2ee",
+      "title": "Programme builder activity page",
+      "what": "Reads the requested page of activities and, for each one, creates an evidence record and a typed activity entry with its identifiers, name and dates.",
+      "why": "Likely reason: each activity is traced to its own row so a reviewer can find it in the source.",
+      "watch_out": "The order of the page depends on the planned start date, with a fallback value for missing dates, so changing the sort changes which activities appear on each page."
+    },
+    {
+      "start": 329,
+      "end": 388,
+      "kind": "function",
+      "name": "build_programme_model (part 5)",
+      "id": "s12",
+      "hash": "5c610f7c95915af2",
+      "title": "Programme builder relationship page",
+      "what": "Reads the requested page of relationships, creates an evidence record and a typed relationship entry for each, and checks that the stored extension data is valid text. The extension data is checked but not kept.",
+      "why": "Likely reason: ensures every link is traceable and that corrupt extension data is caught early.",
+      "watch_out": "Extension data is discarded after the check, so anything needed from it later must be read from the database again."
+    },
+    {
+      "start": 389,
+      "end": 416,
+      "kind": "function",
+      "name": "build_programme_model (part 6)",
+      "id": "s13",
+      "hash": "427bccb0265d9008",
+      "title": "Programme builder result",
+      "what": "Assembles the programme model from the lists, totals, paging details, digests, date bounds, activity identifiers and a fixed list of limitation notes that tell the reader the layout is not geographic.",
+      "why": "Likely reason: the limitation notes are kept with the data so the reader is always told what the view does not show.",
+      "watch_out": "The limitation text is part of the record. Change it only if the underlying behaviour changes."
+    }
+  ],
+  "explained_at": "2026-11-12T02:08:42+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads the schedule database in read-only mode and builds a bounded, source-traceable set of projects, activities and relationships, with digests that prove the full register was covered.",
+  "purpose": "Turns the raw schedule database into the programme model used by the scene, in pages that stay within a fixed size.",
+  "why": "Likely reason: the activity register can be very large, so the file is read in pages and the complete register is checked by a digest instead of being loaded whole.",
+  "how": "Helpers open the database read-only, build source references and evidence records, and convert dates. Two digest helpers stream every activity and every relationship into fingerprints. The main builder checks page inputs, merges document evidence without conflicts, lists projects and assigns each a grid position, counts totals and computes date bounds, fingerprints the whole registers, reads the requested page of activities and relationships, turns each row into an evidence record and a typed entry, and finally returns the programme model with its limitations.",
+  "inputs": "The schedule database file, the ingestion report that describes the source, optional document evidence per project, paging numbers and an optional project filter.",
+  "outputs": "A programme model containing projects, one page of activities, one page of relationships, evidence records, totals, digests and limitation notes.",
+  "risks": "Page limits are capped at 5000. Malformed dates will raise an error because no fallback is coded. A project in the database that is missing from the report would raise a lookup error. Extension data is checked for valid format but not kept.",
+  "debug": "If a page is empty or totals look wrong, check the project filter and the offset values. For date errors, look at the value in the database. For a missing project, check that the ingestion report lists the same projects as the database.",
+  "summary_hash": "sha256:3ebcaa6c0a0e4b8addde1b074936a11e2b86af1ebce7c29b97bbc26bf40d815a"
+}

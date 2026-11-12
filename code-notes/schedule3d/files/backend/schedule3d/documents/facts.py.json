@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/documents/facts.py",
+  "language": "Python",
+  "lines": 584,
+  "hash": "sha256:9d23d262238e9c1f57d3718310ab43462f196b8b492863695b18837d2837a3be",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test evidence is visible in the packet for the patterns or for conflict detection.",
+      "Several patterns depend on exact wording in one drawing style and may miss other styles.",
+      "The foundation list reader has a fixed window of 100 lines and a fixed list of allowed labels.",
+      "Record identifiers depend on the order facts are found, so adding a pattern can change identifiers for later facts."
+    ]
+  },
+  "terms": [
+    {
+      "term": "text layer",
+      "meaning": "the text stored inside a PDF that can be selected and copied, as opposed to text that exists only as a picture"
+    },
+    {
+      "term": "regular expression (pattern)",
+      "meaning": "a written search rule that finds text following a set shape, such as a number followed by a unit"
+    },
+    {
+      "term": "evidence record",
+      "meaning": "one fact together with where it came from and how sure the system is about it"
+    },
+    {
+      "term": "corroborated",
+      "meaning": "confirmed by more than one source that agrees"
+    },
+    {
+      "term": "conflicted",
+      "meaning": "two or more sources give different values for the same fact, so a person must decide"
+    },
+    {
+      "term": "CCVT",
+      "meaning": "capacitor coupled voltage transformer, a type of electrical measuring equipment on a substation"
+    },
+    {
+      "term": "breaker-and-a-half",
+      "meaning": "a substation layout where three breakers serve two circuits"
+    },
+    {
+      "term": "AWG and CCS",
+      "meaning": "naming systems for the thickness of copper or copper-clad wire used in grounding"
+    }
+  ],
+  "depends_on": [
+    "schedule3d.documents.contracts",
+    "schedule3d.evidence"
+  ],
+  "used_by": [
+    "backend/schedule3d/documents/__init__.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 40,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "79db5e8bf2b7de1b",
+      "title": "Imports and document category map",
+      "what": "Brings in the tools for patterns and data types and sets up a map from each document category to a source kind, with unknown categories falling back to other.",
+      "why": "Lets each fact say what kind of source document it came from, which the evidence system uses for review.",
+      "watch_out": "A new document category without a map entry is quietly labeled as other, which can hide where a fact came from."
+    },
+    {
+      "start": 41,
+      "end": 100,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "db5045e31effd2ac",
+      "title": "Pattern definitions for the main facts",
+      "what": "Defines the search patterns for fence dimensions, control house dimensions, project identity numbers, breaker counts and ratings, CCVT counts, breaker-and-a-half rungs, grounding conductors, grounding risers, ground rods, and surface cover.",
+      "why": "Each pattern captures one kind of sentence or table cell that the source drawings are known to use.",
+      "watch_out": "The patterns are tuned to specific wording, so a small change in a drawing's wording will stop a fact from being found."
+    },
+    {
+      "start": 101,
+      "end": 119,
+      "kind": "setup",
+      "name": "File setup (part 3)",
+      "id": "s3",
+      "hash": "3ac6b9ce14cfff3e",
+      "title": "Foundation list label allowlist",
+      "what": "Lists the only item labels that may become asset inventory facts from a foundation list, such as control house, circuit breaker, and lightning masts.",
+      "why": "Likely reason: a fixed list prevents random table text from being treated as equipment facts.",
+      "watch_out": "A label missing from this list is silently skipped, so a real asset can disappear from the inventory."
+    },
+    {
+      "start": 120,
+      "end": 123,
+      "kind": "function",
+      "name": "_source_kind",
+      "id": "s4",
+      "hash": "1d9f3949c610af9f",
+      "title": "Finding the source category of a document",
+      "what": "Returns the evidence source kind that matches a document's category, or the other kind if there is no match.",
+      "why": "Attaches the correct source label to every fact from the document.",
+      "watch_out": "Relies on the category map above, so keep the two in step."
+    },
+    {
+      "start": 124,
+      "end": 128,
+      "kind": "function",
+      "name": "_line_region",
+      "id": "s5",
+      "hash": "683d7c9d20957002",
+      "title": "Describing where a fact was found",
+      "what": "Builds a short text note that names the line number and the first part of the line where a fact was found.",
+      "why": "Lets a reviewer jump back to the exact place in the source to check a fact.",
+      "watch_out": "The note is cut to about 160 characters, so long lines lose their end."
+    },
+    {
+      "start": 129,
+      "end": 166,
+      "kind": "function",
+      "name": "_record",
+      "id": "s6",
+      "hash": "0cb2beea7bc3118b",
+      "title": "Building one evidence record",
+      "what": "Creates a single fact with a stable identifier built from the document fingerprint, page number, fact type, and a running number. It marks the fact as taken from the source text, accepted, and at full confidence unless told otherwise.",
+      "why": "Gives each fact an identifier that can be cited in reports and later checked.",
+      "watch_out": "The running number depends on how many facts were already found, so changing the order of pattern searches changes every later identifier."
+    },
+    {
+      "start": 167,
+      "end": 170,
+      "kind": "function",
+      "name": "_line_number",
+      "id": "s7",
+      "hash": "4cce075ddea47996",
+      "title": "Converting a text position to a line number",
+      "what": "Counts the line breaks before a position in the page text to find the line where a match starts.",
+      "why": "Lets each fact point to a line in the source text.",
+      "watch_out": "Line numbers come from the extracted text, not from the printed drawing, so they may not match what a reviewer sees on paper."
+    },
+    {
+      "start": 171,
+      "end": 217,
+      "kind": "function",
+      "name": "_inventory_records (part 1)",
+      "id": "s8",
+      "hash": "74422abe551b191b",
+      "title": "Reading the foundation list, line by line",
+      "what": "Finds the foundation list heading on a page, reads up to 100 lines after it, and groups table rows that start with a letter code and quantity into candidate items.",
+      "why": "Lets the app read a table from its clean line layout when the text keeps its line breaks.",
+      "watch_out": "Rows more than 100 lines after the heading are never read, so long tables are cut short."
+    },
+    {
+      "start": 218,
+      "end": 275,
+      "kind": "method",
+      "name": "_inventory_records: inline_candidates",
+      "id": "s9",
+      "hash": "583d5ff8f1d2cedb",
+      "title": "Reading the foundation list inline, and turning rows into facts",
+      "what": "If no line-by-line rows were found, searches the text after the heading for marked quantity rows on one line. For each candidate, it matches the label to the allowlist, makes the subject name readable, adds the lightning mast height when present, and creates an asset inventory fact. It stops with an error when the claim limit is reached.",
+      "why": "Likely reason: the comment says the text layer can put table cells on one line, so the inline search is a fallback for that layout.",
+      "watch_out": "The label match takes the label that appears earliest in the row, so an unusual row wording can attach to the wrong item."
+    },
+    {
+      "start": 276,
+      "end": 335,
+      "kind": "function",
+      "name": "extract_document_evidence (part 1)",
+      "id": "s10",
+      "hash": "2a97b9396094b7d0",
+      "title": "Main extraction function, opening and setup",
+      "what": "Starts the document extraction. It sets up an empty list of facts and a memory of what has already been recorded so the same fact is not added twice. It also defines the step that adds a fact, which checks the cancellation signal and the claim limit.",
+      "why": "Prevents duplicate facts and lets a long run be stopped cleanly.",
+      "watch_out": "Duplicates are judged by type, subject, value, and page, so the same value on two pages is kept as two facts."
+    },
+    {
+      "start": 336,
+      "end": 395,
+      "kind": "function",
+      "name": "extract_document_evidence (part 2)",
+      "id": "s11",
+      "hash": "04737c050d48d509",
+      "title": "Extracting fence, control house, identity, and breaker count facts",
+      "what": "For each page, finds fence dimensions, control house dimensions near the words control house, project identity numbers, breaker quantities, CCVT quantities, and breaker-and-a-half rung counts, and adds a fact for each match.",
+      "why": "These are the numbers a schedule model most needs to place and count equipment.",
+      "watch_out": "The project identity pattern is loose and could match an unrelated number that follows the letters P I, so it should be checked by a person."
+    },
+    {
+      "start": 396,
+      "end": 455,
+      "kind": "function",
+      "name": "extract_document_evidence (part 3)",
+      "id": "s12",
+      "hash": "92750e40d447f899",
+      "title": "Extracting breaker ratings and grounding conductor facts",
+      "what": "Finds breaker ratings for current, voltage, and interrupting capacity, and grounding grid conductor size and burial depth.",
+      "why": "Gives the model the electrical and grounding ratings that a reviewer needs to check the design.",
+      "watch_out": "The conductor size is recorded as written in the source, so typing differences in the source will show up as different values."
+    },
+    {
+      "start": 456,
+      "end": 515,
+      "kind": "function",
+      "name": "extract_document_evidence (part 4)",
+      "id": "s13",
+      "hash": "43c34adac1c8ac30",
+      "title": "Extracting riser, rod, and surface cover facts",
+      "what": "Finds grounding riser wire size and fault limit, ground rod diameter and depth, and the start of the surface cover match.",
+      "why": "Records grounding details that affect safety checks.",
+      "watch_out": "The riser size is rewritten to add a hash mark when it is missing, so the stored value may differ from the printed text."
+    },
+    {
+      "start": 516,
+      "end": 538,
+      "kind": "function",
+      "name": "extract_document_evidence (part 5)",
+      "id": "s14",
+      "hash": "2d6afa0db51904ef",
+      "title": "Finishing surface cover and the inventory step",
+      "what": "Completes the surface cover facts. It labels the cover as interior when the word inward appears in the nearby text, and perimeter otherwise. The surface cover depth is always recorded as four inches. It then runs the foundation list reader for the page and returns all facts found.",
+      "why": "Separates interior and perimeter cover because they are often specified differently on drawings.",
+      "watch_out": "Any surface cover text without the word inward is labeled perimeter, which can be wrong for an unusual drawing."
+    },
+    {
+      "start": 539,
+      "end": 584,
+      "kind": "function",
+      "name": "fuse_evidence",
+      "id": "s15",
+      "hash": "08816597c6fc8d7c",
+      "title": "Fusing facts and flagging conflicts",
+      "what": "Groups all facts by type, subject ignoring capital letters, and unit. Groups where all values match are marked corroborated and linked to each other. Groups where values differ have every fact marked conflicted and needing review, with no winner chosen.",
+      "why": "Likely reason: the file states that it should not select between conflicting values, so a person makes the decision.",
+      "watch_out": "Facts that disagree only in unit are not compared, so a conflict expressed in different units will not be caught."
+    }
+  ],
+  "explained_at": "2026-11-12T01:46:52+00:00",
+  "explained_by": "haiku",
+  "summary": "This file reads the words and numbers printed on a document's text layer and turns each literal match into a sourced fact, then flags any facts that disagree with each other.",
+  "purpose": "Lets the schedule model rely on facts such as breaker counts, grounding conductor sizes, fence dimensions, and project identity numbers, each traceable to a page and line in the source document.",
+  "why": "Likely reason: the file states it extracts only literal, reviewable facts and does not choose between conflicting values, so a person decides when sources disagree.",
+  "how": "It first groups the kinds of documents into the source categories used by the evidence system. For each page, it runs a set of pattern searches for fence dimensions, control house dimensions, project identity numbers, breaker counts and ratings, CCVT counts, breaker-and-a-half rungs, grounding conductor and riser data, ground rod size and depth, and surface cover. It also reads a foundation list table, first from its line-by-line layout and then from a looser inline search. Each match becomes a fact with a stable identifier and a source reference. Finally, facts with the same type, subject, and unit are compared: equal values are marked as corroborated, and unequal values are all marked as conflicted and needing review.",
+  "inputs": "A document extraction result with its pages and text, an optional maximum number of facts, and an optional cancellation check.",
+  "outputs": "A list of evidence records from extraction, and an evidence bundle from fusion where every fact carries a truth state, a conflict status, and a review status.",
+  "risks": "Pattern searches on free text can misread numbers, especially the project identity pattern, which matches loose letter-and-number patterns. The foundation list reader only looks at the first 100 lines after its heading. Conflicts are only detected when unit and subject match exactly, so the same value expressed in different units will not be flagged.",
+  "debug": "If a fact is missing, check the text layer of the source page for the exact wording the pattern expects, and check whether the document class is correct. If a fact appears twice or with an odd number, look at the source line reported in its source region. If the claim budget error appears, the document contains more facts than the limit allows, so check whether the limit is too low or the document is unusual.",
+  "summary_hash": "sha256:9d23d262238e9c1f57d3718310ab43462f196b8b492863695b18837d2837a3be"
+}

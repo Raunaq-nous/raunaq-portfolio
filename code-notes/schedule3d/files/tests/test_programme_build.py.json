@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "path": "tests/test_programme_build.py",
+  "language": "Python",
+  "lines": 97,
+  "hash": "sha256:008940627a1710def514067de162286f774bff67a3e2358172c7e577c3da7fc6",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "I could not run the tests in this session.",
+      "The tests cover the main upload, build and export path, but a failed programme build is only checked through the message text."
+    ]
+  },
+  "terms": [
+    {
+      "term": "API",
+      "meaning": "a doorway other programs use to ask this app for data or to start work."
+    },
+    {
+      "term": "job",
+      "meaning": "one unit of background work, such as processing an uploaded schedule, tracked by an ID."
+    },
+    {
+      "term": "IFC",
+      "meaning": "a standard file format for describing building models, read by BIM software."
+    },
+    {
+      "term": "programme",
+      "meaning": "the combined 3D view of several schedules placed side by side."
+    },
+    {
+      "term": "pytest",
+      "meaning": "the Python tool that runs these test files and reports which checks pass."
+    }
+  ],
+  "depends_on": [
+    "fastapi",
+    "pytest",
+    "schedule3d.api",
+    "samples/sample-multi-project.csv"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e6e574f831c68042",
+      "title": "Test setup and sample file location",
+      "what": "Imports the libraries and the app, and sets the path to the multi-project sample schedule. Tests use this path to load realistic data.",
+      "why": "Keeps the sample location in one place so every test uses the same file.",
+      "watch_out": "The path is built from this file's location, so moving the test file to another folder breaks it."
+    },
+    {
+      "start": 13,
+      "end": 21,
+      "kind": "function",
+      "name": "_wait",
+      "id": "s2",
+      "hash": "1374c09ba5d3d8c1",
+      "title": "Waiting for a background job",
+      "what": "Repeatedly asks the app for a job's current state until a given condition is true, then returns that state. If the condition never becomes true, it fails and shows the last state.",
+      "why": "Background jobs finish at unpredictable times, so the tests must wait for them rather than read results too early.",
+      "watch_out": "The wait is capped, so a slow machine can make a healthy job look stuck."
+    },
+    {
+      "start": 22,
+      "end": 45,
+      "kind": "function",
+      "name": "test_programme_scene_is_built_on_request",
+      "id": "s3",
+      "hash": "88d945e188009ffd",
+      "title": "Programme scene is built only on request",
+      "what": "Uploads the sample, confirms it has several projects and no programme scene yet, then asks for the scene and checks that each project gets its own position and a note that it is not a geographic location.",
+      "why": "Likely reason: building the combined scene is slow, so it should happen only when a user asks for it. Reason not stated in the code.",
+      "watch_out": "The test expects the exact phrase not a geographic in each placement rule, so changing that wording fails the test."
+    },
+    {
+      "start": 46,
+      "end": 77,
+      "kind": "function",
+      "name": "test_several_schedules_combine_into_one_programme",
+      "id": "s4",
+      "hash": "878ccae9519cc08f",
+      "title": "Two schedules combine but stay separate",
+      "what": "Uploads two CSV files that reuse the same project ID, then checks that the projects are kept apart by their file name prefixes, that the report names the source as both files, and that one project can still be modeled.",
+      "why": "Likely reason: two schedules can reuse the same project number, and merging them would mix up their data. The comment in the code says the second file must stay separate.",
+      "watch_out": "The prefix format north colon project ID and the separator in names are checked exactly, so changing either needs a matching test update."
+    },
+    {
+      "start": 78,
+      "end": 97,
+      "kind": "function",
+      "name": "test_programme_ifc_package_lists_every_project",
+      "id": "s5",
+      "hash": "63d5189b6e5fc454",
+      "title": "IFC package lists every project",
+      "what": "Checks that the IFC zip is unavailable before the scene is built, then after building it contains one model file per project, each starting with the standard IFC header, a schedule CSV, and a README that mentions Revit.",
+      "why": "Likely reason: the export must cover all projects and match the format expected by BIM software, so the test checks the package contents directly.",
+      "watch_out": "The README check looks for the word Revit, so changing the README's wording or its target software name breaks this test."
+    }
+  ],
+  "explained_at": "2026-11-12T02:43:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that the combined 3D programme is built only when someone asks for it, keeps each uploaded schedule's projects separate, and produces an IFC package that lists every project.",
+  "purpose": "Protects the multi-schedule workflow: upload schedules, build the programme scene on request, read the report, and download the IFC zip.",
+  "why": "Likely reason: combining several schedules could merge or lose projects or build the scene too early, so these tests catch those failures.",
+  "how": "Each test points the app at a temporary work folder, uploads the sample or two generated CSV files, waits for background jobs to finish, and then checks the answers returned by the API.",
+  "inputs": "The file samples/sample-multi-project.csv, plus small CSV files written inside the tests.",
+  "outputs": "Pass or fail results. The tests do not change project files.",
+  "risks": "The wait helper checks up to 600 times at 50 millisecond intervals, so a stuck job fails only after about 30 seconds. Some checks depend on exact status words such as ready and the word programme in the message.",
+  "debug": "If a test fails, read the assertion message, which includes the job state. Look at the status, message and has_programme_scene fields from the job endpoint, and confirm the sample CSV still exists.",
+  "summary_hash": "sha256:008940627a1710def514067de162286f774bff67a3e2358172c7e577c3da7fc6"
+}

@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/packages/zip_stream.py",
+  "language": "Python",
+  "lines": 160,
+  "hash": "sha256:3b1493fab34397d2a864eef0b6a7a7836e516c88b640addc2a13d73ca76b03ac",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The final size and checksum comparison is not visible in the packet, so it cannot be confirmed here.",
+      "No test is visible in the packet.",
+      "The checks are strict and clearly explained in the comments, which is a strength."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ZIP",
+      "meaning": "a compressed container file that holds several named members"
+    },
+    {
+      "term": "central directory",
+      "meaning": "the index at the end of a ZIP file that lists every member"
+    },
+    {
+      "term": "local header",
+      "meaning": "the small record placed before each member's data"
+    },
+    {
+      "term": "ZIP64",
+      "meaning": "an extension for archives or files larger than the older limits"
+    },
+    {
+      "term": "CRC",
+      "meaning": "a checksum computed from the bytes, used to detect corruption"
+    },
+    {
+      "term": "deflate",
+      "meaning": "the compression method most ZIP files use"
+    },
+    {
+      "term": "chunk",
+      "meaning": "a fixed-size piece of data read at one time"
+    }
+  ],
+  "depends_on": [
+    "struct",
+    "zipfile",
+    "zlib",
+    "pathlib",
+    "collections.abc"
+  ],
+  "used_by": [
+    "backend/schedule3d/packages/office.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d6c2c86d5605e324",
+      "title": "File purpose and constants",
+      "what": "Explains that this module reads ZIP content with full checks, and why the standard reader is not used for member bytes. Sets a read chunk size of 1 MiB.",
+      "why": "The docstring explains that the standard reader trusts the declared size, which these checks must not do.",
+      "watch_out": "The chunk size trades memory for speed. Changing it changes how much data is held at once."
+    },
+    {
+      "start": 18,
+      "end": 21,
+      "kind": "class",
+      "name": "PackageError",
+      "id": "s2",
+      "hash": "bfeb01b60097a5b6",
+      "title": "Package error type",
+      "what": "Defines the error raised for any bad package input. It is a kind of value error, and its note says a partial inventory is never treated as a complete package.",
+      "why": "One shared error type lets callers catch every package problem in the same way.",
+      "watch_out": "Other modules catch this error type, so renaming or moving it breaks their error handling."
+    },
+    {
+      "start": 22,
+      "end": 81,
+      "kind": "function",
+      "name": "central_preflight (part 1)",
+      "id": "s3",
+      "hash": "87f12851a18ba08f",
+      "title": "Checking the archive index first",
+      "what": "Reads the end record from the last part of the file and checks its numbers. Rejects multi-disk and ZIP64 forms. Walks every index entry, checking its signature, sizes, offsets and extra fields, and that the counts and byte totals match the end record. Returns where the index starts.",
+      "why": "Likely reason: checking the index before the standard reader builds its list stops oversized or crafted indexes early.",
+      "watch_out": "ZIP64 archives are refused on purpose, so large packages in that format fail with a clear message instead of being read."
+    },
+    {
+      "start": 82,
+      "end": 82,
+      "kind": "function",
+      "name": "central_preflight (part 2)",
+      "id": "s4",
+      "hash": "da39a3ee5e6b4b0d",
+      "title": "Preflight section marker",
+      "what": "This section is blank and contains no code. The index check ends in the section before it.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 83,
+      "end": 142,
+      "kind": "function",
+      "name": "member_chunks (part 1)",
+      "id": "s5",
+      "hash": "7bc67b3afbe7888f",
+      "title": "Reading and checking one member's bytes",
+      "what": "Opens the file at the member's start and checks its local header and name against the index entry. Confirms that its sizes fit inside the file. Then decompresses the data in chunks, rejects truncated or trailing data, and yields each decompressed piece.",
+      "why": "Likely reason: the local and index records must agree, and a disagreement is a common sign of a tampered archive.",
+      "watch_out": "The final comparison of the real size and checksum is in a later part of this function that is not in the packet, so its exact behaviour here is unclear."
+    },
+    {
+      "start": 143,
+      "end": 160,
+      "kind": "function",
+      "name": "member_chunks (part 2)",
+      "id": "s6",
+      "hash": "a92c4f579b42a112",
+      "title": "Finishing a zip member final checks",
+      "what": "Runs the last checks after one compressed file inside a zip has been read. It confirms the compressed data ended cleanly, that the unpacked size and checksum match what the zip header declared, and that any trailing descriptor block fits inside the file's boundary. A failed check stops the read with an error instead of returning damaged data.",
+      "why": "Likely reason: zip files can be damaged or altered, so the reader verifies each member before its contents are used.",
+      "watch_out": "These checks depend on variables set earlier in the same function that are not in this excerpt, so read the whole member reading function before changing them."
+    }
+  ],
+  "explained_at": "2026-11-12T02:08:42+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks the structure of a ZIP archive and reads each member's bytes while confirming their real size and checksum, so damaged or tricked archives are refused.",
+  "purpose": "Gives the rest of the package code a checked way to read ZIP-based files, such as Office files and packages.",
+  "why": "The docstring says the standard reader stops at the declared size, so this code counts the real bytes and verifies the checksum itself.",
+  "how": "1. Find the end record near the end of the file and check its numbers. 2. Refuse multi-disk and ZIP64 forms. 3. Walk every index entry and check counts, sizes and offsets. 4. For each member, check that its local header matches its index entry, that its name and sizes agree, and that its data fits in the file. 5. Decompress in chunks, count the real bytes and checksum them, reject trailing data and truncation, and yield each piece.",
+  "inputs": "A file path with a count and size limit for the index check. A member record from the ZIP reader, the member's end position, and a checkpoint callback.",
+  "outputs": "central_preflight returns the position where the index starts. member_chunks yields decompressed byte pieces, which the caller collects.",
+  "risks": "ZIP64 archives are refused on purpose, so very large packages fail. A mismatch in any header or size rejects the whole member. The final comparison of real size and checksum is in a part of member_chunks that is not in the packet, so its exact behaviour here is unclear.",
+  "debug": "Read the error text of a refused member. It names the header, name, size, offset or trailing-data rule that failed. Compare the file with a ZIP listing tool to check the headers. For suspected truncation, compare the file size with the index record.",
+  "summary_hash": "sha256:3b1493fab34397d2a864eef0b6a7a7836e516c88b640addc2a13d73ca76b03ac"
+}

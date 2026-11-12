@@ -1,0 +1,447 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/api/app.py",
+  "language": "Python",
+  "lines": 1054,
+  "hash": "sha256:b8e608b240e73025e9604ee3719b2cf24ac038e3c5913b8715217790b36a6d7a",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The file is very large and holds many routes, so a change in one place can affect others.",
+      "The origin check runs only when an Origin header is present, so requests without that header skip it.",
+      "Unexpected server errors return raw exception text, which can reveal internal details.",
+      "The offline and audit export routes assign a folder value and then overwrite it straight away, which is confusing to read.",
+      "The packet shows no tests for this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "API",
+      "meaning": "a doorway other programs use to ask this app for data or actions"
+    },
+    {
+      "term": "route",
+      "meaning": "a web address the server answers, such as the health check address"
+    },
+    {
+      "term": "FastAPI",
+      "meaning": "the Python framework that turns functions into web routes"
+    },
+    {
+      "term": "middleware",
+      "meaning": "code that checks or changes every request before it reaches a route"
+    },
+    {
+      "term": "loopback",
+      "meaning": "the computer talking to itself, usually address 127.0.0.1"
+    },
+    {
+      "term": "CORS",
+      "meaning": "a browser rule that decides which web pages may call this server"
+    },
+    {
+      "term": "ZIP",
+      "meaning": "a single compressed file that holds several files together"
+    },
+    {
+      "term": "IFC",
+      "meaning": "an open file format for building models, read by design software"
+    },
+    {
+      "term": "job",
+      "meaning": "one processing run started by an upload, tracked by its own ID"
+    }
+  ],
+  "depends_on": [
+    "fastapi",
+    "pydantic",
+    "starlette",
+    "backend/schedule3d/__init__.py",
+    "backend/schedule3d/api/jobs.py",
+    "backend/schedule3d/api/package_jobs.py",
+    "backend/schedule3d/api/programme_build.py",
+    "backend/schedule3d/api/specifications.py",
+    "backend/schedule3d/attachments.py",
+    "backend/schedule3d/bim.py",
+    "backend/schedule3d/evidence.py",
+    "backend/schedule3d/export/service.py",
+    "backend/schedule3d/ingest/contracts.py",
+    "backend/schedule3d/ingest/service.py",
+    "backend/schedule3d/integrations.py",
+    "backend/schedule3d/model/contracts.py",
+    "backend/schedule3d/model/service.py",
+    "backend/schedule3d/model/specifications.py",
+    "backend/schedule3d/programme/__init__.py",
+    "backend/schedule3d/programme/scene.py",
+    "backend/schedule3d/programme/service.py",
+    "backend/schedule3d/semantics/archetypes.py",
+    "backend/schedule3d/sqlite_paths.py"
+  ],
+  "used_by": [
+    "backend/schedule3d/api/__init__.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 36,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "0bee374e02300dfc",
+      "title": "Imports for web and data tools",
+      "what": "Brings in the libraries the file needs for web routing, uploads, file paths, database access, data validation and time handling.",
+      "why": "Likely reason: every later route depends on these names being available.",
+      "watch_out": "Removing an import that a later route still uses stops the server from starting."
+    },
+    {
+      "start": 37,
+      "end": 79,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "f8457a35d0af373a",
+      "title": "Schedule3D processing imports",
+      "what": "Brings in the Schedule3D modules that read schedules, build models, check IFC files, create exports and manage programme views.",
+      "why": "Likely reason: groups the processing steps so each route can call them by name.",
+      "watch_out": "Renaming a module or function here breaks every route that uses it."
+    },
+    {
+      "start": 80,
+      "end": 98,
+      "kind": "setup",
+      "name": "File setup (part 3)",
+      "id": "s3",
+      "hash": "16511fbe2c334f05",
+      "title": "Folders, size limits and demo files",
+      "what": "Sets where work files and the frontend build live, the largest allowed uploads, and the two demo sample files the server may serve. Frozen builds use a folder next to the program; otherwise the project folder is used.",
+      "why": "Likely reason: keeps locations and limits in one place so the server behaves the same way everywhere.",
+      "watch_out": "Raising a size limit here increases disk use and memory risk for every request that uses it."
+    },
+    {
+      "start": 99,
+      "end": 108,
+      "kind": "function",
+      "name": "_replit_hostnames",
+      "id": "s4",
+      "hash": "2eb69067fd07884b",
+      "title": "Hostnames for hosted preview",
+      "what": "When the Replit mode setting is on, reads the Replit domain names from the environment and adds them as allowed hostnames. Otherwise it allows none.",
+      "why": "Likely reason: lets a hosted preview reach the local server without opening it to every site.",
+      "watch_out": "The mode setting must stay off outside that preview setup, or unknown hostnames become trusted."
+    },
+    {
+      "start": 109,
+      "end": 112,
+      "kind": "class",
+      "name": "_RequestTooLarge",
+      "id": "s5",
+      "hash": "d10fdb73556f7c3f",
+      "title": "Signal for oversized requests",
+      "what": "Defines a small internal error type that is raised when a request body grows past its size limit.",
+      "why": "Likely reason: lets the size check stop reading a stream partway and turn that into a clean error reply.",
+      "watch_out": "Only the size check should raise this error, since a broad error handler elsewhere could hide it."
+    },
+    {
+      "start": 113,
+      "end": 165,
+      "kind": "class",
+      "name": "LocalRequestBoundaryMiddleware (part 1)",
+      "id": "s6",
+      "hash": "ab39d65890151ca9",
+      "title": "Request boundary and origin check",
+      "what": "Runs before upload data is read. It refuses changing requests from browser origins other than the local ones with a 403 reply, and refuses bodies larger than the limit with a 413 reply.",
+      "why": "Likely reason: stops web pages on other sites from changing data on this machine and stops oversized uploads early.",
+      "watch_out": "The origin check only runs when a browser sends an Origin header, so tools that leave that header out are not blocked here."
+    },
+    {
+      "start": 166,
+      "end": 182,
+      "kind": "method",
+      "name": "LocalRequestBoundaryMiddleware: guarded_send",
+      "id": "s7",
+      "hash": "cb01be9b6d27ca00",
+      "title": "Byte counter and size error reply",
+      "what": "Counts bytes as they arrive and stops the request with a 413 reply if the total passes the limit. It avoids sending a second reply once a response has already started.",
+      "why": "Likely reason: a declared length can be wrong, so the real byte count is checked while data streams in.",
+      "watch_out": "After a response has started, the error is passed on, so the caller may see a broken connection rather than a clean message."
+    },
+    {
+      "start": 183,
+      "end": 188,
+      "kind": "class",
+      "name": "MappingRequest",
+      "id": "s8",
+      "hash": "655a65e751737b32",
+      "title": "Column mapping request shape",
+      "what": "Describes the body of a column mapping request: a set of column names to column numbers, with between 1 and 20 entries. Extra fields are rejected.",
+      "why": "Likely reason: keeps mapping input small and strictly shaped before it reaches processing.",
+      "watch_out": "The field names here must match exactly what the frontend sends, or mapping requests fail."
+    },
+    {
+      "start": 189,
+      "end": 219,
+      "kind": "function",
+      "name": "_http_error",
+      "id": "s9",
+      "hash": "729bcd3e244be4e8",
+      "title": "Error replies and the readme text",
+      "what": "Turns Python errors into HTTP replies: a missing file becomes 404, a bad value 400, and anything else 500 with the error text. It also holds the readme text placed inside the ALICE download package.",
+      "why": "Likely reason: gives the frontend one consistent error format for every route.",
+      "watch_out": "The 500 reply includes internal error text, which can reveal file paths or other details to the caller."
+    },
+    {
+      "start": 220,
+      "end": 225,
+      "kind": "function",
+      "name": "_project_key",
+      "id": "s10",
+      "hash": "6ce66834e0d14eda",
+      "title": "Short project key for file names",
+      "what": "Turns a project ID into a fixed 16-character code taken from its SHA-256 fingerprint. Saved file names use this code.",
+      "why": "Likely reason: project IDs can contain characters that are unsafe in file names, so a fixed code avoids that.",
+      "watch_out": "Changing this method would make previously saved files impossible to find by name."
+    },
+    {
+      "start": 226,
+      "end": 236,
+      "kind": "function",
+      "name": "_load_model",
+      "id": "s11",
+      "hash": "aec3cd3cacac5523",
+      "title": "Loading a saved project model",
+      "what": "Reads a saved project model file. It fails if the file is missing or its schema version is not 1.0, and then applies any saved refinements.",
+      "why": "Likely reason: the version check stops old or incompatible saved data from being used silently.",
+      "watch_out": "A future schema change needs this check updated along with the saved files, or every model will be rejected."
+    },
+    {
+      "start": 237,
+      "end": 240,
+      "kind": "function",
+      "name": "_load_report",
+      "id": "s12",
+      "hash": "2ac225ca507b2547",
+      "title": "Loading the ingestion report",
+      "what": "Reads the saved ingestion report, which lists the projects and counts found in an uploaded schedule.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "A damaged or out-of-date report file raises an error here rather than being repaired."
+    },
+    {
+      "start": 241,
+      "end": 272,
+      "kind": "function",
+      "name": "_programme_document_evidence (part 1)",
+      "id": "s13",
+      "hash": "2953d6a412245c29",
+      "title": "Loading or gathering document evidence",
+      "what": "Looks for a saved evidence file for a job and returns it if found. If not, it collects evidence from the attachments and reads project names and WBS paths from the job database to prepare matching.",
+      "why": "Likely reason: avoids repeating the matching work each time the programme view loads.",
+      "watch_out": "No check is visible here that the saved evidence still matches the attachments and database, so stale results can persist."
+    },
+    {
+      "start": 273,
+      "end": 323,
+      "kind": "function",
+      "name": "_programme_document_evidence (part 2)",
+      "id": "s14",
+      "hash": "d21bf078219e2594",
+      "title": "Matching documents to projects and saving",
+      "what": "Matches each document to projects. Documents that state a project identity go to that project. Other documents go to the best-matching project, but only when one match clearly wins. The result is saved to the cache file.",
+      "why": "Stated in the code: a document set can name several projects, and tied matches are skipped so no project silently wins.",
+      "watch_out": "Documents with weak naming are left unmatched without a message, so check the evidence list when a project looks thin."
+    },
+    {
+      "start": 324,
+      "end": 371,
+      "kind": "function",
+      "name": "create_app (part 1)",
+      "id": "s15",
+      "hash": "c16ddfbe5a3e32a6",
+      "title": "App setup, safety layers and health",
+      "what": "Creates the app object and a shutdown step that stops the package worker. Adds the compression, hostname, size and origin layers, the browser rule, and a health route that reports status, version, registry version and time.",
+      "why": "Likely reason: the order in which layers are added decides which check runs first, so the order is deliberate.",
+      "watch_out": "Reordering the add calls changes which check runs first, which can change the reply a bad request receives."
+    },
+    {
+      "start": 372,
+      "end": 431,
+      "kind": "method",
+      "name": "create_app: archetypes",
+      "id": "s16",
+      "hash": "08ff180526978c7b",
+      "title": "Archetype list and schedule upload",
+      "what": "Returns the list of building archetypes with their roles. Accepts one or more schedule files and optional attachments, checks the schedule file types and total size, saves them to a new job folder, and queues processing.",
+      "why": "Likely reason: the frontend needs the archetype list to show choices, and each upload gets its own folder so runs stay separate.",
+      "watch_out": "Attachments are stored without being opened or run, so the schedule file type check does not apply to them."
+    },
+    {
+      "start": 432,
+      "end": 472,
+      "kind": "function",
+      "name": "create_app (part 3)",
+      "id": "s17",
+      "hash": "b501ce3b29cf7334",
+      "title": "Attachment save and job status lookup",
+      "what": "Finishes saving attachments with per-file and total size limits. On any failure it removes the new job folder and closes the uploads. Then it records the job as queued and starts processing. Also includes the route that returns one job's status.",
+      "why": "Likely reason: a failed upload should not leave half-saved folders behind.",
+      "watch_out": "Any failure deletes the whole job folder, so a partial upload is lost and must be sent again."
+    },
+    {
+      "start": 473,
+      "end": 520,
+      "kind": "method",
+      "name": "create_app: create_package_job",
+      "id": "s18",
+      "hash": "a3de340d71aab950",
+      "title": "Package ZIP upload route",
+      "what": "Accepts one ZIP project package, checks that it is a non-empty ZIP, reserves the single package worker (or replies 429 if busy), saves the file, and starts background processing.",
+      "why": "Likely reason: package analysis is heavy, so only one runs at a time.",
+      "watch_out": "The worker slot is held until processing starts, so a bug in this flow would block all package uploads until restart."
+    },
+    {
+      "start": 521,
+      "end": 564,
+      "kind": "method",
+      "name": "create_app: get_package_report",
+      "id": "s19",
+      "hash": "58a60e189999e008",
+      "title": "Package report, cancel and report routes",
+      "what": "Returns a package inventory in pages of up to 100 items, and returns a placeholder if processing stopped before the inventory was published. Lets a user request cancellation and returns the ingestion report for schedule jobs.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Page limits cap what one request returns, so a client must request later pages to see everything."
+    },
+    {
+      "start": 565,
+      "end": 615,
+      "kind": "method",
+      "name": "create_app: programme",
+      "id": "s20",
+      "hash": "a5dddfe490fe9e27",
+      "title": "Combined programme view route",
+      "what": "Returns the combined programme for a job: projects, activities and relationships, in pages and optionally for one project. It gathers document evidence and saved models first, then builds the view.",
+      "why": "Likely reason: the programme view combines schedule data with documents and models, so all three are gathered first.",
+      "watch_out": "Only jobs in the ready or generating state get data; other states return a 409 conflict."
+    },
+    {
+      "start": 616,
+      "end": 674,
+      "kind": "method",
+      "name": "create_app: apply_mapping",
+      "id": "s21",
+      "hash": "49cc4144b7a90643",
+      "title": "Column mapping and model generation start",
+      "what": "Saves a column mapping for CSV, TSV or XLSX sources and queues processing again. For a project model it checks status and project membership, then either waits on the package worker or checks the activity count and marks the job as generating.",
+      "why": "Likely reason: the activity cap keeps single project views manageable, and larger sets go through programme mode.",
+      "watch_out": "A project above the activity cap cannot be generated here and must be viewed through programme mode instead."
+    },
+    {
+      "start": 675,
+      "end": 729,
+      "kind": "method",
+      "name": "create_app: generation_progress",
+      "id": "s22",
+      "hash": "5dc0c2efc6fa760a",
+      "title": "Model progress and saving the model",
+      "what": "Reports generation progress as it runs, builds the project model and attachment evidence, honours the cancel marker, saves the model and its attachment list to disk, and marks the job ready. Any failure is recorded on the job.",
+      "why": "Likely reason: lets the frontend show progress and lets users stop long builds.",
+      "watch_out": "The cancel marker is only checked at a few points, so the build can keep running for a while after cancellation is requested."
+    },
+    {
+      "start": 730,
+      "end": 775,
+      "kind": "method",
+      "name": "create_app: get_model",
+      "id": "s23",
+      "hash": "e7bec26baea4a7e9",
+      "title": "Reading a saved model and programme scene",
+      "what": "Returns a saved project model after confirming it belongs to the job and matches the schedule fingerprint. Also returns the saved programme scene, and checks each embedded project file against its pinned fingerprint without substituting an older one.",
+      "why": "Likely reason: prevents showing a model built from a different or older upload.",
+      "watch_out": "The scene check reads every project file, so large programmes can make this route slow."
+    },
+    {
+      "start": 776,
+      "end": 819,
+      "kind": "method",
+      "name": "create_app: timeline_lane",
+      "id": "s24",
+      "hash": "fed0d106547b5e94",
+      "title": "Timeline lane and nearby event routes",
+      "what": "Returns one page of a project's timeline lane, and finds the nearest event before or after a chosen moment on a chosen basis.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The lane page defaults to 250 items, and the timestamp must be a valid date and time or the request fails."
+    },
+    {
+      "start": 820,
+      "end": 872,
+      "kind": "method",
+      "name": "create_app: offline_export",
+      "id": "s25",
+      "hash": "4bb357a054d17fc2",
+      "title": "Offline HTML and audit ZIP exports",
+      "what": "Builds two downloads for one project: a single HTML file for offline viewing, and an audit package made from the model, database, ingestion report and attachment list.",
+      "why": "Likely reason: the offline name suggests it should open without the server, and the audit package records where the data came from.",
+      "watch_out": "Each export is written into the model's folder and overwritten the next time the route runs."
+    },
+    {
+      "start": 873,
+      "end": 910,
+      "kind": "method",
+      "name": "create_app: conceptual_ifc_export",
+      "id": "s26",
+      "hash": "8f474936f2554b0d",
+      "title": "Conceptual IFC export with check",
+      "what": "Creates an IFC building file for one project, reopens it with a separate check, and saves the check result as a JSON file. If the check fails, the request returns an error.",
+      "why": "Likely reason: IFC is a strict format, so the file is verified before it is handed over.",
+      "watch_out": "A failed check leaves its evidence file on disk, so someone may find a file the app refused to deliver."
+    },
+    {
+      "start": 911,
+      "end": 966,
+      "kind": "method",
+      "name": "create_app: programme_ifc_package",
+      "id": "s27",
+      "hash": "177eb443bb1fc26c",
+      "title": "Programme IFC ZIP package",
+      "what": "Builds a ZIP with one checked IFC file per project, a CSV of all activities, and a readme. Requires the combined programme to be built first. It writes to a temporary name and renames the file at the end.",
+      "why": "Likely reason: the temporary name stops a half-built ZIP from replacing a good one.",
+      "watch_out": "If any project fails its IFC check, the whole ZIP is not published."
+    },
+    {
+      "start": 967,
+      "end": 997,
+      "kind": "method",
+      "name": "create_app: alice_contract_export",
+      "id": "s28",
+      "hash": "cc6df0dd4b25aceb",
+      "title": "ALICE contract and sample downloads",
+      "what": "Creates the ALICE contract JSON for one project as a download. Also serves one of the two bundled demo schedules, only if its name is on a fixed list.",
+      "why": "Likely reason: the fixed list stops the sample route from reading other files.",
+      "watch_out": "A new sample must be added to the allowed list, or the route refuses to serve it."
+    },
+    {
+      "start": 998,
+      "end": 1054,
+      "kind": "method",
+      "name": "create_app: frontend",
+      "id": "s29",
+      "hash": "67f9a75f2face826",
+      "title": "Frontend files and programme build wiring",
+      "what": "When the frontend build exists, serves the main web page without caching and mounts its asset, element model and review folders. Then it connects the specification and programme build routes, and provides a helper that reuses a saved project model or generates one when it is missing.",
+      "why": "Likely reason: reusing saved models avoids regenerating work already done for the programme.",
+      "watch_out": "The web page routes are added only if the build folder exists at startup, so a missing build removes the page without an obvious error."
+    }
+  ],
+  "explained_at": "2026-11-12T01:40:02+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the local web server for Schedule3D, which accepts uploads, runs processing, and returns models, reports and downloadable export files.",
+  "purpose": "This is the main entry point of the local API. It defines every web address the frontend and other tools call, and the safety checks that run before each one.",
+  "why": "Likely reason: keeps request handling and shared safety checks in one place.",
+  "how": "1. Read folder locations, size limits and environment settings. 2. Build the app with a compression layer, a hostname check, a size and origin check, and a browser permission rule. 3. Register the health and archetype routes. 4. Register routes for upload, package upload, job status, reports, mapping, model generation, model reading, programme views, timeline views, exports, samples and the frontend files. 5. Each route checks that the job exists and is in the right state, reads saved files, and returns data or a readable error.",
+  "inputs": "Uploaded schedule files (P6 XER or XML, XLSX, CSV, TSV), ZIP project packages, attachments, column mapping choices, and request settings such as page sizes and project IDs. Environment settings used here: SCHEDULE3D_WORK_ROOT, SCHEDULE3D_FRONTEND_DIST, SCHEDULE3D_REPLIT_MODE, REPLIT_DEV_DOMAIN and REPLIT_DOMAINS.",
+  "outputs": "JSON for jobs, reports, models, programme and timeline data; downloadable HTML, ZIP, IFC and JSON export files; the web page and its static files; two bundled demo schedules.",
+  "risks": "Size limits are large (4 GiB for schedules, 1 GiB for attachments, 512 MiB for packages), so disk space can fill quickly. The origin check only runs when a browser sends an Origin header. Unexpected errors return raw error text to the caller. Several routes need files written by earlier steps, so a missing file produces an error rather than a fallback.",
+  "debug": "Start with the route named in the failing request. A 404 usually means a missing job or file, 400 a bad input, 409 a wrong job state, 413 a size limit, and 429 a busy package worker. Check the job's state.json in its folder under the work root. If the web page does not load, confirm the frontend build folder exists at the configured path.",
+  "summary_hash": "sha256:b8e608b240e73025e9604ee3719b2cf24ac038e3c5913b8715217790b36a6d7a"
+}

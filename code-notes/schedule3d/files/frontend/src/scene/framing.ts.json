@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "path": "frontend/src/scene/framing.ts",
+  "language": "TypeScript",
+  "lines": 66,
+  "hash": "sha256:0e98bd9f275e546c98158eff0c5990ebecf93bdf63417e87bc5c36745be9b073",
+  "area": "frontend-src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "overviewOffset and overviewFogDensity have no tests in the packet; only focusBounds is tested.",
+      "An import statement sits after code at line 22. It works in modern module loaders but is easy to misread and should be moved to the top.",
+      "The 100 metre window and 120 metre cells are fixed, so very large or very dense sites are not tuned separately."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Bounding box",
+      "meaning": "an invisible box that just encloses a shape, used to measure how big it is and where it sits"
+    },
+    {
+      "term": "Camera field of view",
+      "meaning": "how wide the camera sees, measured as an angle in degrees"
+    },
+    {
+      "term": "Fog",
+      "meaning": "a haze that fades distant objects, used here as a visual atmosphere"
+    },
+    {
+      "term": "Aspect ratio",
+      "meaning": "the width of the screen divided by its height"
+    },
+    {
+      "term": "Three.js",
+      "meaning": "the 3D graphics library the app uses to draw the scene in the browser"
+    }
+  ],
+  "depends_on": [
+    "three"
+  ],
+  "used_by": [
+    "frontend/src/scene/framing.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "function",
+      "name": "overviewFogDensity",
+      "id": "s1",
+      "hash": "b693adeb18e0c7de",
+      "title": "Haze strength cap",
+      "what": "Works out the maximum haze strength for the overview. Larger models get a weaker haze, so a big model is not hidden by it.",
+      "why": "The file's header comment says display atmosphere must not hide a valid model just because its bounds are large.",
+      "watch_out": "The cap and the minimum size of 20 are tuned constants. Changing them changes how foggy large sites look."
+    },
+    {
+      "start": 7,
+      "end": 28,
+      "kind": "function",
+      "name": "overviewOffset",
+      "id": "s2",
+      "hash": "c7e563cf33349b65",
+      "title": "Overview camera distance",
+      "what": "Calculates the camera offset from the model centre so the whole model fits on screen, given the screen shape and the lens angle. It then pulls the camera back a little to leave margin.",
+      "why": "Likely reason: a fixed distance would clip large models or leave small ones tiny, so the distance is worked out from the model size.",
+      "watch_out": "The model direction and the 1.16 margin are fixed. A zero or near-zero size can give a very small distance, so the minimum of 30 is important."
+    },
+    {
+      "start": 29,
+      "end": 66,
+      "kind": "function",
+      "name": "focusBounds",
+      "id": "s3",
+      "hash": "872ab0d6839410a9",
+      "title": "Choosing the area to frame",
+      "what": "Merges the bounding boxes of all elements. If the site is compact, the whole extent is used. If it is wider than 600 metres, it finds the 120 metre grid cell with the most elements, keeps elements within 100 metres of that area, and clips long elements to that window so they cannot widen it.",
+      "why": "The comment explains that a long line into a substation yard would otherwise shrink the yard to a few pixels. The whole extent stays one click away in the app.",
+      "watch_out": "Ties between cells are broken by which one was found first. Long elements are cut at the window edge, so a conductor may look shorter in the opening view than it really is."
+    }
+  ],
+  "explained_at": "2026-11-12T02:29:56+00:00",
+  "explained_by": "haiku",
+  "summary": "Decides how the 3D scene is first framed, including how much of a large site is shown and how thick the haze is in the overview.",
+  "purpose": "Keep the opening view readable. Compact sites are shown whole. Very spread-out sites open on their busiest area, and the overview camera distance and haze strength are calculated so the model is neither too small nor hidden.",
+  "why": "Likely reason: a kilometres-long site would be too small to read if shown whole, and a large model would be hidden by haze if the haze were not capped. The code comments state the haze goal.",
+  "how": "First, the haze strength is capped at a maximum value that shrinks as the model gets larger. Second, the overview camera position is worked out by testing the eight corners of the model's box against the screen's width and height and taking the farthest distance, then pulling back a little. Third, the bounding boxes of all elements are merged. If the site is wider than 600 metres, the code counts elements in 120 metre grid cells, picks the busiest cell, keeps only elements whose centres are within 100 metres of its centre, and clips long elements to that window.",
+  "inputs": "Bounding boxes (three.js Box3 values) of each element, a model radius, the screen aspect ratio, the camera field of view in degrees, and a size vector for the whole model.",
+  "outputs": "A haze density number, a camera offset vector, and a single bounding box that the camera should frame.",
+  "risks": "When two grid cells have the same element count, the first one found wins, which can be arbitrary. Clipping can hide the far parts of a long element beyond 100 metres. The haze and offset constants are hand-tuned, so they may look wrong on unusual screens.",
+  "debug": "If the opening view points at the wrong area, check the 600 metre threshold and the busiest-cell choice in focusBounds. If the overview is too close or too far, check the inputs to overviewOffset, especially the aspect ratio and field of view. If the model looks foggy or washed out, check the radius passed to overviewFogDensity. The test file framing.test.ts covers focusBounds only.",
+  "summary_hash": "sha256:0e98bd9f275e546c98158eff0c5990ebecf93bdf63417e87bc5c36745be9b073"
+}

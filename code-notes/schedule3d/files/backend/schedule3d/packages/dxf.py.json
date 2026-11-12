@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/packages/dxf.py",
+  "language": "Python",
+  "lines": 227,
+  "hash": "sha256:756be808c965e24f59991d23cf221ee5f50cfcff8412520bb06803964fd732f3",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet.",
+      "Many entity types and edge cases are left unsupported, which the receipt records."
+    ]
+  },
+  "terms": [
+    {
+      "term": "DXF",
+      "meaning": "A plain-text CAD file format that stores drawing shapes as numbered code and value pairs."
+    },
+    {
+      "term": "Group code",
+      "meaning": "The numbered label that tells DXF what each following value means, such as a coordinate or a layer name."
+    },
+    {
+      "term": "Polyline",
+      "meaning": "A connected chain of straight line segments."
+    },
+    {
+      "term": "Bulge",
+      "meaning": "A value that turns a polyline segment into a curved arc. This reader does not interpret it."
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/packages/zip_stream.py"
+  ],
+  "used_by": [
+    "backend/schedule3d/packages/extraction.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "aa725c1c943a765a",
+      "title": "Purpose and imports",
+      "what": "States that this is a bounded reader for text DXF files and that drawing coordinates are not burial depths. Brings in math, counting, function-building and error tools.",
+      "why": "The docstring warns readers that drawing numbers are not field depths, which prevents a common misreading.",
+      "watch_out": ""
+    },
+    {
+      "start": 15,
+      "end": 24,
+      "kind": "function",
+      "name": "_number",
+      "id": "s2",
+      "hash": "10ab58caf30b5b50",
+      "title": "Reading a single number safely",
+      "what": "Pulls one number from a group of values, refusing repeated values, values that are not finite and values larger than a trillion. Uses a default when the value is absent.",
+      "why": "Refusing ambiguity stops a shape from being built on a value the file gave twice.",
+      "watch_out": "A missing value silently becomes the default, which can hide a missing coordinate."
+    },
+    {
+      "start": 25,
+      "end": 30,
+      "kind": "function",
+      "name": "_point",
+      "id": "s3",
+      "hash": "05efbb3349284278",
+      "title": "Reading an X, Y and Z point",
+      "what": "Builds a three-part point from the standard coordinate codes and refuses entities that lack the X and Y values.",
+      "why": "Requiring X and Y means every point has a usable position before geometry is built.",
+      "watch_out": ""
+    },
+    {
+      "start": 31,
+      "end": 90,
+      "kind": "function",
+      "name": "extract_dxf (part 1)",
+      "id": "s4",
+      "hash": "803cd3b69cc1650e",
+      "title": "Reading the file into code and value pairs",
+      "what": "Checks the file size and reads the file in pairs of lines. Checks line length and the total pair count, and parses the header variables, including units, and the block definitions. Block contents are recorded but not converted to geometry.",
+      "why": "Reading pairs first lets the later steps work on structured data rather than raw text.",
+      "watch_out": "The 50 megabyte file limit and the 500,000 pair limit fix the size of files the reader will handle."
+    },
+    {
+      "start": 91,
+      "end": 150,
+      "kind": "function",
+      "name": "extract_dxf (part 2)",
+      "id": "s5",
+      "hash": "f0ca705d28a2f27b",
+      "title": "Turning drawing entities into geometry",
+      "what": "Goes through each entity in the drawing section and converts lines, points, circles, arcs, closed or open polylines and text. Entities with a non-standard coordinate transform are flagged, and bulged polylines are flagged as not interpreted.",
+      "why": "Only the simplest shapes are converted, so the result is trustworthy. Everything else is recorded instead of guessed.",
+      "watch_out": "Shapes with a transform or a bulge are kept but not converted, so do not assume every drawn item is in the result."
+    },
+    {
+      "start": 151,
+      "end": 210,
+      "kind": "function",
+      "name": "extract_dxf (part 3)",
+      "id": "s6",
+      "hash": "86fe28408f3d4bda",
+      "title": "Linking polylines and choosing units",
+      "what": "Checks that the file ends with an end marker, then joins each polyline to its vertex records and its end marker, and converts simple polylines. Sets the unit only when all unit declarations agree.",
+      "why": "Joining the pieces lets a polyline be treated as one shape instead of many loose points.",
+      "watch_out": "An unfinished polyline stops the whole read with an error, so one damaged shape blocks the file."
+    },
+    {
+      "start": 211,
+      "end": 227,
+      "kind": "function",
+      "name": "extract_dxf (part 4)",
+      "id": "s7",
+      "hash": "ed2ba4089b0854de",
+      "title": "Returning the drawing summary",
+      "what": "Returns the method, unit status, unit claims, header records, blocks, all entities, entity counts and a list of limitations.",
+      "why": "The limitations list tells the reviewer that drawing units need corroboration and that Z values are not burial depth.",
+      "watch_out": "Unit status is conflicted when the file declares more than one unit, and undeclared when none is given, so the unit is not safe to use in either case."
+    }
+  ],
+  "explained_at": "2026-11-12T02:03:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads a simple text-format CAD drawing file and extracts its basic shapes, such as lines, circles, arcs and polylines, while recording anything it cannot interpret.",
+  "purpose": "Turns drawing geometry into evidence the app can review, without treating drawing coordinates as burial depths or real positions.",
+  "why": "Likely reason: the code only reads plain-text DXF, so it refuses binary or unusual files. Unsupported items are kept in the receipt so nothing silently disappears.",
+  "how": "Checks the file size, then reads pairs of code and value lines. Parses header settings, including units, and block definitions. Converts supported entities into geometry and records the rest as unsupported. Links polyline vertices to their parent and checks that the file ends properly.",
+  "inputs": "A DXF file path and a checkpoint function that can stop the work.",
+  "outputs": "A dictionary with the method, unit status, header details, blocks, entities with their geometry or disposition, counts and limitations.",
+  "risks": "Coordinates stay in drawing units, so a wrong assumed unit gives wrong sizes. Files with transforms or bulged arcs are only partly read.",
+  "debug": "Look at the unit status and the limitations list. Check entity dispositions for entities marked unsupported or transformed.",
+  "summary_hash": "sha256:756be808c965e24f59991d23cf221ee5f50cfcff8412520bb06803964fd732f3"
+}

@@ -1,0 +1,352 @@
+{
+  "schema_version": 1,
+  "path": "frontend/src/scene/substation.ts",
+  "language": "TypeScript",
+  "lines": 549,
+  "hash": "sha256:3a94d43ca26db944764889f3d03a7dbefc996f635fbd8a324b1f1b3c4797470e",
+  "area": "frontend-src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Tests cover the size, material and phase rules for every equipment type.",
+      "The merged geometry is not checked for an empty result before it is used.",
+      "All merged meshes share one default grey, so the material keys do not yet change appearance."
+    ]
+  },
+  "terms": [
+    {
+      "term": "geometry",
+      "meaning": "the raw shape data of a 3D object, made of points and triangles"
+    },
+    {
+      "term": "mesh",
+      "meaning": "a geometry with a material attached, which is what the screen draws"
+    },
+    {
+      "term": "draw call",
+      "meaning": "one instruction from the program to the graphics card to draw something; fewer is faster"
+    },
+    {
+      "term": "insulator",
+      "meaning": "a part that holds live electrical equipment apart from the ground, often ribbed porcelain"
+    },
+    {
+      "term": "bus",
+      "meaning": "a heavy conductor that collects power from several circuits in a yard"
+    },
+    {
+      "term": "SF6",
+      "meaning": "a gas used inside some breakers to insulate and to put out electrical arcs"
+    }
+  ],
+  "depends_on": [
+    "three",
+    "three/examples/jsm/utils/BufferGeometryUtils.js"
+  ],
+  "used_by": [
+    "frontend/src/scene/substation.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 28,
+      "kind": "setup",
+      "name": "File setup, Vec",
+      "id": "s1",
+      "hash": "6b7e5a3b94639457",
+      "title": "File header and name constants",
+      "what": "Explains what the file does and names the surface types used as labels, such as galvanised steel, porcelain, aluminium, concrete and rubber. Also loads the 3D library and the merge helper.",
+      "why": "Names are reused in many places, so one constant per name avoids typing mistakes.",
+      "watch_out": "Every key used here must also exist in the materials list, or the tests will fail."
+    },
+    {
+      "start": 29,
+      "end": 36,
+      "kind": "function",
+      "name": "at",
+      "id": "s2",
+      "hash": "2f9b2e1b80315467",
+      "title": "Position and turn helper",
+      "what": "Turns a position and a rotation into one transform that can be applied to a shape in a single step.",
+      "why": "Likely reason: the same move and turn is needed for many parts, so one helper keeps the builders short.",
+      "watch_out": "Rotation values are in radians, not degrees."
+    },
+    {
+      "start": 37,
+      "end": 91,
+      "kind": "class",
+      "name": "Kit (part 1)",
+      "id": "s3",
+      "hash": "2ff7b4411764e9d7",
+      "title": "Parts collector and simple shapes",
+      "what": "Defines the Kit class, which collects shapes grouped by material. It moves each shape into place and shifts it so the item is centred vertically. It also provides helpers for a box, a vertical post and a round rod between two points.",
+      "why": "Collecting parts by material lets the final merge produce one mesh per material.",
+      "watch_out": "The class comment says height zero is the ground, but the code centres the item vertically. Check the tests before relying on the height."
+    },
+    {
+      "start": 92,
+      "end": 126,
+      "kind": "method",
+      "name": "Kit: for",
+      "id": "s4",
+      "hash": "a7a12dd21f0f119e",
+      "title": "Insulator ribs and final merge",
+      "what": "Finishes the insulator helper by adding its ribbed discs and steel end flanges. The build step then merges all parts for each material into one mesh and gives each a single default grey finish.",
+      "why": "Merging per material keeps the number of draw calls low.",
+      "watch_out": "Because every mesh gets the same grey, changing a material key alone changes nothing visible."
+    },
+    {
+      "start": 127,
+      "end": 134,
+      "kind": "function",
+      "name": "phaseOffsets",
+      "id": "s5",
+      "hash": "e3896439f2ba0f9b",
+      "title": "Phase spacing across the depth",
+      "what": "Works out where one, two or three phases sit across the depth of an item. Phases are centred, and outer phases are pushed toward the edges.",
+      "why": "The depth of an item decides how many phases fit, so the same builder draws correctly at different sizes.",
+      "watch_out": "A minimum outer spacing of 0.3 stops phases from collapsing together on very narrow items."
+    },
+    {
+      "start": 135,
+      "end": 140,
+      "kind": "function",
+      "name": "pier",
+      "id": "s6",
+      "hash": "c39a4e4c3a10fce1",
+      "title": "Concrete pier with base plate",
+      "what": "Draws a small concrete block with a steel base plate that a column stands on.",
+      "why": "Likely reason: real equipment stands on concrete footings, so the foundation is drawn with it.",
+      "watch_out": "The base plate is placed at a fixed height above the pier, so changing the pier height means moving the plate too."
+    },
+    {
+      "start": 141,
+      "end": 151,
+      "kind": "function",
+      "name": "stand",
+      "id": "s7",
+      "hash": "3410fe1a24a9f0c8",
+      "title": "Two-leg steel stand",
+      "what": "Builds a two-column steel frame with a beam across the phases at the top and small diagonal braces.",
+      "why": "Several equipment types, such as disconnect switches and voltage transformers, share this frame.",
+      "watch_out": "The beam depth is fixed, so very short items can put the braces below the beam."
+    },
+    {
+      "start": 152,
+      "end": 171,
+      "kind": "function",
+      "name": "busSupport",
+      "id": "s8",
+      "hash": "8ff8745644a4c3ed",
+      "title": "Bus support",
+      "what": "Draws a bus support: one post for a narrow item, or a steel stand carrying two or three phases. Each phase gets a porcelain insulator with an aluminium clamp on top.",
+      "why": "The phase count comes from the item depth, which matches the test that expects one, two or three insulator sets.",
+      "watch_out": "The insulator length is capped at 2.3 units, so a taller item gets a taller post instead."
+    },
+    {
+      "start": 172,
+      "end": 184,
+      "kind": "function",
+      "name": "busTube",
+      "id": "s9",
+      "hash": "ce5151a17662f1d0",
+      "title": "Rigid aluminium bus tube",
+      "what": "Draws three aluminium tubes running the length of the item, with small couplers spaced every 12 units.",
+      "why": "Likely reason: the couplers mark the joins of real bus sections.",
+      "watch_out": "The conductors hang at mid-height, which is why the tests skip the ground check for this type."
+    },
+    {
+      "start": 185,
+      "end": 209,
+      "kind": "function",
+      "name": "disconnectSwitch",
+      "id": "s10",
+      "hash": "5da44e694c21d0a4",
+      "title": "Disconnect switch",
+      "what": "Draws a three-phase disconnect switch: a steel stand, a blade per phase with two insulators, and a mechanism box. A motorised version draws a larger mechanism box.",
+      "why": "Likely reason: the motorised flag lets a line switch show a bigger drive box than a plain disconnect.",
+      "watch_out": "The motorised flag only changes the size of the mechanism box."
+    },
+    {
+      "start": 210,
+      "end": 250,
+      "kind": "function",
+      "name": "breaker",
+      "id": "s11",
+      "hash": "024a3af8ea8c7672",
+      "title": "Circuit breaker",
+      "what": "Draws a dead-tank SF6 circuit breaker: three grounded tanks on steel legs, two bushings tilted in a V on each tank, aluminium clamps on the tips, and a small control cabinet.",
+      "why": "Matches the usual layout of a breaker, where each phase has one tank and two bushings.",
+      "watch_out": "Bushing length comes from the item height, and it has a minimum of 1.5 units, so a short item can draw parts above its stated height."
+    },
+    {
+      "start": 251,
+      "end": 266,
+      "kind": "function",
+      "name": "powerPot",
+      "id": "s12",
+      "hash": "3a054aff9c43d84f",
+      "title": "Station-service voltage transformer",
+      "what": "Draws a station-service voltage transformer, called a power pot in the file, on a pedestal: a steel column, an equipment body and a tall bushing topped with a clamp.",
+      "why": "Likely reason: these units are tall and narrow, so the column and bushing fill most of the height.",
+      "watch_out": "The bushing has a minimum length of 1.5 units, so a short item is drawn taller than its stated height."
+    },
+    {
+      "start": 267,
+      "end": 281,
+      "kind": "function",
+      "name": "ccvt",
+      "id": "s13",
+      "hash": "228f82dff0f413e5",
+      "title": "Capacitor voltage transformers",
+      "what": "Draws three coupling capacitor voltage transformers, one per phase, on a shared stand. Each is a small box with a porcelain stack and a clamp on top.",
+      "why": "Likely reason: the porcelain stack is drawn to fill the item height.",
+      "watch_out": "The stack has a minimum length, so very small items are drawn taller than their stated height."
+    },
+    {
+      "start": 282,
+      "end": 302,
+      "kind": "function",
+      "name": "waveTrap",
+      "id": "s14",
+      "hash": "cd994713ae66fcf4",
+      "title": "Line wave traps",
+      "what": "Draws line traps for the two outer phases: a post insulator on a steel column, with a large aluminium coil drum and two rings at the top and bottom.",
+      "why": "Reason not stated in the code beyond the header comment.",
+      "watch_out": "Only the two outer phases are drawn, so the middle phase is missing on purpose."
+    },
+    {
+      "start": 303,
+      "end": 337,
+      "kind": "function",
+      "name": "deadEnd",
+      "id": "s15",
+      "hash": "7b7b7d7fdb8a648e",
+      "title": "Dead-end gantry",
+      "what": "Draws a dead-end gantry: two tapered steel poles on concrete footings, a lattice beam across the top, and two strain insulator strings per phase hanging from the beam.",
+      "why": "Likely reason: a dead end anchors line conductors, so the gantry is drawn at line ends with strings attached.",
+      "watch_out": "The beam sits four units below the item top, so changing the height moves the beam and the strings with it."
+    },
+    {
+      "start": 338,
+      "end": 372,
+      "kind": "function",
+      "name": "lightningMasts",
+      "id": "s16",
+      "hash": "e961aab224b05a0e",
+      "title": "Lightning masts and yard lights",
+      "what": "Draws four lightning masts at the yard corners on concrete footings. Along each side it places light poles at regular spacing, each with a head fitting pointed inward.",
+      "why": "Likely reason: masts protect the yard and lights make it safe at night, so both sit on the perimeter.",
+      "watch_out": "Light poles are spaced by side length divided by 30, so a short side gets only one pole."
+    },
+    {
+      "start": 373,
+      "end": 389,
+      "kind": "function",
+      "name": "groundGrid",
+      "id": "s17",
+      "hash": "4e98204d56c01024",
+      "title": "Buried ground grid",
+      "what": "Draws a flat copper grid with thin strips running both ways every 6 units, plus copper rods at the edges.",
+      "why": "Likely reason: the grid and rods give electrical faults a safe path into the earth.",
+      "watch_out": "The spacing is fixed at 6 units, so small yards get very few strips."
+    },
+    {
+      "start": 390,
+      "end": 422,
+      "kind": "function",
+      "name": "chainLinkFence",
+      "id": "s18",
+      "hash": "66a0b6ccf74089f0",
+      "title": "Chain-link security fence",
+      "what": "Draws a fence around the yard: posts about every 3 units, a fabric panel between each pair, a top rail, and three barbed-wire strands on outward arms.",
+      "why": "Likely reason: the outward arms and barbed wire discourage climbing.",
+      "watch_out": "The outward direction assumes the corners go round in one fixed order, so reversing the corner order would put the barbed wire on the inside."
+    },
+    {
+      "start": 423,
+      "end": 462,
+      "kind": "function",
+      "name": "controlHouse",
+      "id": "s19",
+      "hash": "f39fad5b73384b68",
+      "title": "Control house",
+      "what": "Draws a metal control building: clad walls, a shallow gable roof, two front doors with canopies, a side door, louvres and a ventilation box.",
+      "why": "Likely reason: a pre-engineered metal building is a common control hut in a yard.",
+      "watch_out": "Door positions use fixed offsets from the ends, so a very narrow building could place doors on top of each other."
+    },
+    {
+      "start": 463,
+      "end": 474,
+      "kind": "function",
+      "name": "controlPanel",
+      "id": "s20",
+      "hash": "da94c86f6bdd6ef6",
+      "title": "Control panel cabinet",
+      "what": "Draws a relay or control panel cabinet on a dark plinth, with thin detail strips on each face.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The face details are thin boxes just outside the cabinet surface, so on a very small cabinet they may overlap visually."
+    },
+    {
+      "start": 475,
+      "end": 492,
+      "kind": "function",
+      "name": "batteryRack",
+      "id": "s21",
+      "hash": "ec6061acbdcf9c04",
+      "title": "Two-tier battery rack",
+      "what": "Draws a two-tier steel battery rack with corner posts and two rows of rubber cells on each shelf.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Cell count is calculated from a fixed cell width, so a very narrow rack may draw fewer cells or overlapping ones."
+    },
+    {
+      "start": 493,
+      "end": 503,
+      "kind": "function",
+      "name": "hvacUnit",
+      "id": "s22",
+      "hash": "35850ce89a5b8580",
+      "title": "Packaged HVAC unit",
+      "what": "Draws a packaged air-conditioning unit: a steel base, a painted body and six slats on the front grille.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The grille slats are placed on one face only, so the unit looks flat from the back."
+    },
+    {
+      "start": 504,
+      "end": 522,
+      "kind": "value",
+      "name": "SUBSTATION_PRIMITIVES",
+      "id": "s23",
+      "hash": "9e63cf351a9bf14f",
+      "title": "List of supported equipment names",
+      "what": "The fixed list of the 16 equipment names this file can draw.",
+      "why": "Gives the rest of the app and the tests one list to loop over.",
+      "watch_out": "A name added here must also get a builder in the dispatch function, or it will return null."
+    },
+    {
+      "start": 523,
+      "end": 549,
+      "kind": "function",
+      "name": "buildSubstationPrimitive",
+      "id": "s24",
+      "hash": "7b0b8629f1cf6299",
+      "title": "Dispatch to the right builder",
+      "what": "Given a name and three sizes, calls the matching builder and returns its group. Names that are not substation equipment return null, so the general library draws them instead.",
+      "why": "A single entry point means other code only needs one function to draw any yard item.",
+      "watch_out": "Some builders take different inputs. Power pot uses only the height, so check the call when adding or changing a builder."
+    }
+  ],
+  "explained_at": "2026-11-12T02:32:23+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds detailed 3D models of 16 kinds of high-voltage substation equipment, from breakers and bus supports to fences and control houses.",
+  "purpose": "Gives the viewer realistic-looking yard equipment instead of plain boxes, for items the schedule marks as substation parts.",
+  "why": "Likely reason: the header says parts are merged per material, so a whole yard stays at a few draw calls per item. Reason for keeping this in its own file is not stated in the code.",
+  "how": "A small Kit helper collects parts grouped by material. Each equipment type has its own builder that adds posts, rods, insulators and boxes. The Kit then merges each material's parts into one shape. The public function buildSubstationPrimitive picks the builder by name and returns null for anything else.",
+  "inputs": "An equipment type name as text, plus three numbers: length along the conductor, height, and depth across the phases, in schedule units.",
+  "outputs": "A group of 3D meshes, each tagged with a material key, or null if the name is not a substation equipment type.",
+  "risks": "Very small sizes can make parts overlap, since several items have fixed minimum lengths. The merge step returns no result on a mismatch, and that result is not checked. Every merged mesh uses one default grey, so the material keys do not change how the item looks yet.",
+  "debug": "If one equipment type looks wrong, find its builder by name in the dispatch function and check its size inputs. If parts vanish, check for a missing merge result. Run substation.test.ts.",
+  "summary_hash": "sha256:3a94d43ca26db944764889f3d03a7dbefc996f635fbd8a324b1f1b3c4797470e"
+}

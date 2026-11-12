@@ -1,0 +1,290 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/ingest/xml.py",
+  "language": "Python",
+  "lines": 637,
+  "hash": "sha256:c4ef91f215edb23979fa39edc8b71d94fdb63306a4bba5c6f508fc7098c86b4e",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test files or test results are visible in the packet.",
+      "Errors raise clear messages and cancellation is supported, so error handling is present.",
+      "The preflight scanner is hand-written and needs test evidence to show it reads markup correctly."
+    ]
+  },
+  "terms": [
+    {
+      "term": "XML",
+      "meaning": "a plain text file format that wraps data in labelled tags, like nested boxes."
+    },
+    {
+      "term": "Primavera P6",
+      "meaning": "a construction scheduling program whose XML export this code reads."
+    },
+    {
+      "term": "staging database",
+      "meaning": "a local database file that holds imported data before the rest of the app uses it."
+    },
+    {
+      "term": "streaming",
+      "meaning": "reading a file in small pieces as you go, instead of loading all of it at once."
+    },
+    {
+      "term": "entity declaration",
+      "meaning": "an XML instruction that defines shortcuts; it is a common route for attacks that blow up memory, so this code refuses it."
+    },
+    {
+      "term": "WBS",
+      "meaning": "work breakdown structure, a tree that groups project work into parts and sub-parts."
+    },
+    {
+      "term": "activity",
+      "meaning": "one scheduled task in the project plan."
+    },
+    {
+      "term": "relationship",
+      "meaning": "a link that says one activity must happen before or after another."
+    },
+    {
+      "term": "hash",
+      "meaning": "a fingerprint of the file's contents that changes if the file changes."
+    },
+    {
+      "term": "defusedxml",
+      "meaning": "a version of the XML reader that is hardened against known attacks."
+    },
+    {
+      "term": "budget",
+      "meaning": "a cap on how many nodes or characters one record may contain."
+    }
+  ],
+  "depends_on": [
+    "defusedxml",
+    "schedule3d.ingest.contracts",
+    "schedule3d.ingest.dates",
+    "schedule3d.ingest.encoding",
+    "schedule3d.ingest.limits",
+    "schedule3d.ingest.store"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 60,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "abb8dade670d453d",
+      "title": "Imports and size limits",
+      "what": "Brings in the helper tools this file needs and sets the hard limits: maximum nesting depth, node and attribute counts, tag and text sizes. It also lists which P6 record names are kept as core, source, or container records.",
+      "why": "Likely reason: the limits are set in one place so the safety checks and the record handling use the same numbers.",
+      "watch_out": "Raising a limit weakens protection against oversized or hostile files, and lowering it can reject valid schedules."
+    },
+    {
+      "start": 61,
+      "end": 103,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "e5569413e44c4ed0",
+      "title": "Record name lists and container map",
+      "what": "Continues the list of source record names and then maps each plural container tag, such as Activities, to the record names that may sit inside it. This tells the reader what a valid child looks like.",
+      "why": "Likely reason: the importer needs to know which tags are real data records and which are only wrappers.",
+      "watch_out": "A new P6 record type must be added here, or the importer treats it as unknown and only keeps it with a warning."
+    },
+    {
+      "start": 104,
+      "end": 107,
+      "kind": "function",
+      "name": "_local_name",
+      "id": "s3",
+      "hash": "a1a43a8f60924c3f",
+      "title": "Stripping XML namespaces from tag names",
+      "what": "Removes the namespace prefix from an XML tag so that a tag such as a namespaced Activity is compared as plain Activity.",
+      "why": "Likely reason: P6 exports can place tags in a namespace, and the rest of the code matches on plain names.",
+      "watch_out": "Every name check in the file relies on this, so a change here affects all record detection."
+    },
+    {
+      "start": 108,
+      "end": 111,
+      "kind": "function",
+      "name": "_children",
+      "id": "s4",
+      "hash": "76d00d7da3f37608",
+      "title": "Flat child-value helper",
+      "what": "Builds a simple lookup from each direct child tag to its text value. It is not called anywhere else in this file.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "If a tag appears twice, only the last value is kept."
+    },
+    {
+      "start": 112,
+      "end": 150,
+      "kind": "function",
+      "name": "_node_value",
+      "id": "s5",
+      "hash": "a969b8af61c7f3d6",
+      "title": "Converting XML into nested Python data",
+      "what": "Turns an XML element and everything under it into nested dictionaries and lists. Attributes are stored under a special attributes key and element text under a text key. Repeated child tags become lists, and depth and node counts are enforced.",
+      "why": "Likely reason: the rest of the code works with dictionaries, not XML elements, so this gives one common shape for every record.",
+      "watch_out": "The node counter is shared across the whole recursion, so a large record fails even if no single child is big."
+    },
+    {
+      "start": 151,
+      "end": 155,
+      "kind": "function",
+      "name": "_nested_record",
+      "id": "s6",
+      "hash": "497bcf615a77bdd6",
+      "title": "Wrapping a record as a dictionary",
+      "what": "Makes sure a record always comes back as a dictionary. A record that is only plain text is wrapped under a value key.",
+      "why": "Likely reason: later code calls get on record values, which only works on dictionaries.",
+      "watch_out": "A record that is only text is stored under value, so code that expects a field name will not find it."
+    },
+    {
+      "start": 156,
+      "end": 173,
+      "kind": "function",
+      "name": "_is_unregistered_plural_record",
+      "id": "s7",
+      "hash": "c5c6a07307fdeaa7",
+      "title": "Detecting unknown plural record shapes",
+      "what": "Recognizes a child tag that looks like the singular of its plural parent, such as Location inside Locations, even when the parent is not in the known list. It excludes Project and known containers.",
+      "why": "Likely reason: this lets the importer keep records from newer P6 exports while still reporting them as unrecognized.",
+      "watch_out": "The match is by spelling only, so an unusual tag name can be matched by accident."
+    },
+    {
+      "start": 174,
+      "end": 232,
+      "kind": "function",
+      "name": "_preflight_xml (part 1)",
+      "id": "s8",
+      "hash": "02857c9cd989e179",
+      "title": "Pre-scan for forbidden XML declarations",
+      "what": "Reads the file in one-megabyte pieces before parsing. It stops the import if it finds a DOCTYPE or ENTITY declaration, and it stops if any text, CDATA, or comment section grows past the text limit. It can also be cancelled part way.",
+      "why": "Likely reason: the check runs before the parser builds a tree, so a hostile file is rejected before it can use up memory.",
+      "watch_out": "This is a hand-written scanner that tracks where it is in the markup, so a bug here can misread valid files."
+    },
+    {
+      "start": 233,
+      "end": 258,
+      "kind": "function",
+      "name": "_preflight_xml (part 2)",
+      "id": "s9",
+      "hash": "fb0dad131753df8e",
+      "title": "Pre-scan for tag sizes and quotes",
+      "what": "Continues the scan through tags. It limits tag size, notices when it is inside a quoted attribute value so that a greater-than sign inside quotes does not end the tag, and spots the start of CDATA and comment sections from the first few characters.",
+      "why": "Likely reason: without quote tracking, a greater-than sign in an attribute would confuse the size checks.",
+      "watch_out": "The quote state carries over between pieces of the file, so changes to chunk handling must keep it intact."
+    },
+    {
+      "start": 259,
+      "end": 275,
+      "kind": "function",
+      "name": "_date",
+      "id": "s10",
+      "hash": "3d061086554a2d54",
+      "title": "Date conversion wrapper",
+      "what": "Passes a raw date value to the shared date normalizer and includes the field, table, and row number so any warning points to the right place. A value that cannot be read becomes None.",
+      "why": "Likely reason: one wrapper keeps the warning messages consistent for every date.",
+      "watch_out": "Callers must accept None, because bad or missing dates do not stop the import."
+    },
+    {
+      "start": 276,
+      "end": 335,
+      "kind": "function",
+      "name": "ingest_p6_xml (part 1)",
+      "id": "s11",
+      "hash": "db4ba6396310d6e2",
+      "title": "Import entry point and opening setup",
+      "what": "The main function for importing a P6 file. It runs the pre-scan, fingerprints the file, opens a streaming parser, and opens the staging store. On each element start it checks depth and attribute counts and decides whether the element begins a record or a project.",
+      "why": "Likely reason: the function gathers the safety checks and the setup in one place before any data is read.",
+      "watch_out": "Budgets are opened per record and each one counts everything inside that record, so a record with many small children can still exceed its budget."
+    },
+    {
+      "start": 336,
+      "end": 395,
+      "kind": "function",
+      "name": "ingest_p6_xml (part 2)",
+      "id": "s12",
+      "hash": "dbb045dda73550cc",
+      "title": "Handling each element as it closes",
+      "what": "When an element closes, counts it, checks for cancellation every thousand elements, and adds its text length to the open budgets. Simple child values of a Project are copied into the project's context and then cleared. It then decides whether the closed element is a record to store.",
+      "why": "Likely reason: project fields are read on close so the project's values are known before its records are stored.",
+      "watch_out": "Clearing an element frees its data, so reading its children after clearing returns nothing."
+    },
+    {
+      "start": 396,
+      "end": 455,
+      "kind": "function",
+      "name": "ingest_p6_xml (part 3)",
+      "id": "s13",
+      "hash": "bc8614564cba0f0f",
+      "title": "Storing project and activity data",
+      "what": "For each completed record, reads the nested values and works out which project it belongs to. Project-scoped records create or update the project row with its planned dates. Each activity is written with its dates, status, and type, using fallback date fields when the main one is missing.",
+      "why": "Likely reason: the activity dates use a fallback chain so that a schedule missing one date field still gets a usable value.",
+      "watch_out": "The fallback chain can fill a planned date from a different P6 field without any warning."
+    },
+    {
+      "start": 456,
+      "end": 515,
+      "kind": "function",
+      "name": "ingest_p6_xml (part 4)",
+      "id": "s14",
+      "hash": "c41658ab560cb9aa",
+      "title": "Storing relationships and duplicate warnings",
+      "what": "Writes each relationship with its link type and lag when both the predecessor and successor are known. A relationship missing either end is skipped and a warning is added. A duplicate activity ID is kept out and warned about.",
+      "why": "Likely reason: a link with a missing end cannot be shown, so it is reported rather than stored.",
+      "watch_out": "A skipped relationship is reported as a warning, so check the report if a link seems to be missing from the schedule."
+    },
+    {
+      "start": 516,
+      "end": 575,
+      "kind": "function",
+      "name": "ingest_p6_xml (part 5)",
+      "id": "s15",
+      "hash": "d746bb482441a241",
+      "title": "Storing WBS, other rows, and project close",
+      "what": "Writes WBS rows with their parent link and names. Other registered records go into a generic table. When a Project closes, the final project values are saved again and its context is removed.",
+      "why": "Likely reason: the generic table lets records without special handling still be kept.",
+      "watch_out": "A project with no ID is not saved at all, and this happens without a warning."
+    },
+    {
+      "start": 576,
+      "end": 615,
+      "kind": "function",
+      "name": "ingest_p6_xml (part 6)",
+      "id": "s16",
+      "hash": "c238dd371cb93c88",
+      "title": "Progress, cancellation, and memory cleanup",
+      "what": "Every five thousand records it commits the store and reports progress. It checks for cancellation and stops the loop if asked. It then removes the element from its parent to free memory and, after the loop ends, resolves WBS paths, runs integrity checks, saves counts, and reads back the project list and table counts.",
+      "why": "Likely reason: committing in batches keeps progress saved and lets large imports be cancelled part way.",
+      "watch_out": "After a cancel, the code still runs the finishing steps, so partial data is saved; check the cancelled flag in the report."
+    },
+    {
+      "start": 616,
+      "end": 637,
+      "kind": "function",
+      "name": "ingest_p6_xml (part 7)",
+      "id": "s17",
+      "hash": "66a830f486e70e4c",
+      "title": "Final report",
+      "what": "If the file holds more than one project, adds an information note saying they were kept separately. Then returns the report with the file's name, hash, size, format, staging database path, table counts, projects, warnings, record count, and cancelled flag.",
+      "why": "Likely reason: the report is the only summary the caller gets, so it carries everything needed to judge the import.",
+      "watch_out": "The encoding field is always the fixed text xml-declared, so it does not confirm the file's real encoding."
+    }
+  ],
+  "explained_at": "2026-11-12T01:53:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads a Primavera P6 schedule export (an XML file) in bounded, streamed pieces and stores its records in a staging database for the rest of the app.",
+  "purpose": "Turns a P6 XML schedule into structured rows for activities, links between activities, the work breakdown structure (WBS), projects, and other record types, and reports what was kept, what was unrecognized, and what was skipped.",
+  "why": "Likely reason: schedule files can be very large and XML can carry hostile constructs, so the code checks sizes and rejects entity declarations before it builds anything in memory. The file header says every registered record is audited. Likely reason: streaming keeps memory use low on big files.",
+  "how": "First, scan the whole file for forbidden declarations and oversized pieces. Second, fingerprint the file with a hash and byte count. Third, open the staging store. Fourth, stream through the XML while tracking open projects and per-record size budgets. Fifth, when each record finishes, read its values and write it to the Activity, Relationship, WBS, or generic source table, adding warnings where needed. Sixth, after the last element, resolve WBS paths, run integrity checks, save counts, and build the report.",
+  "inputs": "A P6 XML file path, a database path for the staging store, and optional progress and cancel callbacks.",
+  "outputs": "An IngestionReport with the file's hash and size, table counts, the list of projects, all warnings, the number of records processed, and a flag showing whether the run was cancelled. The staging database also gets the filled tables.",
+  "risks": "Changing a size limit or a record list can reject valid schedules or let unknown data through without notice. Date fallbacks can fill a planned date from a different field with no warning. A cancelled run still writes and reports the rows it already has. The encoding field is always the fixed text xml-declared, not a checked value.",
+  "debug": "Start with the warnings in the report, especially the codes for unrecognized records, duplicate activities, and invalid relationships. Error messages that begin with P6 XML name the limit that was hit. Compare table_counts with what the file should contain. If the result looks short, check the cancelled flag. If the file is rejected before parsing, search it for a DOCTYPE or ENTITY declaration.",
+  "summary_hash": "sha256:c4ef91f215edb23979fa39edc8b71d94fdb63306a4bba5c6f508fc7098c86b4e"
+}

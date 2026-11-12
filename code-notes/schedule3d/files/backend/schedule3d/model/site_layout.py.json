@@ -1,0 +1,484 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/model/site_layout.py",
+  "language": "Python",
+  "lines": 845,
+  "hash": "sha256:0fb813dbb15c9b7f9e9a49f2f9325196bfc88def0153f3e6aee35efafa113ea2",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Behaviour is documented in comments and docstrings, which is good.",
+      "No test or other evidence was provided, so correctness cannot be confirmed.",
+      "Many layout values are fixed constants with no explanation in the code."
+    ]
+  },
+  "terms": [
+    {
+      "term": "WBS",
+      "meaning": "work breakdown structure, a tree of names that groups a project's work, such as Line A / Structure 3."
+    },
+    {
+      "term": "schematic",
+      "meaning": "a simplified drawing that shows layout and connections without true scale or survey accuracy."
+    },
+    {
+      "term": "corridor",
+      "meaning": "the strip of ground a transmission line runs along, here a group of structures and their line work."
+    },
+    {
+      "term": "substation",
+      "meaning": "a yard where electricity is switched and transformed, made of buses, bays, breakers and a control house."
+    },
+    {
+      "term": "bus",
+      "meaning": "a main conductor in a substation that collects power from several lines or equipment."
+    },
+    {
+      "term": "bay",
+      "meaning": "a column of switching equipment in a substation that connects one line or item to a bus."
+    },
+    {
+      "term": "breaker",
+      "meaning": "a switch that can interrupt a high-voltage current, used for protection."
+    },
+    {
+      "term": "dead-end structure",
+      "meaning": "a sturdy structure where a line ends and its wires are held under tension."
+    },
+    {
+      "term": "placeholder",
+      "meaning": "a filler name such as unassigned or dashes that carries no real meaning."
+    }
+  ],
+  "depends_on": [
+    "schedule3d/model/templates",
+    "schedule3d/semantics/contracts"
+  ],
+  "used_by": [
+    "Not visible in the packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 54,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "542faebbee13c082",
+      "title": "Module purpose and spacing constants",
+      "what": "Explains that the module makes a schematic arrangement from names, and sets the fixed spacing, height and pattern values used throughout the file.",
+      "why": "The docstring states the coordinates are assumed display positions, not surveyed ones.",
+      "watch_out": "Changing a pattern changes which schedule names count as structures, buses, bays or control houses."
+    },
+    {
+      "start": 55,
+      "end": 102,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "9763dff3a18fc0be",
+      "title": "Tall shape list",
+      "what": "Lists the shapes that count as tall, so that foundation and site-preparation phases show them as ground-level forms instead.",
+      "why": "The comment says tall shapes get their own ground-level form for early phases.",
+      "watch_out": "A new tall shape must be added here, or it will appear full height during early phases."
+    },
+    {
+      "start": 103,
+      "end": 113,
+      "kind": "class",
+      "name": "Placement",
+      "id": "s3",
+      "hash": "6bb0d5060c4d0c1a",
+      "title": "Placement record",
+      "what": "Stores where one drawn item goes: horizontal and depth positions, shape, size, optional height, rotation and a short rationale.",
+      "why": "Likely reason: a frozen record stops placements from being changed after they are made.",
+      "watch_out": "The rationale text is what tells a reader the position is assumed, so keep it."
+    },
+    {
+      "start": 114,
+      "end": 122,
+      "kind": "class",
+      "name": "PhaseGeometry",
+      "id": "s4",
+      "hash": "43af73a4888cde49",
+      "title": "Phase geometry record",
+      "what": "Stores the ground-level form used for one item during a construction phase.",
+      "why": "Reason not stated in the code beyond its name and use.",
+      "watch_out": "The height value here is used as the centre height, not as the base."
+    },
+    {
+      "start": 123,
+      "end": 126,
+      "kind": "function",
+      "name": "_parts",
+      "id": "s5",
+      "hash": "6aa85637dd371ec5",
+      "title": "Splitting a path into parts",
+      "what": "Breaks a WBS path into its named pieces with extra spaces tidied.",
+      "why": "Likely reason: all the helpers read paths the same way.",
+      "watch_out": "Empty pieces are dropped, so depth counts depend on this step."
+    },
+    {
+      "start": 127,
+      "end": 130,
+      "kind": "function",
+      "name": "_real_parts",
+      "id": "s6",
+      "hash": "7605592d5e233ed4",
+      "title": "Path parts without placeholders",
+      "what": "Does the same as splitting, but also drops placeholder names.",
+      "why": "Likely reason: placeholder names should not count as real levels of the hierarchy.",
+      "watch_out": "A path made only of placeholders gives an empty list, which callers must handle."
+    },
+    {
+      "start": 131,
+      "end": 136,
+      "kind": "function",
+      "name": "display_leaf",
+      "id": "s7",
+      "hash": "04a0287530fed4f5",
+      "title": "Display name for a path",
+      "what": "Returns the last real name in a path to show on screen, or the raw last part if no real name exists.",
+      "why": "Labels should show the item's own name rather than a placeholder.",
+      "watch_out": "When there are no real parts, the raw text is shown, which may still be a placeholder."
+    },
+    {
+      "start": 137,
+      "end": 140,
+      "kind": "function",
+      "name": "is_placeholder",
+      "id": "s8",
+      "hash": "0b202f3511e34753",
+      "title": "Placeholder check",
+      "what": "Says whether a single name is only a placeholder such as unassigned or dashes.",
+      "why": "Used to skip names that carry no meaning.",
+      "watch_out": "Only a whole-name match counts, so a real name that contains these words is kept."
+    },
+    {
+      "start": 141,
+      "end": 146,
+      "kind": "function",
+      "name": "_natural",
+      "id": "s9",
+      "hash": "cab983fbe06667e9",
+      "title": "Human-order sort key",
+      "what": "Turns text into a sort key where numbers compare as numbers, so 2 comes before 10.",
+      "why": "Likely reason: names like Structure 2 and Structure 10 must sort in the order a person expects.",
+      "watch_out": "Only runs of digits are treated as numbers."
+    },
+    {
+      "start": 147,
+      "end": 151,
+      "kind": "function",
+      "name": "_sort_text",
+      "id": "s10",
+      "hash": "e1791d2e480a90cb",
+      "title": "Text sort key",
+      "what": "Makes a sortable text key by padding digit runs with zeros, so A10 sorts after A9.",
+      "why": "Stated in the docstring.",
+      "watch_out": "Padding is to eight digits, so a number longer than eight digits can sort in the wrong place."
+    },
+    {
+      "start": 152,
+      "end": 158,
+      "kind": "function",
+      "name": "_name",
+      "id": "s11",
+      "hash": "3cea7cd1784e70b7",
+      "title": "Cleaning a name for matching",
+      "what": "Reduces a name to plain lowercase words, removing codes, bracketed text, fibre labels and voltage tags, so that different spellings of one line can be matched.",
+      "why": "Likely reason: schedule names differ in punctuation and codes but refer to the same line.",
+      "watch_out": "Every match depends on this cleaning, so a change here changes many matches at once."
+    },
+    {
+      "start": 159,
+      "end": 168,
+      "kind": "function",
+      "name": "_along",
+      "id": "s12",
+      "hash": "db854ce73df8fda8",
+      "title": "Moving along a direction",
+      "what": "Finds a point a set distance along a direction from a start point, with an optional sideways offset.",
+      "why": "Used to place structures and equipment along lines and yard edges.",
+      "watch_out": "The direction must have unit length, or distances will be scaled wrongly."
+    },
+    {
+      "start": 169,
+      "end": 177,
+      "kind": "class",
+      "name": "_Corridor",
+      "id": "s13",
+      "hash": "b301db6f8baa962e",
+      "title": "Corridor record",
+      "what": "Holds one transmission line: its numbered structures and its related line work items.",
+      "why": "The comment says structures are keyed by section, number and type so that series do not collide.",
+      "watch_out": "Structures sharing the same section, number and type are grouped into one entry."
+    },
+    {
+      "start": 178,
+      "end": 221,
+      "kind": "function",
+      "name": "_find_corridors",
+      "id": "s14",
+      "hash": "3529c60b64575393",
+      "title": "Finding line corridors",
+      "what": "Sorts schedule paths into lines: numbered structures form a line, related line work attaches to it, and companion job paths attach by name.",
+      "why": "The comment says companion projects, such as a fibre job for the same line, are linked this way.",
+      "watch_out": "Matching is by name and prefix, so a mislabelled path can attach to the wrong line."
+    },
+    {
+      "start": 222,
+      "end": 237,
+      "kind": "function",
+      "name": "_structure_shape",
+      "id": "s15",
+      "hash": "f78f7c093b0af150",
+      "title": "Shape for a line structure",
+      "what": "Chooses the drawn shape and size for a line structure from words in its name, such as foundation, tower, pole or anchor.",
+      "why": "Name words decide the form when no geometry data exists.",
+      "watch_out": "An unknown name falls back to a small box, so unusual structures look generic."
+    },
+    {
+      "start": 238,
+      "end": 263,
+      "kind": "function",
+      "name": "_line_item_shape",
+      "id": "s16",
+      "hash": "41c6bdbd159ef14c",
+      "title": "Shape for line work",
+      "what": "Decides how line work such as conductors, fibre, access roads, erosion control and restoration is drawn, including where it anchors along the line. Returns nothing for an unknown name.",
+      "why": "Each name keyword maps to a shape, so line work appears at the right spot.",
+      "watch_out": "Callers treat unknown items as spare items and place them off the line, so a missing keyword moves an item off-route."
+    },
+    {
+      "start": 264,
+      "end": 323,
+      "kind": "function",
+      "name": "_layout_corridor (part 1)",
+      "id": "s17",
+      "hash": "e0b32dd90e3315de",
+      "title": "Placing a line's structures",
+      "what": "Places numbered structures one span apart, starting at the substation end, and reverses the order when the line ends at that substation. It then begins placing the line work.",
+      "why": "The comment says A-to-B lines are numbered from A, so structures nearest B are placed near B.",
+      "watch_out": "Unknown line work is parked to the side as small boxes, so it is visible but off-route."
+    },
+    {
+      "start": 324,
+      "end": 353,
+      "kind": "function",
+      "name": "_layout_corridor (part 2)",
+      "id": "s18",
+      "hash": "4fdf88e0f07fae6a",
+      "title": "Placing line work along the route",
+      "what": "Places each kind of line work at its anchor: ties, spans, access roads, erosion control, right of way and laydown. When no tie item exists, conductors are stretched to reach the yard.",
+      "why": "Likely reason: without a tie-in activity, the conductors are stretched into the substation so the line looks connected.",
+      "watch_out": "The stretched length is a display choice, not a measured span."
+    },
+    {
+      "start": 354,
+      "end": 406,
+      "kind": "function",
+      "name": "item_group_path",
+      "id": "s19",
+      "hash": "d38c88e790adf6d5",
+      "title": "Refining substation activity groups",
+      "what": "Gives each substation activity its own group key by using the named yard item from the activity name, so each breaker, switch or support is laid out on its own.",
+      "why": "The docstring says schedules often stop at the yard area, so the item name is taken from the activity text.",
+      "watch_out": "This depends on the separator pattern in activity names, and a different naming style keeps the coarser group."
+    },
+    {
+      "start": 407,
+      "end": 422,
+      "kind": "function",
+      "name": "_units",
+      "id": "s20",
+      "hash": "972f0ef88bc1d777",
+      "title": "Grouping switching equipment into units",
+      "what": "Groups switching equipment into breaker-and-a-half style units, with a breaker flanked by its disconnects where available.",
+      "why": "The docstring names the breaker-and-a-half arrangement.",
+      "watch_out": "Leftover switches are added as their own unit, which may not match the real wiring."
+    },
+    {
+      "start": 423,
+      "end": 427,
+      "kind": "function",
+      "name": "_line_key",
+      "id": "s21",
+      "hash": "50aad4af45858c37",
+      "title": "Matching key for a line terminal",
+      "what": "Turns a line terminal name into a plain key by removing the line label and code, so it can match a corridor name.",
+      "why": "Needed so that terminals and corridors join by name.",
+      "watch_out": "It relies on the same name cleaning used everywhere else."
+    },
+    {
+      "start": 428,
+      "end": 437,
+      "kind": "function",
+      "name": "_interleave",
+      "id": "s22",
+      "hash": "a0efe4617e8f4681",
+      "title": "Spreading support types along a row",
+      "what": "Spreads supports of different phase counts evenly along one row, so three-phase, two-phase and one-phase supports alternate.",
+      "why": "The docstring gives this purpose.",
+      "watch_out": "When positions tie, the order in which the lists are given decides the result."
+    },
+    {
+      "start": 438,
+      "end": 490,
+      "kind": "function",
+      "name": "_layout_substation (part 1)",
+      "id": "s23",
+      "hash": "87664caecee7d951",
+      "title": "Grouping yard items and planning bays",
+      "what": "Sorts yard items into buses and bays, plans the switching slots along each bay, and sets the yard size from the longest bay.",
+      "why": "Likely reason: the yard must be sized from its longest bay so that the equipment fits.",
+      "watch_out": "A bay name that does not match the bay pattern is not laid out as a bay."
+    },
+    {
+      "start": 491,
+      "end": 539,
+      "kind": "method",
+      "name": "_layout_substation: place",
+      "id": "s24",
+      "hash": "1e6053b023e37681",
+      "title": "Recording yard placements and main buses",
+      "what": "Provides a helper that records one yard item's placement, and uses it to lay out the main buses as rows of supports with a bus tube, pads and station service equipment.",
+      "why": "A single helper keeps every yard placement recorded the same way.",
+      "watch_out": "The position values are plain numbers, so a mixed-up argument silently puts an item in the wrong place."
+    },
+    {
+      "start": 540,
+      "end": 599,
+      "kind": "function",
+      "name": "_layout_substation (part 3)",
+      "id": "s25",
+      "hash": "64f748326812884b",
+      "title": "Laying out bays and line terminals",
+      "what": "Places bay equipment in line along each rung, places the bay supports, and places line terminals on the bus side with their strain bus, conductors and dead-end structures.",
+      "why": "Terminal positions follow the layout table, which sets offsets for each part.",
+      "watch_out": "Terminals are joined to corridors by name, so a naming mismatch leaves a line unconnected."
+    },
+    {
+      "start": 600,
+      "end": 659,
+      "kind": "function",
+      "name": "_layout_substation (part 4)",
+      "id": "s26",
+      "hash": "12f3b0e7b53ff4b1",
+      "title": "Yard civil work and remaining items",
+      "what": "Places the rest of the bay items, then the control house, fence, yard stone, grounding, roads, lightning masts, cable trenches and survey marks.",
+      "why": "Reason partly stated: items are grouped by the yard area they belong to.",
+      "watch_out": "Fallback items are placed at fixed spots near the bay or control house, so unknown items can overlap."
+    },
+    {
+      "start": 660,
+      "end": 662,
+      "kind": "function",
+      "name": "_layout_substation (part 5)",
+      "id": "s27",
+      "hash": "523b50d99c811f6f",
+      "title": "Returning the yard result",
+      "what": "Returns the placements, the yard width and height, the terminals and the exit directions.",
+      "why": "The caller needs these to join lines to the yard.",
+      "watch_out": "The exit directions decide which side each line leaves the yard from, so a wrong value sends a line the wrong way."
+    },
+    {
+      "start": 663,
+      "end": 667,
+      "kind": "function",
+      "name": "_is_area_level",
+      "id": "s28",
+      "hash": "201010d337a7a3b8",
+      "title": "Checking for an area-level row",
+      "what": "Says whether a schedule row names only the yard area, such as Bus 1, and not a specific item.",
+      "why": "Area-level rows are drawn as a whole row or bay, as the caller comments describe.",
+      "watch_out": "It depends on the exact path depth, so a different hierarchy changes the result."
+    },
+    {
+      "start": 668,
+      "end": 672,
+      "kind": "function",
+      "name": "_is_switching",
+      "id": "s29",
+      "hash": "8785aa9a1cfdd4ce",
+      "title": "Checking for switching equipment",
+      "what": "Says whether an item name is a breaker, disconnect or switch.",
+      "why": "Used to pick out switching equipment for the rung layout.",
+      "watch_out": "It is a plain word match, so a name like switchgear also counts."
+    },
+    {
+      "start": 673,
+      "end": 714,
+      "kind": "function",
+      "name": "_layout_control_house",
+      "id": "s30",
+      "hash": "0dfa15763a2f2dcf",
+      "title": "Laying out the control house",
+      "what": "Lays out the control house: the shell on its slab, HVAC units on the wall, battery racks at the east end, and panel rows inside.",
+      "why": "The layout is described in the function's own docstring.",
+      "watch_out": "The house size is fixed, so a large number of panels is packed more tightly rather than making the building bigger."
+    },
+    {
+      "start": 715,
+      "end": 774,
+      "kind": "function",
+      "name": "schematic_layout (part 1)",
+      "id": "s31",
+      "hash": "f88297b6317ac53a",
+      "title": "Main schematic entry point",
+      "what": "The public entry point. It finds corridors and substations, lays out each yard, then lays out each line from its terminal or from the yard edge.",
+      "why": "Returns an empty result when neither lines nor substations are found, so the normal layout is kept.",
+      "watch_out": "Terminals are matched to lines by name containment, so a short name can match many lines, and the longest match wins."
+    },
+    {
+      "start": 775,
+      "end": 784,
+      "kind": "function",
+      "name": "schematic_layout (part 2)",
+      "id": "s32",
+      "hash": "948bfe72c87784c8",
+      "title": "Placing leftover items",
+      "what": "Packs any items that were not placed earlier into a block 80 units below the lowest placed item, then returns all placements.",
+      "why": "Every item still needs a position, even when it is not part of the schematic.",
+      "watch_out": "The leftover block sits apart from the schematic, so it can be mistaken for a separate group."
+    },
+    {
+      "start": 785,
+      "end": 808,
+      "kind": "function",
+      "name": "_exit_distance",
+      "id": "s33",
+      "hash": "024bef4afec367a6",
+      "title": "Distance from a point to a yard fence",
+      "what": "Measures how far a point inside a yard can move along a direction before it reaches the yard fence.",
+      "why": "Used to decide how long the lead-in to a line is.",
+      "watch_out": "Returns zero for a point outside every yard, which means the line starts at that point."
+    },
+    {
+      "start": 809,
+      "end": 845,
+      "kind": "function",
+      "name": "phase_geometry",
+      "id": "s34",
+      "hash": "969c909c729577c6",
+      "title": "Construction-phase forms",
+      "what": "Changes a tall asset's drawn form for foundation, excavation or enabling phases, using low pads, foundations or flat slabs, so the site looks right at that stage.",
+      "why": "The comment says ground-level forms are used for foundation and site preparation on tall assets.",
+      "watch_out": "Only the listed tall shapes and yard forms change, so any new shape stays full height in early phases."
+    }
+  ],
+  "explained_at": "2026-11-12T02:02:12+00:00",
+  "explained_by": "haiku",
+  "summary": "Arranges line structures and substation equipment into a simple, labelled schematic from schedule names, with positions that are assumed for display and not surveyed.",
+  "purpose": "Schedules have names but no coordinates. This module turns those names into a recognisable picture: line towers in order along a corridor and substation equipment in buses, bays and a control house.",
+  "why": "The module docstring says every coordinate is an assumed display arrangement. Schedules with no line or substation names get no placements, so the normal packing layout still applies.",
+  "how": "First it finds line corridors from numbered structures and related line work by name. Then it finds substations and lays out each yard, using the bus, bay and control house rules. Each corridor is then laid out from its yard terminal or yard edge. Anything left over is packed into a block below the schematic.",
+  "inputs": "A list of schedule path strings (WBS names). For substations, the activity names are also used through item_group_path.",
+  "outputs": "A dictionary from each path to a Placement (position, shape, size, height, rotation and rationale). A phase_geometry call turns one Placement into a PhaseGeometry for a given construction phase.",
+  "risks": "Almost everything depends on name matching, so a schedule that names things differently gets a different picture. The coordinates are assumed, and a viewer could mistake them for surveyed positions if the rationale text is hidden.",
+  "debug": "If a line or yard is in the wrong place, check the names: the pattern constants at the top, the `_name` cleaning, and the bus and bay patterns. If an item is missing, check whether it fell through to the leftover block in schematic_layout. If the schematic is empty, check that the names contain structure or substation words.",
+  "summary_hash": "sha256:0fb813dbb15c9b7f9e9a49f2f9325196bfc88def0153f3e6aee35efafa113ea2"
+}

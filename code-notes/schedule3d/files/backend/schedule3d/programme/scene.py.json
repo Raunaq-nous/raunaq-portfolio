@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/programme/scene.py",
+  "language": "Python",
+  "lines": 393,
+  "hash": "sha256:4a7f39ef27306bfa38b43edbe689414a48ba7197bd3bd23c3d19a7f3a9f42748",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Many checks guard against inconsistent or misleading scenes.",
+      "No tests are visible in the packet.",
+      "The ALICE support data is loosely typed and not checked for content.",
+      "Silent dropping of components without dates may hide missing work from the reviewer."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Composition",
+      "meaning": "Combining separate sources into one saved picture while keeping each source's identity."
+    },
+    {
+      "term": "Fingerprint",
+      "meaning": "A fixed-length code computed from the data. If the data changes, the code changes too."
+    },
+    {
+      "term": "Onsite action",
+      "meaning": "A name test that decides whether an activity is physical work done on site, such as installing or pulling cable, rather than paperwork or design."
+    },
+    {
+      "term": "P6",
+      "meaning": "A scheduling software format. The code says its edges are not used for geometry. This file does not define the format further."
+    },
+    {
+      "term": "ALICE",
+      "meaning": "A separate support dataset. The code does not define it, so its meaning is not stated here."
+    },
+    {
+      "term": "Schematic",
+      "meaning": "A simplified drawing that shows relationships without true distances or geography."
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/evidence.py",
+    "backend/schedule3d/model/contracts.py",
+    "backend/schedule3d/programme/contracts.py",
+    "backend/schedule3d/programme/network.py"
+  ],
+  "used_by": [
+    "Callers of compose_programme, load_scene and compact_schematic are not visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 24,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "8757a70beca24214",
+      "title": "File header and imports",
+      "what": "States the core rule that the display layout is only framing and that schedule links and ALICE support links do not change shapes or electrical connections. Brings in the libraries and shared models.",
+      "why": "Likely reason: warns future editors that the picture must not imply connections the source does not show.",
+      "watch_out": "Do not feed P6 links or ALICE links into geometry."
+    },
+    {
+      "start": 25,
+      "end": 42,
+      "kind": "class",
+      "name": "ReviewLink",
+      "id": "s2",
+      "hash": "68e82b99119917b3",
+      "title": "Review link record",
+      "what": "Holds a title and a web address for opening a review page, and only accepts local addresses on this machine.",
+      "why": "Likely reason: review pages should never send the reviewer to an outside site.",
+      "watch_out": "Addresses with a different host, a different scheme or embedded credentials are rejected."
+    },
+    {
+      "start": 43,
+      "end": 53,
+      "kind": "class",
+      "name": "SceneProject",
+      "id": "s3",
+      "hash": "d42d879023b451aa",
+      "title": "Scene project record",
+      "what": "Describes one project in the scene: its category, its offset in the layout, the placement rule text, its fidelity, limitations and review links.",
+      "why": "Likely reason: records where each project sits in the framing and why, so the placement is explained.",
+      "watch_out": "The category is limited to a fixed list, so a new category needs a code change here."
+    },
+    {
+      "start": 54,
+      "end": 64,
+      "kind": "class",
+      "name": "SceneAsset",
+      "id": "s4",
+      "hash": "79aacd73e9a39a57",
+      "title": "Scene asset record",
+      "what": "Describes one drawn physical item: its identifier, its project, the source component it came from, its geometry record, the activities that build it, the activities only used as context, and its limitation text.",
+      "why": "Likely reason: each drawn item must trace back to a source component and to the work that installs it.",
+      "watch_out": "The asset identifier must match the identifier on its geometry record, or validation fails."
+    },
+    {
+      "start": 65,
+      "end": 124,
+      "kind": "class",
+      "name": "ProgrammeScene (part 1)",
+      "id": "s5",
+      "hash": "7e8da14b78320358",
+      "title": "Scene consistency checks first half",
+      "what": "Defines the scene record and runs the first set of checks: the programme must be complete rather than a sampled page, every project must be present exactly once, network views must follow version 2 rules, and network reveals must use only supported onsite installation work.",
+      "why": "Likely reason: prevents a partial or mislabelled programme from producing a scene that looks complete.",
+      "watch_out": "Any sampled page or project filter in the programme will cause the scene to be rejected."
+    },
+    {
+      "start": 125,
+      "end": 157,
+      "kind": "class",
+      "name": "ProgrammeScene (part 2)",
+      "id": "s6",
+      "hash": "51b9833751b5084b",
+      "title": "Scene consistency checks second half",
+      "what": "Runs the remaining checks: each project model must match the schedule's source fingerprint and cover every activity, every asset must trace to a real component and to supported installation work, and reveal and contributor identities must agree.",
+      "why": "Likely reason: ties every drawn item to the schedule it came from, so a mismatched model cannot be shown.",
+      "watch_out": "A project model from a different schedule file will fail the fingerprint match."
+    },
+    {
+      "start": 158,
+      "end": 181,
+      "kind": "function",
+      "name": "onsite_action",
+      "id": "s7",
+      "hash": "0dcc515d1c5983b7",
+      "title": "Onsite installation name test",
+      "what": "Decides from an activity name whether it describes physical installation work on site. It first removes trailing bracketed notes and rejects names that look like meetings, approvals, design, procurement or administration. Then it accepts names that match a list of construction verbs such as install, erect, pour, weld or connect.",
+      "why": "Likely reason: the source names are inconsistent, so a conservative keyword rule keeps administrative work out of the 3D view.",
+      "watch_out": "This is a name-based guess. Renaming an activity or adding a keyword can change which items appear."
+    },
+    {
+      "start": 182,
+      "end": 189,
+      "kind": "function",
+      "name": "schedule_hashes",
+      "id": "s8",
+      "hash": "a402436831a25a67",
+      "title": "Schedule source fingerprint",
+      "what": "Collects the source fingerprints recorded on a project's schedule evidence, so the scene can confirm which schedule file the model came from.",
+      "why": "Likely reason: stops a project model from being combined with a different schedule file.",
+      "watch_out": "An empty set, meaning no schedule evidence, will not match the programme fingerprint and will fail validation."
+    },
+    {
+      "start": 190,
+      "end": 249,
+      "kind": "function",
+      "name": "compose_programme (part 1)",
+      "id": "s9",
+      "hash": "49f7359d62831a43",
+      "title": "Building the scene assets first part",
+      "what": "Goes through each project, skipping land and external projects. For each component it keeps only the activities that are physical, onsite and pass the name test, and drops components with no such activity or with any activity missing dates. Each kept component is copied, given a new identity, and given dates equal to the earliest start and latest finish of its activities.",
+      "why": "Likely reason: a component should show only the dates of its real installation work, not paperwork or design dates.",
+      "watch_out": "Components with a missing date are dropped silently, so a gap in the schedule can make an item disappear with no warning."
+    },
+    {
+      "start": 250,
+      "end": 309,
+      "kind": "function",
+      "name": "compose_programme (part 2)",
+      "id": "s10",
+      "hash": "729464bc5e00108a",
+      "title": "Building the scene assets second part",
+      "what": "Applies category-specific shapes and labels. Transmission work gets representative signature shapes such as a line, foundation, open area or cable run. A station control house gets a generic shell. Fibre projects are forced to a cable-only form with no supporting towers. Each change records a rule note saying the shape is representative.",
+      "why": "Likely reason: the source does not provide true geometry for these items, so simple representative shapes are used and labelled as such.",
+      "watch_out": "The sizes are fixed numbers in the code, not measured values, so the picture must not be read as a quantity."
+    },
+    {
+      "start": 310,
+      "end": 325,
+      "kind": "function",
+      "name": "compose_programme (part 3)",
+      "id": "s11",
+      "hash": "eea1f9eae85056a4",
+      "title": "Assembling and fingerprinting the scene",
+      "what": "Gathers all the inputs into the scene record, builds it once with a temporary identity, then computes the fingerprint of the full scene and stores it as the scene identity.",
+      "why": "Likely reason: the fingerprint lets a later load detect any change to the saved file.",
+      "watch_out": "Any change to the scene after this point, without recomputing the fingerprint, will make the saved file fail to load."
+    },
+    {
+      "start": 326,
+      "end": 341,
+      "kind": "function",
+      "name": "load_scene",
+      "id": "s12",
+      "hash": "1086ea358ef06dd4",
+      "title": "Loading a saved scene",
+      "what": "Opens a saved scene file. It refuses a missing file, refuses a file larger than 128 MB, validates the contents, recomputes the fingerprint and refuses the file if it does not match. Nothing is regenerated silently.",
+      "why": "Likely reason: the reviewer must be able to trust that the opened scene is exactly the one that was saved.",
+      "watch_out": "The size limit and the fingerprint check both stop the load, so a large but valid scene may need the limit raised in this file."
+    },
+    {
+      "start": 342,
+      "end": 393,
+      "kind": "function",
+      "name": "compact_schematic",
+      "id": "s13",
+      "hash": "e292f3cf519e06cb",
+      "title": "Compact schematic layout",
+      "what": "Shifts each complete project as one block into rows grouped by category, with a set number of projects per row and gaps between blocks. Only whole-project moves are made, so the internal layout of each project is kept. It then rebuilds the scene and its fingerprint.",
+      "why": "Likely reason: spreads many projects across a readable area, with rows by category, without implying geography.",
+      "watch_out": "The column count must be between one and six, and the rule text states that no adjacency or route length is implied, which must stay true for any layout change."
+    }
+  ],
+  "explained_at": "2026-11-12T02:08:42+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds and checks the saved 3D programme scene: it combines per-project models, places each physical asset with its activity dates, applies a layout of project groups, and verifies that everything reconciles to the full schedule before the scene is saved or opened.",
+  "purpose": "Creates the single saved file the 3D programme view opens, and checks any saved file before it is shown.",
+  "why": "The file header says display offsets are only framing and that schedule relationships and ALICE support links do not drive geometry or electrical connectivity. The rules keep the picture from implying facts the source does not state.",
+  "how": "First the scene record and its supporting records are defined. The scene's checks confirm the schedule is complete, each project has its own model, every asset traces to real onsite physical work, and network views only reveal supported work. Then the composition step copies each eligible physical component, gives it dates from its onsite installation activities, applies a shape and label suited to its project category, and collects the results. A fingerprint of the whole scene is computed and stored. Loading reads the file, checks its size, validates it, recomputes the fingerprint and refuses the file if it does not match. A separate step shifts whole projects into category rows without changing their internal layout.",
+  "inputs": "The complete programme model, per-project models, the list of projects with their categories and offsets, optional network and ALICE data, source hashes and coverage notes.",
+  "outputs": "A validated scene object, a saved scene file when the caller writes it, and a rearranged copy when the compact layout step runs.",
+  "risks": "Only physical onsite work can reveal a component. Components without complete dates are dropped silently. Loading refuses any file whose fingerprint does not match. The ALICE fields are stored as loose data, so their contents are not checked here.",
+  "debug": "For a load failure, read the error text: it says whether the file is missing, too large, mismatched or inconsistent. For a missing asset, check that its activities have planned start and finish dates and that the activity name passes the onsite check. For layout problems, check the category of each project.",
+  "summary_hash": "sha256:4a7f39ef27306bfa38b43edbe689414a48ba7197bd3bd23c3d19a7f3a9f42748"
+}

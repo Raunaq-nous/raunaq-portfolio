@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/model/identities.py",
+  "language": "Python",
+  "lines": 49,
+  "hash": "sha256:51a73f2e58fa5bb4d0075e25af8e64a3cf4bdb129b4d74b4e55215c6ab3e6d03",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this file to confirm that ids stay stable over time.",
+      "The design relies on 20 hex characters being collision-free, which is not checked here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SHA-256",
+      "meaning": "A fixed method that turns any text into a fixed-length code, so the same input always gives the same code."
+    },
+    {
+      "term": "Hash",
+      "meaning": "The result of running text through a method such as SHA-256."
+    },
+    {
+      "term": "Unicode normalisation (NFC)",
+      "meaning": "A standard way of writing accented or combined characters so the same text compares equal."
+    },
+    {
+      "term": "Opaque id",
+      "meaning": "An identifier whose internal parts are not meant to be read; it is only used to match things."
+    },
+    {
+      "term": "Semantic slot",
+      "meaning": "The named position a part occupies within its asset."
+    },
+    {
+      "term": "Instance key",
+      "meaning": "A name that picks out one specific asset among several of the same kind."
+    }
+  ],
+  "depends_on": [
+    "Python standard library: hashlib, json, unicodedata"
+  ],
+  "used_by": [
+    "schedule3d.model.grounding_assembly",
+    "schedule3d.model.contracts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "969a2c42dc5d0b36",
+      "title": "Imports for hashing and text",
+      "what": "Brings in the tools for hashing, JSON text and Unicode normalisation. Nothing visible to the user happens here.",
+      "why": "Likely reason: the standard library provides a stable way to build fingerprints of text.",
+      "watch_out": ""
+    },
+    {
+      "start": 10,
+      "end": 19,
+      "kind": "function",
+      "name": "_identity",
+      "id": "s2",
+      "hash": "de9e3189d5a39252",
+      "title": "Core id builder",
+      "what": "Makes one id from a kind name and a set of key texts. It normalises each key, rejects blank or very long keys, hashes the group and keeps the first 20 hex characters after a kind prefix.",
+      "why": "The code comments say case and opaque ids are preserved on purpose, so merging two similar names is always an explicit decision by the caller.",
+      "watch_out": "Changing the normalisation or the hash length changes every id in every saved file."
+    },
+    {
+      "start": 20,
+      "end": 24,
+      "kind": "function",
+      "name": "asset_identity",
+      "id": "s3",
+      "hash": "81042f34315790b6",
+      "title": "Id for a physical asset",
+      "what": "Makes the id for one physical asset from the project id, the asset key and the instance key. The id stays the same while evidence and geometry change.",
+      "why": "The docstring says an asset's key and slot persist as the evidence evolves, so references to the asset keep working.",
+      "watch_out": "The asset key and instance key must stay the same across versions, because any change makes a new asset."
+    },
+    {
+      "start": 25,
+      "end": 28,
+      "kind": "function",
+      "name": "part_identity",
+      "id": "s4",
+      "hash": "e53fd33e97a731cb",
+      "title": "Id for one part of an asset",
+      "what": "Makes the id for one part inside an asset from the asset id and the part's semantic slot.",
+      "why": "Likely reason: parts are referenced by slot name so the same part keeps its id across rebuilds.",
+      "watch_out": "Renaming a semantic slot creates a new part id and breaks any saved reference to the old one."
+    },
+    {
+      "start": 29,
+      "end": 33,
+      "kind": "function",
+      "name": "inventory_subject",
+      "id": "s5",
+      "hash": "1dc82b8407ace06a",
+      "title": "Id for an inventory count",
+      "what": "Makes the id for a count of one asset class within a project, independent of the individual assets' other claims.",
+      "why": "The docstring says the count is a class-level claim that stands on its own.",
+      "watch_out": "The id depends only on project and asset key, so two counts with the same key collide by design."
+    },
+    {
+      "start": 34,
+      "end": 49,
+      "kind": "function",
+      "name": "part_property_subject",
+      "id": "s6",
+      "hash": "e4d63b7c375f8979",
+      "title": "Id for a property claim",
+      "what": "Makes the id for a claim that a specific dimension or property applies either to a whole class or to one named asset instance. The docstring warns that a raw dimension is not automatically assigned to a model axis, and creating the claim needs a review.",
+      "why": "The docstring says claims need reviewed applicability and retained source basis, so the id is the anchor for that record.",
+      "watch_out": "Adding or dropping the instance key changes the id, so a claim moved between class and instance scope becomes a different claim."
+    }
+  ],
+  "explained_at": "2026-11-12T01:55:38+00:00",
+  "explained_by": "haiku",
+  "summary": "Creates stable, opaque text ids for assets, parts, inventory counts and property claims by hashing their key names.",
+  "purpose": "Keeps references between saved parts of the model valid even when source files change order, version or wording of their bytes.",
+  "why": "The docstring states the ids are independent of source bytes, version and order. This is the stated reason for the design.",
+  "how": "Each public function joins its key texts into a fixed group. The shared helper normalises each key to a standard Unicode form, rejects blank or very long keys, serialises the group as JSON, hashes it with SHA-256, keeps the first 20 hex characters and adds a kind prefix.",
+  "inputs": "Text keys such as the project id, asset key, instance key, semantic slot and parameter name.",
+  "outputs": "Text ids such as an asset, part, inventory or property id, each with a kind prefix and 20 hex characters.",
+  "risks": "Changing a key, the normalisation, the key order or the length of the hash changes every affected id and breaks saved references. Keys are case-sensitive on purpose, so spelling differences create new ids. Blank or over-long keys raise errors.",
+  "debug": "If references break after an update, compare the ids produced for the same inputs before and after. Check whether a key's spelling, case or order changed. For an identity error, check the key length and whether any key is blank.",
+  "summary_hash": "sha256:51a73f2e58fa5bb4d0075e25af8e64a3cf4bdb129b4d74b4e55215c6ab3e6d03"
+}

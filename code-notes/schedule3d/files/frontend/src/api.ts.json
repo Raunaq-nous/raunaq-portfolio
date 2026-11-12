@@ -1,0 +1,441 @@
+{
+  "schema_version": 1,
+  "path": "frontend/src/api.ts",
+  "language": "TypeScript",
+  "lines": 347,
+  "hash": "sha256:4db18036fd174961179b104ff3e9892f776ab7b4ac4b70af1e5e9a9d108069e6",
+  "area": "frontend-src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the top of the file was visible.",
+      "The packet shows no automatic checks for this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Endpoint",
+      "meaning": "a web address the server listens on for a specific request"
+    },
+    {
+      "term": "Retry",
+      "meaning": "sending the same request again after a short wait"
+    },
+    {
+      "term": "HTTP 409",
+      "meaning": "a server reply meaning the data changed somewhere else first"
+    },
+    {
+      "term": "Type-only import",
+      "meaning": "a import used only to describe data shapes, adding no code when the app runs"
+    }
+  ],
+  "depends_on": [
+    "frontend/src/types.ts",
+    "frontend/src/ProgrammeSceneView.tsx"
+  ],
+  "used_by": [
+    "frontend/src/SavedApplication.tsx",
+    "frontend/src/api.test.ts",
+    "frontend/src/ParametricEditor.tsx (calls functions with the same names; the import line was not shown)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "07fffe5915335d1c",
+      "title": "Type imports for the client",
+      "what": "Brings in the data shapes for analysis reports, jobs, programmes, project models and timelines, plus the scene type.",
+      "why": "Likely reason: the file only needs shapes to describe requests and replies.",
+      "watch_out": "Type checks happen at build time, so they do not check what the server actually sends."
+    },
+    {
+      "start": 13,
+      "end": 19,
+      "kind": "class",
+      "name": "ApiError",
+      "id": "s2",
+      "hash": "7c2ed908473603b1",
+      "title": "Error type for failed requests",
+      "what": "Defines a custom error that carries the HTTP status code, so screens can react differently to failures such as the conflict status used when a model changed in another session.",
+      "why": "Likely reason: the save screen must tell a conflict apart from other failures.",
+      "watch_out": "The status is optional, so network failures have none and must not be checked as if one exists."
+    },
+    {
+      "start": 20,
+      "end": 34,
+      "kind": "function",
+      "name": "checked, RequestOptions",
+      "id": "s3",
+      "hash": "ad6a3bd174e8be2b",
+      "title": "Turning server errors into messages",
+      "what": "Converts a failed server reply into an error that shows the status code, status text and any detail from the server. A successful reply is read as JSON. The RequestOptions type lets a caller pass a cancel signal.",
+      "why": "Likely reason: the server's explanation should reach the user rather than a bare failure code.",
+      "watch_out": "Detailed server messages can be long JSON text, so the screen may show raw structure."
+    },
+    {
+      "start": 35,
+      "end": 40,
+      "kind": "type",
+      "name": "UploadOptions",
+      "id": "s4",
+      "hash": "934725682781ed21",
+      "title": "Options for an upload",
+      "what": "Describes the optional extras for an upload: a progress callback, extra schedule files to combine with the main file, and a cancel signal.",
+      "why": "Likely reason: the upload screen needs progress and extra schedules, which plain reads do not provide.",
+      "watch_out": ""
+    },
+    {
+      "start": 41,
+      "end": 43,
+      "kind": "value",
+      "name": "READ_RETRY_DELAYS_MS",
+      "id": "s5",
+      "hash": "6ab7587ad95e0352",
+      "title": "Wait times between read retries",
+      "what": "Lists the pauses of about half a second, one and a half seconds, and four seconds before each repeat of a read whose connection dropped. That makes four attempts in total.",
+      "why": "The comment says these waits apply only when no HTTP response arrived. Reason for the exact values is not stated in the code.",
+      "watch_out": "The retry tests depend on these exact values and on the count of four attempts."
+    },
+    {
+      "start": 44,
+      "end": 50,
+      "kind": "function",
+      "name": "wait",
+      "id": "s6",
+      "hash": "824ac7c074ebf0a5",
+      "title": "Pause that stops when cancelled",
+      "what": "Waits for a set time, or returns early if the user cancels. It is the pause between read retries.",
+      "why": "Likely reason: a stop button should not have to wait out a retry delay.",
+      "watch_out": "It returns normally when cancelled rather than throwing, so the caller must check for cancellation itself."
+    },
+    {
+      "start": 51,
+      "end": 67,
+      "kind": "function",
+      "name": "request",
+      "id": "s7",
+      "hash": "68dd277c3ae8b567",
+      "title": "Shared request wrapper with retries",
+      "what": "Used by most calls to the server. It repeats reads (GET) that lost their connection, up to three times, and never repeats anything that changes data. It stops retrying when the user cancels.",
+      "why": "The comments say the time limits are for disconnected requests, and only reads are safe to repeat.",
+      "watch_out": "Only the GET method is repeated, so any call that changes saved data must use a different method."
+    },
+    {
+      "start": 68,
+      "end": 87,
+      "kind": "function",
+      "name": "requestOnce",
+      "id": "s8",
+      "hash": "806475756e458972",
+      "title": "One attempt with a time limit",
+      "what": "Makes a single request, applies a time limit, and turns any failure into a message naming the method, address and reason. It reports no response when the time limit is reached, and says so when the user stopped the request.",
+      "why": "Likely reason: one place for the time limit and error text keeps every call consistent.",
+      "watch_out": "The time limit also covers reading the response body, so a very large valid reply needs a longer limit."
+    },
+    {
+      "start": 88,
+      "end": 96,
+      "kind": "function",
+      "name": "uploadSchedule",
+      "id": "s9",
+      "hash": "12007013bcc93538",
+      "title": "Uploading one schedule",
+      "what": "Starts analysis of one schedule file by sending it to the job endpoint. It passes along the upload options, including progress and extra schedules.",
+      "why": "Likely reason: a small wrapper lets callers name the upload type without repeating the endpoint.",
+      "watch_out": ""
+    },
+    {
+      "start": 97,
+      "end": 100,
+      "kind": "function",
+      "name": "uploadPackage",
+      "id": "s10",
+      "hash": "fd3dbd7451391fba",
+      "title": "Uploading a project package",
+      "what": "Starts analysis of one project ZIP by sending it to the package endpoint. It accepts no extra documents and no extra schedules.",
+      "why": "Likely reason: packages carry their own related files, so the extra fields are left empty.",
+      "watch_out": "A package cannot be sent with attached documents through this function, because the parameters leave them out."
+    },
+    {
+      "start": 101,
+      "end": 129,
+      "kind": "function",
+      "name": "uploadInput",
+      "id": "s11",
+      "hash": "46900bfb8adfb965",
+      "title": "Upload with progress and no automatic retry",
+      "what": "Sends the file and any extras as a form to create a job, reports how much has been sent, and allows up to 30 minutes for the reply. If the connection drops or the upload stops, it reports that job creation could not be confirmed and does not resend.",
+      "why": "Likely reason: an older browser request type is used because it can report upload progress. Resending could create a duplicate job.",
+      "watch_out": "A dropped upload may still have created a job on the server, so check the job list before sending the file again."
+    },
+    {
+      "start": 130,
+      "end": 133,
+      "kind": "function",
+      "name": "getJob",
+      "id": "s12",
+      "hash": "6fe349cd6fb3046d",
+      "title": "Fetching a job's status",
+      "what": "Reads the current state of one job, including its status and project list.",
+      "why": "Reason not stated in the code. It is a plain read.",
+      "watch_out": ""
+    },
+    {
+      "start": 134,
+      "end": 139,
+      "kind": "function",
+      "name": "cancelJob",
+      "id": "s13",
+      "hash": "a2de85eb0caab2d3",
+      "title": "Requesting a job cancel",
+      "what": "Asks the server to cancel a job. It is a change, so it is sent once and never repeated.",
+      "why": "The code never repeats changes because they alter saved data. Reason for this particular call is not stated.",
+      "watch_out": "If the connection drops, the error does not say whether the job stopped, so check its status."
+    },
+    {
+      "start": 140,
+      "end": 143,
+      "kind": "function",
+      "name": "getReport",
+      "id": "s14",
+      "hash": "2963d7048724afb1",
+      "title": "Fetching the ingestion report",
+      "what": "Reads the report saved for a job, which describes what was found when the schedule was read.",
+      "why": "Reason not stated in the code. It is a plain read.",
+      "watch_out": ""
+    },
+    {
+      "start": 144,
+      "end": 147,
+      "kind": "function",
+      "name": "getProgrammeScene",
+      "id": "s15",
+      "hash": "f35b84debf35f234",
+      "title": "Reading the saved 3D programme",
+      "what": "Loads the combined 3D programme already built for a job, allowing up to two minutes. It only reads, so it never builds anything.",
+      "why": "Likely reason: the saved scene can be large, so it gets a longer limit than ordinary reads.",
+      "watch_out": "On a slow connection the screen can wait up to two minutes before it shows an error."
+    },
+    {
+      "start": 148,
+      "end": 152,
+      "kind": "function",
+      "name": "buildProgrammeScene",
+      "id": "s16",
+      "hash": "e8fa1fd1a3567c37",
+      "title": "Building the combined 3D programme",
+      "what": "Asks the server to build the combined 3D programme and create any missing project models. This changes saved data and can take a long time.",
+      "why": "The comment says it generates missing models, so it is treated as a change and never repeated.",
+      "watch_out": "It uses the default 15 second limit, so a long build can report a timeout while the server keeps working, and the screen will not show that the build finished."
+    },
+    {
+      "start": 153,
+      "end": 171,
+      "kind": "function",
+      "name": "getProgramme",
+      "id": "s17",
+      "hash": "3b11a95236ef7266",
+      "title": "Loading one page of the programme",
+      "what": "Loads a page of activities and relationships for the programme, optionally for one project. It allows two minutes because the server prepares coverage and link summaries on first load.",
+      "why": "The comment says the first load computes complete coverage and link summaries, which is slow.",
+      "watch_out": "The offsets choose which slice of rows arrives, so a wrong offset shows different rows without any error."
+    },
+    {
+      "start": 172,
+      "end": 184,
+      "kind": "function",
+      "name": "applyMapping",
+      "id": "s18",
+      "hash": "aaeabfbbf41f1fa1",
+      "title": "Saving a column mapping",
+      "what": "Sends the user's choice of which spreadsheet column holds each field to the job. It is a change, so it is sent once.",
+      "why": "Likely reason: the mapping is saved so the server can read the schedule correctly. Anything beyond that is not stated in the code.",
+      "watch_out": "If it fails, nothing retries it, so the user must submit the mapping again."
+    },
+    {
+      "start": 185,
+      "end": 200,
+      "kind": "function",
+      "name": "generateProject",
+      "id": "s19",
+      "hash": "7f39fcd489427d0a",
+      "title": "Generating one project model",
+      "what": "Asks the server to build the 3D model for one project, allowing 30 minutes. It is a change and is never repeated.",
+      "why": "Likely reason: building a model can be slow, so it gets a much longer limit than reads.",
+      "watch_out": "The server may still finish the build after the screen shows a timeout."
+    },
+    {
+      "start": 201,
+      "end": 208,
+      "kind": "function",
+      "name": "getSavedModel",
+      "id": "s20",
+      "hash": "ed72fa423d248249",
+      "title": "Reading one saved project model",
+      "what": "Reads the saved model for one project, allowing up to two minutes including download time. It only reads and never builds.",
+      "why": "The comment says saved models can be large and remote connections are slow.",
+      "watch_out": "A very large model on a slow link can hit the two minute limit and show an error even though the saved file is fine."
+    },
+    {
+      "start": 209,
+      "end": 216,
+      "kind": "type",
+      "name": "SpecificationEdit",
+      "id": "s21",
+      "hash": "ff559e6602ed34ad",
+      "title": "Shape of one component edit",
+      "what": "Describes one change a user can save to a component: its size, position, rotation or primitive shape. Every field is optional, so an edit can touch only some values.",
+      "why": "Likely reason: the editor sends only what the user changed.",
+      "watch_out": "Which fields the server requires is not visible here, and the field names must match what the server expects."
+    },
+    {
+      "start": 217,
+      "end": 220,
+      "kind": "function",
+      "name": "projectEndpoint",
+      "id": "s22",
+      "hash": "716f0d6a02d0454e",
+      "title": "Building the address for one project",
+      "what": "Builds the start of the address for one project in one job, with names encoded so spaces and slashes are safe in a web address.",
+      "why": "Likely reason: several save and read calls share this address, so it is written once.",
+      "watch_out": "Changing this path changes every project call at once."
+    },
+    {
+      "start": 221,
+      "end": 227,
+      "kind": "function",
+      "name": "createParametricModel",
+      "id": "s23",
+      "hash": "2db80f572824aa00",
+      "title": "Creating the editable model",
+      "what": "Asks the server to create the editable parametric model for a project, sending the current revision number. It allows 30 minutes and includes login cookies.",
+      "why": "The revision number lets the server refuse changes made to an out-of-date copy. Reason for sending cookies is not stated in the code.",
+      "watch_out": "A stale revision is refused, so the screen must reload the project before trying again."
+    },
+    {
+      "start": 228,
+      "end": 235,
+      "kind": "function",
+      "name": "patchSpecifications",
+      "id": "s24",
+      "hash": "ef9843436d495cca",
+      "title": "Saving specification edits",
+      "what": "Sends between 1 and 2,048 component edits in one save, with the revision number, allowing two minutes. Empty or oversized lists are refused before anything is sent.",
+      "why": "Likely reason: the browser checks the limit first so the user gets a clear message without waiting on the server.",
+      "watch_out": "The 2,048 limit lives in the browser, so if the server limit changes, this must change too."
+    },
+    {
+      "start": 236,
+      "end": 244,
+      "kind": "function",
+      "name": "refineModelEvidence",
+      "id": "s25",
+      "hash": "ce1bc00a80d3e383",
+      "title": "Adding evidence files",
+      "what": "Uploads extra documents to refine a project's model, with the revision number, allowing 30 minutes. It is a change and is never repeated.",
+      "why": "Likely reason: the documents are sent as a form because they are files.",
+      "watch_out": "After a stale revision or a dropped connection, the user cannot tell whether the files were accepted, so check the model before re-sending."
+    },
+    {
+      "start": 245,
+      "end": 263,
+      "kind": "function",
+      "name": "getTimelineLanePage",
+      "id": "s26",
+      "hash": "d1432e9e0d59ab65",
+      "title": "Reading one timeline page",
+      "what": "Loads one page of timeline activities for a project using a plain request rather than the shared wrapper. It returns the page or an error.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "It skips the shared wrapper, so it has no 15 second limit, no cancel support and no automatic retry, unlike other reads."
+    },
+    {
+      "start": 264,
+      "end": 287,
+      "kind": "function",
+      "name": "getAdjacentTimelineEvent",
+      "id": "s27",
+      "hash": "19c172d009670c15",
+      "title": "Finding the nearest timeline event",
+      "what": "Asks the server for the event just before or just after a point in time, for a date basis such as planned or actual. It uses a plain request, like the timeline page.",
+      "why": "Reason for the plain request is not stated in the code.",
+      "watch_out": "It has the same missing limit and cancel support as the timeline page, and the time is sent without a time zone."
+    },
+    {
+      "start": 288,
+      "end": 296,
+      "kind": "function",
+      "name": "scheduleLocalTimestamp",
+      "id": "s28",
+      "hash": "eecab0caa209d5a8",
+      "title": "Converting time to schedule text",
+      "what": "Turns a point in time into text with the date and time as the browser's clock shows them, without a zone. The server can then compare it with the schedule's dates.",
+      "why": "Likely reason: schedule dates in the file carry no time zone, so the time is sent in the same plain form.",
+      "watch_out": "The result depends on the computer's time zone, so two users may send different text for the same moment."
+    },
+    {
+      "start": 297,
+      "end": 319,
+      "kind": "function",
+      "name": "exportUrl",
+      "id": "s29",
+      "hash": "60cb40fdd1c10a9c",
+      "title": "Making export download addresses",
+      "what": "Gives the address of one export for a project: the offline HTML, the audit ZIP, the conceptual IFC, or the ALICE JSON.",
+      "why": "Likely reason: downloads are plain links, so the address is built here and the browser fetches the file.",
+      "watch_out": "Any kind that is not matched falls through to the ALICE JSON address, so a typo downloads the wrong file."
+    },
+    {
+      "start": 320,
+      "end": 328,
+      "kind": "function",
+      "name": "deleteAssemblyTemplate",
+      "id": "s30",
+      "hash": "3300c2fb18cacc35",
+      "title": "Deleting an assembly template",
+      "what": "Sends a delete for one saved template in a project, with the revision number and an encoded template name. It allows two minutes.",
+      "why": "It is a change, so the code sends it once.",
+      "watch_out": "The server refuses if the revision is out of date, so the caller must reload before retrying."
+    },
+    {
+      "start": 329,
+      "end": 338,
+      "kind": "function",
+      "name": "saveAssembly",
+      "id": "s31",
+      "hash": "e9bb3edc51874f5a",
+      "title": "Saving a component's assembly",
+      "what": "Saves what one component is built from. The assembly is either a list of parts or the id of a saved template, sent with the component id and revision.",
+      "why": "Likely reason: one call covers both a custom build and a reused template, so the body changes shape depending on which is sent.",
+      "watch_out": "The caller must give either parts or a template id, and the revision must be current."
+    },
+    {
+      "start": 339,
+      "end": 347,
+      "kind": "function",
+      "name": "saveAssemblyTemplate",
+      "id": "s32",
+      "hash": "fc3bbdb2f3ec844e",
+      "title": "Saving a reusable template",
+      "what": "Saves a named set of parts as a template in the project. Passing an existing template id most likely updates that template rather than adding a new one.",
+      "why": "Likely reason: the same call creates new templates and updates saved ones.",
+      "watch_out": "Leaving out the template id most likely creates a new template, so updating the wrong copy is possible if the id is lost."
+    }
+  ],
+  "explained_at": "2026-11-12T02:22:05+00:00",
+  "explained_by": "haiku",
+  "summary": "Client code that sends requests from the browser to the app's server and returns results. Only the top of the file was visible.",
+  "purpose": "Gives the rest of the app one place to ask the server for data and to send changes.",
+  "why": "Likely reason: keeps server addresses and error handling in one file.",
+  "how": "Defines an error type and request helpers, then lists functions for uploads, jobs, reports, programme data, saved models and specification changes. Only the first 19 lines were visible in full.",
+  "inputs": "Not visible beyond the type imports.",
+  "outputs": "Not visible in this packet.",
+  "risks": "Only the top was visible, and the retry behaviour is only named in the outline, not seen. Changes to the request helpers affect every screen.",
+  "debug": "Check the browser network log for the failing request and its status code, then compare with the function that sent it.",
+  "summary_hash": "sha256:4db18036fd174961179b104ff3e9892f776ab7b4ac4b70af1e5e9a9d108069e6"
+}

@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/packages/office.py",
+  "language": "Python",
+  "lines": 344,
+  "hash": "sha256:8c65eacfe2ff1a688c9df1c5dd5e67e350771bbfe7fb0cdfd979440398519c25",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test or other evidence of correct behaviour is visible in the packet.",
+      "Saved formula values are not validated, so spreadsheet numbers are unverified.",
+      "Strict structure checks may reject real files that use less common layouts."
+    ]
+  },
+  "terms": [
+    {
+      "term": "OOXML",
+      "meaning": "the open XML format used by modern Office files, which is really a ZIP archive of XML parts"
+    },
+    {
+      "term": "ZIP",
+      "meaning": "a compressed container file that holds several parts"
+    },
+    {
+      "term": "XML",
+      "meaning": "a text format with nested tags used to store structure"
+    },
+    {
+      "term": "relationship",
+      "meaning": "a link inside an Office file that says which part another part refers to"
+    },
+    {
+      "term": "shared strings",
+      "meaning": "a table of text that cells refer to by number"
+    },
+    {
+      "term": "formula cache",
+      "meaning": "the last calculated value that a spreadsheet saved next to a formula"
+    },
+    {
+      "term": "defusedxml",
+      "meaning": "a safe XML reader that refuses tricks such as oversized or self-referencing content"
+    }
+  ],
+  "depends_on": [
+    "defusedxml",
+    "schedule3d.packages.archive",
+    "schedule3d.packages.zip_stream",
+    "posixpath",
+    "zipfile",
+    "re"
+  ],
+  "used_by": [
+    "backend/schedule3d/packages/extraction.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 27,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c425fcce7176b84d",
+      "title": "File purpose, limits and namespaces",
+      "what": "States that Office files are read without running anything. Sets the size limits: 160 MiB of unpacked data, 32 MiB of XML, and 200,000 cells. Records the XML namespace names used to find elements in each Office format.",
+      "why": "The limits protect the app from oversized or hostile files, and the docstring states the no-execution rule.",
+      "watch_out": "A namespace name typed wrongly makes every lookup find nothing, so the reader returns empty results without an error."
+    },
+    {
+      "start": 28,
+      "end": 65,
+      "kind": "function",
+      "name": "xml_parts",
+      "id": "s2",
+      "hash": "57c0d2c1d3a8c22b",
+      "title": "Reading and checking each archive member",
+      "what": "Opens the Office archive and checks its index first. Then goes through each member, refusing duplicate or colliding names, encrypted or unusual compression, and budget overruns. XML and relationship members are parsed with the safe reader. Other members are only listed as not read.",
+      "why": "Likely reason: checking every member before parsing blocks tricks such as zip bombs and crafted names.",
+      "watch_out": "The safe XML reader is what stops hostile XML. Replacing it with a plain reader would remove that protection."
+    },
+    {
+      "start": 66,
+      "end": 69,
+      "kind": "function",
+      "name": "_text",
+      "id": "s3",
+      "hash": "0c7b664940bdb55c",
+      "title": "Joining text inside an element",
+      "what": "Collects all the text pieces inside an element in a given namespace and joins them into one string. Used for cell text, paragraphs and slide text.",
+      "why": "Office stores text in many small pieces, and joining them restores the words.",
+      "watch_out": ""
+    },
+    {
+      "start": 70,
+      "end": 90,
+      "kind": "function",
+      "name": "_relationships",
+      "id": "s4",
+      "hash": "cac5400fb0122565",
+      "title": "Reading relationship links",
+      "what": "Reads a relationship part into a lookup keyed by identifier. Rejects a wrong root element, missing identifiers, duplicate identifiers, and missing type or target fields.",
+      "why": "Relationships tell the reader where each part of the file lives, so a bad one is refused rather than guessed.",
+      "watch_out": "One malformed relationship causes the whole file to be refused, not just that link."
+    },
+    {
+      "start": 91,
+      "end": 150,
+      "kind": "function",
+      "name": "_workbook (part 1)",
+      "id": "s5",
+      "hash": "faa0e0c76338d474",
+      "title": "Reading worksheet structure and cells",
+      "what": "Validates the workbook, its shared text table and its styles. Then goes through each worksheet, checking the relationship type, that the sheet target stays inside the workbook, and that sheet names and parts are unique. Walks every cell, enforcing the 200,000 cell limit and valid, unique cell addresses.",
+      "why": "The checks make sure each sheet points to a real worksheet inside the file, not somewhere outside it.",
+      "watch_out": "The 200,000 cell limit counts across all sheets, so a workbook with many sheets can be refused even when each sheet is small."
+    },
+    {
+      "start": 151,
+      "end": 202,
+      "kind": "function",
+      "name": "_workbook (part 2)",
+      "id": "s6",
+      "hash": "ca38357a8efa301e",
+      "title": "Turning cells into values",
+      "what": "Resolves each cell's shared or inline text, and records its style, number format, formula text, and whether its saved formula value is present, missing or an error. Each cell is marked as not validated. Merged ranges are listed per sheet.",
+      "why": "Keeps the saved formula value beside its formula so the reader can see it, while marking that it was never recalculated.",
+      "watch_out": "Values shown are the saved ones, not recalculated ones, so they may be out of date."
+    },
+    {
+      "start": 203,
+      "end": 262,
+      "kind": "function",
+      "name": "extract_office (part 1)",
+      "id": "s7",
+      "hash": "7cb307f62055978d",
+      "title": "Finding external links and reading Word parts",
+      "what": "Collects every external link from all relationship parts without following it. For Word, finds the main document and the headers and footers it refers to, checking that each relationship is internal and has the correct type. Then reads each Word part. Any part not referenced is recorded as not applicable.",
+      "why": "Recording links without following them keeps the file read-only and offline.",
+      "watch_out": "Unreferenced parts are recorded but skipped, so any content kept only in those parts is not read."
+    },
+    {
+      "start": 263,
+      "end": 322,
+      "kind": "function",
+      "name": "extract_office (part 2)",
+      "id": "s8",
+      "hash": "44045590dd71ac88",
+      "title": "Reading Word tables and PowerPoint slide order",
+      "what": "Reads each Word table row and cell as text, and marks the part as text and tables extracted. For PowerPoint, validates the presentation and each slide link, then lists slides in presentation order with their identifiers, rejecting duplicates.",
+      "why": "Slides are numbered in presentation order so that page numbers match what a person sees.",
+      "watch_out": "A duplicate slide identifier or link causes the whole file to be refused."
+    },
+    {
+      "start": 323,
+      "end": 344,
+      "kind": "function",
+      "name": "extract_office (part 3)",
+      "id": "s9",
+      "hash": "7238c5663303cd1e",
+      "title": "Slide text and returned results",
+      "what": "Reads the paragraphs of each slide and marks it as needing visual review, since layout and pictures are not checked. Refuses the file if the format is unsupported or it has no readable units. Returns the method, units, external links, unread binary parts and the limitation list.",
+      "why": "The limitation list is how the app tells users what the text reading does not prove.",
+      "watch_out": "The text reader cannot see images, so diagrams can be missed even when slides are marked for review."
+    }
+  ],
+  "explained_at": "2026-11-12T02:06:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads Excel, Word and PowerPoint files as text and structure, without running any formulas, macros or links, and with strict size and structure checks.",
+  "purpose": "Gets the readable content (worksheet cells, Word paragraphs and tables, slide text) from Office files so that the schedule and document claims can use it.",
+  "why": "Likely reason: reading the raw XML directly is safer than opening the file in Office, which could run macros or fetch links. The size limits protect against oversized or hostile files.",
+  "how": "1. Check the archive's index and member list. 2. Stream each member's bytes with size checks, and parse only XML and relationship members with the safe parser. 3. Record external links without following them. 4. For spreadsheets, read the sheet list, shared text, styles and cells, keeping saved formula values. 5. For Word, read the main document and its referenced headers and footers as paragraphs and tables. 6. For PowerPoint, read slides in presentation order. 7. Return the units and limitations.",
+  "inputs": "An Office file path, its extension (xlsx, xlsm, docx or pptx), and a checkpoint callback. Limits: 160 MiB of unpacked data, 32 MiB of XML, and 200,000 worksheet cells.",
+  "outputs": "A dictionary with the method name, a list of units (worksheets, Word parts, slides) holding their text and cells, external links, binary parts left unread, and limitation text.",
+  "risks": "Saved formula values are stored but not checked, so a displayed number may be stale. External links are listed but never followed. Strict checks reject a whole file over one odd relationship. Unusual extensions are refused.",
+  "debug": "Read the limitations, external_links and uninterpreted_binary_parts fields of the result. For a rejected file, the error text names the rule that failed, such as a budget, a relationship, or a duplicate name. Unzip the file to inspect its parts directly.",
+  "summary_hash": "sha256:8c65eacfe2ff1a688c9df1c5dd5e67e350771bbfe7fb0cdfd979440398519c25"
+}

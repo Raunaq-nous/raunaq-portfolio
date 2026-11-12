@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "path": "tests/test_assemblies.py",
+  "language": "Python",
+  "lines": 530,
+  "hash": "sha256:2148322afd4ffac328388b5a32eae505281bd1227a37ebe3574421dd09f13fd5",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Covers invalid input, identity, export and live API paths.",
+      "Checks that failed requests do not change the model."
+    ]
+  },
+  "terms": [
+    {
+      "term": "assembly",
+      "meaning": "a set of simple 3D parts attached to one component of the schedule"
+    },
+    {
+      "term": "template",
+      "meaning": "a saved set of part recipes that can be reused on several components"
+    },
+    {
+      "term": "identity",
+      "meaning": "the stable ID that tells the app which thing is which across saves"
+    },
+    {
+      "term": "evidence",
+      "meaning": "recorded facts with a source document that justify a value in the model"
+    },
+    {
+      "term": "IFC",
+      "meaning": "a standard file format for building models"
+    },
+    {
+      "term": "revision",
+      "meaning": "a counter that increases with each change, used to reject out of date edits"
+    },
+    {
+      "term": "sidecar",
+      "meaning": "a separate file saved beside the model that holds extra settings"
+    }
+  ],
+  "depends_on": [
+    "schedule3d.api.app",
+    "schedule3d.bim",
+    "schedule3d.evidence.contracts",
+    "schedule3d.export.service",
+    "schedule3d.ingest.service",
+    "schedule3d.model.assemblies",
+    "schedule3d.model.contracts",
+    "schedule3d.model.enrichment",
+    "schedule3d.model.identities",
+    "schedule3d.model.package_assemblies",
+    "schedule3d.model.service",
+    "schedule3d.model.specifications"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 54,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "36267044edf6e44c",
+      "title": "Test setup and sample schedule",
+      "what": "Imports all the tools the tests need and defines a small schedule with five activities.",
+      "why": "Gives the tests a predictable starting point.",
+      "watch_out": "Many tests depend on the exact activity names and dates."
+    },
+    {
+      "start": 55,
+      "end": 68,
+      "kind": "function",
+      "name": "recipe",
+      "id": "s2",
+      "hash": "388a6ff30facc238",
+      "title": "Simple part recipe helper",
+      "what": "Builds a recipe for one part, either a box or a cylinder, with size, position, rotation and repeat settings.",
+      "why": "Gives every test the same reusable part description.",
+      "watch_out": "Changing defaults here changes the numbers that many tests expect."
+    },
+    {
+      "start": 69,
+      "end": 79,
+      "kind": "function",
+      "name": "source_model",
+      "id": "s3",
+      "hash": "9f32b5225467ad32",
+      "title": "Model from schedule fixture",
+      "what": "Ingests the sample schedule into a database and builds the project model from it.",
+      "why": "Gives each test a fresh model to change.",
+      "watch_out": ""
+    },
+    {
+      "start": 80,
+      "end": 83,
+      "kind": "function",
+      "name": "equipment",
+      "id": "s4",
+      "hash": "e43aad7c8c0edb00",
+      "title": "Find equipment component helper",
+      "what": "Returns the first component in the equipment phase.",
+      "why": "Lets tests pick the component to assemble.",
+      "watch_out": "Fails if the schedule has no equipment phase."
+    },
+    {
+      "start": 84,
+      "end": 91,
+      "kind": "function",
+      "name": "assembly",
+      "id": "s5",
+      "hash": "9dc97e2d7ee55a93",
+      "title": "Assembly request helper",
+      "what": "Builds an assembly request for the equipment component using the given parts or default recipes.",
+      "why": "Saves repeating the same request in each test.",
+      "watch_out": ""
+    },
+    {
+      "start": 92,
+      "end": 145,
+      "kind": "function",
+      "name": "test_identity_siblings_repeats_edit_remove_scale_and_refinement",
+      "id": "s6",
+      "hash": "84b24b7317019b78",
+      "title": "Identity, siblings, repeats and refinement",
+      "what": "Checks that assembling adds parts without changing identities or schedule links, that repeats and edits keep part IDs, that scaling and removal work, and that saved refinements reload exactly and the source file is not changed.",
+      "why": "Covers the most common edit path end to end.",
+      "watch_out": "Several steps depend on the order of parts, so reordering would break them."
+    },
+    {
+      "start": 146,
+      "end": 180,
+      "kind": "function",
+      "name": "test_template_lifecycle_is_snapshot_not_identity_or_evidence",
+      "id": "s7",
+      "hash": "b6902ddcfcb13332",
+      "title": "Templates are snapshots",
+      "what": "Checks that saving a template copies its parts, later template edits do not change assigned components, deleting a template leaves components unchanged, and duplicate names are rejected.",
+      "why": "Ensures templates are reusable copies, not links.",
+      "watch_out": "Name uniqueness ignores case and spacing, so the check must stay in step with that rule."
+    },
+    {
+      "start": 181,
+      "end": 190,
+      "kind": "function",
+      "name": "test_invalid_recipes_fail_without_mutation",
+      "id": "s8",
+      "hash": "50f8219ac46fc383",
+      "title": "Invalid recipes are rejected",
+      "what": "Tries many bad recipes such as zero repeats, negative size, unknown shape and very large offsets, and checks each is rejected and the model is unchanged.",
+      "why": "Stops bad input from corrupting the model.",
+      "watch_out": "Each bad value needs its own case when the limits change."
+    },
+    {
+      "start": 191,
+      "end": 211,
+      "kind": "function",
+      "name": "test_definition_tampering_and_source_claims_cannot_bypass_contract",
+      "id": "s9",
+      "hash": "5b5a50f53663045f",
+      "title": "Tampering and source claims are blocked",
+      "what": "Checks that edited part geometry, forged source claims, a wrong asset key, duplicate recipe slots, and too many parts are all rejected.",
+      "why": "Prevents a user or a bad file from faking source data.",
+      "watch_out": "The limit of 4096 total repeats is a hard rule that the message must mention."
+    },
+    {
+      "start": 212,
+      "end": 240,
+      "kind": "function",
+      "name": "test_ifc_and_offline_preserve_same_expanded_geometry",
+      "id": "s10",
+      "hash": "4cef3fb308187fa5",
+      "title": "IFC and offline export match",
+      "what": "Exports the assembly to IFC and offline HTML and checks that every part appears in both with the same geometry.",
+      "why": "Makes sure exports show what the app shows.",
+      "watch_out": "Checks exact IFC text, so format changes need the expected text updated."
+    },
+    {
+      "start": 241,
+      "end": 287,
+      "kind": "function",
+      "name": "test_live_api_reopen_conflicts_refinement_and_atomic_rejections",
+      "id": "s11",
+      "hash": "aacf2f657ceb7577",
+      "title": "Live API reopen and rejections",
+      "what": "Through the API, saves a template, assigns it, checks conflicting and invalid saves are refused, confirms a new evidence upload does not change the assembly, and checks deletion.",
+      "why": "Confirms the web flow behaves like the model-level rules.",
+      "watch_out": "Revision numbers in each request must match the last saved change."
+    },
+    {
+      "start": 288,
+      "end": 347,
+      "kind": "function",
+      "name": "test_partial_source_edit_preserves_unedited_binding_grade_and_identity (part 1)",
+      "id": "s12",
+      "hash": "8ef8d411c5703c26",
+      "title": "Partial source edit keeps unedited bindings",
+      "what": "Builds a component with source evidence for two dimensions, edits only one, and checks the untouched dimensions keep their source while corrupted evidence is rejected. Also checks saved templates contain no source claims.",
+      "why": "Stops a partial edit from silently removing source support.",
+      "watch_out": "The corruption cases must each be rejected, so loosening any check weakens protection."
+    },
+    {
+      "start": 348,
+      "end": 360,
+      "kind": "function",
+      "name": "test_partial_source_edit_preserves_unedited_binding_grade_and_identity (part 2)",
+      "id": "s13",
+      "hash": "a6b49dbb3cad7b9d",
+      "title": "Partial source edit continued and template check",
+      "what": "Finishes the corruption checks for owner, value and review grade, then saves a template from the edited parts and checks it carries no source bindings.",
+      "why": "Completes the protection against forged or changed evidence.",
+      "watch_out": ""
+    },
+    {
+      "start": 361,
+      "end": 420,
+      "kind": "function",
+      "name": "test_shape_then_assembly_then_refinement_recovers_obsolete_override (part 1)",
+      "id": "s14",
+      "hash": "7608be97e5a5d26c",
+      "title": "Shape then assembly then refinement recovers override",
+      "what": "Through the API, changes the component's shape, assigns parts directly or through a template, optionally adds an obsolete override to a saved file, and repeats refinement twice, checking that the obsolete override is removed and geometry and mappings stay the same.",
+      "why": "Makes sure older saved files with a stale setting still load correctly.",
+      "watch_out": "The legacy case edits the saved file by hand, so the file layout must match what the app writes."
+    },
+    {
+      "start": 421,
+      "end": 426,
+      "kind": "function",
+      "name": "test_shape_then_assembly_then_refinement_recovers_obsolete_override (part 2)",
+      "id": "s15",
+      "hash": "8ec2305fc5623c15",
+      "title": "Mappings unchanged after recovery",
+      "what": "Confirms the activity mappings and component order match the state before the refinement.",
+      "why": "Ensures recovery does not reorder or re-link components.",
+      "watch_out": ""
+    },
+    {
+      "start": 427,
+      "end": 486,
+      "kind": "function",
+      "name": "test_independent_inventory_instances_never_receive_another_assets_assembly (part 1)",
+      "id": "s16",
+      "hash": "46be0dd72389a2b7",
+      "title": "Inventory instances stay separate",
+      "what": "Creates two kinds of inventory item with two units each, optionally renames their keys and IDs, assigns parts to one instance directly or through a template, and checks no other instance was given the parts.",
+      "why": "Stops one asset's assembly from being copied to another asset of the same kind.",
+      "watch_out": "The key rename rewrites IDs as text, so the ID format must stay consistent."
+    },
+    {
+      "start": 487,
+      "end": 494,
+      "kind": "function",
+      "name": "test_independent_inventory_instances_never_receive_another_assets_assembly (part 2)",
+      "id": "s17",
+      "hash": "aa6d87f4c658ae11",
+      "title": "Inventory instances stay separate, checks continued",
+      "what": "Confirms that only the chosen component changed, and that the activity mappings and stories are the same as before.",
+      "why": "Completes the proof that other items are untouched.",
+      "watch_out": ""
+    },
+    {
+      "start": 495,
+      "end": 530,
+      "kind": "function",
+      "name": "test_explicit_phase_link_updates_true_siblings_only",
+      "id": "s18",
+      "hash": "0c5892b81b9acd27",
+      "title": "Explicit phase link updates true siblings only",
+      "what": "Links an unrelated component into the same phase, applies an assembly to the chosen component, and checks only the true siblings in the same phase group are updated.",
+      "why": "Stops components from becoming siblings just because they share a grouping key or location.",
+      "watch_out": "The test relies on a manual link being set up correctly before applying the assembly."
+    }
+  ],
+  "explained_at": "2026-11-12T02:38:34+00:00",
+  "explained_by": "haiku",
+  "summary": "A large set of checks on assemblies, which are groups of simple 3D parts attached to a schedule component, covering saving, editing, templates, source evidence, export, and the live API.",
+  "purpose": "Protects the rules that keep assemblies correct: identities stay stable, edits affect only the intended component, invalid input is rejected without changing the model, and exports match.",
+  "why": "Assemblies carry numbers that come from schedules and evidence. A wrong edit could silently change geometry, so many tests guard the edge cases.",
+  "how": "Shared helpers build a small schedule and model, a recipe for simple parts, and an assembly request. Each test then applies an action such as saving a template, editing a part, reopening a job through the API, or exporting to IFC and offline HTML, and checks what changed and what did not. Several tests are repeated with different options. Failure cases check that the model is left unchanged.",
+  "inputs": "Synthetic schedule text, recipe dictionaries, evidence records and API requests built inside the tests.",
+  "outputs": "Pass or fail results. Temporary files only.",
+  "risks": "The tests use exact error messages, so rewording an error breaks them. Tests that create pieces by hand can drift from the real app if the model rules change.",
+  "debug": "Start with the failing test name, which describes the rule. Then check the helper that builds the model and the assembly request. If an export check fails, compare the exported text with the expected structure.",
+  "summary_hash": "sha256:2148322afd4ffac328388b5a32eae505281bd1227a37ebe3574421dd09f13fd5"
+}

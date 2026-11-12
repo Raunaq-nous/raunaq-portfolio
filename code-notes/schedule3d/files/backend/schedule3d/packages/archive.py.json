@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/packages/archive.py",
+  "language": "Python",
+  "lines": 292,
+  "hash": "sha256:e86223049bbc4d0d84af7c58c49b319cba91753711a87ede3763a9954cfce090",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet.",
+      "The file is long and the state is shared through a class, which makes review harder.",
+      "Limit values are fixed defaults with no documented rationale in the code."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ZIP",
+      "meaning": "A common file format that packs several files, and sometimes other ZIP files, into one archive."
+    },
+    {
+      "term": "Content hash",
+      "meaning": "A fingerprint computed from a file's bytes. Two files with the same hash are identical."
+    },
+    {
+      "term": "Path traversal",
+      "meaning": "A trick where an archive entry name like ../ tries to write outside the intended folder."
+    },
+    {
+      "term": "CRC",
+      "meaning": "A checksum stored in a ZIP entry that detects corrupted data."
+    },
+    {
+      "term": "Zip bomb",
+      "meaning": "A small archive that expands into a huge amount of data, used to exhaust disk or memory."
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/packages/zip_stream.py"
+  ],
+  "used_by": [
+    "backend/schedule3d/packages/claims.py",
+    "backend/schedule3d/packages/extraction.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "0fb68f4206e579f3",
+      "title": "File setup and shared helpers",
+      "what": "Brings in the tools for hashing, ZIP handling, file names and timing, plus helpers from the zip stream module. Sets the read size to one megabyte.",
+      "why": "Reading in fixed one-megabyte pieces keeps memory use steady for very large files.",
+      "watch_out": ""
+    },
+    {
+      "start": 24,
+      "end": 27,
+      "kind": "class",
+      "name": "ByteReader",
+      "id": "s2",
+      "hash": "f5437ee170c9149d",
+      "title": "Byte reader description",
+      "what": "Describes any object that can supply bytes when asked, which lets the reader work with files or other sources.",
+      "why": "Keeps the reading code independent of where the bytes come from.",
+      "watch_out": ""
+    },
+    {
+      "start": 28,
+      "end": 38,
+      "kind": "class",
+      "name": "ArchiveLimits",
+      "id": "s3",
+      "hash": "14a50ecbd40b8ccf",
+      "title": "Safety limits for packages",
+      "what": "Holds fixed caps for outer file size, single entry size, total unpacked size, number of entries, nesting depth, directory size and total processing time.",
+      "why": "Likely reason: caps stop oversized or malicious packages from using up storage, memory or time.",
+      "watch_out": "Raising any cap weakens protection, so changes should be deliberate and reviewed."
+    },
+    {
+      "start": 39,
+      "end": 43,
+      "kind": "function",
+      "name": "read_chunks",
+      "id": "s4",
+      "hash": "623fa35c4218ce41",
+      "title": "Reading file in chunks",
+      "what": "Yields a file's contents in one-megabyte pieces until it is exhausted.",
+      "why": "Lets the rest of the code handle large files without loading them whole.",
+      "watch_out": ""
+    },
+    {
+      "start": 44,
+      "end": 47,
+      "kind": "class",
+      "name": "PackageCancelled",
+      "id": "s5",
+      "hash": "12fb56dda047e28d",
+      "title": "Cancelled inventory signal",
+      "what": "A special error meaning the user stopped the inventory, kept separate from ordinary package errors.",
+      "why": "Lets callers tell a deliberate cancel apart from a genuinely bad package.",
+      "watch_out": "Code that catches general package errors may also catch this, so check the type when it matters."
+    },
+    {
+      "start": 48,
+      "end": 68,
+      "kind": "function",
+      "name": "safe_entry_name",
+      "id": "s6",
+      "hash": "c7c2c6695d97abae",
+      "title": "Checking entry names for safety",
+      "what": "Normalises each entry name and rejects absolute paths, control characters, empty or dot parts, names with reserved Windows characters or device names, and names longer than 2048 characters. Returns a clean relative path.",
+      "why": "Likely reason: a name that is safe on Linux can still be dangerous or unusable on Windows.",
+      "watch_out": "The control character check uses the raw name, while the other checks use the normalised name. Keep this in mind when changing the rules."
+    },
+    {
+      "start": 69,
+      "end": 106,
+      "kind": "class",
+      "name": "_Inventory (part 1)",
+      "id": "s7",
+      "hash": "c2f7364703d64d2d",
+      "title": "Inventory worker setup and progress reports",
+      "what": "Creates the worker that tracks counts, the list of references, the current phase, the cancel check, the time budget and progress messages.",
+      "why": "Keeping all the running state in one object lets the nested walk and store steps share it.",
+      "watch_out": "Progress messages are sent often, so a slow progress callback slows the whole inventory."
+    },
+    {
+      "start": 107,
+      "end": 137,
+      "kind": "method",
+      "name": "_Inventory: store",
+      "id": "s8",
+      "hash": "43cf61038c9dfc3b",
+      "title": "Storing bytes by content hash",
+      "what": "Writes incoming bytes to a temporary file while computing a hash and enforcing byte caps. Renames it to its hash if new, or deletes it if the same content already exists, and removes the temporary file on any failure.",
+      "why": "Storing by hash means identical files are kept once, and a failed write leaves no partial data behind.",
+      "watch_out": "The outer package bytes are not counted toward the total unpacked size, but nested content is."
+    },
+    {
+      "start": 138,
+      "end": 197,
+      "kind": "method",
+      "name": "_Inventory: walk",
+      "id": "s9",
+      "hash": "e7e7f891b24e3375",
+      "title": "Walking the ZIP directory and checking entries",
+      "what": "Validates the ZIP directory structure, rejects duplicate names, file and folder clashes, links, special files, encryption, unsupported compression and oversized entries, then checks the offsets and entry counts before any content is read.",
+      "why": "Checking the whole directory first means bad structure is rejected before any data is copied.",
+      "watch_out": "The entry budget is shared across all nested archives, so nested ZIPs use up the same allowance."
+    },
+    {
+      "start": 198,
+      "end": 231,
+      "kind": "class",
+      "name": "_Inventory (part 4)",
+      "id": "s10",
+      "hash": "15099e6fc4e3ff15",
+      "title": "Storing entries and recursing into nested ZIPs",
+      "what": "For each entry, stores its content by hash and records a reference with its path, chain of parent archives and disposition. Folders must hold no data. Nested ZIPs are walked again, and other files are marked as leaves, with the first identical copy noted.",
+      "why": "Recording every entry, including duplicates, keeps the receipt complete so no content is silently dropped.",
+      "watch_out": "Each entry's content is checked through the stored data, so changing the store step can break integrity checking."
+    },
+    {
+      "start": 232,
+      "end": 291,
+      "kind": "function",
+      "name": "inventory_package (part 1)",
+      "id": "s11",
+      "hash": "5b7863e29c588737",
+      "title": "Starting an inventory run",
+      "what": "Refuses output paths that go through links, creates a fresh output folder, stores the outer package, and walks it. On error it records the failing step and marks the current entry as failed, then re-raises the error.",
+      "why": "Requiring a new output folder means an earlier receipt is never overwritten.",
+      "watch_out": "The output folder must not already exist, so the caller must choose a unique path each time."
+    },
+    {
+      "start": 292,
+      "end": 292,
+      "kind": "function",
+      "name": "inventory_package (part 2)",
+      "id": "s12",
+      "hash": "e20068798b8ccc45",
+      "title": "Writing the inventory receipt",
+      "what": "Closes the inventory run by writing the receipt to inventory.json with counts and timing, whether the run succeeded or failed.",
+      "why": "Writing the receipt in a final step means failed runs still leave a record of what happened.",
+      "watch_out": "If the write itself fails, the original error details may be lost."
+    }
+  ],
+  "explained_at": "2026-11-12T02:03:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Safely unpacks and records the contents of a package ZIP file, including ZIPs nested inside it, without trusting file names, sizes or document contents.",
+  "purpose": "Lets the app accept a project package from outside and know exactly what is inside, while blocking tricks such as path traversal, link files, encrypted entries, zip bombs and name clashes on Windows.",
+  "why": "Likely reason: packages come from outside the app, so every size, depth and name is checked before anything is trusted.",
+  "how": "Copies the outer file into a content store named by its hash. Checks the ZIP directory for safe names, duplicates and budgets. Reads each entry, stores it by content hash, and recurses into nested ZIPs up to a set depth. Records a reference for every entry and writes an inventory receipt, even when processing fails.",
+  "inputs": "A package file, an empty output folder, optional limits, a cancel check and a progress callback.",
+  "outputs": "A receipt dictionary, also saved as inventory.json, listing every reference, its disposition, its hash and any error.",
+  "risks": "Changing limits changes the safety boundary. An existing output folder raises an error, so repeated runs need a new folder.",
+  "debug": "Open inventory.json in the output folder. Its error, error_phase and error_reference fields show where processing stopped.",
+  "summary_hash": "sha256:e86223049bbc4d0d84af7c58c49b319cba91753711a87ede3763a9954cfce090"
+}

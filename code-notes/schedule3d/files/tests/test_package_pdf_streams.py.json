@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "path": "tests/test_package_pdf_streams.py",
+  "language": "Python",
+  "lines": 112,
+  "hash": "sha256:eaf834646bef96143ef8edb6aebd79f5b6bd8bce8d71fdfc0acb3d87435a8b7b",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Tests were not run while writing these notes.",
+      "Only 6 of 8 sections were provided for this note, so the last two sections are not described."
+    ]
+  },
+  "terms": [
+    {
+      "term": "content stream",
+      "meaning": "the part of a PDF page that holds its drawing commands"
+    },
+    {
+      "term": "FlateDecode",
+      "meaning": "the standard compression used inside PDF streams"
+    },
+    {
+      "term": "operator",
+      "meaning": "a drawing command inside a PDF content stream"
+    },
+    {
+      "term": "chunk",
+      "meaning": "a small piece of data read in one step"
+    },
+    {
+      "term": "budget",
+      "meaning": "a limit on size that stops the reading"
+    },
+    {
+      "term": "checksum",
+      "meaning": "a number that reveals whether data was damaged"
+    }
+  ],
+  "depends_on": [
+    "schedule3d.documents.pdf_streams",
+    "pypdf",
+    "zlib",
+    "pytest"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c125de477ac75201",
+      "title": "Imports for PDF stream tests",
+      "what": "Brings in compression, the PDF object types, and the stream reader under test.",
+      "why": "Likely reason: the tests build PDF streams by hand.",
+      "watch_out": ""
+    },
+    {
+      "start": 10,
+      "end": 23,
+      "kind": "function",
+      "name": "metrics",
+      "id": "s2",
+      "hash": "2ed224be1c39d6b7",
+      "title": "Test helper for page stream measurement",
+      "what": "Takes raw content pieces, optionally compresses them, and runs the page measurement with set budgets, returning the measured values.",
+      "why": "Likely reason: avoids repeating the same setup in every test.",
+      "watch_out": "Tests assume the measurement returns a pair of values, so a change in that shape breaks them."
+    },
+    {
+      "start": 24,
+      "end": 33,
+      "kind": "function",
+      "name": "test_operator_boundaries_are_independent_of_chunk_size",
+      "id": "s3",
+      "hash": "6a34e04e4e0ae3e3",
+      "title": "Drawing commands counted the same at any chunk size",
+      "what": "Reads the same content with several chunk sizes, compressed and raw, and checks the byte total and command count stay identical.",
+      "why": "Likely reason: the reader works in pieces, and where a piece ends must not change the result.",
+      "watch_out": "A change to chunk handling could split a command across pieces and change the count."
+    },
+    {
+      "start": 34,
+      "end": 40,
+      "kind": "function",
+      "name": "test_empty_raw_and_flate_streams_and_exact_budget",
+      "id": "s4",
+      "hash": "55818a836d0925e6",
+      "title": "Empty streams and exact budgets",
+      "what": "Empty and short streams are measured correctly when the budget is exactly enough, and a total one byte over the budget raises an aggregate error.",
+      "why": "Likely reason: the budget must allow an exact fit and refuse any overflow.",
+      "watch_out": ""
+    },
+    {
+      "start": 41,
+      "end": 45,
+      "kind": "function",
+      "name": "test_highly_compressed_multiple_output_chunks",
+      "id": "s5",
+      "hash": "cd2a8a7b1e528e0a",
+      "title": "Highly compressed content read in pieces",
+      "what": "A half-megabyte run of repeated characters, compressed, is read in small chunks and gives the full byte count with one command.",
+      "why": "Likely reason: tiny compressed input can expand enormously, so reading must be done in pieces.",
+      "watch_out": ""
+    },
+    {
+      "start": 46,
+      "end": 65,
+      "kind": "function",
+      "name": "test_flate_integrity_not_successful_truncation",
+      "id": "s6",
+      "hash": "1e1e79bd19770a45",
+      "title": "Damaged compressed content fails",
+      "what": "A compressed stream that is truncated, has trailing extra data, or has a wrong checksum raises a value or zlib error instead of returning partial counts.",
+      "why": "Likely reason: partial counts would look like a successful reading.",
+      "watch_out": ""
+    },
+    {
+      "start": 66,
+      "end": 102,
+      "kind": "function",
+      "name": "test_unrecognized_content_filter_predictor_and_cancellation",
+      "id": "s7",
+      "hash": "dafc2544cd12e6f9",
+      "title": "Rejects unsupported PDF content and honors cancel",
+      "what": "Checks that the PDF page reader stops with a clear error when a page uses an image format it cannot handle (DCTDecode, a JPEG filter) or a compression setting called a predictor. It also checks that a cancel request raises an error and stops the work.",
+      "why": "Likely reason: unsupported PDF content should be rejected loudly rather than read wrongly, and cancellation must work so the app does not keep running on unwanted jobs.",
+      "watch_out": "The test matches error text containing the words filter and predictor, so rewording those error messages will break it."
+    },
+    {
+      "start": 103,
+      "end": 112,
+      "kind": "function",
+      "name": "test_vector_budget_is_actual",
+      "id": "s8",
+      "hash": "60c53c15b9815608",
+      "title": "Caps the number of drawing commands",
+      "what": "Checks that the reader counts PDF drawing commands such as m, S and re (line and rectangle operations) and stops with a vector operators error once the count passes the allowed limit of 2.",
+      "why": "Likely reason: a cap on drawing commands stops a very detailed drawing from using unlimited time or memory. Reason not stated in the code.",
+      "watch_out": "The limit counts real drawing commands, so changing how commands are counted changes when this error appears."
+    }
+  ],
+  "explained_at": "2026-11-12T02:43:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the reader that counts drawing commands in a PDF page's content streams, including compressed and damaged streams.",
+  "purpose": "Confirms the page measurement is accurate regardless of how the data is split or compressed, and that damaged or oversized streams are refused.",
+  "why": "Likely reason: PDF page content can be split into pieces and compressed, so reading must be consistent. Reason not stated in the code beyond this.",
+  "how": "Builds content streams by hand, optionally compresses them, runs the page measurement with byte and vector budgets, and compares the returned counts or expected errors.",
+  "inputs": "Raw content bytes, compression choice, chunk size settings, and budget values chosen in each test.",
+  "outputs": "Pass or fail results from pytest.",
+  "risks": "Only six of the eight sections needing notes were provided, so two parts of this file are not described here.",
+  "debug": "Check the failing test name, its chunk size and budget values, and whether the measurement helper returned the expected pair of values.",
+  "summary_hash": "sha256:eaf834646bef96143ef8edb6aebd79f5b6bd8bce8d71fdfc0acb3d87435a8b7b"
+}

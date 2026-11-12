@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "path": "frontend/src/useScheduleFlow.ts",
+  "language": "TypeScript",
+  "lines": 233,
+  "hash": "sha256:844a2348c14d758be4a39c3663918649daff468399d8384114b3e0bb8e26ece9",
+  "area": "frontend-src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for this hook is visible in the packet.",
+      "Many error and recovery paths exist, and their combined behaviour is hard to check by reading.",
+      "Status comparisons use free-text strings, so a server change can silently break a path."
+    ]
+  },
+  "terms": [
+    {
+      "term": "hook",
+      "meaning": "a React function that holds state and actions for a screen"
+    },
+    {
+      "term": "polling",
+      "meaning": "asking the server again and again for the current status until the work is done"
+    },
+    {
+      "term": "job",
+      "meaning": "one piece of background work on the server, such as an import or a model build"
+    },
+    {
+      "term": "POST",
+      "meaning": "a request that asks the server to create something; repeating it can create a duplicate"
+    }
+  ],
+  "depends_on": [
+    "frontend/src/api.ts",
+    "frontend/src/programme.ts",
+    "frontend/src/savedRoute.ts",
+    "frontend/src/DemoTour.ts",
+    "frontend/src/types.ts",
+    "frontend/src/uploadValidation.ts"
+  ],
+  "used_by": [
+    "Not visible in the packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "622760f3060f392b",
+      "title": "Imports for the upload flow",
+      "what": "Brings in the server calls, the validation rules, the data shapes and the small helpers the flow uses.",
+      "why": "The flow depends on all of these pieces.",
+      "watch_out": "Renaming a server call here means updating every place that uses it."
+    },
+    {
+      "start": 9,
+      "end": 20,
+      "kind": "type",
+      "name": "ProcessingStatus, Resume, pause",
+      "id": "s2",
+      "hash": "501f09b7993535a2",
+      "title": "Progress and resume shapes",
+      "what": "Describes the progress record shown to the user and the two kinds of resume point, one for an import and one for a model. It also defines a short wait helper.",
+      "why": "Lets the app reconnect to a job after an interruption without uploading again.",
+      "watch_out": "The resume point holds the job identifier, so losing it means the user must start over."
+    },
+    {
+      "start": 21,
+      "end": 77,
+      "kind": "function",
+      "name": "useScheduleFlow (part 1)",
+      "id": "s3",
+      "hash": "5d41742369df9bca",
+      "title": "State and the single-operation lock",
+      "what": "Holds the model, job, report, programme, progress, errors and resume point. It also runs one operation at a time, reads the job status with retries, and gives up after two retries.",
+      "why": "Comments say one operation owns the screen at a time, so two uploads never overlap.",
+      "watch_out": "The lock and the resume point are kept in both state and references. Both must be cleared together, or the screen can get stuck."
+    },
+    {
+      "start": 78,
+      "end": 137,
+      "kind": "method",
+      "name": "useScheduleFlow: for",
+      "id": "s4",
+      "hash": "aaa7251b002058f7",
+      "title": "Waiting for a job, generating a model, and building the programme",
+      "what": "Checks the job status until it reaches a final state or 30 minutes pass. Then it asks for model generation once, keeps watching the status, and shows either one model, a review step, or the programme view. It also starts the combined 3D programme build.",
+      "why": "Likely reason: generation is slow on the server, so the app watches it instead of waiting on one request. Sending the generation request only once avoids duplicate models.",
+      "watch_out": "If the generation request is lost, the code watches the status but does not send it again, so the user may need to resume rather than retry."
+    },
+    {
+      "start": 138,
+      "end": 197,
+      "kind": "function",
+      "name": "useScheduleFlow (part 3)",
+      "id": "s5",
+      "hash": "f751e7ab7a4e0193",
+      "title": "Upload, column mapping, project choice and resume",
+      "what": "Validates the chosen file, resets the screen, uploads the file and waits for the import. It also applies column mapping when needed, picks a project, pages through the programme and resumes an interrupted job.",
+      "why": "These are the steps a user takes after choosing a file.",
+      "watch_out": "The upload starts by clearing any earlier results, so an old model disappears as soon as a new upload begins."
+    },
+    {
+      "start": 198,
+      "end": 233,
+      "kind": "function",
+      "name": "useScheduleFlow (part 4)",
+      "id": "s6",
+      "hash": "5159a35be1ca5b69",
+      "title": "Cancel, reset, source selection and return values",
+      "what": "Asks the server to cancel the current job and waits for it to confirm. It also clears the screen for a reset or a new source, and returns every value and action for the screen.",
+      "why": "Lets the user stop long work safely and start again without leftover results.",
+      "watch_out": "Cancel does not finish until the server confirms. If it cannot confirm, the error says the job may still be running."
+    }
+  ],
+  "explained_at": "2026-11-12T02:37:05+00:00",
+  "explained_by": "haiku",
+  "summary": "A React hook that runs the upload and analysis of a schedule or project package, shows progress, and lets the user resume, cancel or retry the work.",
+  "purpose": "Acts as the controller for the import pipeline, so the screen only has to call a few actions and read the results.",
+  "why": "Comments say that one operation owns the screen at a time, and that retrying the status check never sends the upload again. This prevents duplicate uploads and duplicate model generation.",
+  "how": "Validate the file, upload it, poll the server until the job finishes, decide whether a project or a choice is needed, request model generation once, then show the result. Other actions map columns, pick a project, open the programme view, resume an interrupted job, or cancel a job.",
+  "inputs": "An optional offline model. From the screen: a file, a mode, optional attachments, an input kind (schedule or package), and extra schedules, plus clicks for cancel, reset, resume and retry.",
+  "outputs": "The current model, any pending review, the job, the import report, the programme, progress, any error text, a busy flag, and the action functions.",
+  "risks": "Polling stops after 30 minutes, and the job may still be running. Cancelling does not finish until the server confirms it. Retrying starts a brand new job rather than continuing the old one.",
+  "debug": "Read the error text first, since it states what happened and what to do. Use the resume state to see which job is held. In the browser's network view, look at the calls to the local server and the job identifier they use.",
+  "summary_hash": "sha256:844a2348c14d758be4a39c3663918649daff468399d8384114b3e0bb8e26ece9"
+}

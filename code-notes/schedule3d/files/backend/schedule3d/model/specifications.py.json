@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/model/specifications.py",
+  "language": "Python",
+  "lines": 234,
+  "hash": "sha256:d7ba944a633936475261360e1c03a8f2ecb1b63ccde52f84591ddee126b116f8",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Input limits are clearly stated, and errors are raised with messages.",
+      "Sections s11 to s14, covering loading and saving, were not provided, so their error handling is unknown.",
+      "No test or other evidence that the edits work was provided."
+    ]
+  },
+  "terms": [
+    {
+      "term": "revision number",
+      "meaning": "a counter that goes up each time the model changes, used to spot a save based on old data."
+    },
+    {
+      "term": "deep copy",
+      "meaning": "a full independent copy of a data structure, so changes to it do not touch the original."
+    },
+    {
+      "term": "provenance",
+      "meaning": "a note of where a value came from, here marking it as user-entered."
+    },
+    {
+      "term": "schema validation",
+      "meaning": "automatic checking that incoming data has the right fields and value ranges."
+    },
+    {
+      "term": "cylinder part",
+      "meaning": "a round piece of an assembly, which must keep equal width scaling in x and z to stay a valid cylinder."
+    },
+    {
+      "term": "primitive",
+      "meaning": "a basic built-in shape such as a box, cylinder or tower used to draw a component."
+    }
+  ],
+  "depends_on": [
+    "pydantic",
+    "schedule3d/model/contracts"
+  ],
+  "used_by": [
+    "Not visible in the packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a1a95e8ba6217da5",
+      "title": "Module purpose and allowed shapes",
+      "what": "Explains that user refinements are kept apart from generated models, and lists the equipment shapes that can be chosen by hand.",
+      "why": "The header states the separation, so generated models stay unchanged.",
+      "watch_out": "A shape name must be in this list before a manual edit can use it."
+    },
+    {
+      "start": 24,
+      "end": 27,
+      "kind": "class",
+      "name": "SpecificationConflict",
+      "id": "s2",
+      "hash": "55e723005bb6272e",
+      "title": "Conflict error",
+      "what": "The error raised when the model was changed in another session, so the user must reload before saving.",
+      "why": "Lets callers tell a stale-save conflict apart from other bad input.",
+      "watch_out": "Callers must catch this error specifically, or it looks like any other invalid input."
+    },
+    {
+      "start": 28,
+      "end": 34,
+      "kind": "class",
+      "name": "Dimensions",
+      "id": "s3",
+      "hash": "c9271b1c62a8fe20",
+      "title": "Size limits",
+      "what": "Checks that width, height and depth are positive numbers no larger than 100,000.",
+      "why": "Stops empty, negative or infinite sizes from entering the model.",
+      "watch_out": "Assets larger than 100,000 are refused, so the limit must be raised deliberately if needed."
+    },
+    {
+      "start": 35,
+      "end": 41,
+      "kind": "class",
+      "name": "Position",
+      "id": "s4",
+      "hash": "ba638e1eb41eccc0",
+      "title": "Position limits",
+      "what": "Checks that x, y and z positions fall within plus or minus one million.",
+      "why": "Likely reason: this keeps coordinates in a sensible range.",
+      "watch_out": "The position range is different from the size range, so do not copy one into the other."
+    },
+    {
+      "start": 42,
+      "end": 50,
+      "kind": "class",
+      "name": "ComponentEdit",
+      "id": "s5",
+      "hash": "73e2f7739a5cbbdd",
+      "title": "One requested component change",
+      "what": "Describes one change to one component: its id plus any new size, position, rotation or shape. Unknown fields are rejected.",
+      "why": "Rejecting extra fields catches typing mistakes in requests.",
+      "watch_out": "Only the component id is required, but a request with no change fields is refused later."
+    },
+    {
+      "start": 51,
+      "end": 55,
+      "kind": "class",
+      "name": "RevisionRequest",
+      "id": "s6",
+      "hash": "45332fe577dabd3b",
+      "title": "Revision number in a request",
+      "what": "Carries the revision number the user last saw, so the save can be checked against the current model.",
+      "why": "Protects against overwriting changes made in another session.",
+      "watch_out": "The number must match exactly, so any mismatch blocks the save."
+    },
+    {
+      "start": 56,
+      "end": 59,
+      "kind": "class",
+      "name": "SpecificationRequest",
+      "id": "s7",
+      "hash": "835abcf1bdbedfbc",
+      "title": "Save request",
+      "what": "A save request that holds the revision number and a list of between 1 and 2,048 component edits.",
+      "why": "Likely reason: limiting the batch size keeps each request bounded.",
+      "watch_out": "Larger batches must be split into several requests."
+    },
+    {
+      "start": 60,
+      "end": 64,
+      "kind": "function",
+      "name": "check_revision",
+      "id": "s8",
+      "hash": "c5b437e61d4df68e",
+      "title": "Revision check",
+      "what": "Stops a save when the model's revision number differs from the one the user had.",
+      "why": "Prevents a silent overwrite of someone else's change.",
+      "watch_out": "It compares only the number, not which fields changed."
+    },
+    {
+      "start": 65,
+      "end": 75,
+      "kind": "function",
+      "name": "manual_provenance",
+      "id": "s9",
+      "hash": "6eb461722b56acd7",
+      "title": "Label for user-entered values",
+      "what": "Creates the label that marks a value as typed in by a user, overriding the assumed value and not field-verified.",
+      "why": "So users and reviewers can tell manual values from measured ones.",
+      "watch_out": "Every manual change gets the same generic source text."
+    },
+    {
+      "start": 76,
+      "end": 135,
+      "kind": "function",
+      "name": "apply_edits (part 1)",
+      "id": "s10",
+      "hash": "a16377ef6813ea57",
+      "title": "Applying edits to a copy",
+      "what": "Applies the requested edits to a copy of the model. It checks that component ids are unique and known, requires at least one change, refuses shape changes on assemblies, and scales parts. It refuses cylinder parts that would be scaled unevenly.",
+      "why": "Likely reason: working on a copy leaves the original model untouched until the change is accepted.",
+      "watch_out": "Assemblies with cylinder parts need equal x and z scaling, and uneven values are refused."
+    },
+    {
+      "start": 136,
+      "end": 163,
+      "kind": "function",
+      "name": "apply_edits (part 2)",
+      "id": "s11",
+      "hash": "f2edf9e9ccf8c833",
+      "title": "Applying edits to dimensions and positions",
+      "what": "Continues the edit process by scaling the recipe's size and offset vectors when a resize is requested, then rebuilding the component's parts from its assembly recipe. It also records that the dimensions and position were set by a person, not by the evidence.",
+      "why": "Likely reason: a manual resize has to carry through to every part of a multi-part asset, not only the top-level size. The code comment says the arithmetic order is kept to match the recipe's own calculation.",
+      "watch_out": "The strict pairing of parts with recipe shapes raises an error if their counts differ, so changing an assembly recipe without updating its parts will fail here."
+    },
+    {
+      "start": 164,
+      "end": 198,
+      "kind": "function",
+      "name": "preserve_manual_values",
+      "id": "s12",
+      "hash": "001fcbfcf3f77924",
+      "title": "Keeping manual edits across re-extraction",
+      "what": "When the source model is regenerated from new evidence, this takes each component the user edited by hand and copies its parts, recipe, dimensions and provenance into the new model, so the manual work is not lost.",
+      "why": "The comments say topology, repeats and accepted recipes are manual decisions, so they must not be recalculated from the new evidence.",
+      "watch_out": "If a manually edited asset is missing from the new model, this raises an error and stops, so the user has to reconcile it explicitly."
+    },
+    {
+      "start": 199,
+      "end": 213,
+      "kind": "function",
+      "name": "load_refinement",
+      "id": "s13",
+      "hash": "e619d79c7953e360",
+      "title": "Loading saved specification edits",
+      "what": "Reads the saved specification sidecar file next to a model, but only if the model file has not changed since the edits were saved. Otherwise it stops with a conflict message asking for explicit reconciliation.",
+      "why": "The stored hash of the base model ties the saved edits to one exact generated model, so edits are never silently applied to a different model.",
+      "watch_out": "If the base model is regenerated, saved edits stop loading until someone reconciles them. Check the project identity error too, because a mismatched project is rejected."
+    },
+    {
+      "start": 214,
+      "end": 234,
+      "kind": "function",
+      "name": "save_refinement",
+      "id": "s14",
+      "hash": "2f0c7ba5ad959ebc",
+      "title": "Saving specification edits safely",
+      "what": "Writes the edited model and its revision number to the sidecar file, using a temporary file that then replaces the old one in one step. The original model file is never changed.",
+      "why": "Writing to a temporary file first and then replacing means a crash partway through does not leave a half-written sidecar.",
+      "watch_out": "This sets the revision number on the model object it receives, so the caller's object changes as a side effect."
+    }
+  ],
+  "explained_at": "2026-11-12T02:03:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds user-entered changes to model components, checks them, and saves them separately from the generated model, rejecting saves that are based on an out-of-date version.",
+  "purpose": "Lets a user correct the size, position, rotation or shape of a component. The generated model is never changed directly, so the user's edits can be kept and reapplied.",
+  "why": "The header says manual refinements are stored separately from immutable generated models. Each edit is labelled as user-entered and not field-verified.",
+  "how": "Incoming data is checked by the request and field classes, including size limits and forbidden extra fields. The revision number is compared to stop stale saves. Edits are applied to a deep copy of the model, scaling parts, changing shape type and refusing unsafe changes. Then the refinement is saved or loaded from a file. Sections s11 to s14 were not provided, so the loading and saving steps are not explained here.",
+  "inputs": "A SpecificationRequest holding the expected revision number and a list of component edits, plus the ProjectModel being edited.",
+  "outputs": "A new ProjectModel copy with the edits applied, or a ValueError or SpecificationConflict explaining why the save was refused.",
+  "risks": "Scaling assemblies changes every part, so a wrong scale factor can distort a whole assembly. A stale revision check only compares numbers, so overlapping edits from two sessions may not be caught. Manual values are not field-verified and are labelled that way.",
+  "debug": "A SpecificationConflict means the model changed in another session, so the user must reload. A ValueError message names the rule that failed, such as unknown template, duplicate edit or cylinder scaling. If an edit is not visible, check that it was saved and that the revision matched. Sections s11 to s14 need reading before debugging the save or load steps.",
+  "summary_hash": "sha256:d7ba944a633936475261360e1c03a8f2ecb1b63ccde52f84591ddee126b116f8"
+}

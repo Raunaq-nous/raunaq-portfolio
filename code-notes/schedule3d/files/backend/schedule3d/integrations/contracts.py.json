@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/integrations/contracts.py",
+  "language": "Python",
+  "lines": 73,
+  "hash": "sha256:82a1d6469beb314e9f9c81caa3a3876e661fe48ce188d8c913c9dea00bb9b2a7",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The checks are clear and the design is strict about unknown fields.",
+      "No tests for these models are visible in the packet.",
+      "The external ALICE format is only partly described in the code, so its fit cannot be confirmed here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Pydantic",
+      "meaning": "a Python library that checks data types and rules when a data object is created."
+    },
+    {
+      "term": "ALICE",
+      "meaning": "an outside construction planning system; the code does not describe it further."
+    },
+    {
+      "term": "schema",
+      "meaning": "the agreed set of fields and types that a data file must follow."
+    },
+    {
+      "term": "provenance",
+      "meaning": "a note saying where a value came from, such as a source document or a manual entry."
+    },
+    {
+      "term": "hard logic and soft logic",
+      "meaning": "hard logic is a required order between tasks; soft logic is a preferred but optional order."
+    },
+    {
+      "term": "lag",
+      "meaning": "a delay in hours between two linked tasks."
+    },
+    {
+      "term": "confidence",
+      "meaning": "a number from zero to one showing how sure the code is about a value."
+    }
+  ],
+  "depends_on": [
+    "pydantic"
+  ],
+  "used_by": [
+    "backend/schedule3d/integrations/service.py",
+    "backend/schedule3d/integrations/__init__.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d3ade91915cfc360",
+      "title": "File header and imports",
+      "what": "States the purpose of the file and imports the Pydantic tools used to define the data shapes.",
+      "why": "Likely reason: the header states the fail-closed intent so readers know the file is about strict checking.",
+      "watch_out": ""
+    },
+    {
+      "start": 8,
+      "end": 17,
+      "kind": "class",
+      "name": "AutodeskCapability",
+      "id": "s2",
+      "hash": "31edb8e5731a1375",
+      "title": "Autodesk capability report shape",
+      "what": "Describes whether an Autodesk program is available for one file format, which path is configured, and the reason. Availability defaults to not available.",
+      "why": "Likely reason: the app needs a clear record of why an Autodesk export cannot run.",
+      "watch_out": "Availability defaults to false, so a missing value means unavailable."
+    },
+    {
+      "start": 18,
+      "end": 26,
+      "kind": "class",
+      "name": "AliceCostFields",
+      "id": "s3",
+      "hash": "48453c2ac5c72159",
+      "title": "Optional cost fields",
+      "what": "Holds the currency and three optional cost values: labour, equipment, and material.",
+      "why": "Likely reason: cost is kept optional so that missing costs are not filled with guesses.",
+      "watch_out": "An empty value means unknown, not zero, and code reading these must not treat it as zero."
+    },
+    {
+      "start": 27,
+      "end": 50,
+      "kind": "class",
+      "name": "AliceAsset",
+      "id": "s4",
+      "hash": "98b7e07b8285ab63",
+      "title": "One construction asset",
+      "what": "Describes one buildable item: its ID, project, WBS paths, work area, quantity above zero, unit, optional crew and equipment details, cost, source fact IDs, three provenance notes, and a confidence score from zero to one.",
+      "why": "Likely reason: the contract needs enough detail for the planning tool to use each item, and the provenance notes show where each value came from.",
+      "watch_out": "Quantity must be above zero, and the code's limitations text says empty fields are intentional gaps that must not be filled with invented values."
+    },
+    {
+      "start": 51,
+      "end": 62,
+      "kind": "class",
+      "name": "AliceLogicLink",
+      "id": "s5",
+      "hash": "c48fb5fed6e2e6e3",
+      "title": "One logic link between activities",
+      "what": "Describes a link from one activity to another, with both project IDs, an optional relation type and lag, and a required logic class label.",
+      "why": "Likely reason: the planning tool needs the order between tasks, and the class label says where the link came from.",
+      "watch_out": "The model does not check that the named activities exist, so a link can point to nothing."
+    },
+    {
+      "start": 63,
+      "end": 73,
+      "kind": "class",
+      "name": "AliceConstructionContract",
+      "id": "s6",
+      "hash": "f90893f659f7a7f6",
+      "title": "Whole construction handoff contract",
+      "what": "Combines the project ID, assets, hard and soft logic lists, an operational readiness flag that defaults to false, and the lists of blockers and limitations.",
+      "why": "Likely reason: blockers and limitations are required fields, so a handoff cannot be produced without stating what is still missing.",
+      "watch_out": "The readiness flag defaults to false, and the service sets it that way on purpose, so changing it must be backed by evidence."
+    }
+  ],
+  "explained_at": "2026-11-12T01:53:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the data shapes for the Autodesk capability check and for the construction-data handoff to ALICE, an outside construction planning system named in the code.",
+  "purpose": "Sets the exact fields and checks for the capability report and for the ALICE contract, so bad data is rejected before it is written out.",
+  "why": "Likely reason: the file header says the design is fail-closed, so missing or unverified information is treated as unavailable rather than guessed.",
+  "how": "Uses Pydantic models. Each model rejects unknown fields, has typed fields, and some fields have range checks. Nested models describe cost, assets, and logic links, and the contract model combines them.",
+  "inputs": "Values are supplied by the service module or other callers when a model is created.",
+  "outputs": "Validated model objects, which can be turned into JSON.",
+  "risks": "Every model forbids extra fields, so adding a field in one place without updating its users causes errors. The ALICE contract fields may need to match an external system that the code does not describe.",
+  "debug": "If creation fails, read the validation error, which names the field and the rule broken. Check that quantity is above zero and that confidence is between zero and one.",
+  "summary_hash": "sha256:82a1d6469beb314e9f9c81caa3a3876e661fe48ce188d8c913c9dea00bb9b2a7"
+}

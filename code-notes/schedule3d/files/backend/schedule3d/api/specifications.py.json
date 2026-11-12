@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/api/specifications.py",
+  "language": "Python",
+  "lines": 206,
+  "hash": "sha256:5bf1ad00fbcd138ac39155621e2a2722db482d623fa9d83562031e0f7473af61",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Conflicts, failures and cleanup of failed uploads are all handled.",
+      "No test is visible in the provided code.",
+      "One global lock serialises every edit, so requests queue.",
+      "Unexpected errors are not converted to a clear message in these routes."
+    ]
+  },
+  "terms": [
+    {
+      "term": "route",
+      "meaning": "a web address the app listens on, together with the action it performs"
+    },
+    {
+      "term": "revision",
+      "meaning": "a counter that rises each time a model is saved, used to catch conflicting edits"
+    },
+    {
+      "term": "lock",
+      "meaning": "a guard that lets only one piece of code change the model at a time"
+    },
+    {
+      "term": "HTTP 409",
+      "meaning": "a response meaning the request conflicts with the current saved state"
+    },
+    {
+      "term": "HTTP 422",
+      "meaning": "a response meaning the request was understood but its content could not be processed"
+    },
+    {
+      "term": "MiB",
+      "meaning": "a mebibyte, about 1.05 million bytes, used as a file size unit"
+    },
+    {
+      "term": "manifest",
+      "meaning": "a record file listing what happened to each uploaded item"
+    }
+  ],
+  "depends_on": [
+    "fastapi",
+    "schedule3d.api.jobs",
+    "schedule3d.attachments",
+    "schedule3d.ingest.contracts",
+    "schedule3d.model.assemblies",
+    "schedule3d.model.contracts",
+    "schedule3d.model.service",
+    "schedule3d.model.specifications"
+  ],
+  "used_by": [
+    "Not visible in the provided code"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 36,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "76db26fe0a9eefea",
+      "title": "Imports and shared dependencies",
+      "what": "Lists the tools and model parts that the routes need, such as the job store, attachment processing, assembly and specification rules, and the shared lock. Users do not see this directly.",
+      "why": "Gathers everything the routes depend on in one place.",
+      "watch_out": "Renaming a shared import breaks every route in this file."
+    },
+    {
+      "start": 37,
+      "end": 92,
+      "kind": "function",
+      "name": "register_specification_routes (part 1)",
+      "id": "s2",
+      "hash": "398fe73497ed9982",
+      "title": "Shared checks for project edits",
+      "what": "Provides a helper that finds a project's saved model, refusing projects that are not in the job or jobs that are not ready. It also provides a helper that turns known errors into HTTP 409 or 422 responses, and a helper for assembly and template changes that loads, checks the revision, applies the change and saves it.",
+      "why": "Keeps every edit following the same steps, so the checks cannot be skipped by one route.",
+      "watch_out": "Error types that are not listed are not converted here, so they reach the user as unhandled server errors."
+    },
+    {
+      "start": 93,
+      "end": 134,
+      "kind": "method",
+      "name": "register_specification_routes: edit_specifications",
+      "id": "s3",
+      "hash": "8fe1bffd12cebc02",
+      "title": "Specification edits and rebuilding the model",
+      "what": "Applies a batch of specification edits to a saved model. It also lets a user rebuild a fresh editable model for a project from the schedule. A rebuild is refused if manual edits exist or the job came from a package. Assembly templates are kept across a rebuild.",
+      "why": "Likely reason: a rebuild would throw away manual decisions, so the code blocks it when such decisions exist.",
+      "watch_out": "A rebuild reads the saved ingestion report from disk, so a missing report causes a failure."
+    },
+    {
+      "start": 135,
+      "end": 194,
+      "kind": "method",
+      "name": "register_specification_routes: refine_evidence",
+      "id": "s4",
+      "hash": "6a4cc112eca0cfc5",
+      "title": "Adding reference documents as evidence",
+      "what": "Accepts up to 10 uploaded reference documents, saves them into a new folder, and processes them. It rejects the request if any document fails, removes duplicate evidence, keeps manual values, and adds a review item saying that only matched evidence changes geometry.",
+      "why": "Duplicate removal prevents the same evidence from appearing twice. The review item tells the user that unmatched references still need checking.",
+      "watch_out": "The size limits are checked while the upload is being read, so an oversized file fails partway through and its partial folder is cleaned up."
+    },
+    {
+      "start": 195,
+      "end": 206,
+      "kind": "function",
+      "name": "register_specification_routes (part 4)",
+      "id": "s5",
+      "hash": "34485ad045d4497c",
+      "title": "Saving the references and cleaning up",
+      "what": "Writes the processing manifest, saves the refined model, marks the work as committed, closes every uploaded file, and deletes the new reference folder if the save did not finish.",
+      "why": "Stops failed uploads from piling up on disk while keeping successful uploads as evidence.",
+      "watch_out": "The folder is removed only when the commit flag is false, so a successful save keeps the uploaded documents."
+    }
+  ],
+  "explained_at": "2026-11-12T01:42:21+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the web addresses that let a user edit a project's model after it is generated: assemblies, templates, specifications, rebuilding the editable model, and adding reference documents. Every change is saved under a shared lock and checked against a revision number.",
+  "purpose": "Lets a user make explicit changes to a 3D model. GET requests and renderer retries never change the model or start a regeneration.",
+  "why": "The module description says edits are explicit and reads never regenerate. The revision check stops one set of changes from silently overwriting another.",
+  "how": "Each route loads the saved model for a job and project, confirms the job is ready, confirms the expected revision matches the saved one, applies the change, and saves it as a new revision under a shared lock. Conflicts return HTTP 409 and other problems return HTTP 422.",
+  "inputs": "Job ID and project ID from the address. JSON bodies carrying the expected revision and the edit details. For reference documents, up to 10 uploaded files.",
+  "outputs": "The updated project model as JSON, or an error response.",
+  "risks": "Reference uploads are capped at 50 MiB each and 100 MiB in total. A rebuild route can discard manual edits if its guard is bypassed. All writes share one lock, so requests queue behind each other. Errors that are not in the handled list reach the user as server errors.",
+  "debug": "For 409 responses, compare the expected revision with the saved one and check whether the job is still generating. For 422 responses, read the error text. For uploads, look in the refinements folder beside the model; a leftover folder means a commit did not finish. Read manifest.json in that folder to see what each reference produced.",
+  "summary_hash": "sha256:5bf1ad00fbcd138ac39155621e2a2722db482d623fa9d83562031e0f7473af61"
+}

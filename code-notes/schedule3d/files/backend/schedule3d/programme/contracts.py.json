@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/programme/contracts.py",
+  "language": "Python",
+  "lines": 128,
+  "hash": "sha256:d4b17887ecdaf98648b47df3574a90d2ba11204588b29946235aba07961a8d0f",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The validation rules are thorough and clearly named.",
+      "No tests are visible in the packet, so the rules are not shown to be exercised."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Data contract",
+      "meaning": "A written definition of the exact shape and rules that data must follow."
+    },
+    {
+      "term": "Pydantic",
+      "meaning": "A Python library that checks data against declared types and rules when it is created."
+    },
+    {
+      "term": "Evidence fact",
+      "meaning": "A record that says where a value came from, such as a specific row in a source table."
+    },
+    {
+      "term": "Paging",
+      "meaning": "Returning a large list in smaller pieces, using an offset (where to start) and a limit (how many to return)."
+    },
+    {
+      "term": "SHA-256 digest",
+      "meaning": "A fixed-length fingerprint of a block of data. Any change to the data produces a different fingerprint."
+    },
+    {
+      "term": "Cross-project relationship",
+      "meaning": "A link between activities that belong to two different projects."
+    }
+  ],
+  "depends_on": [
+    "pydantic",
+    "backend/schedule3d/evidence.py",
+    "backend/schedule3d/model/contracts.py"
+  ],
+  "used_by": [
+    "backend/schedule3d/programme/__init__.py",
+    "backend/schedule3d/programme/service.py",
+    "backend/schedule3d/programme/scene.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "763e183a7db53f00",
+      "title": "Imports and file header",
+      "what": "Sets the file purpose and brings in the typed building blocks used by the data shapes. It has no visible effect on the user.",
+      "why": "Likely reason: keeps the shapes depending only on the shared evidence and model definitions.",
+      "watch_out": ""
+    },
+    {
+      "start": 13,
+      "end": 27,
+      "kind": "class",
+      "name": "ProgrammeProject",
+      "id": "s2",
+      "hash": "5a9c55b27299d65d",
+      "title": "Project summary record",
+      "what": "Describes one project in the programme, including its name, how many activities and relationships it has, its planned dates if known, its fidelity level, its grid position and the evidence that supports it.",
+      "why": "Likely reason: lets the programme show each project as a separate item instead of merging projects together.",
+      "watch_out": "The fidelity label is free text, so a typo in it will not be caught by this file."
+    },
+    {
+      "start": 28,
+      "end": 46,
+      "kind": "class",
+      "name": "ProgrammeActivity",
+      "id": "s3",
+      "hash": "f0810a310af304d7",
+      "title": "Activity record",
+      "what": "Describes one schedule activity: its identifiers, human-readable name, and planned, actual, baseline and forecast dates, plus the evidence fact that proves it came from the source.",
+      "why": "Likely reason: keeps each activity traceable to a single source record.",
+      "watch_out": "Dates may be empty, so code that reads them must handle missing values."
+    },
+    {
+      "start": 47,
+      "end": 60,
+      "kind": "class",
+      "name": "ProgrammeRelationship",
+      "id": "s4",
+      "hash": "721363e216e95395",
+      "title": "Relationship record",
+      "what": "Describes one link between two activities, naming the predecessor and successor by project and activity, the relation type, any lag in hours, whether the link crosses projects, and its evidence.",
+      "why": "Likely reason: records dependencies between work as they appear in the source schedule, without inferring new ones.",
+      "watch_out": "The cross-project flag must agree with the project identifiers, and the whole-programme check enforces that."
+    },
+    {
+      "start": 61,
+      "end": 120,
+      "kind": "class",
+      "name": "ProgrammeModel (part 1)",
+      "id": "s5",
+      "hash": "562b8c447788df65",
+      "title": "Programme model checks first half",
+      "what": "Defines the whole programme record and runs the first group of checks: unique identities, activity uniqueness within each project, story list consistency, page size limits, and that the page does not exceed the full register.",
+      "why": "Likely reason: prevents duplicate or oversized data from reaching the user, and makes paged loads honest about how much they cover.",
+      "watch_out": "Every page check compares against the declared totals, so a changed total or a partial page will fail validation."
+    },
+    {
+      "start": 121,
+      "end": 128,
+      "kind": "class",
+      "name": "ProgrammeModel (part 2)",
+      "id": "s6",
+      "hash": "3f03b4cf2fa9cda6",
+      "title": "Programme model checks second half",
+      "what": "Runs the remaining checks: every evidence reference must resolve, the project filter must be a real project and must hold for every activity, and every relationship must point at known projects with a correct cross-project flag.",
+      "why": "Likely reason: keeps every displayed fact traceable and stops a filtered view from quietly including other projects.",
+      "watch_out": "A missing evidence record anywhere in the lists will stop the whole programme from being created."
+    }
+  ],
+  "explained_at": "2026-11-12T02:08:42+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the typed data shapes for the multi-project programme view and checks that the whole set is consistent before it is used.",
+  "purpose": "Acts as a strict boundary. Data entering or leaving the programme view must match these shapes, so the rest of the app can trust it.",
+  "why": "Likely reason: stops malformed or mismatched schedule data from reaching the 3D view or the saved files. The strict settings reject unknown fields.",
+  "how": "Four record types describe a project, an activity, a relationship between activities, and the whole programme. The programme record holds lists of each, plus paging details (offset, limit, total) and digests. A check that runs after the record is built verifies uniqueness, page limits, that every evidence reference resolves to a known record, that a project filter is respected, and that each relationship's cross-project flag matches the real projects.",
+  "inputs": "Values supplied by the programme builder in the service file, including project, activity and relationship lists, evidence records and paging numbers.",
+  "outputs": "A validated programme object, or an error message describing the first rule that failed.",
+  "risks": "Any single inconsistency stops the whole programme from being created. The paging counts must agree exactly with the register totals, so a partial load will fail rather than show partial data.",
+  "debug": "Read the error message, which names the rule that failed. Then compare the paging offset, limit and total fields with the number of records supplied. For evidence errors, check that the referenced fact identifiers exist in the evidence list.",
+  "summary_hash": "sha256:d4b17887ecdaf98648b47df3574a90d2ba11204588b29946235aba07961a8d0f"
+}

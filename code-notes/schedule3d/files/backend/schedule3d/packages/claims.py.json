@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/packages/claims.py",
+  "language": "Python",
+  "lines": 419,
+  "hash": "sha256:7b58682b037f43b24f549bb4ebf2a8fb3b2bc3f5b75b46d18a08c89a19ca9e04",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet.",
+      "Scope depends on fixed text windows and keyword lists that can be wrong.",
+      "Mixed-project pages are left unresolved by design, so some claims need manual review."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Literal claim",
+      "meaning": "A statement copied as written from a document, with no interpretation."
+    },
+    {
+      "term": "Scope",
+      "meaning": "Whether a statement applies to this project, to another project, or is still unclear."
+    },
+    {
+      "term": "Regex (pattern)",
+      "meaning": "A text pattern that finds matching words or numbers, such as a breaker count written in a specific way."
+    },
+    {
+      "term": "Reconciliation",
+      "meaning": "Combining claims from many documents and resolving or flagging conflicts."
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/documents/contracts.py",
+    "backend/schedule3d/documents/facts.py",
+    "backend/schedule3d/evidence/contracts.py",
+    "backend/schedule3d/evidence/reconciliation.py",
+    "backend/schedule3d/packages/archive.py",
+    "backend/schedule3d/packages/extraction.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 53,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6ad94a50708eaf98",
+      "title": "Scope rules and text patterns",
+      "what": "Describes the purpose and limits of this module, then sets up the imports and the text patterns used to find project numbers, house sizes, breaker counts, jumper counts and fence dimensions.",
+      "why": "The docstring says the module reads extracted text only, not workbook formulas, images or drawings, so the patterns define everything it can see.",
+      "watch_out": "Changing a pattern changes which claims are found, and a wording change in a source document will silently stop a pattern from matching."
+    },
+    {
+      "start": 54,
+      "end": 63,
+      "kind": "class",
+      "name": "TextBlock",
+      "id": "s2",
+      "hash": "7a0e2d68d2b6dec5",
+      "title": "Text block record",
+      "what": "Holds one piece of text with its region label, page number, preceding heading, and flags for future and option sections.",
+      "why": "Carries section context alongside each piece of text so later scope checks can use it.",
+      "watch_out": ""
+    },
+    {
+      "start": 64,
+      "end": 101,
+      "kind": "function",
+      "name": "_blocks",
+      "id": "s3",
+      "hash": "8349749b37715c07",
+      "title": "Splitting documents into text blocks",
+      "what": "Turns a record into text blocks, either one per PDF page or one per paragraph of structured document parts. It tracks headings such as Current, Future or Option and sets the flags for the paragraphs that follow.",
+      "why": "Heading tracking lets a future or option section be marked even when the sentence itself does not say so.",
+      "watch_out": "The heading patterns are fixed lists of words, so a new heading style will not be recognised."
+    },
+    {
+      "start": 102,
+      "end": 127,
+      "kind": "function",
+      "name": "_authority",
+      "id": "s4",
+      "hash": "40e9ce7d476eabc1",
+      "title": "Detecting document authority",
+      "what": "Searches the full text for phrases such as reference manual, standard drawing, estimate or study, and returns the first matching type with a note that it is not engineering approval. Otherwise it returns unspecified.",
+      "why": "Likely reason: the type of document affects how much weight a claim can carry, so the type is recorded with each claim.",
+      "watch_out": "Keyword detection can mislabel a document that mentions one of these phrases in passing."
+    },
+    {
+      "start": 128,
+      "end": 141,
+      "kind": "function",
+      "name": "_reference",
+      "id": "s5",
+      "hash": "6a37d9207b22ad9d",
+      "title": "Building a source pointer",
+      "what": "Creates a reference to the exact file, its hash, its page and the matched text with its character positions.",
+      "why": "Lets a reviewer go back to the original document and find the exact words behind a claim.",
+      "watch_out": "The file named is the first sorted path, so other copies are kept as aliases rather than as the main source."
+    },
+    {
+      "start": 142,
+      "end": 177,
+      "kind": "function",
+      "name": "_project_scope",
+      "id": "s6",
+      "hash": "cacd26977da01fe8",
+      "title": "Deciding whether a document belongs to the project",
+      "what": "Compares project numbers found in the text with the number in the project name. Returns project, other project, or unresolved, and stops if more than 64 different numbers appear.",
+      "why": "Stops claims from a different project from being attached to this one.",
+      "watch_out": "Only project names that match the letters-dash-digits pattern are compared, so other naming styles always end up unresolved."
+    },
+    {
+      "start": 178,
+      "end": 212,
+      "kind": "function",
+      "name": "_scope_flags",
+      "id": "s7",
+      "hash": "3444c0fd8b8ce477",
+      "title": "Checking nearby words for future or option language",
+      "what": "Looks at a bounded window of text around a match and flags it as future if words like future appear, and as uncertain if words such as do not, option, cancelled or if required appear. Stops at sentence or note boundaries.",
+      "why": "Stops a planned or optional item from being treated as something that exists now.",
+      "watch_out": "The window is fixed in size, so a long sentence can cause a wrong flag in either direction."
+    },
+    {
+      "start": 213,
+      "end": 272,
+      "kind": "function",
+      "name": "claims_from_document (part 1)",
+      "id": "s8",
+      "hash": "81cc551960889ad8",
+      "title": "Creating a claim record",
+      "what": "Defines a helper that builds one claim with its subject, value, unit, source, context and review status, and stops when the claim limit is reached. A claim is accepted only when its context permits use and it is not flagged uncertain.",
+      "why": "Keeps the same rules for every type of claim, so review status is set consistently.",
+      "watch_out": "The claim limit raises an error rather than trimming the list, so a very large document set can stop the whole run."
+    },
+    {
+      "start": 273,
+      "end": 330,
+      "kind": "function",
+      "name": "claims_from_document (part 2)",
+      "id": "s9",
+      "hash": "eba54bcec73dfdda",
+      "title": "Finding house, fence, breaker, jumper and material claims",
+      "what": "Runs the text patterns over each block. House and fence sizes are split into long and short axis, not compass direction. Breaker counts, jumper counts and non-conductive fence mentions each create their own claim with the matching scope flags.",
+      "why": "Long and short axis are used because the document does not state orientation or position.",
+      "watch_out": "House and fence patterns share the same dimension pattern, so a wording change in one can affect the other."
+    },
+    {
+      "start": 331,
+      "end": 375,
+      "kind": "function",
+      "name": "claims_from_document (part 3)",
+      "id": "s10",
+      "hash": "9ca96a2e24d7c771",
+      "title": "Adding claims from structured document extraction",
+      "what": "Reads claims from the structured extractor for documents that have one, skips some kinds such as project identity and unmarked asset inventory, and uses the original line to work out scope. Raises an error if a PDF claim has no line location.",
+      "why": "Structured extraction gives more precise results than pattern matching, so both sources are combined.",
+      "watch_out": "A claim without a line locator stops the run, which protects against guessing the source location."
+    },
+    {
+      "start": 376,
+      "end": 419,
+      "kind": "function",
+      "name": "collect_package_claims",
+      "id": "s11",
+      "hash": "34cf5214e523774d",
+      "title": "Collecting claims for a whole package",
+      "what": "Checks that the extraction is complete and has no core failures, then goes through each document, verifies its hash, gathers its claims, reports progress and passes everything to reconciliation. Stops with an error if the total claim budget is exceeded.",
+      "why": "Refusing incomplete extractions prevents a partial picture from being treated as the full package.",
+      "watch_out": "An incomplete extraction stops the whole collection, so a single failed document blocks the package."
+    }
+  ],
+  "explained_at": "2026-11-12T02:03:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns text pulled from package documents into literal, scoped claims such as breaker counts, house sizes and fence materials, and marks which ones may be used in the model.",
+  "purpose": "Records what a document literally says, with its source location and how far it applies to the project, without deciding whether the design is correct.",
+  "why": "Likely reason: the docstring says that document text is evidence, not approval. Scope rules keep claims from a different project or a future option from being used as current design.",
+  "how": "Reads text blocks from each extracted document and detects the document's authority from keywords. Decides whether the document belongs to the project by matching project numbers in the text. Finds specific patterns, checks nearby wording for future or option language, and creates a record with its source. Folds duplicates together, then reconciles all claims for the project.",
+  "inputs": "An extraction folder with an index and one record per document, the project identifier and project name.",
+  "outputs": "An evidence bundle with reconciled claims, each marked with its scope, authority and review status.",
+  "risks": "Claims that are missed are not reported, because the patterns only match exact wording. Scope and future detection use fixed nearby-text windows, which can be wrong.",
+  "debug": "Check the extraction index is marked complete. For a missing claim, test the matching pattern against the document text. For a wrong scope, check the project number and the nearby words.",
+  "summary_hash": "sha256:7b58682b037f43b24f549bb4ebf2a8fb3b2bc3f5b75b46d18a08c89a19ca9e04"
+}

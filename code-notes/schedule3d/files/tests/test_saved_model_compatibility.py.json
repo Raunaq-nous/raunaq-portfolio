@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "path": "tests/test_saved_model_compatibility.py",
+  "language": "Python",
+  "lines": 49,
+  "hash": "sha256:ab03cf5d50987cb80ee26c5bbc2a5b6ac206a8d8f86373b0c3c9df8c7561a843",
+  "area": "tests",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "I could not run the tests in this session.",
+      "The tests are specific, but they do not cover every field that a future version might add."
+    ]
+  },
+  "terms": [
+    {
+      "term": "round-trip",
+      "meaning": "saving data to a file and loading it again, with the same result."
+    },
+    {
+      "term": "specification revision",
+      "meaning": "a number that marks which version of the editable specification a model was saved with."
+    },
+    {
+      "term": "schema",
+      "meaning": "the agreed structure of a saved file, including which fields exist and what they mean."
+    }
+  ],
+  "depends_on": [
+    "pytest",
+    "pydantic",
+    "schedule3d.ingest.service",
+    "schedule3d.model.contracts",
+    "schedule3d.model.service",
+    "samples/sample-multi-project.csv"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "129aba9140e4097f",
+      "title": "Imports for saved model checks",
+      "what": "Imports the JSON tools, the error type, the ingestion and model steps, and the saved model structure.",
+      "why": "Lets the tests load and check saved model files directly.",
+      "watch_out": ""
+    },
+    {
+      "start": 15,
+      "end": 23,
+      "kind": "function",
+      "name": "_model_json",
+      "id": "s2",
+      "hash": "24c10f437177deef",
+      "title": "Build a model and return its JSON",
+      "what": "Ingests the sample schedule into a temporary database, builds the BRIDGE-B project model, checks it has components, and returns it as plain JSON data.",
+      "why": "Gives the other tests a real saved model to change and reload, instead of a made-up one.",
+      "watch_out": "The project ID BRIDGE-B must exist in the sample file, or this helper fails first."
+    },
+    {
+      "start": 24,
+      "end": 30,
+      "kind": "function",
+      "name": "test_new_models_do_not_gain_compatibility_fields",
+      "id": "s3",
+      "hash": "51cdb5d63b78a511",
+      "title": "New models carry no compatibility fields",
+      "what": "Checks that a freshly built model has no specification revision, no specification overrides and no old wbs_paths field on any component.",
+      "why": "Likely reason: those fields belong only to older or newer versions, so new files should stay clean and not carry them.",
+      "watch_out": "Adding one of these fields back to new models would make this test fail on purpose."
+    },
+    {
+      "start": 31,
+      "end": 43,
+      "kind": "function",
+      "name": "test_later_version_fields_load_and_round_trip",
+      "id": "s4",
+      "hash": "a53db8c6cf7749bc",
+      "title": "Newer fields load and save again",
+      "what": "Adds a component wbs_paths list and a specification revision of 0 with empty overrides to the saved model, loads it, and checks the paths survive loading and saving.",
+      "why": "Likely reason: an older app must still open files written by a newer version without losing the extra data.",
+      "watch_out": "The test assumes the loader keeps unknown-to-this-version fields rather than dropping them."
+    },
+    {
+      "start": 44,
+      "end": 49,
+      "kind": "function",
+      "name": "test_unapplied_specification_edits_are_refused",
+      "id": "s5",
+      "hash": "f4362e677db0541c",
+      "title": "Refuse unapplied edits from newer versions",
+      "what": "Sets a specification revision of 2 with a rating override, then checks that loading fails with an error that says the file came from a newer Schedule3D version.",
+      "why": "Likely reason: this version cannot apply edits it does not understand, so loading them would silently produce a wrong model.",
+      "watch_out": "The error text match is exact, so changing the message breaks the test."
+    }
+  ],
+  "explained_at": "2026-11-12T02:43:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that saved project models stay readable across app versions: new models do not gain old compatibility fields, newer saved fields load and round-trip, and unapplied specification edits from a newer version are refused.",
+  "purpose": "Protects saved model files so that a newer or older Schedule3D version can open them without losing or inventing data.",
+  "why": "Likely reason: users keep saved models for a long time, so the app must read files written by a later version without damage.",
+  "how": "A helper builds a model from the sample multi-project CSV and returns its JSON. One test checks that the new model has no compatibility fields. Another adds newer fields, loads the model and checks it round-trips unchanged. The last adds unapplied specification edits and expects an error that mentions a newer version.",
+  "inputs": "The sample file samples/sample-multi-project.csv and temporary database files.",
+  "outputs": "Pass or fail results. The tests write only temporary files.",
+  "risks": "The newer-version refusal depends on the exact error text. The tests rely on the sample containing the BRIDGE-B project and at least one component.",
+  "debug": "If the tests fail, compare the JSON from the _model_json helper with the fields the test expects. For refusal failures, check the validation message wording and the specification revision value.",
+  "summary_hash": "sha256:ab03cf5d50987cb80ee26c5bbc2a5b6ac206a8d8f86373b0c3c9df8c7561a843"
+}

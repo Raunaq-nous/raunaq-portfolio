@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/ingest/tabular.py",
+  "language": "Python",
+  "lines": 417,
+  "hash": "sha256:64625f00c99e72df8288d1c555edf5118e9ed5421e3d6927a0c614e1d8a6d194",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Size and safety limits are checked before reading.",
+      "Column guessing relies on fixed name lists and can be wrong.",
+      "No tests are visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "CSV",
+      "meaning": "comma-separated values, a plain text table"
+    },
+    {
+      "term": "TSV",
+      "meaning": "tab-separated values, a plain text table"
+    },
+    {
+      "term": "XLSX",
+      "meaning": "the Excel spreadsheet file format"
+    },
+    {
+      "term": "Alias",
+      "meaning": "an alternate column title the app recognises for the same field"
+    },
+    {
+      "term": "Zip bomb",
+      "meaning": "a crafted archive that expands to far more data than its size suggests"
+    },
+    {
+      "term": "Read-only mode",
+      "meaning": "opening a file so it can be read but never changed"
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/ingest/contracts.py",
+    "backend/schedule3d/ingest/dates.py",
+    "backend/schedule3d/ingest/encoding.py",
+    "backend/schedule3d/ingest/limits.py",
+    "backend/schedule3d/ingest/store.py",
+    "openpyxl"
+  ],
+  "used_by": [
+    "backend/schedule3d/ingest/service.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 60,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "367d5ccec25faf6a",
+      "title": "Known column names, part one",
+      "what": "Lists the alternate column titles the app recognises for project, activity ID, name, WBS and the planned dates, such as Start, Early Start or Task Name.",
+      "why": "Schedule exports use many names for the same field, so matching is done by name.",
+      "watch_out": "A new alias can make the wrong column match, since the first matching column wins."
+    },
+    {
+      "start": 61,
+      "end": 82,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "c425a6e6cf35d948",
+      "title": "Known column names, part two",
+      "what": "Continues the list with duration, actual, baseline, forecast, status and task-type titles.",
+      "why": "Same reason as the first part: exports name these fields differently.",
+      "watch_out": ""
+    },
+    {
+      "start": 83,
+      "end": 86,
+      "kind": "function",
+      "name": "normalize_header",
+      "id": "s3",
+      "hash": "e25a3893d193016b",
+      "title": "Normalising column titles",
+      "what": "Makes a column title comparable by lowercasing it, replacing punctuation and underscores with spaces, and trimming.",
+      "why": "So titles such as Start Date, start_date and START-DATE all match the same alias.",
+      "watch_out": ""
+    },
+    {
+      "start": 87,
+      "end": 98,
+      "kind": "function",
+      "name": "automatic_mapping",
+      "id": "s4",
+      "hash": "ff78b3ec0a49d7dc",
+      "title": "Automatic column matching",
+      "what": "Finds the column for each field by checking column titles against the aliases and taking the first match for each field.",
+      "why": "Lets common exports load without the user choosing columns.",
+      "watch_out": "When two columns match, the one that appears first in the file wins."
+    },
+    {
+      "start": 99,
+      "end": 105,
+      "kind": "function",
+      "name": "_cell",
+      "id": "s5",
+      "hash": "05c01bd08faab85f",
+      "title": "Reading one cell safely",
+      "what": "Returns the value for a field in a row, or nothing when the field is not mapped or the row is too short.",
+      "why": "Rows of different widths would otherwise cause errors.",
+      "watch_out": ""
+    },
+    {
+      "start": 106,
+      "end": 154,
+      "kind": "function",
+      "name": "_ingest_rows (part 1)",
+      "id": "s6",
+      "hash": "cd1a4237e062279a",
+      "title": "Checking the mapping before reading",
+      "what": "Checks the chosen mapping for too many columns, unknown fields, one column used for two fields, and out-of-range columns. It also flags essential missing fields as a mapping problem, and sets up counters and the default project name from the file name.",
+      "why": "Catches a bad mapping before any rows are read.",
+      "watch_out": "Missing essentials do not stop reading; they set the mapping-required flag so the user can fix the mapping."
+    },
+    {
+      "start": 155,
+      "end": 214,
+      "kind": "function",
+      "name": "_ingest_rows (part 2)",
+      "id": "s7",
+      "hash": "deee37e478bbab6e",
+      "title": "Reading each data row",
+      "what": "Opens the staging database and goes through each row. It stops when cancelled, skips blank rows, warns about rows whose width does not match the headers, and works out the project, activity ID and name for each row, creating a generated ID when none exists. Unmapped columns are kept as extra data.",
+      "why": "Each row becomes one activity, and generated IDs keep rows without an ID from being lost.",
+      "watch_out": "A row with too many columns stops the whole file rather than being skipped."
+    },
+    {
+      "start": 215,
+      "end": 274,
+      "kind": "function",
+      "name": "_ingest_rows (part 3)",
+      "id": "s8",
+      "hash": "e9f2e3329a32af21",
+      "title": "Converting dates and deriving finishes",
+      "what": "Converts every date field, keeping unreadable raw text in an extra field. Where the finish date is missing, it works one out from the start date plus a duration given in days or hours, and warns when that fails.",
+      "why": "Many schedules give a duration instead of a finish date.",
+      "watch_out": "Durations above 365,250 days or hours are rejected with a warning rather than producing a date."
+    },
+    {
+      "start": 275,
+      "end": 325,
+      "kind": "function",
+      "name": "_ingest_rows (part 4)",
+      "id": "s9",
+      "hash": "784d56aeb1880fd5",
+      "title": "Saving activities and finishing the report",
+      "what": "Stores each activity, warns about repeated activity IDs and skips them, and saves every 5,000 rows while reporting progress. Afterwards it saves counts, runs the integrity checks, adds an info note when there are several projects, and builds the final report.",
+      "why": "Periodic saves keep progress safe and let progress be shown.",
+      "watch_out": "A repeated activity ID is skipped, so the first copy is the one kept."
+    },
+    {
+      "start": 326,
+      "end": 367,
+      "kind": "function",
+      "name": "ingest_delimited",
+      "id": "s10",
+      "hash": "123d9855f6b77cdc",
+      "title": "Reading a delimited text file",
+      "what": "Checks the encoding, then for CSV detects the separator among comma, semicolon, tab and pipe. It reads the header row and passes the rest to the shared row reader. An empty file is refused.",
+      "why": "Separators differ between regional exports, so detecting them avoids a failed parse.",
+      "watch_out": "The separator is detected from the first line only, so an unusual header could be misread."
+    },
+    {
+      "start": 368,
+      "end": 380,
+      "kind": "function",
+      "name": "preflight_xlsx",
+      "id": "s11",
+      "hash": "9ce48d6b07e95402",
+      "title": "Checking a spreadsheet's safety",
+      "what": "Inspects the spreadsheet's internal archive before it is opened. It refuses files with more than 5,000 internal parts, more than 512 MiB unpacked, or any part that expands more than 1,000 times.",
+      "why": "Likely reason: guards against zip bombs, files built to exhaust memory when unpacked.",
+      "watch_out": "The limits are fixed numbers, so a large genuine schedule could be refused until they are changed."
+    },
+    {
+      "start": 381,
+      "end": 417,
+      "kind": "function",
+      "name": "ingest_xlsx",
+      "id": "s12",
+      "hash": "db108327a672f460",
+      "title": "Reading a spreadsheet",
+      "what": "Runs the safety check, fingerprints the file, opens only the first sheet in read-only mode, reads its header row, and passes the rows to the shared reader. The workbook is always closed afterwards.",
+      "why": "Read-only streaming keeps memory use low for large spreadsheets.",
+      "watch_out": "Only the first sheet is read, so data on other sheets is ignored."
+    }
+  ],
+  "explained_at": "2026-11-12T01:51:04+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads spreadsheets and CSV or TSV text files, maps their columns to standard fields, and stores each row as an activity.",
+  "purpose": "Lets users bring in activity lists from Excel or delimited exports without reformatting them first.",
+  "why": "Column titles differ between exports, so the app guesses the mapping and asks the user to fix it when the guess fails. Streaming and periodic saves keep large files manageable.",
+  "how": "It checks the column count and maps columns by matching titles to known aliases. It then streams each row, converts dates, derives a finish date from a duration when needed, stores each activity, and saves progress every 5,000 rows. Spreadsheets get a zip safety check and are read in read-only mode, first sheet only.",
+  "inputs": "An XLSX workbook, or a CSV or TSV text file, plus an optional manual column mapping and a default project name.",
+  "outputs": "A staging database filled with activities, and an ingestion report with counts, warnings and the mapping used.",
+  "risks": "A bad row that is too wide stops the whole file. Duplicate activity IDs are skipped. Column guessing can match the wrong column when titles are unusual.",
+  "debug": "If activities are missing, check the duplicate and generated-ID warnings. If mapping fails, read the mapping_required warning and the header mapping in the report. For large spreadsheets refused by the safety check, check the zip limits.",
+  "summary_hash": "sha256:64625f00c99e72df8288d1c555edf5118e9ed5421e3d6927a0c614e1d8a6d194"
+}

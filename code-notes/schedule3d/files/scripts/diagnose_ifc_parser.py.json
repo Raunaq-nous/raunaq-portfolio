@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "path": "scripts/diagnose_ifc_parser.py",
+  "language": "Python",
+  "lines": 98,
+  "hash": "sha256:eb2e32bb8c61d57bd15530a8a64948c9aa3254cccc7255bd3e4430c50cf6285e",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test covers this diagnostic.",
+      "The header split fails with an unclear error if the DATA marker is missing."
+    ]
+  },
+  "terms": [
+    {
+      "term": "IFC",
+      "meaning": "a standard file format for building models."
+    },
+    {
+      "term": "parser",
+      "meaning": "the code that reads a file and turns it into structured data."
+    },
+    {
+      "term": "child process",
+      "meaning": "a separate program started by this one, so a crash in it does not stop the parent."
+    },
+    {
+      "term": "binary search",
+      "meaning": "a method that finds a boundary by repeatedly halving the search range."
+    }
+  ],
+  "depends_on": [
+    "ifcopenshell",
+    "subprocess",
+    "json",
+    "hashlib"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "14d4a61e02d3c745",
+      "title": "Imports and file setup",
+      "what": "Imports the standard tools needed to read the file, start child processes, and write the JSON report.",
+      "why": "Keeps the diagnostic usable with only standard Python plus the IFC library in the child process.",
+      "watch_out": ""
+    },
+    {
+      "start": 14,
+      "end": 46,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s2",
+      "hash": "09bff5f0ecab5182",
+      "title": "Read the file and handle child mode",
+      "what": "Reads the command arguments, rejects files over two megabytes, splits the file into header and entity lines, and in child mode loads only the first chosen number of entities through ifcopenshell and prints how many parsed.",
+      "why": "Likely reason: the size limit keeps the search fast, and child mode is how each probe loads only a prefix.",
+      "watch_out": "The header split expects the exact DATA marker, so a file with different line endings or a missing marker fails here."
+    },
+    {
+      "start": 47,
+      "end": 96,
+      "kind": "method",
+      "name": "main: probe",
+      "id": "s3",
+      "hash": "b43561a524ff6dfc",
+      "title": "Probe prefixes and find the boundary",
+      "what": "Starts a child process for a given prefix length and records its exit code and output. Then it checks that the empty prefix passes and the full file fails, and narrows the boundary by halving until only one step separates the last passing and first failing prefix.",
+      "why": "Likely reason: the failure is found in a few probes rather than testing every line, which keeps the run short.",
+      "watch_out": "The search assumes that once a prefix fails, all longer prefixes fail too, so an unusual failure pattern can mislead the result."
+    },
+    {
+      "start": 97,
+      "end": 98,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s4",
+      "hash": "b60851f8e384a572",
+      "title": "Command entry point",
+      "what": "Runs the main function when the file is run directly.",
+      "why": "Lets the developer start the diagnostic from the command line.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T02:43:17+00:00",
+  "explained_by": "haiku",
+  "summary": "A diagnostic tool that finds the first IFC statement that makes the IFC parser fail, by testing growing prefixes of a small synthetic file in separate child processes.",
+  "purpose": "Helps a developer locate a parser crash or hang in a synthetic IFC file without the whole program failing.",
+  "why": "Likely reason: running each prefix in its own process means a crash or hang in one probe does not stop the search.",
+  "how": "It reads the file, splits the header from the data lines, and checks that the empty prefix passes and the full file fails. It then binary-searches the prefix length, running each probe in a child process with a time limit, until it finds the last passing and first failing statements. Results are saved to a JSON report.",
+  "inputs": "A small synthetic IFC file under two megabytes, an output path for the report, and a folder with the ifcopenshell tooling.",
+  "outputs": "A JSON report with each probe's exit code and output, the last passing and first failing prefix counts, and the failing statement text.",
+  "risks": "The search is capped at 16 probes and 120 seconds. A file with no DATA section fails at the split. The tool must only be used on synthetic files, as its docstring says.",
+  "debug": "Open the saved JSON report and look at the probe with the first non-zero exit code and its stderr text. If the run stops early, check the probe cap and the time budget.",
+  "summary_hash": "sha256:eb2e32bb8c61d57bd15530a8a64948c9aa3254cccc7255bd3e4430c50cf6285e"
+}

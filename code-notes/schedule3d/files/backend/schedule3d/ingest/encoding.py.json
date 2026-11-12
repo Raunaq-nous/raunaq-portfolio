@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/ingest/encoding.py",
+  "language": "Python",
+  "lines": 81,
+  "hash": "sha256:75d7223dd5ecacf301863a914569c850cfeb76dd16ce707d1912d7f34fffd844",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Cancellation is handled at each piece.",
+      "No tests are visible in the packet.",
+      "The encoding choice may silently misread some characters."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Encoding",
+      "meaning": "the rule that maps stored bytes to letters and symbols"
+    },
+    {
+      "term": "UTF-8",
+      "meaning": "the most common modern text encoding"
+    },
+    {
+      "term": "cp1252",
+      "meaning": "a Windows text encoding common in older Western European exports"
+    },
+    {
+      "term": "Byte-order mark",
+      "meaning": "a few hidden bytes at the start of a file that announce its encoding"
+    },
+    {
+      "term": "SHA-256",
+      "meaning": "a fingerprint method that gives a unique-looking code for a file's exact contents"
+    }
+  ],
+  "depends_on": [],
+  "used_by": [
+    "backend/schedule3d/ingest/tabular.py",
+    "backend/schedule3d/ingest/xer.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "56b67812ffa3c726",
+      "title": "Module purpose and piece size",
+      "what": "Describes the file's job of hashing and checking encodings in bounded pieces, and sets the piece size to one megabyte.",
+      "why": "Keeps memory use flat for large uploads.",
+      "watch_out": ""
+    },
+    {
+      "start": 14,
+      "end": 17,
+      "kind": "class",
+      "name": "SourceReadCancelled",
+      "id": "s2",
+      "hash": "f886e3e16640c52e",
+      "title": "Cancellation error type",
+      "what": "Defines a specific error raised when the user cancels during reading of a source file.",
+      "why": "Lets the caller tell a cancellation apart from a real failure.",
+      "watch_out": ""
+    },
+    {
+      "start": 18,
+      "end": 22,
+      "kind": "function",
+      "name": "_check_cancelled",
+      "id": "s3",
+      "hash": "bd588860c358fa7f",
+      "title": "Checking for cancellation",
+      "what": "Asks the cancel check whether to stop, and if so raises the cancellation error with the name of the current stage.",
+      "why": "Lets long reads stop promptly while still saying what stage they were in.",
+      "watch_out": "The check runs once per piece, so cancellation takes effect only after the current megabyte is read."
+    },
+    {
+      "start": 23,
+      "end": 29,
+      "kind": "class",
+      "name": "SourceFingerprint",
+      "id": "s4",
+      "hash": "cd3f86dc1752c867",
+      "title": "Source fingerprint record",
+      "what": "A small fixed record holding a file's SHA-256 hash, byte size and detected encoding.",
+      "why": "Gives callers one tidy result instead of loose values.",
+      "watch_out": ""
+    },
+    {
+      "start": 30,
+      "end": 47,
+      "kind": "function",
+      "name": "_valid_for_encoding",
+      "id": "s5",
+      "hash": "79dda2cefd928333",
+      "title": "Testing an encoding across a file",
+      "what": "Checks whether a whole file decodes in a given encoding, reading it in pieces and stopping at the first invalid piece.",
+      "why": "Lets the encoding be chosen without loading the file into memory.",
+      "watch_out": ""
+    },
+    {
+      "start": 48,
+      "end": 70,
+      "kind": "function",
+      "name": "fingerprint_text_file",
+      "id": "s6",
+      "hash": "a3d2ba2f827826c7",
+      "title": "Fingerprinting and choosing a text encoding",
+      "what": "Hashes the whole text file and picks its encoding by trying UTF-8 (honouring a byte-order mark), then cp1252, then latin-1. It raises an error if none fits.",
+      "why": "Likely reason: the fallback order tries the most likely encodings first.",
+      "watch_out": "Because latin-1 accepts every byte, the error at the end is effectively unreachable."
+    },
+    {
+      "start": 71,
+      "end": 81,
+      "kind": "function",
+      "name": "fingerprint_binary_file",
+      "id": "s7",
+      "hash": "6c7e58ea4c882d30",
+      "title": "Fingerprinting a binary file",
+      "what": "Hashes a non-text file such as a spreadsheet and returns its hash and size, checking for cancellation between pieces.",
+      "why": "Binary files have no text encoding, so only the hash and size matter.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T01:51:04+00:00",
+  "explained_by": "haiku",
+  "summary": "Fingerprints text and binary source files in bounded pieces, and works out which text encoding a text file uses.",
+  "purpose": "Lets the app identify each upload and read its text correctly, without loading the whole file into memory.",
+  "why": "Schedule exports come from older tools in varied encodings. Trying encodings in a fixed order gives the most faithful reading. Reading in pieces keeps memory use flat.",
+  "how": "Text files are read in one-megabyte pieces to build a SHA-256 hash and size. A byte-order mark is checked first. Then the whole file is checked in UTF-8, cp1252 and latin-1, in that order, and the first that decodes cleanly wins. Each pass checks for cancellation between pieces.",
+  "inputs": "A file path and an optional cancel check.",
+  "outputs": "A fingerprint with hash, size and detected encoding for text, or a hash and size for binary files.",
+  "risks": "Because latin-1 accepts every byte, the last fallback never fails. A cp1252 file may therefore be read with characters that differ from the author's intent.",
+  "debug": "If a file reads as garbled characters, check which encoding was chosen. If cancellation seems slow, check the piece size, since cancel is only checked between pieces.",
+  "summary_hash": "sha256:75d7223dd5ecacf301863a914569c850cfeb76dd16ce707d1912d7f34fffd844"
+}

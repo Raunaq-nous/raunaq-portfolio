@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/documents/contracts.py",
+  "language": "Python",
+  "lines": 91,
+  "hash": "sha256:8423ed1b2d941c2154dda2139cdc058e035e3e511805473d53cc0435959df240",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The rules are clear and enforced, but no test evidence is visible in the packet.",
+      "The strict extra-field setting means schema changes need coordinated updates."
+    ]
+  },
+  "terms": [
+    {
+      "term": "contract",
+      "meaning": "a fixed agreement about the shape of data, so each part of the program can trust what it receives"
+    },
+    {
+      "term": "enum",
+      "meaning": "a fixed list of allowed named values, such as the document categories"
+    },
+    {
+      "term": "pydantic",
+      "meaning": "a Python library that checks data shapes and rules when a record is created"
+    },
+    {
+      "term": "SHA-256 fingerprint",
+      "meaning": "a long code computed from a file's contents that changes if even one byte changes"
+    },
+    {
+      "term": "PDF page",
+      "meaning": "one page of a PDF document, with its size, text, and drawing content"
+    },
+    {
+      "term": "schema version",
+      "meaning": "a label that says which version of the data layout a record uses"
+    }
+  ],
+  "depends_on": [
+    "pydantic",
+    "schedule3d.evidence"
+  ],
+  "used_by": [
+    "backend/schedule3d/documents/facts.py",
+    "backend/schedule3d/documents/service.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "523dd6dd8ba2fc15",
+      "title": "Imports and schema version",
+      "what": "Brings in the rule and data-type tools and sets the document schema version to 2.0.",
+      "why": "Gives every stored document record a version number so later readers can tell which layout it uses.",
+      "watch_out": "Changing this version does not by itself migrate old data, so old records may fail to load."
+    },
+    {
+      "start": 15,
+      "end": 35,
+      "kind": "class",
+      "name": "DocumentClass",
+      "id": "s2",
+      "hash": "434b73b9e5e58c73",
+      "title": "Document categories",
+      "what": "Lists the kinds of document the app can recognize, such as plot plans, one-line diagrams, grounding studies, equipment lists, GIS files, and an unknown catch-all.",
+      "why": "Gives the classifier a fixed set of answers so results can be compared and grouped.",
+      "watch_out": "Adding a category here also needs a matching entry in the fact extraction map, or it will be treated as an other source."
+    },
+    {
+      "start": 36,
+      "end": 43,
+      "kind": "class",
+      "name": "ContentLayer",
+      "id": "s3",
+      "hash": "9b38279ce830b775",
+      "title": "Page content types",
+      "what": "Lists how a page's content is made up: text, drawing lines, images, a mix, or empty.",
+      "why": "Tells the app how much to trust each page and whether a person must look at it.",
+      "watch_out": "The content type decides review rules, so changing the meaning of a type changes which pages are flagged."
+    },
+    {
+      "start": 44,
+      "end": 70,
+      "kind": "class",
+      "name": "DocumentPage",
+      "id": "s4",
+      "hash": "5ebdd30f9ef75f13",
+      "title": "Single page record and its rules",
+      "what": "Describes one page with its size, rotation, text, counts of drawing operations and images, and whether it needs a visual check. Its rules require the text length count to match the text, and require any image-only page to be flagged for visual review.",
+      "why": "Stops a page from claiming it has been fully read when its text does not match, and makes sure picture-only pages are not accepted as facts without a person looking at them.",
+      "watch_out": "The image review rule is what keeps pixel content from becoming facts silently, so it must stay in place."
+    },
+    {
+      "start": 71,
+      "end": 91,
+      "kind": "class",
+      "name": "DocumentExtraction",
+      "id": "s5",
+      "hash": "40b4f3885f7f61ab",
+      "title": "Whole document record and page order rule",
+      "what": "Describes one whole document with its file name, fingerprint, size, media type, category, confidence score, matched words, pages, and warnings. It checks that there is at least one page and that page numbers run from one with no gaps.",
+      "why": "Ensures the page list is complete and in source order, so references to a page number always point to the right page.",
+      "watch_out": "The fingerprint must be exactly 64 lowercase hexadecimal characters, so any change in how fingerprints are produced will reject every document."
+    }
+  ],
+  "explained_at": "2026-11-12T01:46:52+00:00",
+  "explained_by": "haiku",
+  "summary": "This file defines the shape of the data produced when a document is read: its type, its pages, and the rules that each page and the whole document must follow.",
+  "purpose": "Makes sure every document result has the same, checked structure before the rest of the app uses it.",
+  "why": "Likely reason: a fixed contract stops bad or partial document data from quietly reaching the schedule and the viewer.",
+  "how": "It defines a list of known document categories, a list of page content types, a page record with its size, text, and counts, and a document record that holds all its pages. Each record checks its own rules when it is created, and the document record also checks that page numbers run in order from one.",
+  "inputs": "Values produced by the document reader, such as page sizes, extracted text, operator counts, image counts, and the file's fingerprint.",
+  "outputs": "Checked document and page records. Records that break a rule raise an error instead of being used.",
+  "risks": "Both record types refuse extra fields, so a new field added in one place must be added everywhere it is read, or loading old or new data fails. The rule that image-only pages need review is a safety rule and must not be removed.",
+  "debug": "If a document is rejected, read the error message for the rule that failed, such as text count mismatch, a page not marked for review, or pages out of order. Check that the document reader produced complete page numbers.",
+  "summary_hash": "sha256:8423ed1b2d941c2154dda2139cdc058e035e3e511805473d53cc0435959df240"
+}

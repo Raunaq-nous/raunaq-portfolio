@@ -1,0 +1,241 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/attachments.py",
+  "language": "Python",
+  "lines": 504,
+  "hash": "sha256:0dd83d13c4435c76373c4da9af97d6beacd94381bbbc93305ab3edcba007558e",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Cancellation checks and per-file error recording are in place.",
+      "No test is visible in the provided code.",
+      "Some branches are hard to follow and one check is repeated.",
+      "Column matching keeps the last matching column when two columns match the same field.",
+      "Comma removal in number reading can misread decimal commas."
+    ]
+  },
+  "terms": [
+    {
+      "term": "fingerprint",
+      "meaning": "a SHA-256 code that identifies the exact bytes of a file"
+    },
+    {
+      "term": "sidecar",
+      "meaning": "a companion file that sits next to another file and carries extra data about it"
+    },
+    {
+      "term": "structure key",
+      "meaning": "the name used to match a table row to a structure in the model"
+    },
+    {
+      "term": "parametric contract",
+      "meaning": "a rule that defines a component's shape and must not be overwritten by loose data"
+    },
+    {
+      "term": "provenance",
+      "meaning": "a record of where a value came from and why it was accepted"
+    },
+    {
+      "term": "manifest",
+      "meaning": "a list recording what happened to each attachment"
+    },
+    {
+      "term": "CSV and TSV",
+      "meaning": "plain-text tables with values separated by commas or tabs"
+    },
+    {
+      "term": "workbook",
+      "meaning": "an Excel spreadsheet file"
+    },
+    {
+      "term": "bounding box",
+      "meaning": "a rectangle on a page that marks where a piece of evidence was found"
+    }
+  ],
+  "depends_on": [
+    "openpyxl",
+    "schedule3d.documents",
+    "schedule3d.documents.facts",
+    "schedule3d.documents.text_formats",
+    "schedule3d.evidence",
+    "schedule3d.ingest.limits",
+    "schedule3d.ingest.tabular",
+    "schedule3d.model.contracts",
+    "schedule3d.model.enrichment"
+  ],
+  "used_by": [
+    "backend/schedule3d/api/specifications.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 49,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "457da61ec514dc31",
+      "title": "Imports, limits and column names",
+      "what": "Loads the readers for each file type, sets a 2 MiB limit for reviewed evidence sidecars, and holds a table of accepted column names for structure, position and size. This table decides which spreadsheet headings are used.",
+      "why": "Column names vary between sources, so the table lists common spellings. The reason for the exact size limit is not stated in the code.",
+      "watch_out": "Adding a name to this table changes which real columns are applied to the model, and a wrong entry could move components."
+    },
+    {
+      "start": 50,
+      "end": 53,
+      "kind": "class",
+      "name": "AttachmentProcessingCancelled",
+      "id": "s2",
+      "hash": "958e1a12753fc643",
+      "title": "Cancellation signal",
+      "what": "A dedicated error that signals the user cancelled attachment processing at a safe point.",
+      "why": "Lets a job stop cleanly instead of failing in the middle of a file.",
+      "watch_out": "Any code that catches general errors must re-raise this one, or a cancellation will be recorded as an ordinary failure."
+    },
+    {
+      "start": 54,
+      "end": 113,
+      "kind": "function",
+      "name": "collect_document_evidence",
+      "id": "s3",
+      "hash": "1cbac6c83c74c646",
+      "title": "Collecting facts from a folder",
+      "what": "Scans the attachments folder and returns document facts and reviewed visual facts without changing any model. A reviewed sidecar is accepted only if it names a visual review method, a page and a bounding box, and matches exactly one source file by fingerprint. Other failures are skipped quietly.",
+      "why": "Lets facts be gathered on their own, for example to show evidence without building a model.",
+      "watch_out": "Bad sidecars are skipped without any message here, so a missing fact may not be explained anywhere."
+    },
+    {
+      "start": 114,
+      "end": 158,
+      "kind": "function",
+      "name": "_text_document_facts",
+      "id": "s4",
+      "hash": "24222070c2254b8a",
+      "title": "Reading facts from text documents",
+      "what": "Tries to read a document as plain text and pull typed facts from it. If the format cannot be read as text, the file is kept and marked as stored only. If reading fails, the error is written to the file's manifest entry and the run continues.",
+      "why": "Lets text-based documents add facts while still keeping other formats for later review.",
+      "watch_out": "An unexpected failure only leaves an error note on the entry, so a broken document quietly adds no facts."
+    },
+    {
+      "start": 159,
+      "end": 170,
+      "kind": "function",
+      "name": "_sha256",
+      "id": "s5",
+      "hash": "d4f3f79c6b9c290f",
+      "title": "Fingerprinting a file",
+      "what": "Computes the SHA-256 fingerprint of a file in one-megabyte pieces, checking for cancellation between pieces.",
+      "why": "Reading in pieces keeps memory use low for large files. The fingerprint ties evidence to the exact file contents.",
+      "watch_out": "A file edited after review no longer matches its stored fingerprint, so its evidence stops being bound to it."
+    },
+    {
+      "start": 171,
+      "end": 191,
+      "kind": "function",
+      "name": "_tabular_rows",
+      "id": "s6",
+      "hash": "5bcaafe77098f935",
+      "title": "Opening spreadsheets and CSV files",
+      "what": "Opens an Excel workbook (first sheet only) or a CSV or TSV file. It returns the header row and a way to read the remaining rows. Spreadsheets are checked before they are opened.",
+      "why": "Likely reason: reading only the first sheet keeps the rule simple. The code does not state this reason.",
+      "watch_out": "An empty file gives no headers, and the caller must close the returned handle."
+    },
+    {
+      "start": 192,
+      "end": 201,
+      "kind": "function",
+      "name": "_mapping",
+      "id": "s7",
+      "hash": "f97c81fb6a4d7543",
+      "title": "Matching column names",
+      "what": "Turns each header into a standard form and finds which column holds structure, x, y, z, width, height and depth.",
+      "why": "Lets users use several common headings for the same meaning.",
+      "watch_out": "If two columns match the same field, the later one wins because the lookup keeps the last match."
+    },
+    {
+      "start": 202,
+      "end": 211,
+      "kind": "function",
+      "name": "_float",
+      "id": "s8",
+      "hash": "97a4654661221739",
+      "title": "Reading a number safely",
+      "what": "Converts a cell into a number. It removes commas and returns nothing for blank cells, values that are not finite numbers, or text that cannot be read.",
+      "why": "Spreadsheets store numbers as text in mixed forms, and blank or invalid values must not become positions.",
+      "watch_out": "Commas are removed everywhere, so a decimal comma such as 9,5 would be read as 95."
+    },
+    {
+      "start": 212,
+      "end": 271,
+      "kind": "function",
+      "name": "apply_attachment_evidence (part 1)",
+      "id": "s9",
+      "hash": "1ae5bb05857c4e8b",
+      "title": "First pass over attachment files",
+      "what": "Goes through every file in order, creates its manifest entry, and handles reviewed evidence sidecars. It reports progress as it goes.",
+      "why": "Every file gets a manifest entry, including files that fail, so nothing is silently dropped.",
+      "watch_out": "The first sidecar check here repeats a check that appears again later, which is harmless but suggests a copied edit."
+    },
+    {
+      "start": 272,
+      "end": 331,
+      "kind": "function",
+      "name": "apply_attachment_evidence (part 2)",
+      "id": "s10",
+      "hash": "8e8c6d271a14affc",
+      "title": "Document and sidecar processing",
+      "what": "Completes the sidecar checks for visual method, page and box, and source binding. Then it extracts typed facts and page summaries from PDF and image files, recording any error on the entry instead of stopping.",
+      "why": "Each piece of evidence must be bound to exactly one source file so that it cannot attach to the wrong document.",
+      "watch_out": "Binding uses the fingerprint, so two identical source copies cause the binding to fail and the sidecar is not used."
+    },
+    {
+      "start": 332,
+      "end": 391,
+      "kind": "function",
+      "name": "apply_attachment_evidence (part 3)",
+      "id": "s11",
+      "hash": "fa2d5d7c463ec39f",
+      "title": "Routing text files and applying table rows",
+      "what": "Sends unknown file types to text reading. For tables that have a structure column and both coordinates, it checks each row. Rows without a match or without coordinates are skipped. For a matching component it either adds a review item, if the component has a parametric contract, or sets the position with measured provenance.",
+      "why": "Components with a parametric contract need asset-level evidence, so a loose coordinate row goes to review instead of overwriting them.",
+      "watch_out": "Matching is done on structure name only, and cancellation is checked every 1,000 rows, so a cancel may take a moment to apply."
+    },
+    {
+      "start": 392,
+      "end": 451,
+      "kind": "function",
+      "name": "apply_attachment_evidence (part 4)",
+      "id": "s12",
+      "hash": "aaeccfc483d4ea10",
+      "title": "Applying dimensions and recording results",
+      "what": "Sets width, height and depth from metre-labelled columns when all three are positive, and marks them as measured. It then records the number of rows applied and the file's interpretation. A file error is saved on its entry and the run continues.",
+      "why": "Every change carries a note saying it came from an explicit attachment.",
+      "watch_out": "Each matching row overwrites earlier values in file order, so the last applied file wins."
+    },
+    {
+      "start": 452,
+      "end": 504,
+      "kind": "function",
+      "name": "apply_attachment_evidence (part 5)",
+      "id": "s13",
+      "hash": "af5b62ccf1193925",
+      "title": "Combining evidence and summarising the result",
+      "what": "After all files, it combines document facts into the model, records conflicts, sets the site plan extent from an accepted plan dimension, adds assets from inventories, creates a review item for each conflict group, adds a limitation note, and recalculates the spatial provenance counts. It returns a freshly validated model and the manifest.",
+      "why": "The summary tells users how much attachment content was actually applied, and how much still needs review.",
+      "watch_out": "A plan dimension that is not written as width x depth raises an error that this function does not catch, so the whole run fails."
+    }
+  ],
+  "explained_at": "2026-11-12T01:42:21+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads optional project attachments such as documents, spreadsheets, CSV and text files, fingerprints each one, and applies only explicit exact coordinate or dimension rows and typed document facts to a project model.",
+  "purpose": "Lets a user add reference files that can refine a model with measured coordinates, plan dimensions and document facts, without the tool inventing positions.",
+  "why": "The module description says attachments are always kept and fingerprinted, and drawings never imply surveyed placement. The code applies changes only on exact matches.",
+  "how": "Lists every file in the attachments folder in name order and fingerprints each one. Routes each file by type: reviewed evidence sidecars, PDF or image documents, text documents, or spreadsheets and CSV files. For tables it reads the header, maps known column names, and applies rows whose structure name matches and whose coordinates are metre values. Everything else goes to text reading or review. Each file gets a manifest entry. Finally it adds plan dimensions, inventory assets, conflict review items and a limitation note, then returns the model and the manifest.",
+  "inputs": "A project model, a folder of attachment files, and optional progress and cancellation callbacks.",
+  "outputs": "A new validated project model and a manifest list with one entry per file, showing its fingerprint, interpretation, rows applied and any error.",
+  "risks": "Each file is read in full for fingerprinting and some files are read again for source checks. Only the first sheet of a workbook is read. Rows that do not match a structure are skipped silently. Coordinate rows never change components with a parametric contract; they go to review instead.",
+  "debug": "Read the manifest entry for each file. The interpretation preserved_for_review_not_geometry means nothing was applied. Check that structure names match exactly apart from case, and that column headings match the known aliases. Check the model review queue for items about coordinate rows or conflicts.",
+  "summary_hash": "sha256:0dd83d13c4435c76373c4da9af97d6beacd94381bbbc93305ab3edcba007558e"
+}

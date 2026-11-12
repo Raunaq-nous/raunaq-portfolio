@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "path": "scripts/verify_ifc_part_geometry.py",
+  "language": "Python",
+  "lines": 282,
+  "hash": "sha256:559460fb49301a497b02aeb95580be7d8b983118cc91e5402f01f42c5ca5f4e3",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Missing assets or parts can cause a crash instead of a clean discrepancy report.",
+      "No tests are visible in the packet.",
+      "Tolerances for comparing positions are chosen by the code and not documented outside it."
+    ]
+  },
+  "terms": [
+    {
+      "term": "IFC",
+      "meaning": "an open standard file format for describing buildings and their parts"
+    },
+    {
+      "term": "IfcOpenShell",
+      "meaning": "an independent open-source library that reads and builds IFC files and computes their 3D geometry"
+    },
+    {
+      "term": "GlobalId",
+      "meaning": "a unique identifier that IFC gives every object"
+    },
+    {
+      "term": "placement",
+      "meaning": "the position and rotation of an object in space"
+    },
+    {
+      "term": "bounds",
+      "meaning": "the smallest box that contains all of an object's points"
+    },
+    {
+      "term": "tolerance",
+      "meaning": "the small amount of difference allowed before two values are treated as different"
+    },
+    {
+      "term": "STEP",
+      "meaning": "the text format that IFC files are written in"
+    },
+    {
+      "term": "discrepancy",
+      "meaning": "a specific place where the exported file and the app's model do not match"
+    }
+  ],
+  "depends_on": [
+    "schedule3d.model.contracts (project model definitions)",
+    "ifcopenshell 0.8.5 (pinned external engine)"
+  ],
+  "used_by": [
+    "Release verification run by the owner or the release process; not called from scripts/task.py in the packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 20,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "23ccb6a68ce35167",
+      "title": "Setup and imports",
+      "what": "Imports the standard libraries and the project's model definitions, and describes the purpose of the file in the docstring.",
+      "why": "The docstring states that the file is release tooling and must never be a product runtime dependency.",
+      "watch_out": "The product's own model definitions are imported, so a change to them can change what this check expects."
+    },
+    {
+      "start": 21,
+      "end": 26,
+      "kind": "function",
+      "name": "_multiply",
+      "id": "s2",
+      "hash": "fc9c1ea9035e3e8a",
+      "title": "Multiplying rotation grids",
+      "what": "Combines two three-by-three rotation grids into one, which is how rotations are chained together.",
+      "why": "Needed to compute the expected orientation of a part from the component and the part.",
+      "watch_out": "The order of multiplication matters for rotations, so swapping inputs gives a different orientation."
+    },
+    {
+      "start": 27,
+      "end": 30,
+      "kind": "function",
+      "name": "_rotate",
+      "id": "s3",
+      "hash": "3526480539eccc1b",
+      "title": "Rotating a point",
+      "what": "Applies a rotation grid to one three-value point and returns the rotated point.",
+      "why": "Used to move part offsets and corners into the right orientation.",
+      "watch_out": "The point must have exactly three values, or the result is wrong."
+    },
+    {
+      "start": 31,
+      "end": 40,
+      "kind": "function",
+      "name": "_rotation",
+      "id": "s4",
+      "hash": "e2faca27a1b233c4",
+      "title": "Building rotation from three angles",
+      "what": "Turns three angles around the X, Y, and Z axes into one combined rotation grid.",
+      "why": "The model stores rotations as three angles, and the engine compares them as grids.",
+      "watch_out": "Angles are in radians and the axis order is fixed, so a different convention in the model would give wrong results."
+    },
+    {
+      "start": 41,
+      "end": 65,
+      "kind": "function",
+      "name": "_bounds",
+      "id": "s5",
+      "hash": "65f2f302d609b29f",
+      "title": "Expected box for a part",
+      "what": "Computes the expected smallest box around a part in viewer coordinates, using the component and part position and rotation. Cylinders use an exact formula for their outer reach.",
+      "why": "Likely reason: the bounds are the simplest number to compare against the engine's mesh.",
+      "watch_out": "The box is axis-aligned, so a rotated part can get a larger box than its true shape."
+    },
+    {
+      "start": 66,
+      "end": 125,
+      "kind": "function",
+      "name": "verify (part 1)",
+      "id": "s6",
+      "hash": "7ae938cc1ef42f7a",
+      "title": "Reading the model and checking identities",
+      "what": "Reads the model, checks the engine version, parses the IFC file, and checks units, schema, unique IDs, and that the asset and part identities match the model. It also checks the single project and the shared evidence records.",
+      "why": "Identity checks come first because later checks depend on matching the right objects.",
+      "watch_out": "A missing asset or part can cause a key lookup error here, which stops the run before the report is written."
+    },
+    {
+      "start": 126,
+      "end": 185,
+      "kind": "function",
+      "name": "verify (part 2)",
+      "id": "s7",
+      "hash": "0652c3806e0554a2",
+      "title": "Checking asset properties and placement",
+      "what": "For each component with parts, checks the asset's properties and envelope, its child parts, and then each part's world position and orientation against the model.",
+      "why": "Confirms that the IFC places each part where the model says it should be.",
+      "watch_out": "The orientation comparison uses a tight threshold, so tiny floating point errors could be reported as differences."
+    },
+    {
+      "start": 186,
+      "end": 245,
+      "kind": "function",
+      "name": "verify (part 3)",
+      "id": "s8",
+      "hash": "0ebcb90f85a8e35f",
+      "title": "Checking part properties and bounds",
+      "what": "Checks each part's properties and ownership, meshes the part with the independent engine, converts the axes to viewer coordinates, and compares the mesh box to the expected box within a tolerance.",
+      "why": "Confirms that the visible geometry of each part has the right size, not just the right position.",
+      "watch_out": "The axis conversion must match the viewer's convention, or every bounds check will fail."
+    },
+    {
+      "start": 246,
+      "end": 265,
+      "kind": "function",
+      "name": "verify (part 4)",
+      "id": "s9",
+      "hash": "1f3a9da6e808044c",
+      "title": "Checking schedule links and writing the report",
+      "what": "Compares the schedule-to-asset assignment graph with the model, then builds the report with file hashes, counts, geometry coverage, and the valid flag.",
+      "why": "The schedule links are the other half of what the 4D view depends on.",
+      "watch_out": "Valid means no discrepancies were found among explicit parts only, so the report's complete coverage field must be read too."
+    },
+    {
+      "start": 266,
+      "end": 280,
+      "kind": "function",
+      "name": "main",
+      "id": "s10",
+      "hash": "a945af483d3e752a",
+      "title": "Command line entry and exit code",
+      "what": "Reads the model, IFC, output, and tooling paths, runs the check, writes the report, prints a summary without the part list, and exits with an error when the result is not valid.",
+      "why": "Lets the release process run the check from the command line and use the exit code as the pass or fail result.",
+      "watch_out": "The report is written even when the result is invalid, so a failed run still leaves its findings on disk."
+    },
+    {
+      "start": 281,
+      "end": 282,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s11",
+      "hash": "b60851f8e384a572",
+      "title": "Starting the script directly",
+      "what": "Runs the main function only when the file is started directly.",
+      "why": "Standard Python pattern so the file can be imported without running.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T02:45:50+00:00",
+  "explained_by": "haiku",
+  "summary": "Independently reopens an exported IFC building model with a separate geometry engine and checks that the parts match the app's own model in identity, placement, size, and schedule links.",
+  "purpose": "Confirms that the exported IFC file tells the truth about explicit parts, so a downstream user can trust the file.",
+  "why": "The docstring says it is release tooling and never an importer. The comments state the original crash came from escaped characters in the exported evidence, so the bytes are read directly.",
+  "how": "It reads the app's model file, loads the pinned IfcOpenShell engine, parses the IFC file, and compares asset and part properties, hierarchy, world placement, mesh bounds, and schedule links against the model. It lists every discrepancy, writes a JSON report, and exits with an error if any discrepancy exists.",
+  "inputs": "The model JSON path, the IFC file path, the output report path, and a tooling folder that defaults to build/tooling/ifcopenshell-0.8.5. The pinned IfcOpenShell version 0.8.5.",
+  "outputs": "A JSON report with a valid flag, the discrepancy list, per-part bounds, file hashes, and counts. A short summary in the terminal without the part list.",
+  "risks": "Only explicit parts are geometry checked, so a valid result does not cover legacy assets. Some missing assets lead to a key lookup error before the discrepancy is recorded, so the report may not be written. The file reads at most 256 MiB and uses a lot of memory for large models.",
+  "debug": "If the message says the pinned version is required, install IfcOpenShell 0.8.5 in the tooling folder. If it says expected one IFC project, the export is wrong. Read the discrepancies list in the output report for specific mismatches. Progress messages on the error output show which stage ran last.",
+  "summary_hash": "sha256:559460fb49301a497b02aeb95580be7d8b983118cc91e5402f01f42c5ca5f4e3"
+}

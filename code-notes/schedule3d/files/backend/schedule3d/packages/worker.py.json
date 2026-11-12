@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/packages/worker.py",
+  "language": "Python",
+  "lines": 216,
+  "hash": "sha256:2b6ad55aa770d1d037ee48dac52e46d15652ce0293adf1a70c40999ee014b9e9",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test of the time, memory or cancellation paths is visible in the packet.",
+      "Memory measurement depends on process details that can fail on some systems.",
+      "The code handles failure and cancellation explicitly, which is a strength."
+    ]
+  },
+  "terms": [
+    {
+      "term": "process",
+      "meaning": "a running program with its own memory"
+    },
+    {
+      "term": "spawn",
+      "meaning": "starting a fresh, separate program rather than copying the current one"
+    },
+    {
+      "term": "RSS",
+      "meaning": "the amount of physical memory a process is using"
+    },
+    {
+      "term": "queue",
+      "meaning": "a line that passes messages between processes"
+    },
+    {
+      "term": "exit code",
+      "meaning": "the number a program returns when it ends; zero usually means success"
+    },
+    {
+      "term": "cancel file",
+      "meaning": "a marker file whose presence tells the worker to stop"
+    },
+    {
+      "term": "terminate and kill",
+      "meaning": "asking a process to stop, then forcing it to stop"
+    },
+    {
+      "term": "budget",
+      "meaning": "a limit on time or memory"
+    }
+  ],
+  "depends_on": [
+    "multiprocessing",
+    "json",
+    "queue",
+    "schedule3d.documents.service",
+    "schedule3d.ingest.service",
+    "schedule3d.packages.archive",
+    "schedule3d.packages.extraction",
+    "schedule3d.packages.modeling",
+    "schedule3d.packages.paths"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 29,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "172f920255982807",
+      "title": "File purpose, budgets and imports",
+      "what": "States that this module supervises package work with time and memory limits and live progress. The budgets table sets seconds and bytes for each of the four stages.",
+      "why": "Likely reason: keeping each stage's limits in one table makes them easy to see and compare.",
+      "watch_out": "Changing a budget changes when real packages are stopped, so test large packages after any edit."
+    },
+    {
+      "start": 30,
+      "end": 89,
+      "kind": "function",
+      "name": "_worker (part 1)",
+      "id": "s2",
+      "hash": "c9304d570fdfb284",
+      "title": "Worker side: the stage code",
+      "what": "Runs in the separate process. Defines the cancel check and the progress sender, then runs the chosen stage. For extraction, a required document failure makes the stage fail. For schedule, a cancelled parse makes the stage fail, after the report is written.",
+      "why": "Running the stage in a separate process lets the parent stop it without crashing the app.",
+      "watch_out": "An extraction with any required failure is reported as an error, so partial results are never marked ok."
+    },
+    {
+      "start": 90,
+      "end": 103,
+      "kind": "function",
+      "name": "_worker (part 2)",
+      "id": "s3",
+      "hash": "6cef93282fd9c54c",
+      "title": "Worker side: writing the result",
+      "what": "Checks cancellation once more, then writes a result file that says success, or gives the error text and whether the stage was cancelled. Tells the message queue not to hold up the process from exiting.",
+      "why": "The result file is how the parent learns the outcome, even when the process exits.",
+      "watch_out": "The result file is the only success signal. A worker that exits without writing one is treated as a failure."
+    },
+    {
+      "start": 104,
+      "end": 163,
+      "kind": "function",
+      "name": "run_package_stage (part 1)",
+      "id": "s4",
+      "hash": "fdaced5d5163d066",
+      "title": "Parent side: setup and watch loop",
+      "what": "Refuses to start if a result file already exists, then starts the separate process and watches it. On each pass it forwards progress, tracks the document being processed and when it started, and checks the memory of both processes. It stops early if memory cannot be read, if cancellation is requested, or if the overall time budget is passed.",
+      "why": "Likely reason: checking every fraction of a second lets the app stop a runaway step quickly.",
+      "watch_out": "Memory is measured only between checks, so a sudden spike may be noticed late."
+    },
+    {
+      "start": 164,
+      "end": 216,
+      "kind": "function",
+      "name": "run_package_stage (part 2)",
+      "id": "s5",
+      "hash": "55d379815a0aa795",
+      "title": "Parent side: checks, cleanup and metrics",
+      "what": "Checks the per-document time limit, which applies only to extraction, and the memory limits for the worker and for the combined use with the app. Then reads the result, stops the process if needed, and writes the metrics file. Finally raises a cancellation or failure if anything went wrong.",
+      "why": "Cleanup always runs, so a stuck process does not survive the stage.",
+      "watch_out": "A process still alive after the kill attempt is recorded in the metrics, and that is the sign to investigate on the machine."
+    }
+  ],
+  "explained_at": "2026-11-12T02:06:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs one package stage (inventory, extraction, schedule or model) in a separate process, watches its time and memory, and reports progress and a final metrics file.",
+  "purpose": "Protects the app from a stuck or memory-hungry package step and shows live progress while it runs, so one bad file cannot freeze or crash the whole app.",
+  "why": "Likely reason: a separate process can be stopped or killed safely if it misbehaves, which an in-process call cannot be. The spawn start method gives the process a clean start.",
+  "how": "Parent side: 1. Look up the stage's time and memory budgets. 2. Refuse if a result already exists. 3. Start a separate process. 4. On each check, pass progress on, check worker and parent memory, check cancellation, the overall time, and the per-document time. 5. Read the result file, then stop or kill the process if needed. 6. Write the metrics file, then raise an error or a cancellation. Worker side: 1. Run the stage's code. 2. Send progress through a queue. 3. Write a result file with success, the error text, and a cancelled flag.",
+  "inputs": "The stage name, source and output paths, a control folder, and a progress callback. Budgets: inventory 180 seconds and 512 MB, extraction 900 seconds and 1 GB, schedule 180 seconds and 512 MB, model 180 seconds and 1 GB.",
+  "outputs": "On success, a metrics dictionary: stage, passed, error, elapsed time, peak memory, worker process identifier and exit code, last document, and budgets. The metrics file is written in every case. A failure raises an error or a cancellation.",
+  "risks": "If memory cannot be measured, the stage stops by design. The per-document time limit applies only to extraction. Cancellation works through a marker file. A worker that ignores cancellation is stopped by terminate, then kill. An extraction with failed required documents is reported as a failure.",
+  "debug": "Open the stage metrics file in the control folder first. It gives the error, peak memory, last document and timings. If the error says memory telemetry is unavailable, the platform's process memory reading is failing. If the result file is missing, the worker died, so check its exit code. A retry must use a new job folder.",
+  "summary_hash": "sha256:2b6ad55aa770d1d037ee48dac52e46d15652ce0293adf1a70c40999ee014b9e9"
+}

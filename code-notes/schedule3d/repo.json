@@ -1,0 +1,302 @@
+{
+  "schema_version": 1,
+  "name": "schedule3d",
+  "commit": "1bdddcc",
+  "synced_at": "2026-11-12T02:47:30+00:00",
+  "summary": "Schedule3D turns construction schedule files, such as Primavera P6 exports and spreadsheets, into an interactive 3D model that shows how a facility is built over time. It can also read project packages (ZIP files of documents, PDFs, Office files and CAD drawings) and uses measured facts from them only when they are backed by evidence. The results can be viewed in a browser, edited by hand, and exported as an offline HTML file, an audit pack or a conceptual IFC building file. Many layouts are schematic and use assumed positions, not surveyed ones. The backend is Python and the frontend is a React and 3D web app.",
+  "who_its_for": "Planners, project controllers and reviewers who want to see a construction schedule as a 3D timeline. Developers maintaining it are also served by the tests and scripts.",
+  "how_it_runs": "It runs as a local web app: scripts/task.py (or start_unix.sh) starts a Python server and the browser frontend talks to it. A Replit setup and a Windows portable release also exist, but how they are used day to day is not fully clear from the summaries.",
+  "start_here": [
+    "pyproject.toml",
+    "scripts/task.py",
+    "backend/schedule3d/cli.py",
+    "backend/schedule3d/api/app.py",
+    "backend/schedule3d/model/service.py",
+    "frontend/src/App.tsx",
+    "frontend/src/scene/SceneView.tsx"
+  ],
+  "areas": [
+    {
+      "id": "backend-schedule3d",
+      "name": "backend/schedule3d",
+      "match": [
+        "backend/schedule3d/*"
+      ],
+      "summary": "The Python engine. It reads schedules and documents, normalizes them, classifies activities, builds the 3D and 4D model, and produces exports and the web API.",
+      "why": "This is where uploaded files become a model, so most data and logic problems start here.",
+      "debug_tips": "Follow the pipeline in order: ingest, normalize, semantics, model, then export or render. Check warnings and evidence records to see why a fact was accepted or rejected."
+    },
+    {
+      "id": "frontend-src",
+      "name": "frontend/src",
+      "match": [
+        "frontend/src/*"
+      ],
+      "summary": "The browser app source: upload, project choice, the 3D scene, timeline, editors, side panels and the landing page.",
+      "why": "It is everything the user sees and clicks.",
+      "debug_tips": "For a blank or broken 3D view, look in the scene folder, especially SceneView.tsx and SceneErrorBoundary.tsx. For wrong dates, check timeline.ts."
+    },
+    {
+      "id": "tests",
+      "name": "tests",
+      "match": [
+        "tests/*"
+      ],
+      "summary": "Python tests covering documents, ZIP safety, evidence rules, layouts, assemblies, the model library and saved-model compatibility.",
+      "why": "They describe the intended behavior and catch regressions.",
+      "debug_tips": "Find the test file named after the area that misbehaves and run it first. A failing test often states the rule that was broken."
+    },
+    {
+      "id": "scripts",
+      "name": "scripts",
+      "match": [
+        "scripts/*"
+      ],
+      "summary": "Helper tools for running the project, building the model library with Blender, generating sample outputs, scanning security, checking IFC output and building the Windows release.",
+      "why": "They are the standard way to start, test and package the app.",
+      "debug_tips": "Use scripts/task.py for most jobs. For IFC problems try diagnose_ifc_parser.py or verify_ifc_part_geometry.py."
+    },
+    {
+      "id": "frontend",
+      "name": "frontend",
+      "match": [
+        "frontend/*"
+      ],
+      "summary": "Frontend configuration: package list, build and dev server settings, lint rules and the single HTML page.",
+      "why": "It controls how the browser app is built and how it reaches the backend.",
+      "debug_tips": "If the frontend cannot reach the server, check the proxy in vite.config.ts. For build or lint failures, check package.json and eslint.config.js."
+    },
+    {
+      "id": "root-files",
+      "name": "(root files)",
+      "match": [
+        "*"
+      ],
+      "summary": "Top-level project files: the Python project definition, the Replit configuration and the Unix start script.",
+      "why": "They set versions, dependencies and how the app starts.",
+      "debug_tips": "Check Python and Node versions against pyproject.toml and .replit. Note that .replit says Python 3.13 while pyproject allows 3.12 or 3.13."
+    },
+    {
+      "id": "assets",
+      "name": "assets",
+      "match": [
+        "assets/*"
+      ],
+      "summary": "A Blender script that builds detailed 3D models of facility elements such as turbines, tanks and bridges, exported as GLB files.",
+      "why": "The viewer uses these models in place of plain boxes.",
+      "debug_tips": "If an element looks like a simple box, the model may have failed to load. Rebuild the library with scripts/build_model_library.py and run tests/test_model_library.py."
+    }
+  ],
+  "decisions": [],
+  "readiness": {
+    "overall": "not-ready",
+    "summary": "Top fixes: add CI and a written deploy and rollback process, document data storage with backups and migrations, and run the tests and dependency audit and review the one flagged secret-like string.",
+    "checked_at": "2026-11-12T02:47:45+00:00",
+    "checks": [
+      {
+        "id": "starts",
+        "question": "Does the app build and start with one documented command?",
+        "status": "partial",
+        "evidence": "`README.md` documents `python scripts/task.py bootstrap` then `python scripts/task.py start`, which is two commands rather than one. The build and start were not run, so it is unverified that they work.",
+        "next_step": "Add a single documented command that bootstraps and starts, and confirm it works on a clean machine."
+      },
+      {
+        "id": "tests",
+        "question": "Are there automated tests, and do they pass?",
+        "status": "unknown",
+        "evidence": "Not checked: tests were not run in this pass. 41 test files exist (for example `frontend/src/api.test.ts`, `frontend/src/PartInspector.test.tsx`), but `README.md` says private-fixture and acceptance tests are excluded, and the original `scripts/task.py check` is not included.",
+        "next_step": "Run `uv run pytest` and `npm test` and record the results."
+      },
+      {
+        "id": "errors",
+        "question": "When something goes wrong, does the app show a clear message instead of crashing or failing silently?",
+        "status": "unknown",
+        "evidence": "Not checked: user-facing error behaviour needs running the app. Static scan found 0 swallowed errors, and `README.md` mentions renderer recovery tests with WebGL disabled, which is a good sign but not proof.",
+        "next_step": "Trigger failure cases (bad upload, backend down) and confirm clear messages appear."
+      },
+      {
+        "id": "inputs",
+        "question": "Does it check what people type or upload before using it?",
+        "status": "partial",
+        "evidence": "Input validation patterns appear in 341 matches across 89 files. `pydantic`, `defusedxml`, `python-multipart` and `pypdf` are used for typed and safe parsing. Upload limits and file-type checks were not confirmed.",
+        "next_step": "Confirm size and type limits on every upload endpoint and add tests for oversized or malformed files."
+      },
+      {
+        "id": "secrets",
+        "question": "Are passwords and API keys kept out of the code and out of git history?",
+        "status": "partial",
+        "evidence": "No tracked env files and `.gitignore` mentions `.env`. The scan found 1 secret-looking string in HEAD in 1 file. History was not scanned, though `README.md` says the snapshot has a fresh root commit with no original history.",
+        "next_step": "Inspect the one flagged string and rotate it if real, then run a history scan such as gitleaks."
+      },
+      {
+        "id": "access",
+        "question": "Can only the right people see and change things (sign-in and permissions)?",
+        "status": "partial",
+        "evidence": "Auth, session or permission patterns appear in 224 matches across 33 files, but they may relate to the product domain rather than sign-in. `README.md` says the server is loopback-only at 127.0.0.1:8765, which limits exposure for a local-first tool, but no multi-user permissions were confirmed.",
+        "next_step": "Decide whether the app is single-user local only, and if so document it; otherwise add sign-in before any network exposure."
+      },
+      {
+        "id": "data",
+        "question": "Is important data backed up, and are database changes made through migrations?",
+        "status": "fail",
+        "evidence": "No migrations folders were found, and no backup process is documented. `README.md` says this snapshot is not a complete backup.",
+        "next_step": "Document how project data is stored and backed up, and add versioned schema migrations if a database or saved-file format is used."
+      },
+      {
+        "id": "dependencies",
+        "question": "Are third-party packages reasonably up to date and free of known security problems?",
+        "status": "unknown",
+        "evidence": "Not checked: the dependency audit was not run. Versions are pinned in `pyproject.toml` and locked in `uv.lock` and `frontend/package-lock.json`, and `pip-audit` is listed as a dev dependency.",
+        "next_step": "Run `uv run pip-audit` and `npm audit` and fix any findings."
+      },
+      {
+        "id": "logs",
+        "question": "If it breaks while people use it, will logs or alerts show what happened?",
+        "status": "partial",
+        "evidence": "Logging appears in only 27 matches across 3 files. No alerting or monitoring configuration was found.",
+        "next_step": "Add structured logging for requests and errors across the backend, and write logs to a file users can share."
+      },
+      {
+        "id": "performance",
+        "question": "Does it stay fast with realistic amounts of data and users?",
+        "status": "unknown",
+        "evidence": "Not checked: performance needs running the app with realistic schedules. No load or benchmark tests were identified in the evidence.",
+        "next_step": "Time model generation and rendering with a large synthetic schedule and set a budget."
+      },
+      {
+        "id": "deploy",
+        "question": "Is there a written, repeatable way to deploy it and to roll back a bad release?",
+        "status": "fail",
+        "evidence": "No CI or deploy files were found. `README.md` describes only local running, and notes the earlier portable release binaries are kept out of this snapshot. No rollback process is documented.",
+        "next_step": "Write a short release and rollback guide and add a CI workflow that runs tests and builds the package."
+      },
+      {
+        "id": "docs",
+        "question": "Could someone new run it and understand it from the docs alone?",
+        "status": "partial",
+        "evidence": "`README.md` covers prerequisites, run steps, checks and limitations clearly, and there are product guides and notes under `.agents/memory/`. There is no architecture overview or troubleshooting section in the evidence, and the original `scripts/task.py check` is missing.",
+        "next_step": "Add a short architecture overview and troubleshooting section to the README."
+      }
+    ],
+    "method": "Static evidence only; tests, build and audit were not run in this pass."
+  },
+  "debug_playbook": [
+    {
+      "symptom": "An uploaded schedule file is rejected or shows wrong dates or missing activities",
+      "likely_area": "backend-schedule3d",
+      "where_to_look": [
+        "backend/schedule3d/ingest/service.py",
+        "backend/schedule3d/ingest/tabular.py",
+        "backend/schedule3d/ingest/xer.py",
+        "backend/schedule3d/ingest/dates.py"
+      ],
+      "steps": [
+        "Confirm the file ending is one the router supports.",
+        "Check the warnings from ingestion for unreadable dates or columns.",
+        "Compare the column mapping in tabular.py with the file's headers."
+      ]
+    },
+    {
+      "symptom": "The 3D view is blank or shows an error panel",
+      "likely_area": "frontend-src",
+      "where_to_look": [
+        "frontend/src/scene/SceneErrorBoundary.tsx",
+        "frontend/src/scene/SceneView.tsx",
+        "frontend/src/scene/WebGLInitializationError.ts",
+        "frontend/src/scene/modelLibrary.ts"
+      ],
+      "steps": [
+        "Check whether the browser reports a graphics (WebGL) startup failure.",
+        "Look at the browser console for errors from the scene.",
+        "Confirm the model data from the server has components with finite positions."
+      ]
+    },
+    {
+      "symptom": "A document in a project package is skipped or its facts are not used in the model",
+      "likely_area": "backend-schedule3d",
+      "where_to_look": [
+        "backend/schedule3d/packages/extraction.py",
+        "backend/schedule3d/packages/claims.py",
+        "backend/schedule3d/evidence/reconciliation.py",
+        "backend/schedule3d/packages/archive.py"
+      ],
+      "steps": [
+        "Check the package report for failures or review flags on that file.",
+        "See whether the claim conflicts with another source in reconciliation.",
+        "Check the ZIP safety limits in the archive code."
+      ]
+    },
+    {
+      "symptom": "A component appears at the wrong time or with the wrong state on the timeline",
+      "likely_area": "frontend-src",
+      "where_to_look": [
+        "frontend/src/timeline.ts",
+        "frontend/src/scene/reveal.ts",
+        "backend/schedule3d/model/service.py"
+      ],
+      "steps": [
+        "Check which date set is used (planned, baseline, forecast or actual).",
+        "Verify the component's activity link in the model data.",
+        "Run timeline.test.ts and reveal.test.ts."
+      ]
+    },
+    {
+      "symptom": "The IFC export is invalid or does not match the model",
+      "likely_area": "backend-schedule3d",
+      "where_to_look": [
+        "backend/schedule3d/bim/service.py",
+        "backend/schedule3d/bim/validator.py",
+        "scripts/verify_ifc_part_geometry.py",
+        "scripts/diagnose_ifc_parser.py"
+      ],
+      "steps": [
+        "Read the validator's list of problems.",
+        "Run verify_ifc_part_geometry.py to compare parts with the app's model.",
+        "If the parser fails, run diagnose_ifc_parser.py to find the first bad statement."
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Primavera P6 / XER",
+      "meaning": "A common construction scheduling program and its export formats (XER text files or XML)."
+    },
+    {
+      "term": "WBS",
+      "meaning": "Work breakdown structure, the tree of nested work groupings in a schedule."
+    },
+    {
+      "term": "4D",
+      "meaning": "A 3D model plus time, so you can see what is built on a given date."
+    },
+    {
+      "term": "IFC",
+      "meaning": "An open file format for building models. Here the export is conceptual, not engineered."
+    },
+    {
+      "term": "Evidence",
+      "meaning": "A sourced fact with a state, such as accepted or conflicting, that decides whether it may shape the model."
+    },
+    {
+      "term": "Assembly",
+      "meaning": "A component built from repeated and combined simple 3D shapes, which can be saved as a template."
+    },
+    {
+      "term": "Programme",
+      "meaning": "A combined view of several projects, each placed on a labelled grid."
+    },
+    {
+      "term": "Package",
+      "meaning": "A ZIP of project documents analyzed alongside a schedule."
+    },
+    {
+      "term": "GLB",
+      "meaning": "A single-file 3D model format used for the detailed element library."
+    },
+    {
+      "term": "Staging database",
+      "meaning": "A temporary SQLite database holding schedule data after it is read in."
+    }
+  ],
+  "skipped": []
+}

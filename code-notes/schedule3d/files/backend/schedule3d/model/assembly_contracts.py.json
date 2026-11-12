@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/model/assembly_contracts.py",
+  "language": "Python",
+  "lines": 70,
+  "hash": "sha256:99cbf7bebac89dc46428d973a6a240b0a42c679b50c416a46ce155ec63b9aa84",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Limits and rules are clear and explicit, and unknown fields are rejected.",
+      "No tests are visible in the packet.",
+      "The unit of the sizes is not stated in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "recipe",
+      "meaning": "a written description of a part that the code can expand into shapes."
+    },
+    {
+      "term": "template",
+      "meaning": "a saved, named set of recipes that can be reused."
+    },
+    {
+      "term": "primitive",
+      "meaning": "a basic shape type; here only box or cylinder is allowed."
+    },
+    {
+      "term": "repeat count",
+      "meaning": "how many copies of a recipe to make."
+    },
+    {
+      "term": "validation",
+      "meaning": "checking data against rules before using it."
+    }
+  ],
+  "depends_on": [
+    "pydantic",
+    "typing"
+  ],
+  "used_by": [
+    "backend/schedule3d/model/assemblies.py",
+    "backend/schedule3d/model/contracts.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "fde1eedb603764af",
+      "title": "File header and imports",
+      "what": "States the file's purpose and brings in the typing and Pydantic tools used to define the recipe shapes.",
+      "why": "Likely reason: the header states the portability rule so readers know recipes stay free of evidence claims.",
+      "watch_out": ""
+    },
+    {
+      "start": 9,
+      "end": 15,
+      "kind": "class",
+      "name": "AssemblyVector",
+      "id": "s2",
+      "hash": "5588b4e23b7419cb",
+      "title": "Three-part position or size",
+      "what": "Describes a point or measurement with three numbers, each limited to plus or minus one million. Infinite and not-a-number values are rejected.",
+      "why": "Likely reason: the limit keeps values within a range the viewer and exporters can handle.",
+      "watch_out": "Other model code describes sizes in metres, so values here should be read the same way."
+    },
+    {
+      "start": 16,
+      "end": 21,
+      "kind": "class",
+      "name": "AssemblyDimensions",
+      "id": "s3",
+      "hash": "8ce121b13a8fd1bb",
+      "title": "Positive size",
+      "what": "Describes a size with three numbers, each above zero and at most one hundred thousand.",
+      "why": "Likely reason: a part with zero or negative size cannot be drawn.",
+      "watch_out": "Zero is rejected, so a flat part must still have a small positive thickness."
+    },
+    {
+      "start": 22,
+      "end": 35,
+      "kind": "class",
+      "name": "AssemblyGeometry",
+      "id": "s4",
+      "hash": "32f47bb90b81782f",
+      "title": "Geometry of one recipe part",
+      "what": "Describes one shape: its type, which is box or cylinder, its size, position, and rotation. A cylinder must have equal X and Z sizes.",
+      "why": "Likely reason: a cylinder's round cross section is set by its X and Z sizes, so they must match.",
+      "watch_out": "A cylinder's length is in the Y size, so mixing up the axes produces a wrong shape."
+    },
+    {
+      "start": 36,
+      "end": 47,
+      "kind": "class",
+      "name": "AssemblyPartRecipe",
+      "id": "s5",
+      "hash": "9f54e231daaff82f",
+      "title": "One part recipe",
+      "what": "Describes one kind of part: its slot name, role, geometry, material key, how many copies to make, and the offset between copies. The slot name cannot start with a number sign or contain one.",
+      "why": "Likely reason: the number sign is reserved for numbering copies, so slot names must avoid it.",
+      "watch_out": "A slot name containing a number sign is rejected, which protects the numbering scheme."
+    },
+    {
+      "start": 48,
+      "end": 61,
+      "kind": "class",
+      "name": "AssemblyDefinition",
+      "id": "s6",
+      "hash": "4690728b748b2a3c",
+      "title": "Full assembly definition",
+      "what": "Describes a list of one to 256 recipes. Slot names must be unique, and the total number of expanded parts can be at most 4096.",
+      "why": "Likely reason: the limit of 4096 keeps one assembly small enough to expand and draw.",
+      "watch_out": "The 4096 limit is separate from the 100,000-part limit for the whole model, so both must be respected."
+    },
+    {
+      "start": 62,
+      "end": 70,
+      "kind": "class",
+      "name": "AssemblyTemplate",
+      "id": "s7",
+      "hash": "58a6a2ab3e449022",
+      "title": "Named template",
+      "what": "Adds a template ID and a name of up to 80 characters to the definition. The name cannot be blank.",
+      "why": "Likely reason: a name lets people find and pick a saved arrangement.",
+      "watch_out": "A blank name is rejected, but spaces inside a name are kept."
+    }
+  ],
+  "explained_at": "2026-11-12T01:53:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the shape and limits of an assembly recipe: its shape types, sizes, positions, repeats, and template names.",
+  "purpose": "Sets the rules that a saved or sent recipe must follow, so the app rejects bad recipes before expanding them.",
+  "why": "The file header says recipes contain no asset identity or transferable evidence claims. Likely reason: recipes are meant to be portable, so they carry only geometry and naming.",
+  "how": "Uses Pydantic models that forbid unknown fields and check each value. Recipes are grouped into a definition, which is grouped into a named template.",
+  "inputs": "Recipe values from a user or from a saved template.",
+  "outputs": "Validated recipe objects, or validation errors naming the broken rule.",
+  "risks": "Changing a range or a limit affects every saved template and every recipe that depends on it. The recipe limits are separate from the model-wide part budget.",
+  "debug": "Read the validation error, which names the field and the rule broken. Check slot names for the number sign, which is not allowed, and repeat counts between one and 256.",
+  "summary_hash": "sha256:99cbf7bebac89dc46428d973a6a240b0a42c679b50c416a46ce155ec63b9aa84"
+}

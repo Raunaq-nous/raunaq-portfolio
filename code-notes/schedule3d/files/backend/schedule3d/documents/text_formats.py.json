@@ -1,0 +1,184 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/documents/text_formats.py",
+  "language": "Python",
+  "lines": 217,
+  "hash": "sha256:b8fc7afa4d6a875949fff6ccba13af1fb29b92591852e69847e5d96b8f6598ef",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "No test file or test results are visible in this packet.",
+      "Errors from the Office and DXF readers are not caught here, so they reach the caller.",
+      "Behaviour for encodings other than UTF-8, Windows Western and UTF-16 with a byte-order mark is not handled."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Byte-order mark",
+      "meaning": "A few hidden bytes at the start of a text file that say which text encoding it uses."
+    },
+    {
+      "term": "Encoding",
+      "meaning": "The rule that turns stored bytes into letters, such as UTF-8 or Windows Western."
+    },
+    {
+      "term": "Markup",
+      "meaning": "Tags such as angle-bracket codes used by web pages and XML to describe layout."
+    },
+    {
+      "term": "RTF",
+      "meaning": "Rich Text Format, a document format that stores formatting as plain-text codes."
+    },
+    {
+      "term": "DXF",
+      "meaning": "A drawing exchange file format used by CAD programs."
+    },
+    {
+      "term": "SHA-256 fingerprint",
+      "meaning": "A fixed-length code computed from file contents; the same bytes always give the same code, so it identifies a file."
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/documents/contracts.py",
+    "backend/schedule3d/documents/service.py",
+    "backend/schedule3d/packages/office.py",
+    "backend/schedule3d/packages/dxf.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 35,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "cb94828614d3dd5f",
+      "title": "Module setup and file type lists",
+      "what": "Loads the tools this file needs and defines which file extensions count as Office, markup, email or RTF, plus the page size and text limits. It runs nothing by itself.",
+      "why": "Likely reason: keeps the file type lists and limits in one place so the readers stay consistent.",
+      "watch_out": "Changing the page size or character limits changes how many pages and how much text each document produces."
+    },
+    {
+      "start": 36,
+      "end": 39,
+      "kind": "function",
+      "name": "_noop",
+      "id": "s2",
+      "hash": "9c1d2fc2b0f6fcb4",
+      "title": "Empty progress check",
+      "what": "Does nothing. It is the default progress check used when the caller does not supply one, so the reader can always call it.",
+      "why": "Likely reason: lets the reading steps report progress without first checking whether a checker was given.",
+      "watch_out": ""
+    },
+    {
+      "start": 40,
+      "end": 64,
+      "kind": "function",
+      "name": "_decode",
+      "id": "s3",
+      "hash": "469a75dd572eb84b",
+      "title": "Turns bytes into text safely",
+      "what": "Converts raw file bytes into text, using UTF-16 when a byte-order mark is present and otherwise trying UTF-8 and then Windows Western encoding. Returns nothing for content that looks binary or contains too many control characters.",
+      "why": "Likely reason: lets binary files be skipped instead of producing unreadable text.",
+      "watch_out": "A UTF-16 file without a byte-order mark looks binary and is skipped."
+    },
+    {
+      "start": 65,
+      "end": 70,
+      "kind": "function",
+      "name": "_strip_markup",
+      "id": "s4",
+      "hash": "915529891f2e79c3",
+      "title": "Removes web markup, keeping readable text",
+      "what": "Turns line-break and table-cell tags into spacing or new lines, removes script and style blocks and other tags, and converts encoded characters back to normal characters.",
+      "why": "Likely reason: lets web pages and XML read as plain text for the same fact search.",
+      "watch_out": "This is rough tag removal and does not understand layout, so table text can run together."
+    },
+    {
+      "start": 71,
+      "end": 75,
+      "kind": "function",
+      "name": "_strip_rtf",
+      "id": "s5",
+      "hash": "f1f65341786cebb2",
+      "title": "Removes RTF formatting codes",
+      "what": "Converts RTF paragraph and line markers into new lines and tabs, then removes the formatting codes and braces, leaving the words.",
+      "why": "Likely reason: lets Rich Text Format files be read as plain text.",
+      "watch_out": "Only the common RTF codes are handled, so unusual files may leave stray codes in the text."
+    },
+    {
+      "start": 76,
+      "end": 98,
+      "kind": "function",
+      "name": "_email_text",
+      "id": "s6",
+      "hash": "a917cdc75a7957f8",
+      "title": "Reads an email into text",
+      "what": "Builds a text version of an email with its From, To, Date and Subject lines, then adds the plain or HTML body. Attachments are listed by name only.",
+      "why": "Stated in the code: attachments are marked as not opened, so their contents are not read.",
+      "watch_out": "Facts inside attached files never appear in the output from the email."
+    },
+    {
+      "start": 99,
+      "end": 127,
+      "kind": "function",
+      "name": "_office_text",
+      "id": "s7",
+      "hash": "957165a34c3c9a22",
+      "title": "Reads Word, Excel and PowerPoint content",
+      "what": "Sends the file to the Office reader, then turns each worksheet into rows of cell values and each document part into paragraphs and table rows. Blank lines are dropped.",
+      "why": "Likely reason: converts Office layouts into the same plain text used for other documents.",
+      "watch_out": "Macro-enabled files are read with the matching non-macro reader; macros are never run."
+    },
+    {
+      "start": 128,
+      "end": 135,
+      "kind": "function",
+      "name": "_dxf_text",
+      "id": "s8",
+      "hash": "33d12144848d5171",
+      "title": "Collects text labels from drawings",
+      "what": "Pulls the text labels out of a DXF drawing and joins them into one block of text.",
+      "why": "Likely reason: drawing labels often hold values that the fact search can find.",
+      "watch_out": "Only text items are collected; geometry is ignored, as the module header notes."
+    },
+    {
+      "start": 136,
+      "end": 167,
+      "kind": "function",
+      "name": "_pages",
+      "id": "s9",
+      "hash": "043910f95ac445d5",
+      "title": "Splits text into page-sized chunks",
+      "what": "Breaks each text section into chunks of about 6,000 characters along line breaks and returns them as numbered pages. Each page is labelled as a text section, not a printed page.",
+      "why": "Likely reason: lets text documents use the same page-based fact recognition as PDFs.",
+      "watch_out": "Page numbers here are chunk numbers, so they must not be quoted as the printed page numbers of the document."
+    },
+    {
+      "start": 168,
+      "end": 217,
+      "kind": "function",
+      "name": "extract_text_document",
+      "id": "s10",
+      "hash": "ca23be2fef6137bf",
+      "title": "Main entry for reading a document",
+      "what": "Checks the file size, reads the file, chooses the right reader for its type, splits the text into pages, classifies the document and returns the result. Returns nothing when the file cannot be read as text.",
+      "why": "Stated in the code: the docstring says it returns readable text pages or nothing.",
+      "watch_out": "Oversized files raise an error while unreadable files return nothing, so callers must handle both cases."
+    }
+  ],
+  "explained_at": "2026-11-12T01:48:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads plain text, markup, email, Office, DXF and RTF files into the same page-based text format used for PDFs, without running any content in them.",
+  "purpose": "Lets project documents that are not PDFs still feed the same literal fact search, so a value written in a spreadsheet or email can be found the same way as one in a PDF.",
+  "why": "Likely reason: the module turns many formats into one shared structure so later steps do not need a separate path for each file type. The module header states that nothing is executed and that binary formats which cannot be read are kept with the model.",
+  "how": "1. Checks the file size is between 1 byte and the allowed maximum. 2. Reads the bytes. 3. Picks a reader by file extension: Office files, DXF drawings, email, or a generic text path. 4. For generic text, decodes the bytes and removes markup or RTF codes when the file type or opening text suggests them. 5. Splits the text into pages of about 6,000 characters. 6. Classifies the document and returns the result with a fingerprint of the file and warnings about what was not interpreted. Returns nothing when the file is not readable text.",
+  "inputs": "A path to a file on disk, and an optional progress-check function. The file must be within the size limit set in the shared service module.",
+  "outputs": "A DocumentExtraction record holding the file name, its SHA-256 fingerprint, size, media type, document class and confidence, the text pages, and warnings. Returns nothing for binary or unreadable files.",
+  "risks": "Plain text longer than about 2 million characters is cut short without an error. Files without a byte-order mark in UTF-16 are treated as binary and skipped. Page numbers are chunk numbers, not printed page numbers. Attachments in emails are listed but never opened. Layout, images and drawings are not interpreted.",
+  "debug": "If a file returns nothing, check whether _decode thinks it is binary (look for null bytes or many control characters). If text is missing from an email, check whether it was an attachment. If text looks cut off, check the length limit. If a size error appears, compare the file size with the limit in the shared service module. For Office or DXF problems, the error comes from the packages office or dxf readers, so check those.",
+  "summary_hash": "sha256:b8fc7afa4d6a875949fff6ccba13af1fb29b92591852e69847e5d96b8f6598ef"
+}

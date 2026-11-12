@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/api/programme_build.py",
+  "language": "Python",
+  "lines": 170,
+  "hash": "sha256:d76b0470d70bb31999e0e94ba9f39f50c3e803738f09910ab4d76d0bc2be4dc4",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are caught and written to the job message, which is good.",
+      "No test is visible in the provided code.",
+      "A failed build resets the job to ready, which can hide a missing scene.",
+      "It imports a helper from the app module, which ties this layer to the app layer."
+    ]
+  },
+  "terms": [
+    {
+      "term": "FastAPI",
+      "meaning": "the Python web framework that defines the app's web addresses and their behaviour"
+    },
+    {
+      "term": "background task",
+      "meaning": "work that runs after the web response has been sent, so the user does not wait for it"
+    },
+    {
+      "term": "lock",
+      "meaning": "a guard that lets only one piece of code run a section at a time"
+    },
+    {
+      "term": "schematic grid",
+      "meaning": "a tidy arrangement of labelled cells that is not tied to real map positions"
+    },
+    {
+      "term": "footprint",
+      "meaning": "the ground area a model covers, measured from its centre"
+    },
+    {
+      "term": "SHA-256",
+      "meaning": "a fingerprint of file contents; the same bytes always give the same fingerprint"
+    }
+  ],
+  "depends_on": [
+    "schedule3d.api.jobs",
+    "schedule3d.model.contracts",
+    "schedule3d.programme",
+    "schedule3d.programme.scene",
+    "schedule3d.api.app",
+    "fastapi",
+    "schedule3d"
+  ],
+  "used_by": [
+    "Not visible in the provided code"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "fdb759240c777e29",
+      "title": "Module setup and grid settings",
+      "what": "Holds the placement rule text that is attached to each project and the 30 metre gap between grid cells. Users see the rule text in the scene data.",
+      "why": "Likely reason: the rule text is stored with every project so readers know positions are schematic. The reason for the lock is not stated in the code.",
+      "watch_out": "Changing the rule text changes what users are told about positions, so it must stay accurate."
+    },
+    {
+      "start": 31,
+      "end": 42,
+      "kind": "function",
+      "name": "_footprint",
+      "id": "s2",
+      "hash": "c5230b77222c59b5",
+      "title": "Estimating each project footprint",
+      "what": "Works out how far one project's components reach from the centre, using each component's position and size, with a minimum of 20 metres. It returns twice that value as a width.",
+      "why": "Likely reason: the footprint sizes grid cells so projects do not overlap. The 20 metre minimum avoids tiny cells.",
+      "watch_out": "Rotation is not considered, so the estimate is based only on position and size."
+    },
+    {
+      "start": 43,
+      "end": 72,
+      "kind": "function",
+      "name": "full_programme",
+      "id": "s3",
+      "hash": "d74a3c14464b64c2",
+      "title": "Reading every page of programme data",
+      "what": "Reads the first page to learn the totals, then keeps requesting pages until all activities and relationships are collected. Evidence entries are de-duplicated by their fact ID.",
+      "why": "The programme data arrives in bounded pages, so it is gathered into one complete register before the scene is built.",
+      "watch_out": "The loop stops when a page brings nothing new, so if the totals do not match the data, the register can be incomplete without any error."
+    },
+    {
+      "start": 73,
+      "end": 119,
+      "kind": "function",
+      "name": "compose_job_programme",
+      "id": "s4",
+      "hash": "7e297dd97f249d73",
+      "title": "Composing the combined scene",
+      "what": "Prepares each project's model, reads the full programme, places each project in its own cell on a near-square grid, and composes the scene. The result is written to the job folder through a temporary file.",
+      "why": "Likely reason: the grid uses about the square root of the project count as its column count so the layout stays roughly square. The temporary file prevents a half-written scene from being seen.",
+      "watch_out": "Every project is labelled as a station, and the coverage notes say only onsite installation work is shown, so procurement and design items appear on the timeline only."
+    },
+    {
+      "start": 120,
+      "end": 129,
+      "kind": "function",
+      "name": "_digest",
+      "id": "s5",
+      "hash": "2b8af00edb27e857",
+      "title": "Fingerprinting each project model",
+      "what": "Computes a SHA-256 fingerprint of a project's saved model file, so the scene records exactly which model bytes it used.",
+      "why": "Likely reason: it lets a reader later confirm that the scene came from the same model files.",
+      "watch_out": "It imports a helper from the app module to locate the file, so renaming or changing that helper can break this function."
+    },
+    {
+      "start": 130,
+      "end": 170,
+      "kind": "function",
+      "name": "register_programme_build_routes",
+      "id": "s6",
+      "hash": "a5223f26b67d6132",
+      "title": "Start route and background run",
+      "what": "Adds a POST web address for a job that starts the combined build. It refuses if the job is not ready or is a package upload, then runs the build in the background and marks the job as generating. Failures are written to the job message instead of being raised to the user.",
+      "why": "Running in the background lets the request return quickly with a 202 response. The lock makes sure only one build runs at a time.",
+      "watch_out": "The failure path sets the job back to ready, so the user must read the message to know whether the build succeeded."
+    }
+  ],
+  "explained_at": "2026-11-12T01:42:21+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds one combined 3D scene from every project in a schedule job by placing each project on a labelled grid, and provides a web route that starts this build when a user asks for it.",
+  "purpose": "Lets a user request a single combined programme view of all projects in a schedule upload. Nothing is built automatically.",
+  "why": "The module description says composition happens only when the user asks, and that projects sit on a schematic grid, not at real locations.",
+  "how": "The route checks that the job is ready and is a schedule upload, marks it as generating, and runs the build in the background. The build loads each project model, reads every programme page, sizes grid cells from the largest project footprint, places each project in a cell, composes the scene, and writes programme-scene.json through a temporary file that is then renamed.",
+  "inputs": "A job ID from the web address, the job's saved project list, a callback that supplies each project model, and a callback that supplies programme pages.",
+  "outputs": "A programme-scene.json file in the job folder. On success the job is set to ready with has_programme_scene true. On failure the job is set to ready with a failure message.",
+  "risks": "A failed build still returns the job to ready, so the status alone cannot show that the scene is missing. Each project's model file is read in full to fingerprint it. The build runs one at a time because of a shared lock.",
+  "debug": "Read the job message first; it states success or the failure reason. A 409 response means the job is not ready or is a package upload. Check the job folder for programme-scene.json. A leftover programme-scene.pending file suggests a build stopped before the rename.",
+  "summary_hash": "sha256:d76b0470d70bb31999e0e94ba9f39f50c3e803738f09910ab4d76d0bc2be4dc4"
+}

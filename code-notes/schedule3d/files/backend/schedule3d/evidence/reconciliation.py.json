@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/evidence/reconciliation.py",
+  "language": "Python",
+  "lines": 246,
+  "hash": "sha256:28887d7e6d7c9b5adf60386814b4c2b4dbc5f34e5eb0e82ec743d9f4a716e6d1",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "No tests are visible in this packet.",
+      "Design intent is documented in the docstrings, but correctness of the grouping logic cannot be confirmed from reading alone.",
+      "The model step relies on ordering by ID, which is deliberate but not explained beyond a short docstring."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Reconciliation",
+      "meaning": "Comparing several records of the same property and deciding how they relate, such as agreeing or conflicting."
+    },
+    {
+      "term": "Fusion",
+      "meaning": "Combining facts from several sources into one structured result."
+    },
+    {
+      "term": "Normalization",
+      "meaning": "Converting a value to a standard unit using an exact multiplier, without guessing."
+    },
+    {
+      "term": "Corroboration",
+      "meaning": "When two separate source files state the same value, which strengthens confidence but does not approve it."
+    },
+    {
+      "term": "Hash",
+      "meaning": "A short fingerprint computed from data; equal data always gives the same fingerprint."
+    },
+    {
+      "term": "Alias",
+      "meaning": "An extra copy of a source reference that points to identical bytes and location."
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/evidence/contracts.py",
+    "backend/schedule3d/evidence/units.py"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a53dfc4f9d96a6ca",
+      "title": "Imports and file purpose",
+      "what": "Loads hashing, JSON and exact decimal tools, plus the contract types and unit table this file needs. The header says fusion is conservative and dates never choose authority.",
+      "why": "Stated in the code: the header describes the design rule.",
+      "watch_out": "Dates do not choose authority here, so a newer document does not automatically replace an older one."
+    },
+    {
+      "start": 24,
+      "end": 43,
+      "kind": "function",
+      "name": "normalized",
+      "id": "s2",
+      "hash": "4529711d186718a0",
+      "title": "Converts units to standard form",
+      "what": "Converts a numeric value to its standard unit using an exact decimal multiplier and records the method used. Leaves non-numeric values and unknown units unchanged.",
+      "why": "Likely reason: lets values in different units be compared fairly without guessing.",
+      "watch_out": "Unknown units are kept as written and never inferred, so they will not match known units later."
+    },
+    {
+      "start": 44,
+      "end": 47,
+      "kind": "function",
+      "name": "source_key",
+      "id": "s3",
+      "hash": "3b357cc0988ff708",
+      "title": "Fingerprint of a source location",
+      "what": "Builds a comparable text key for a source reference from everything except the file name, so the same bytes at the same location count as the same source.",
+      "why": "Likely reason: lets the same document under different names be recognised as one.",
+      "watch_out": "This depends on the file fingerprint being correct; a wrong fingerprint merges or splits sources incorrectly."
+    },
+    {
+      "start": 48,
+      "end": 65,
+      "kind": "function",
+      "name": "claim_id",
+      "id": "s4",
+      "hash": "20aad490918feb93",
+      "title": "Stable ID for each claim",
+      "what": "Creates an ID for a claim from its source, fact type, project, subject, raw values, revision and option, so the same claim always gets the same ID regardless of order or spelling.",
+      "why": "Stated in the code: the docstring says the ID does not depend on alias, order or case.",
+      "watch_out": "A claim without context raises an error, and the ID changes if any of its listed fields change."
+    },
+    {
+      "start": 66,
+      "end": 90,
+      "kind": "function",
+      "name": "_payload",
+      "id": "s5",
+      "hash": "90da723aab69cfbd",
+      "title": "Comparable meaning of a fact",
+      "what": "Creates a text version of a fact that leaves out its IDs and source alias names, so two records can be compared on what they say.",
+      "why": "Stated in the code: the docstring says it compares meaning and excludes alias spelling and graph IDs.",
+      "watch_out": "Free text such as notes is included, so wording differences can stop two identical claims from matching."
+    },
+    {
+      "start": 91,
+      "end": 97,
+      "kind": "function",
+      "name": "_canonical_sources",
+      "id": "s6",
+      "hash": "1a87225c5207d294",
+      "title": "Sorted, unique list of sources",
+      "what": "Takes a set of source references, removes duplicates, sorts them and returns a stable list.",
+      "why": "Likely reason: makes repeated runs produce identical output.",
+      "watch_out": "Two sources that differ by a single character are treated as different entries."
+    },
+    {
+      "start": 98,
+      "end": 142,
+      "kind": "function",
+      "name": "reconcile_claims (part 1)",
+      "id": "s7",
+      "hash": "b5adca4e65bf7b07",
+      "title": "Start of claim merging",
+      "what": "Goes through each incoming record, requires claim context, normalizes its units, clears old conflict and corroboration links, computes its ID, and groups records with the same ID. Raises an error when one ID maps to different content.",
+      "why": "Stated in the code: comments say old links are rebuilt and the surviving fact is not approved automatically.",
+      "watch_out": "One record without claim context stops the whole run."
+    },
+    {
+      "start": 143,
+      "end": 191,
+      "kind": "function",
+      "name": "reconcile_claims (part 2)",
+      "id": "s8",
+      "hash": "5eedb404f8a6be17",
+      "title": "Merging duplicate claims and grouping",
+      "what": "Merges records that share an ID into one record, keeps every source location as an alias, and groups the survivors by subject and fact type when they apply to this project and are not rejected or unsupported.",
+      "why": "Likely reason: one entry per claim, with every supporting source kept.",
+      "watch_out": "Records with the same ID but different content raise an error and are never merged silently."
+    },
+    {
+      "start": 192,
+      "end": 232,
+      "kind": "method",
+      "name": "reconcile_claims: value_key",
+      "id": "s9",
+      "hash": "92c164b09bd7ccd0",
+      "title": "Marking agreement or disagreement",
+      "what": "Within each group, compares normalized values. Different values mark every record as conflicted and needing review. Identical values from different files mark them as corroborated.",
+      "why": "Likely reason: prevents the app from silently choosing one value when sources disagree.",
+      "watch_out": "Corroboration needs different file fingerprints, so the same file repeated does not count as a second source."
+    },
+    {
+      "start": 233,
+      "end": 246,
+      "kind": "function",
+      "name": "model_claims",
+      "id": "s10",
+      "hash": "fdd02f67af6d780a",
+      "title": "Choosing one fact per property for the model",
+      "what": "Chooses one representative fact for each subject and fact type that belongs to this project and is eligible for model use, taking the first by ID. Other supporting facts stay in the bundle.",
+      "why": "Stated in the code: the docstring says there is one model assertion per property.",
+      "watch_out": "When several eligible facts exist, the first by ID wins, so check the bundle when a model value looks wrong."
+    }
+  ],
+  "explained_at": "2026-11-12T01:48:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Merges claims from many sources, marks agreement and disagreement, and picks one representative fact per property for the model.",
+  "purpose": "Lets the app use values from several documents without silently choosing one when sources disagree.",
+  "why": "Stated in the code: the header says fusion is conservative and dates never select authority, and the docstrings say equal assertions corroborate but grant no approval.",
+  "how": "1. Requires each record to carry a claim and normalizes its units. 2. Clears old conflict and corroboration links so they can be rebuilt. 3. Computes a stable ID for each claim from its source, type, project, subject, values, revision and option. 4. Merges records with the same ID and keeps all their source locations. 5. Groups surviving records by subject and fact type, only for this project and where they apply to the model. 6. Within each group, marks conflicting values as conflicted and identical values from different files as corroborated. 7. Returns a bundle sorted by ID. 8. The model step then picks one eligible fact per property, the first by ID.",
+  "inputs": "A scope ID (the project) and a collection of evidence records that each have claim context.",
+  "outputs": "An EvidenceBundle with every claim retained and updated conflict and corroboration fields, and a list of one representative fact per property for the model.",
+  "risks": "Any record without claim context stops the whole run. Two records with the same ID but different content raise an error rather than merging. Unit mismatches are only caught when units are known. The first fact by ID wins for the model, which can hide a second value.",
+  "debug": "If a value is missing from the model, check that its claim applies to the model, is accepted, and that its unit fits its fact type. If a conflict is unexpected, compare the normalized values and units of the group. If the run stops with an identity collision, compare the payload of the two records that share an ID.",
+  "summary_hash": "sha256:28887d7e6d7c9b5adf60386814b4c2b4dbc5f34e5eb0e82ec743d9f4a716e6d1"
+}

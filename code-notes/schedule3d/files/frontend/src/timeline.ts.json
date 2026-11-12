@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "path": "frontend/src/timeline.ts",
+  "language": "TypeScript",
+  "lines": 206,
+  "hash": "sha256:ff642eb5ab0c03bd37cc41f187543c4a52b372b200c1a522d2daefcbd52e5c02",
+  "area": "frontend-src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for this file is visible in the packet.",
+      "Bad dates are dropped silently instead of being reported.",
+      "Falls back to the current time when a model has no usable dates."
+    ]
+  },
+  "terms": [
+    {
+      "term": "timestamp",
+      "meaning": "a single moment in time stored as a number of milliseconds since 1 January 1970"
+    },
+    {
+      "term": "basis",
+      "meaning": "which set of dates to use: planned, baseline, forecast or actual"
+    },
+    {
+      "term": "not-a-number",
+      "meaning": "the result of reading a missing or invalid date; the code checks for it and skips such values"
+    }
+  ],
+  "depends_on": [
+    "frontend/src/types.ts"
+  ],
+  "used_by": [
+    "frontend/src/workspace/LifecycleStrip.tsx",
+    "frontend/src/workspace/WorkChecklist.tsx"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup, PlannedState, TimelineBasis",
+      "id": "s1",
+      "hash": "04ae0a32b9069335",
+      "title": "Shared names for dates and states",
+      "what": "Declares the four allowed date sets and the four allowed component states. Other files use these names to choose which dates to show.",
+      "why": "Keeps the allowed values in one place so a misspelt name is caught by the type checker.",
+      "watch_out": "Adding a new date set means updating every function here that checks the basis name."
+    },
+    {
+      "start": 6,
+      "end": 11,
+      "kind": "type",
+      "name": "ComponentState",
+      "id": "s2",
+      "hash": "dee8dcd24d2a4df0",
+      "title": "Shape of a component state",
+      "what": "Describes what one component's state looks like: its state label, a progress fraction from 0 to 1, and a short sentence explaining the state.",
+      "why": "Lets the screen show both the status and the reason for it.",
+      "watch_out": "Progress and state must agree, because the code sets them together and nothing else checks them."
+    },
+    {
+      "start": 12,
+      "end": 16,
+      "kind": "type",
+      "name": "ComponentWindow",
+      "id": "s3",
+      "hash": "6c2b1c4b14f91e5c",
+      "title": "Shape of a start and finish window",
+      "what": "Holds the start and finish times of one item. The finish may be missing, meaning the item has started but its end is not known.",
+      "why": "One shared shape for components and lane items.",
+      "watch_out": "A missing finish means open-ended, not zero. Treating it as zero would make the item look finished."
+    },
+    {
+      "start": 17,
+      "end": 51,
+      "kind": "function",
+      "name": "componentWindow",
+      "id": "s4",
+      "hash": "65524ad6bb87b7a2",
+      "title": "Start and finish for a component",
+      "what": "Gives the start and finish times for one component on the chosen date set, or nothing when no dates exist. For planned dates it always reads the planned fields. For other date sets, if only a finish exists, the finish is also used as the start, so the item shows as a single point.",
+      "why": "Likely reason: component schedules can be incomplete, and the code needs a usable window anyway.",
+      "watch_out": "If the finish is earlier than the start, the code raises the finish to match the start, which hides a bad source date."
+    },
+    {
+      "start": 52,
+      "end": 83,
+      "kind": "function",
+      "name": "laneWindow",
+      "id": "s5",
+      "hash": "6305b25549834bba",
+      "title": "Start and finish for a lane item",
+      "what": "Does the same job as the component reader, but for abstract lane items, which are activities with no 3D geometry.",
+      "why": "Lane items have their own fields, so they need their own reader.",
+      "watch_out": "The logic is copied from the component reader. A fix in one must be made in the other too."
+    },
+    {
+      "start": 84,
+      "end": 125,
+      "kind": "function",
+      "name": "componentState",
+      "id": "s6",
+      "hash": "4abe1d528d25a77f",
+      "title": "State of a component at a moment",
+      "what": "Decides whether a component is future, active, complete or unavailable at a given time, and gives its progress. An active item with no finish date is always shown at half progress.",
+      "why": "This drives what the 3D scene shows at the playhead position.",
+      "watch_out": "The fixed half progress for items without a finish can look like a real measurement to the viewer."
+    },
+    {
+      "start": 126,
+      "end": 167,
+      "kind": "function",
+      "name": "timelineBounds",
+      "id": "s7",
+      "hash": "2400e2da523067da",
+      "title": "Overall start and finish of the timeline",
+      "what": "Works out the earliest start and latest finish for the whole project on one date set. Declared bounds are used first, then the schedule dates, then the component dates.",
+      "why": "Sets the range of the playback slider and the lifecycle strip.",
+      "watch_out": "With no usable dates it falls back to the current time, or to one day later, so an empty model can show a misleading range."
+    },
+    {
+      "start": 168,
+      "end": 188,
+      "kind": "function",
+      "name": "timelineEvents",
+      "id": "s8",
+      "hash": "d48979d2e4f4e508",
+      "title": "List of key moments on the timeline",
+      "what": "Collects every start, finish and bounds value into one sorted list. These are the moments where something changes on screen.",
+      "why": "Lets the slider jump from one meaningful date to the next.",
+      "watch_out": "Only the chosen date set is used, so the list changes when the viewer switches basis."
+    },
+    {
+      "start": 189,
+      "end": 199,
+      "kind": "function",
+      "name": "adjacentEvent",
+      "id": "s9",
+      "hash": "33e923fbf0aaddf2",
+      "title": "Next or previous key moment",
+      "what": "Finds the next or previous moment in the sorted list from a given time. At the ends of the list it stays on the last or first moment.",
+      "why": "Supports stepping forward and back through key dates.",
+      "watch_out": "At the ends of the list the step does nothing, so it can look stuck."
+    },
+    {
+      "start": 200,
+      "end": 206,
+      "kind": "function",
+      "name": "formatDate",
+      "id": "s10",
+      "hash": "1aa2ad0bab34982b",
+      "title": "Turning a timestamp into a readable date",
+      "what": "Turns a timestamp into a short date with a month name, using the Canadian English locale.",
+      "why": "Gives the viewer a readable date on the screen.",
+      "watch_out": "The exact text depends on the browser's locale data, so the format can differ between browsers."
+    }
+  ],
+  "explained_at": "2026-11-12T02:37:05+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns each component's planned, baseline, forecast or actual dates into start and finish times, and works out the overall timeline range and the event moments used by the playback slider.",
+  "purpose": "Gives the viewer one place to answer when a component starts, when it finishes, how far along it is, and which dates should be marked on the timeline.",
+  "why": "The same project can hold four sets of dates (planned, baseline, forecast, actual). Keeping the comparison rules in one file means the 3D view, the lifecycle strip and the checklist all read dates the same way. Likely reason: shared use across several screens.",
+  "how": "Choose the date set asked for. Read the start and finish text, convert it to timestamps, and fill in a missing end from the other end where possible. Then combine all components and abstract lane items to find the overall start and finish, and collect every change moment into one sorted list.",
+  "inputs": "A project model with components, abstract lane items, timeline bounds, schedule origin, schedule finish and data date. A date set name (planned, baseline, forecast or actual). A timestamp for the current playhead position.",
+  "outputs": "Start and finish windows, a state (future, active, complete or unavailable) with progress from 0 to 1 and a short reason, a start and finish pair for the whole timeline, a sorted list of event times, the nearest previous or next event, and a formatted date string.",
+  "risks": "Missing or unreadable dates become not-a-number values and are quietly dropped, so a component with no dates looks unavailable rather than wrong. The code falls back to the current time when no dates exist, which can show a misleading range.",
+  "debug": "If a bar or marker appears at the wrong time, check the schedule fields for the date set in question and the declared timeline bounds in the model. If a component shows unavailable, check its date fields for that date set. If the slider range looks odd, check the data date and schedule origin.",
+  "summary_hash": "sha256:ff642eb5ab0c03bd37cc41f187543c4a52b372b200c1a522d2daefcbd52e5c02"
+}

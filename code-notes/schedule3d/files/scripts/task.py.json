@@ -1,0 +1,383 @@
+{
+  "schema_version": 1,
+  "path": "scripts/task.py",
+  "language": "Python",
+  "lines": 439,
+  "hash": "sha256:dd4e9ee77cca8da91e05cd948c66c65607ca995bd91390f245d2d8883872f2b8",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The file runs many external commands and has no tests visible in the packet.",
+      "Failures in starting processes are not caught separately from gate failures.",
+      "The fingerprint may be recalculated after files change during the run."
+    ]
+  },
+  "terms": [
+    {
+      "term": "task runner",
+      "meaning": "a program that runs a named set of project commands so people do not have to remember each one"
+    },
+    {
+      "term": "uv",
+      "meaning": "a tool that installs Python versions and Python packages for a project"
+    },
+    {
+      "term": "npm",
+      "meaning": "the package manager that installs and runs JavaScript and TypeScript tools"
+    },
+    {
+      "term": "virtual environment",
+      "meaning": "a private folder of Python packages used only by this project"
+    },
+    {
+      "term": "quality gate",
+      "meaning": "a set of checks that must all pass before a release is allowed"
+    },
+    {
+      "term": "lock file",
+      "meaning": "a file that records the exact versions of every installed package so installs repeat exactly"
+    },
+    {
+      "term": "headless",
+      "meaning": "running without a visible window"
+    },
+    {
+      "term": "loopback",
+      "meaning": "the local computer address 127.0.0.1 that only this machine can reach"
+    }
+  ],
+  "depends_on": [
+    "scripts/release_evidence.py",
+    "uv (external tool)",
+    "npm and Node.js (external tools)",
+    "pyproject.toml",
+    "frontend/package.json",
+    "scripts/security_scan.py",
+    "scripts/generate_sample_outputs.py",
+    "scripts/package_release.py",
+    "scripts/verify_release_evidence.py",
+    "scripts/verify_native_upload.mjs"
+  ],
+  "used_by": [
+    "start_unix.sh",
+    "start_windows.bat",
+    "start_windows.ps1",
+    ".replit"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 36,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "19bfa4538442d98b",
+      "title": "Imports and project locations",
+      "what": "Imports the needed libraries, the source fingerprint helpers, and defines the paths for the frontend, virtual environment, caches, and the local API address.",
+      "why": "Likely reason: the two import paths let the file run both as a script and as part of the scripts package used by tests.",
+      "watch_out": "Both import paths must keep working, or either running the file or the tests will fail."
+    },
+    {
+      "start": 37,
+      "end": 42,
+      "kind": "function",
+      "name": "workspace_fingerprint",
+      "id": "s2",
+      "hash": "827f2ec41fc12c75",
+      "title": "Project source fingerprint",
+      "what": "Returns the source fingerprint for this project folder by calling the shared helper.",
+      "why": "Gives the stop hook and the release records the same fingerprint method.",
+      "watch_out": "Changing how this fingerprint is calculated changes every release record."
+    },
+    {
+      "start": 43,
+      "end": 50,
+      "kind": "function",
+      "name": "configure_console_output",
+      "id": "s3",
+      "hash": "7705f86be4c694b6",
+      "title": "Safe printing on old Windows consoles",
+      "what": "Changes the output streams so characters a console cannot show are printed as backslash codes instead of crashing the run.",
+      "why": "The docstring of the function says Unicode output can crash a Windows legacy console.",
+      "watch_out": "Some messages may show backslash codes instead of the intended symbols."
+    },
+    {
+      "start": 51,
+      "end": 58,
+      "kind": "function",
+      "name": "environment",
+      "id": "s4",
+      "hash": "5c955476947cb7f2",
+      "title": "Environment for child commands",
+      "what": "Copies the current environment and adds settings that keep the Python tool cache and downloaded Python inside the project, and forces UTF-8 text handling.",
+      "why": "Likely reason: keeps downloaded tools inside the project so builds do not depend on other settings on the machine.",
+      "watch_out": "These settings override any uv cache or Python location the user has already configured."
+    },
+    {
+      "start": 59,
+      "end": 70,
+      "kind": "function",
+      "name": "run",
+      "id": "s5",
+      "hash": "4abe2ab2d431448c",
+      "title": "Running one command",
+      "what": "Prints the command, runs it in the chosen folder, and stops the whole task with the same exit code if it fails, unless the caller turns that off.",
+      "why": "Stopping on the first failure stops later steps from running on a broken state.",
+      "watch_out": "Commands are passed as lists, not shell text, which is intended to prevent injection of unexpected arguments."
+    },
+    {
+      "start": 71,
+      "end": 82,
+      "kind": "function",
+      "name": "uv_command",
+      "id": "s6",
+      "hash": "d7dd241680cf4d5f",
+      "title": "Finding the uv tool",
+      "what": "Looks for the uv program on the system path and returns its location, or stops with install instructions.",
+      "why": "The bootstrap and dependency commands need uv, so a clear message avoids a confusing failure.",
+      "watch_out": "Only the system path is searched, so a uv installed in an unusual place will not be found."
+    },
+    {
+      "start": 83,
+      "end": 91,
+      "kind": "function",
+      "name": "npm_command",
+      "id": "s7",
+      "hash": "2f1da88c45881c95",
+      "title": "Finding the npm tool",
+      "what": "Looks for npm.cmd first and then npm, and returns the one found, or stops with a message about Node.js.",
+      "why": "Likely reason: on Windows the npm program is usually npm.cmd, so that name is tried first.",
+      "watch_out": "The message only names Node.js 22.12 or newer, so an old Node version can give a confusing failure."
+    },
+    {
+      "start": 92,
+      "end": 98,
+      "kind": "function",
+      "name": "python_command",
+      "id": "s8",
+      "hash": "3491e3af4435e0dd",
+      "title": "Finding the project's Python",
+      "what": "Returns the path to the Python program inside the project virtual environment, using the Windows or Unix layout.",
+      "why": "Every Python command in this file uses the project's own environment so versions match.",
+      "watch_out": "If the environment is missing the script stops and asks for bootstrap."
+    },
+    {
+      "start": 99,
+      "end": 110,
+      "kind": "function",
+      "name": "bootstrap",
+      "id": "s9",
+      "hash": "c8665111b7ce1417",
+      "title": "Installing all dependencies",
+      "what": "Creates the cache folders, installs the Python packages with Python 3.13, then installs the frontend packages using the lock file when it exists.",
+      "why": "Likely reason: one command gets a fresh machine ready to run the app and checks.",
+      "watch_out": "The legacy peer dependency flag hides some version conflict warnings between frontend packages."
+    },
+    {
+      "start": 111,
+      "end": 115,
+      "kind": "function",
+      "name": "dependencies_ready",
+      "id": "s10",
+      "hash": "3158a2a66bb0dac6",
+      "title": "Checking whether dependencies exist",
+      "what": "Returns true only if the project Python environment and the frontend node_modules folder both exist.",
+      "why": "Lets other tasks skip the install when it has already been done.",
+      "watch_out": "It only checks that the folders exist, not that the packages are the right versions."
+    },
+    {
+      "start": 116,
+      "end": 120,
+      "kind": "function",
+      "name": "ensure_dependencies",
+      "id": "s11",
+      "hash": "01555938b6835a01",
+      "title": "Installing only when needed",
+      "what": "Runs the full bootstrap only when the dependencies are missing.",
+      "why": "Saves time on repeat runs.",
+      "watch_out": "A partly broken install is not detected by this check and will be used as is."
+    },
+    {
+      "start": 121,
+      "end": 129,
+      "kind": "function",
+      "name": "build_frontend",
+      "id": "s12",
+      "hash": "b708dee7632f6627",
+      "title": "Building the frontend",
+      "what": "Builds the production frontend. In Replit mode it requires existing frontend packages instead of installing them.",
+      "why": "Likely reason: Replit startup should not spend time or network access on installs when packages are already present.",
+      "watch_out": "In Replit mode a missing node_modules folder stops the build with a message."
+    },
+    {
+      "start": 130,
+      "end": 145,
+      "kind": "function",
+      "name": "wait_and_open",
+      "id": "s13",
+      "hash": "3db4f1021438ab6c",
+      "title": "Opening the browser when ready",
+      "what": "Polls the local API health address for up to thirty seconds and opens the browser once it answers. Otherwise it prints a message asking the user to open the address manually.",
+      "why": "Runs in a background thread so the server is not blocked while waiting.",
+      "watch_out": "If the server is slow to start for more than thirty seconds, no browser opens, but the server keeps running."
+    },
+    {
+      "start": 146,
+      "end": 192,
+      "kind": "function",
+      "name": "serve",
+      "id": "s14",
+      "hash": "6463fb51be9b7b2a",
+      "title": "Starting the app server",
+      "what": "Builds the frontend, then starts the server. In normal mode it listens only on this computer at port 8765. In Replit mode it listens on all addresses at port 5000 and needs Replit domain settings.",
+      "why": "Likely reason: Replit needs a public address to show the app, while the normal mode keeps the app private to the computer.",
+      "watch_out": "Replit mode makes the server reachable from the network, so it should be used only in that environment."
+    },
+    {
+      "start": 193,
+      "end": 252,
+      "kind": "function",
+      "name": "check (part 1)",
+      "id": "s15",
+      "hash": "10b39368f17bb1cf",
+      "title": "Building the full release gate list",
+      "what": "Confirms dependencies exist and the source is clean, then builds the ordered list of gate commands. The first gates lock-sync the dependencies, run lint, type checks, and the core Python tests.",
+      "why": "Likely reason: the release check is a fixed sequence so every release is checked the same way.",
+      "watch_out": "The clean-source requirement means the check fails if any file is changed before it starts."
+    },
+    {
+      "start": 253,
+      "end": 312,
+      "kind": "function",
+      "name": "check (part 2)",
+      "id": "s16",
+      "hash": "0b83ea02ac512171",
+      "title": "Running each gate and recording results",
+      "what": "Lists the remaining gates: stress tests, frontend lint, types, unit and browser tests, build, the security scan, dependency audits, sample generation, packaging, packaged browser test, evidence comparison, and native upload test. Each gate runs in turn and its result is saved.",
+      "why": "Likely reason: each gate covers a different kind of risk, from code style to packaged app behaviour.",
+      "watch_out": "The dependency audits need network access, so the check can fail in an offline environment."
+    },
+    {
+      "start": 313,
+      "end": 323,
+      "kind": "function",
+      "name": "check (part 3)",
+      "id": "s17",
+      "hash": "ebaffab7f231922d",
+      "title": "Saving the report and stopping on failure",
+      "what": "Writes the report after every gate. If a gate fails, the run stops and the report shows which gate failed. If all gates pass, it prints a success message.",
+      "why": "Saving after each gate means a partial run still leaves a record.",
+      "watch_out": "Gates after a failure never run, so their status is missing from the report rather than marked as failed."
+    },
+    {
+      "start": 324,
+      "end": 345,
+      "kind": "function",
+      "name": "run_evidenced",
+      "id": "s18",
+      "hash": "d08129f738e95cc6",
+      "title": "Running one gate with live output",
+      "what": "Runs one command, shows every line as it happens, keeps the last 120 lines, and measures how long it took.",
+      "why": "Live output lets the owner watch progress, and the saved tail is kept for the report.",
+      "watch_out": "Error output is merged into normal output, so the order of messages can be mixed up."
+    },
+    {
+      "start": 346,
+      "end": 374,
+      "kind": "function",
+      "name": "_write_check_report",
+      "id": "s19",
+      "hash": "b5f31a1a3f1a0137",
+      "title": "Building the check report",
+      "what": "Creates the report with start and finish times, the fingerprint, the git identity, the number of gates, the failed gate name, and each gate result. It saves it as check-latest.json.",
+      "why": "Likely reason: the report is the evidence that the release gate ran and what it found.",
+      "watch_out": "The report is marked complete only when every expected gate finished with a zero exit code."
+    },
+    {
+      "start": 375,
+      "end": 380,
+      "kind": "function",
+      "name": "test_unit",
+      "id": "s20",
+      "hash": "d536fb40d138e0ee",
+      "title": "Unit test task",
+      "what": "Runs the fast Python tests, skipping stress and golden tests, then the frontend unit tests.",
+      "why": "Gives a quick everyday test run without the slow checks.",
+      "watch_out": "The test selection depends on marker names defined in pyproject.toml, so renaming a marker changes what runs."
+    },
+    {
+      "start": 381,
+      "end": 385,
+      "kind": "function",
+      "name": "test_e2e",
+      "id": "s21",
+      "hash": "2d9f0662a1fe6a50",
+      "title": "Browser test task",
+      "what": "Rebuilds the frontend and runs the browser tests.",
+      "why": "Browser tests must test the latest build, so the build runs first.",
+      "watch_out": "Browser tests need a browser installed through the test tools."
+    },
+    {
+      "start": 386,
+      "end": 390,
+      "kind": "function",
+      "name": "test_stress",
+      "id": "s22",
+      "hash": "7e4c66478822c8fb",
+      "title": "Stress test task",
+      "what": "Installs if needed and runs only the stress-marked Python tests.",
+      "why": "Stress tests are slow, so they are kept in a separate task.",
+      "watch_out": "These tests can take a long time and use a lot of memory."
+    },
+    {
+      "start": 391,
+      "end": 396,
+      "kind": "function",
+      "name": "build_release",
+      "id": "s23",
+      "hash": "139f094e872df918",
+      "title": "Release build task",
+      "what": "Builds the frontend, generates the sample outputs, and packages the release.",
+      "why": "Gives one command that produces a complete release folder.",
+      "watch_out": "It does not run the tests, so a release built this way has not been checked by this file."
+    },
+    {
+      "start": 397,
+      "end": 437,
+      "kind": "function",
+      "name": "main",
+      "id": "s24",
+      "hash": "2b0f5410035b59d9",
+      "title": "Main command dispatcher",
+      "what": "Reads the task name from the command line and runs the matching function. Start opens the browser, while dev and replit do not.",
+      "why": "Gives one place where all tasks are listed.",
+      "watch_out": "A new task must be added both to the list of choices and to the dispatch chain, or it will be rejected or silently do nothing."
+    },
+    {
+      "start": 438,
+      "end": 439,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s25",
+      "hash": "b60851f8e384a572",
+      "title": "Starting the script directly",
+      "what": "Runs the main function only when the file is started directly.",
+      "why": "Standard Python pattern so tests can import the file without running it.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T02:45:50+00:00",
+  "explained_by": "haiku",
+  "summary": "The project's command runner: one entry point that installs dependencies, starts the app, runs tests, runs the full release check, and builds the release package.",
+  "purpose": "Gives the owner and developers simple commands such as start, check, and build-release, so they do not need to know the individual tools.",
+  "why": "The docstring says the file uses only the standard library so it can run before any project dependencies exist.",
+  "how": "It reads one task name from the command line, then calls the matching function. Those functions run fixed external commands in order and stop when one fails. The check task runs every release gate, records each result in build/verification/check-latest.json, and fails if any gate fails.",
+  "inputs": "One task name from the command line. Installed tools: uv for Python, npm and Node.js for the frontend. Environment variables for Replit mode (REPLIT_DEV_DOMAIN and REPLIT_DOMAINS). The project files.",
+  "outputs": "Terminal messages, a running local server, a browser window in start mode, built frontend files, sample outputs, a packaged release, and the check report.",
+  "risks": "The full check is long and installs dependencies. It refuses to run unless the source folder is clean in git. Replit mode listens on all network interfaces at port 5000, so anyone who can reach that address can reach the app. The fingerprint is calculated again after the gates run, so files written inside scanned folders can change it.",
+  "debug": "If the message says uv is required, install uv. If it says Node.js 22.12 or newer is required, install a newer Node. If it says the virtual environment is missing, run the bootstrap task. For a failed check, open build/verification/check-latest.json and read failed_gate and output_tail.",
+  "summary_hash": "sha256:dd4e9ee77cca8da91e05cd948c66c65607ca995bd91390f245d2d8883872f2b8"
+}

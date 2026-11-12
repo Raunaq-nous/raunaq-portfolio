@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/normalize/service.py",
+  "language": "Python",
+  "lines": 163,
+  "hash": "sha256:f82de30ce53fb4612db7f074387a08db2b559ef67e801a8a2900581b1563ae75",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet.",
+      "Bad extension text is silently replaced with an empty dictionary, which can hide data problems."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SQLite",
+      "meaning": "A small database stored in a single file, used here as the staging area for schedule data."
+    },
+    {
+      "term": "Read-only connection",
+      "meaning": "A database connection that can look at data but cannot change it."
+    },
+    {
+      "term": "Streaming",
+      "meaning": "Handling records one at a time instead of loading everything into memory first."
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/normalize/contracts.py",
+    "backend/schedule3d/sqlite_paths.py"
+  ],
+  "used_by": [
+    "backend/schedule3d/normalize/__init__.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ed1f8147923be2a6",
+      "title": "Imports for database reading",
+      "what": "Brings in the tools for reading JSON, the SQLite database, file paths and the record types, plus a helper that builds a read-only address for the database.",
+      "why": "Makes the reading code use only read-only access to the staging data.",
+      "watch_out": ""
+    },
+    {
+      "start": 18,
+      "end": 23,
+      "kind": "function",
+      "name": "_connection",
+      "id": "s2",
+      "hash": "673f013fdcf86342",
+      "title": "Opening a read-only database connection",
+      "what": "Opens the staging database in read-only mode and makes each row accessible by column name.",
+      "why": "Likely reason: read-only access protects the source data from accidental changes.",
+      "watch_out": "The caller must close the connection, which the later functions do in a finally block."
+    },
+    {
+      "start": 24,
+      "end": 83,
+      "kind": "function",
+      "name": "load_project (part 1)",
+      "id": "s3",
+      "hash": "b81092fae06b0cb7",
+      "title": "Building the project summary",
+      "what": "Runs one query that returns a project's name, planned dates and counts of activities, links, work breakdown items, calendars, resources, codes, user-defined fields and data-presence flags. If the project is not found, it raises an error.",
+      "why": "Gathering the counts in one query avoids reading all the tasks just to show a summary.",
+      "watch_out": "Calendar, resource, code and user-defined field counts include rows with no project hint, so a shared row may be counted for every project."
+    },
+    {
+      "start": 84,
+      "end": 94,
+      "kind": "function",
+      "name": "load_project (part 2)",
+      "id": "s4",
+      "hash": "fab80322f29ec442",
+      "title": "Converting the summary to a record",
+      "what": "Copies the query result into the checked project record and closes the connection.",
+      "why": "Converts raw database values into the exact types the record expects, such as whole numbers and true or false flags.",
+      "watch_out": "If a query column is renamed, this conversion fails, so the two must change together."
+    },
+    {
+      "start": 95,
+      "end": 134,
+      "kind": "function",
+      "name": "iter_activities",
+      "id": "s5",
+      "hash": "d9fa13365e25ce1b",
+      "title": "Streaming activities in schedule order",
+      "what": "Reads all tasks for one project, sorted by planned start, then planned finish, then activity identifier, and yields each one as a checked record. Bad extension text becomes an empty dictionary.",
+      "why": "Sorting keeps the output stable, and streaming avoids holding every task in memory at once.",
+      "watch_out": "Sorting uses text, and missing dates are replaced by a large placeholder. Dates stored in an inconsistent text format can sort in the wrong order."
+    },
+    {
+      "start": 135,
+      "end": 163,
+      "kind": "function",
+      "name": "iter_relationships",
+      "id": "s6",
+      "hash": "6c66e0663d98b28c",
+      "title": "Streaming relationships in key order",
+      "what": "Reads all links for one project, sorted by their key, and yields each one as a checked record, with the same handling of bad extension text.",
+      "why": "Sorting by key gives a repeatable order for dependency checks and comparisons.",
+      "watch_out": "The relationship key must be unique and stable in the database, or the order can change between runs."
+    }
+  ],
+  "explained_at": "2026-11-12T02:03:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads schedule data from a local staging database and turns each project, activity and relationship into a checked, normalized record.",
+  "purpose": "Lets the rest of the app read clean schedule information from the database without writing to it.",
+  "why": "Opening the database read-only protects the source data. Streaming rows one at a time keeps memory use low for large schedules.",
+  "how": "Opens a read-only connection. For a project, runs one query that returns its name and counts. For activities and relationships, runs a query for the project and yields one checked record per row. Parses stored extension text, and falls back to an empty dictionary when it is not valid. Closes the connection when finished.",
+  "inputs": "A path to the staging database file and a project identifier.",
+  "outputs": "One project summary, or a stream of activity or relationship records.",
+  "risks": "An unknown project identifier raises a key error. Calendar, resource and code counts also include rows with no project hint, so they can appear in more than one project.",
+  "debug": "If a project shows odd counts, check the source_entities rows with empty project hints. If a record fails, check the stored date and text values for that row.",
+  "summary_hash": "sha256:f82de30ce53fb4612db7f074387a08db2b559ef67e801a8a2900581b1563ae75"
+}

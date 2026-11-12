@@ -1,0 +1,303 @@
+{
+  "schema_version": 1,
+  "path": "scripts/package_release.py",
+  "language": "Python",
+  "lines": 559,
+  "hash": "sha256:6c2fcaf44e7e07144f5bc3be532929c6fee7d0a344f69db0e96e6c8ff3840c02",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "I could not run this on Windows in this session.",
+      "The verification and main steps were not included in the packet, so their behavior is not assessed here.",
+      "The smoke test and sensitive-token checks are thorough in the visible code."
+    ]
+  },
+  "terms": [
+    {
+      "term": "portable release",
+      "meaning": "a folder that runs on its own without installing other software."
+    },
+    {
+      "term": "smoke test",
+      "meaning": "a quick run that checks the main features work before the release is trusted."
+    },
+    {
+      "term": "manifest",
+      "meaning": "a list of every file in the release with its size and fingerprint."
+    },
+    {
+      "term": "PyInstaller",
+      "meaning": "a tool that bundles a Python program into a runnable program."
+    },
+    {
+      "term": "loopback",
+      "meaning": "a connection to this same computer, which is how the local server is reached."
+    }
+  ],
+  "depends_on": [
+    "scripts/release_evidence.py",
+    "PyInstaller build output",
+    "samples",
+    "docs",
+    "Windows cmd.exe"
+  ],
+  "used_by": [
+    "scripts/frozen_main.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 48,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1a751ebe5974836f",
+      "title": "Imports, paths and fixed release rules",
+      "what": "Imports the libraries and the git identity helper, sets the release, build and target folder paths, lists the public docs to copy, and lists the forbidden folder names and private identifier tokens.",
+      "why": "Likely reason: the release must include only public files, so the lists of allowed docs and forbidden names are set once here.",
+      "watch_out": "The forbidden token list must match the real private identifiers, and new private names need to be added here."
+    },
+    {
+      "start": 49,
+      "end": 52,
+      "kind": "function",
+      "name": "_inside_release",
+      "id": "s2",
+      "hash": "5a5f88fdf92d8c9b",
+      "title": "Check the release is inside the release folder",
+      "what": "Confirms that a path sits directly inside the release folder.",
+      "why": "Likely reason: this stops cleanup or writes from touching files outside the release area.",
+      "watch_out": "Only direct children are accepted, so nested paths return false."
+    },
+    {
+      "start": 53,
+      "end": 59,
+      "kind": "function",
+      "name": "_contains_sensitive_token",
+      "id": "s3",
+      "hash": "2797a7476f49cc9b",
+      "title": "Find private identifiers in data",
+      "what": "Checks whether a byte string contains a forbidden token. Numeric tokens must stand alone, so timestamps inside certificates do not match.",
+      "why": "Likely reason: numbers can appear inside other numbers, so the match needs boundaries to avoid false alarms.",
+      "watch_out": "Non-numeric tokens are matched anywhere in the bytes, so a token that is also a common word could cause a false alarm."
+    },
+    {
+      "start": 60,
+      "end": 67,
+      "kind": "function",
+      "name": "_hash",
+      "id": "s4",
+      "hash": "8661ca72f96b5183",
+      "title": "File fingerprint helper",
+      "what": "Calculates a SHA-256 fingerprint of a file by reading it in one megabyte chunks.",
+      "why": "Reading in chunks keeps memory use low for large release files.",
+      "watch_out": ""
+    },
+    {
+      "start": 68,
+      "end": 72,
+      "kind": "function",
+      "name": "_run",
+      "id": "s5",
+      "hash": "1afcf85409022798",
+      "title": "Run a command and echo it",
+      "what": "Prints the command being run and then runs it, stopping with an error if it fails.",
+      "why": "Lets the build log show each step and fail fast.",
+      "watch_out": "The command runs in the project root, so relative paths depend on that location."
+    },
+    {
+      "start": 73,
+      "end": 77,
+      "kind": "function",
+      "name": "_remove_readonly",
+      "id": "s6",
+      "hash": "630877f9b04b16b1",
+      "title": "Clear read-only files for deletion",
+      "what": "Makes a file writable and retries deleting it, for use when cleaning folders.",
+      "why": "Likely reason: Windows marks some build files read-only, which blocks normal deletion.",
+      "watch_out": "This removes read-only protection on the files it touches."
+    },
+    {
+      "start": 78,
+      "end": 121,
+      "kind": "function",
+      "name": "_write_support_files",
+      "id": "s7",
+      "hash": "280607f59aa8f543",
+      "title": "Write launcher, readme and support files",
+      "what": "Writes the Windows launcher batch file, which starts the local server and opens the page, and a readme. It also copies the samples and the four public docs into the release.",
+      "why": "Likely reason: the launcher is the only entry point users should use, and the readme tells them what is private and what to ignore.",
+      "watch_out": "The launcher port is fixed at 8765 for normal use, so another program using that port will block startup."
+    },
+    {
+      "start": 122,
+      "end": 136,
+      "kind": "function",
+      "name": "_conceal_server_only_frontend_shell",
+      "id": "s8",
+      "hash": "e1585ccc8aec807a",
+      "title": "Hide the internal frontend index",
+      "what": "Renames the packaged frontend index file to a private shell name and checks that no other index file remains in the release.",
+      "why": "Likely reason: users should open the app only through the launcher, so the page file is hidden from direct opening.",
+      "watch_out": "If the index file is missing, the function raises an error and the build stops."
+    },
+    {
+      "start": 137,
+      "end": 162,
+      "kind": "function",
+      "name": "_manifest",
+      "id": "s9",
+      "hash": "159a9b71b1dc816b",
+      "title": "Build a manifest of the release",
+      "what": "Lists every file in the release with its size and fingerprint, skips the manifest itself, and records the version, platform, bundled Python version and entry point.",
+      "why": "Gives reviewers and the integrity check a complete record of what the release contains.",
+      "watch_out": "The version is written as a fixed text value, so it must be updated by hand when the app version changes."
+    },
+    {
+      "start": 163,
+      "end": 168,
+      "kind": "function",
+      "name": "_free_port",
+      "id": "s10",
+      "hash": "e4cc862d9ccf8b23",
+      "title": "Find a free local port",
+      "what": "Asks the system for an unused port on the local machine and returns its number.",
+      "why": "Lets the smoke test start the server on a port that is free, avoiding clashes.",
+      "watch_out": "The port can be taken by another program between this check and the server start."
+    },
+    {
+      "start": 169,
+      "end": 228,
+      "kind": "function",
+      "name": "_smoke (part 1)",
+      "id": "s11",
+      "hash": "a2d4f36389de8010",
+      "title": "Smoke test start and health check",
+      "what": "Starts the launcher with a sanitized environment and smoke-test settings, then polls the health endpoint and root page until both respond and the page contains the title, script and stylesheet.",
+      "why": "Likely reason: the app must start from the launcher on a clean machine, which this check confirms.",
+      "watch_out": "The environment removes Python and Node path settings, so the test does not rely on the developer's tools."
+    },
+    {
+      "start": 229,
+      "end": 288,
+      "kind": "function",
+      "name": "_smoke (part 2)",
+      "id": "s12",
+      "hash": "d1dda6e24c6a84d4",
+      "title": "Smoke test asset and upload checks",
+      "what": "Fetches the page's script and stylesheet, then uploads the sample schedule as a multi-part form and polls the job until it finishes or fails.",
+      "why": "Likely reason: the upload path is the core workflow, so the smoke test must prove it works in the packaged build.",
+      "watch_out": "The job loop stops after 100 checks of 0.1 seconds, so a slow upload fails the test even if it would finish later."
+    },
+    {
+      "start": 289,
+      "end": 348,
+      "kind": "function",
+      "name": "_smoke (part 3)",
+      "id": "s13",
+      "hash": "6989fce563cbf1f9",
+      "title": "Smoke test report, programme and exports",
+      "what": "Reads the report, checks that the programme keeps each project separate, builds a model for the first project, and downloads the offline HTML, audit zip, conceptual IFC and ALICE contract. It checks the IFC schema marker and that the ALICE readiness is false.",
+      "why": "Likely reason: each export is a deliverable, so the smoke test must confirm each one is produced and correct.",
+      "watch_out": "The ALICE readiness value must remain false, so any change that marks it ready will fail this check on purpose."
+    },
+    {
+      "start": 349,
+      "end": 391,
+      "kind": "function",
+      "name": "_smoke (part 4)",
+      "id": "s14",
+      "hash": "d0dd4564b340d715",
+      "title": "Smoke test shutdown and result",
+      "what": "Stops the launched process tree on Windows, or the process on other systems, reads its output, removes the smoke test folder, and raises an error with the failing phase if the health check did not succeed. Otherwise it returns a summary of the workflow.",
+      "why": "Likely reason: the test must clean up the server and temporary files whether it passes or fails.",
+      "watch_out": "The error message shows only the last 4000 characters of output, so earlier launcher messages can be lost."
+    },
+    {
+      "start": 392,
+      "end": 404,
+      "kind": "function",
+      "name": "_zip_release",
+      "id": "s15",
+      "hash": "0f820481b4973665",
+      "title": "Zip the release folder",
+      "what": "Deletes any old archive and rebuilds the zip with a fixed date stamp and maximum compression, storing each file under the release folder name.",
+      "why": "Likely reason: a fixed timestamp makes the zip repeatable, so the same inputs give the same archive.",
+      "watch_out": "The fixed date means the zip does not show the real build date."
+    },
+    {
+      "start": 405,
+      "end": 464,
+      "kind": "function",
+      "name": "_verify_release_integrity (part 1)",
+      "id": "s16",
+      "hash": "e717b2faf46b3e8e",
+      "title": "Verify release integrity (first part)",
+      "what": "Code for this section was not included in the packet, so no note is available.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 465,
+      "end": 486,
+      "kind": "function",
+      "name": "_verify_release_integrity (part 2)",
+      "id": "s17",
+      "hash": "5be79a73501ed07c",
+      "title": "Verify release integrity (second part)",
+      "what": "Code for this section was not included in the packet, so no note is available.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 487,
+      "end": 546,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s18",
+      "hash": "d033bd1c9a5ec1fd",
+      "title": "Main build steps (first part)",
+      "what": "Code for this section was not included in the packet, so no note is available.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 547,
+      "end": 557,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s19",
+      "hash": "9bd29af6d54c8d0f",
+      "title": "Main build steps (second part)",
+      "what": "Code for this section was not included in the packet, so no note is available.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 558,
+      "end": 559,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s20",
+      "hash": "b60851f8e384a572",
+      "title": "Command entry point",
+      "what": "Code for this section was not included in the packet, so no note is available.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T02:43:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the Windows portable release of Schedule3D: copies the app and support files into a release folder, checks for private data, starts the packaged app for a smoke test, verifies the release, and zips it.",
+  "purpose": "Produces the single folder and zip that a Windows user can run without installing Python or Node.",
+  "why": "Likely reason: the release must be self-contained and must not leak private client data, so the script checks both before zipping.",
+  "how": "Constants set the target folders and the list of documents and forbidden tokens. Helpers write the launcher and readme, copy samples and docs, hide internal frontend files, build a manifest with file hashes, and find a free local port. A smoke test starts the launcher, checks health, the page, an upload, a model, and each export. Then the release is zipped and its integrity verified.",
+  "inputs": "The source tree, the PyInstaller build output, the samples and docs folders, and the Windows launcher environment.",
+  "outputs": "The release folder, its manifest, the zip archive, and smoke test results. Temporary smoke test data is removed afterward.",
+  "risks": "Several steps only work on Windows, such as cmd.exe and taskkill. The forbidden token list must stay current. The smoke test is timed and can fail on slow machines.",
+  "debug": "Read the smoke test error text, which names the phase that failed. Check the launcher output included in the error. Confirm the release folder contents and the manifest hashes.",
+  "summary_hash": "sha256:6c2fcaf44e7e07144f5bc3be532929c6fee7d0a344f69db0e96e6c8ff3840c02"
+}

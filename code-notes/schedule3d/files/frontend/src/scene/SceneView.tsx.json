@@ -1,0 +1,411 @@
+{
+  "schema_version": 1,
+  "path": "frontend/src/scene/SceneView.tsx",
+  "language": "TypeScript (React)",
+  "lines": 949,
+  "hash": "sha256:b225c543018d68ca5a643a03d68790419c4f9deffc9b372d668e5e07bde70852",
+  "area": "frontend-src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The file is 949 lines and mixes building, styling, labels and input handling, which makes changes risky.",
+      "Only the browser boundary test is visible here, so most behavior has no direct test in this packet.",
+      "The build step depends on onSelect, so an unstable callback from the parent may rebuild the whole scene.",
+      "Sections are named after a helper function, but most of the code is the SceneView component body, so the names in the packet can mislead."
+    ]
+  },
+  "terms": [
+    {
+      "term": "WebGL",
+      "meaning": "the browser technology that draws 3D graphics using the graphics card"
+    },
+    {
+      "term": "three.js",
+      "meaning": "a JavaScript library that builds 3D scenes out of objects, lights and cameras"
+    },
+    {
+      "term": "Raycaster",
+      "meaning": "a tool that finds which 3D object sits under the mouse pointer"
+    },
+    {
+      "term": "Frame",
+      "meaning": "one redraw of the picture, done many times per second while the view changes"
+    },
+    {
+      "term": "Effect",
+      "meaning": "React code that runs after the page updates, for example to build or update the scene"
+    },
+    {
+      "term": "Shadow map",
+      "meaning": "a pre-computed image of where shadows fall, used to draw shadows"
+    },
+    {
+      "term": "Fog",
+      "meaning": "a fading of distant objects into the background colour"
+    },
+    {
+      "term": "GPU",
+      "meaning": "graphics processor, the chip that draws the picture"
+    }
+  ],
+  "depends_on": [
+    "react",
+    "three",
+    "three/examples/jsm/controls/OrbitControls.js",
+    "three/examples/jsm/environments/RoomEnvironment.js",
+    "frontend/src/timeline",
+    "frontend/src/parametric",
+    "frontend/src/types",
+    "frontend/src/scene/materials",
+    "frontend/src/scene/framing",
+    "frontend/src/scene/callouts",
+    "frontend/src/scene/picking",
+    "frontend/src/scene/modelLibrary",
+    "frontend/src/scene/primitives",
+    "frontend/src/scene/reveal",
+    "frontend/src/workspace/lifecycle",
+    "frontend/src/scene/WebGLInitializationError.ts"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 31,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1c738c1f43f0db80",
+      "title": "Imports for the 3D view",
+      "what": "Brings in the graphics library, camera controls, the room lighting used for reflections, and the helper modules for timing, colors, labels, picking and errors.",
+      "why": "Reason not stated in the code. Each import matches a job done later in the file.",
+      "watch_out": "Several helpers come from sibling folders, so moving files can break this component."
+    },
+    {
+      "start": 32,
+      "end": 43,
+      "kind": "type",
+      "name": "ColorMode, CameraPreset",
+      "id": "s2",
+      "hash": "acd4280de77f2fdf",
+      "title": "Color modes and camera views",
+      "what": "Lists the ways elements can be colored, such as by material, status, structure type, area, discipline, provenance, confidence or element kind. It also lists the five fixed camera views.",
+      "why": "Fixes the allowed names so the page controls and the drawing code agree on them.",
+      "watch_out": "A new color mode needs its own branch in the color function, or it quietly falls back to the status colors."
+    },
+    {
+      "start": 44,
+      "end": 51,
+      "kind": "type",
+      "name": "SceneViewHandle",
+      "id": "s3",
+      "hash": "6f7f4841564d8a0b",
+      "title": "Commands the parent page can call",
+      "what": "Lists the actions a parent page can trigger: take a picture, reset the camera, focus the selected element, focus a set of elements, and switch to a camera view.",
+      "why": "Lets buttons outside the 3D view control it without reaching into its internals.",
+      "watch_out": "Focus and capture do nothing until the scene has been built, so calls made too early are ignored."
+    },
+    {
+      "start": 52,
+      "end": 79,
+      "kind": "type",
+      "name": "SceneViewProps",
+      "id": "s4",
+      "hash": "8b61ec02ce89d886",
+      "title": "Inputs that drive the 3D view",
+      "what": "Lists the data and switches the parent passes in, such as the model, the date, the selected element, visible and active sets, color mode, shadows, cutaway, labels, callouts and the select and hide callbacks.",
+      "why": "The parent changes these values to update the view without owning the drawing work.",
+      "watch_out": "Changing the model rebuilds the scene, and so does a new onSelect function, so parents should keep that callback stable."
+    },
+    {
+      "start": 80,
+      "end": 94,
+      "kind": "type",
+      "name": "SceneRuntime",
+      "id": "s5",
+      "hash": "d1368d7522469bf9",
+      "title": "Stored handles for the live scene",
+      "what": "Describes the bundle of 3D objects the component keeps once the scene is built, including the scene, camera, renderer, controls, element groups, ground, grid, materials and the frame routine.",
+      "why": "Keeping these in one place lets later updates and cleanup reach them.",
+      "watch_out": "These objects use graphics memory and must be released on cleanup, or memory leaks over time."
+    },
+    {
+      "start": 95,
+      "end": 114,
+      "kind": "function",
+      "name": "blueprintLines",
+      "id": "s6",
+      "hash": "3da8f7bcdc451149",
+      "title": "Outline edges for blueprint view",
+      "what": "For one element, builds thin edge lines around each solid part the first time they are needed, then reuses them. This gives the blueprint look where only outlines show.",
+      "why": "Likely reason: building edges is costly, so it is done once per element and then reused.",
+      "watch_out": "The edge lines copy each part's position only when they are created, so they will not follow later movement of that part."
+    },
+    {
+      "start": 115,
+      "end": 125,
+      "kind": "value",
+      "name": "CLASS_COLORS",
+      "id": "s7",
+      "hash": "87102773c3a4c8b4",
+      "title": "Colors by structure type",
+      "what": "Maps each structure class, such as concrete, steel, process block or open area, to a fixed color for the structure color mode.",
+      "why": "Gives each kind of structure a consistent look across the view.",
+      "watch_out": "An unknown structure class falls back to a grey-blue default, so new classes look plain until added here."
+    },
+    {
+      "start": 126,
+      "end": 137,
+      "kind": "value",
+      "name": "DISCIPLINE_COLORS",
+      "id": "s8",
+      "hash": "a4ae7c32e718617d",
+      "title": "Colors by engineering discipline",
+      "what": "Maps each discipline, such as civil, electrical, piping or architectural, to a fixed color.",
+      "why": "Lets the user see which discipline each element belongs to.",
+      "watch_out": "An unknown discipline falls back to a general grey."
+    },
+    {
+      "start": 138,
+      "end": 147,
+      "kind": "value",
+      "name": "PROVENANCE_COLORS",
+      "id": "s9",
+      "hash": "954371680dcdef28",
+      "title": "Colors by position source",
+      "what": "Maps each position source, such as measured, inferred, typical, rule or abstract, to a color, so the user can see how certain each position is.",
+      "why": "Makes visible which positions came from the source and which were estimated.",
+      "watch_out": "The keys must match the source names exactly. A mismatch gives the element a default color without any warning."
+    },
+    {
+      "start": 148,
+      "end": 156,
+      "kind": "function",
+      "name": "sitePlanMetres",
+      "id": "s10",
+      "hash": "505b3e04879880e2",
+      "title": "Site size converted to metres",
+      "what": "Returns the site plan width and depth in metres, converting from feet when the unit says so. Returns nothing when there is no site plan.",
+      "why": "The ground and grid are sized in metres, so the unit must be converted first.",
+      "watch_out": "Any unit other than feet is treated as metres without a check."
+    },
+    {
+      "start": 157,
+      "end": 196,
+      "kind": "function",
+      "name": "stateColor",
+      "id": "s11",
+      "hash": "92a1d17d3195be52",
+      "title": "Picks an element's color for a mode",
+      "what": "Returns one element's color for the chosen mode. It uses the matching lookup table, a name-based palette for facility area, fixed bands for confidence, or whether the element is complete, active or future for the default status mode.",
+      "why": "Keeps the answer to what color an element gets in one place, so each mode stays consistent.",
+      "watch_out": "The facility area color comes from a hash of the name, so colors change if a name changes. The confidence cut-offs are fixed numbers."
+    },
+    {
+      "start": 197,
+      "end": 235,
+      "kind": "function",
+      "name": "applyCamera",
+      "id": "s12",
+      "hash": "35e3f9b1a6e9c37b",
+      "title": "Moves the camera to a chosen view",
+      "what": "Works out a box around the visible elements, places the camera for the overview, top, side or underground view, sets fog density, and aims the camera at the centre.",
+      "why": "Gives each camera button a predictable frame. The overview uses the busiest area so a spread-out site does not look tiny.",
+      "watch_out": "With no visible elements, it frames a fixed default box, so an empty model still shows a box rather than nothing."
+    },
+    {
+      "start": 236,
+      "end": 261,
+      "kind": "function",
+      "name": "disposeScene",
+      "id": "s13",
+      "hash": "83b27008cc0420eb",
+      "title": "Frees graphics memory on cleanup",
+      "what": "Walks the whole scene and releases every geometry, material and edge set, then releases the environment map, the controls and the renderer.",
+      "why": "Graphics memory is held outside normal JavaScript cleanup, so it must be released explicitly.",
+      "watch_out": "Anything added to the scene later must also be released here, or it leaks."
+    },
+    {
+      "start": 262,
+      "end": 321,
+      "kind": "function",
+      "name": "exposeVisiblePickTarget (part 1)",
+      "id": "s14",
+      "hash": "67dfbbd97a6e57eb",
+      "title": "Test marker and start of component",
+      "what": "The exposeVisiblePickTarget function writes the id and screen position of one visible element onto the canvas so browser tests can find something to click. The rest of this section receives the props and sets up the references the component needs.",
+      "why": "Reason not stated in the code. The test marker appears to exist so browser tests have a stable way to find an element.",
+      "watch_out": "The marker is rewritten on every scene update, so tests that read it must wait until the scene has finished updating."
+    },
+    {
+      "start": 322,
+      "end": 381,
+      "kind": "function",
+      "name": "exposeVisiblePickTarget (part 2)",
+      "id": "s15",
+      "hash": "d9ab355720091452",
+      "title": "Waits for detailed model library",
+      "what": "Starts loading the shared detailed model library and keeps the scene waiting until loading finishes. It also prepares a function that flies the camera toward chosen elements.",
+      "why": "The comment says detailed models load once and the scene waits so elements are not drawn twice.",
+      "watch_out": "A failed load is retried for the next scene, because a failed status is reset to idle when the component mounts again."
+    },
+    {
+      "start": 382,
+      "end": 441,
+      "kind": "function",
+      "name": "exposeVisiblePickTarget (part 3)",
+      "id": "s16",
+      "hash": "3c1ed593cb5e764c",
+      "title": "Camera animation and renderer startup",
+      "what": "Animates the camera toward focused elements over about half a second with easing, and skips the animation when the user prefers reduced motion. It then exposes the command handle and creates the 3D renderer. If the browser refuses, it throws the special startup error so the boundary can show the fallback.",
+      "why": "The animation respects the operating system's reduced motion setting. The startup error is raised only at renderer creation, so the fallback is shown for this one failure.",
+      "watch_out": "Only the renderer creation step should be inside the startup check. Other failures above it would appear as general errors."
+    },
+    {
+      "start": 442,
+      "end": 496,
+      "kind": "function",
+      "name": "exposeVisiblePickTarget (part 4)",
+      "id": "s17",
+      "hash": "61060ae103eb5c94",
+      "title": "Lights, ground and site outline",
+      "what": "Adds the lights, a sun that casts shadows, a dark semi-transparent ground, a grid, and a thin outline of the site boundary when a site plan exists.",
+      "why": "Gives the model scale and context within the site.",
+      "watch_out": "The shadow area is fixed at 250 units in each direction, so models outside that area will not cast shadows."
+    },
+    {
+      "start": 497,
+      "end": 556,
+      "kind": "function",
+      "name": "exposeVisiblePickTarget (part 5)",
+      "id": "s18",
+      "hash": "94f1597f0af730da",
+      "title": "Builds element groups and frame routine",
+      "what": "Creates one 3D group per element and records it in lookup maps. Without a site plan, it sizes the ground and grid to fit the laid-out elements. It then builds the runtime object whose frame routine redraws the view and starts placing labels.",
+      "why": "Lookup maps let the rest of the code find an element by its id quickly.",
+      "watch_out": "The grid position is based on the busiest area, so with no site plan the grid can move when the layout changes."
+    },
+    {
+      "start": 557,
+      "end": 616,
+      "kind": "function",
+      "name": "exposeVisiblePickTarget (part 6)",
+      "id": "s19",
+      "hash": "f8af5e633095ac2e",
+      "title": "Places schedule cards on screen",
+      "what": "For each schedule callout, finds where its element is on screen and skips it if it is off screen. Cards are sorted with selected first, then pinned, then in progress, with nearer elements winning ties. Each card and its leader line is placed where it does not overlap an earlier one.",
+      "why": "The sort follows the priority from the schedule, so the most important work is shown first when space runs short.",
+      "watch_out": "Placement is worked out again on every redraw, so a large model with many cards can slow down while the camera moves or the window resizes."
+    },
+    {
+      "start": 617,
+      "end": 652,
+      "kind": "function",
+      "name": "exposeVisiblePickTarget (part 7)",
+      "id": "s20",
+      "hash": "3619997591977afd",
+      "title": "Places WBS labels in leftover space",
+      "what": "After the schedule cards are placed, positions the plain WBS labels in the gaps that remain. It hides any label that is off screen or overlaps another, and sets a tooltip showing the label's path.",
+      "why": "Schedule cards take priority, and WBS labels fill whatever space is left.",
+      "watch_out": "Only the first 160 labels are rendered, so labels beyond that never appear."
+    },
+    {
+      "start": 653,
+      "end": 704,
+      "kind": "function",
+      "name": "exposeVisiblePickTarget (part 8)",
+      "id": "s21",
+      "hash": "b4947fbbb20cef43",
+      "title": "Click and hover handling",
+      "what": "A click that moves less than 5 pixels selects the element under the pointer. A drag only orbits the camera. Hovering shows the element's name in a small label, and leaving the canvas hides it.",
+      "why": "Dragging to orbit must not change the selection, so the code measures how far the pointer travelled.",
+      "watch_out": "Hover picking runs one ray test per animation frame, which can cost speed on large models."
+    },
+    {
+      "start": 705,
+      "end": 764,
+      "kind": "function",
+      "name": "exposeVisiblePickTarget (part 9)",
+      "id": "s22",
+      "hash": "de3238ce21da9d9e",
+      "title": "Cleanup and element visibility rules",
+      "what": "When the scene is replaced, stops any camera animation, removes all listeners and the resize observer, and frees the graphics memory. In the style step, decides for each element whether it is shown, based on phase, visible ids, selection, isolation and the reveal rule. For work in progress, it scales the element so it appears to grow with progress.",
+      "why": "Cleanup prevents old listeners and memory from piling up when the scene is rebuilt. The growing effect makes progress visible against the plan date.",
+      "watch_out": "Each listener removed in cleanup must match one added earlier. A missing removal keeps old code running."
+    },
+    {
+      "start": 765,
+      "end": 824,
+      "kind": "function",
+      "name": "exposeVisiblePickTarget (part 10)",
+      "id": "s23",
+      "hash": "adb5213142c33ef0",
+      "title": "Element colors, transparency and cutaway",
+      "what": "Sets each element's colors, roughness, metalness, transparency, shadow use and selection highlight. Applies the cutaway clipping plane when enabled. Updates the ground and background colors and creates the reflection map the first time a style needs it.",
+      "why": "Keeps the look in step with the chosen view style and color mode each time they change.",
+      "watch_out": "The reflection map is created once and reused across style changes, and it is freed only in the cleanup routine."
+    },
+    {
+      "start": 825,
+      "end": 857,
+      "kind": "function",
+      "name": "exposeVisiblePickTarget (part 11)",
+      "id": "s24",
+      "hash": "64ea02fec6c6e511",
+      "title": "Test counters and style update triggers",
+      "what": "Writes counts onto the canvas, such as how many colors and reveal states are visible and which view style is active, so tests can check the look. It then redraws and refreshes the test marker. The list at the end says which inputs trigger the style update.",
+      "why": "The counters let automated tests confirm the view without reading pixels.",
+      "watch_out": "An input missing from the trigger list will not update the view when it changes."
+    },
+    {
+      "start": 858,
+      "end": 892,
+      "kind": "function",
+      "name": "exposeVisiblePickTarget (part 12)",
+      "id": "s25",
+      "hash": "888ba6c0e6e91c49",
+      "title": "Markup for labels, cards and canvas",
+      "what": "Returns the 3D canvas, a set of hidden WBS label boxes up to 160, one leader line per callout, a layer of schedule cards, and the hover label. The frame routine shows and moves these existing elements rather than creating new ones.",
+      "why": "Creating the elements once and moving them each frame avoids rebuilding the page on every redraw.",
+      "watch_out": "Labels beyond the 160 limit never render, even if they are on screen."
+    },
+    {
+      "start": 893,
+      "end": 898,
+      "kind": "function",
+      "name": "statusText",
+      "id": "s26",
+      "hash": "e35545c37009c58b",
+      "title": "Short status text for cards",
+      "what": "Turns a callout state into a short phrase: in progress with a percentage, complete, not started for future work, or undated for anything else.",
+      "why": "Gives a plain-English status to users who do not read schedule codes.",
+      "watch_out": "Any state that is not active, complete or future, including unavailable, shows as undated."
+    },
+    {
+      "start": 899,
+      "end": 949,
+      "kind": "function",
+      "name": "SceneCalloutCard",
+      "id": "s27",
+      "hash": "efe52dff45ed6f28",
+      "title": "One schedule card",
+      "what": "Shows one schedule card with the element name, activity codes and names, status and dates, depending on which parts the user has switched on. It has a button that selects the element and an optional button that hides the card.",
+      "why": "Lets the user choose what each card shows. Hiding a card is separate from selecting the element.",
+      "watch_out": "With every part switched off, the element name still shows, so a card is never blank. The tooltip always lists all activities even when they are not shown."
+    }
+  ],
+  "explained_at": "2026-11-12T02:27:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Draws the interactive 3D model of the facility and keeps it in step with the schedule date, colors, selection and camera.",
+  "purpose": "Shows the schedule-driven 3D model, lets the user click and hover over elements, places labels and schedule cards on screen, and offers camera commands to the parent page.",
+  "why": "Likely reason: one component owns the whole 3D scene, so the parent page only passes in data and receives selections back. The reason for splitting the work into a build step and a style step is not stated in the code.",
+  "how": "First it waits for the detailed model library to load. Then it builds lights, ground, and one group of shapes per element. On each redraw it places schedule cards and then WBS labels on screen. When the date, filters, colors or view style change, it updates each element's visibility, scale, colors and transparency. When the scene is replaced, it removes its listeners and frees graphics memory.",
+  "inputs": "The model components and optional site plan, the current date and timeline basis, active phases, visible element ids, selected element, color mode, view style, shadow and cutaway switches, schedule callouts, WBS labels, and the select and hide callbacks.",
+  "outputs": "A 3D canvas, screen labels, schedule cards with leader lines, a hover tooltip, selection callbacks, and camera commands through a handle. It also writes data attributes onto the canvas that the browser tests read.",
+  "risks": "Rebuilding the whole scene is expensive, and the build step re-runs when the model or the onSelect callback changes, so an unstable callback from the parent could cause constant rebuilds. Graphics memory must be freed or it leaks. A WebGL startup failure is handled by the boundary. Labels stop at 160. Placement and hover work run on every redraw.",
+  "debug": "Open the browser console first. Check the canvas data attributes such as the visible component count. If the view is blank, look for the 3D unavailable warning and check the renderer startup. If labels are misplaced, look at the placement section and at the callouts module. If colors are wrong, check the color mode and the color function. If the view flickers or reloads, check whether the parent passes a new onSelect function on every render.",
+  "summary_hash": "sha256:b225c543018d68ca5a643a03d68790419c4f9deffc9b372d668e5e07bde70852"
+}

@@ -1,0 +1,206 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/api/jobs.py",
+  "language": "Python",
+  "lines": 405,
+  "hash": "sha256:6314c7b03f958f8fc5bee8a189b77202c25745ac3262d2f4a7043f045750f2d6",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The packet shows no tests for this file.",
+      "Some section labels in the packet do not match the code they cover, which makes review harder.",
+      "Cancellation relies on polling a marker file, so timing is approximate."
+    ]
+  },
+  "terms": [
+    {
+      "term": "JSON",
+      "meaning": "a plain text format for storing structured data"
+    },
+    {
+      "term": "job",
+      "meaning": "one processing run started by an upload"
+    },
+    {
+      "term": "cache",
+      "meaning": "saved results from an earlier run that can be reused for the same input"
+    },
+    {
+      "term": "SQLite",
+      "meaning": "a small database kept in a single file"
+    },
+    {
+      "term": "cache key",
+      "meaning": "a fingerprint built from the file and version numbers, used to look up cached results"
+    },
+    {
+      "term": "cancel marker",
+      "meaning": "an empty file named cancel that tells running work to stop"
+    },
+    {
+      "term": "Pydantic model",
+      "meaning": "a Python class that checks that data has the expected fields and types"
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/cache.py",
+    "backend/schedule3d/ingest/encoding.py",
+    "backend/schedule3d/ingest/service.py",
+    "backend/schedule3d/packages/paths.py",
+    "backend/schedule3d/semantics/archetypes.py",
+    "backend/schedule3d/semantics/classifier.py",
+    "pydantic"
+  ],
+  "used_by": [
+    "backend/schedule3d/api/app.py",
+    "backend/schedule3d/api/package_jobs.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b02b0f4f44d21d43",
+      "title": "Imports and version links",
+      "what": "Brings in tools for files, threads, data models, the schedule reader and the cache helpers.",
+      "why": "Likely reason: shared building blocks used by the job store.",
+      "watch_out": "Changing the parser or rule version values changes which saved results are reused."
+    },
+    {
+      "start": 31,
+      "end": 61,
+      "kind": "class",
+      "name": "JobState",
+      "id": "s2",
+      "hash": "544fe7c0b21b8620",
+      "title": "Job status record shape",
+      "what": "Defines the saved status of a job: its ID, source name, status, progress counts, message, cache details, package details and timestamps. Unknown extra fields are rejected.",
+      "why": "Likely reason: a fixed shape makes a damaged or mismatched record fail loudly.",
+      "watch_out": "Renaming a field breaks reading of every saved state file written before the change."
+    },
+    {
+      "start": 62,
+      "end": 68,
+      "kind": "class",
+      "name": "ModelArtifacts",
+      "id": "s3",
+      "hash": "abe1f5641d2798c2",
+      "title": "Project model file locations",
+      "what": "Holds the three file paths for one project's saved data: the model file, the staging database, and the attachment list.",
+      "why": "Likely reason: keeping the three paths together means every route finds them the same way.",
+      "watch_out": "Nothing here checks that the files exist, so a missing file only shows up when a route uses it."
+    },
+    {
+      "start": 69,
+      "end": 110,
+      "kind": "class",
+      "name": "JobStore (part 1)",
+      "id": "s4",
+      "hash": "010389b72c360ca3",
+      "title": "Job folder setup and safety",
+      "what": "Creates the job store with its work and cache folders. Checks that a job ID contains only letters, digits and hyphens and that the job folder stays inside the work folder. Provides paths for the state, report and database files, and can delete a job.",
+      "why": "Likely reason: job IDs come from outside the program, so they are checked to block path tricks.",
+      "watch_out": "Any ID with other characters is refused before a file path is built, so the check must stay in place."
+    },
+    {
+      "start": 111,
+      "end": 143,
+      "kind": "method",
+      "name": "JobStore: model_artifacts",
+      "id": "s5",
+      "hash": "20e2d183ef1f2ec1",
+      "title": "Resolving saved model locations",
+      "what": "Gives the file paths for one project's model. For package jobs it uses a committed generation folder and rejects IDs that are not 32 lowercase hex characters. For schedule jobs it uses files named by the project key.",
+      "why": "Likely reason: package models are versioned, so every consumer reads the same complete set.",
+      "watch_out": "A package project with no published generation raises a not-found error, and no older model is used in its place."
+    },
+    {
+      "start": 144,
+      "end": 191,
+      "kind": "method",
+      "name": "JobStore: write",
+      "id": "s6",
+      "hash": "9dbc99a166d4f8e0",
+      "title": "Saving and loading job state",
+      "what": "Saves a job's status through a temporary file and a safe rename, and retries briefly if the file is locked. Keeps an in-memory copy. Loading reads memory first, then the disk, retrying a few times.",
+      "why": "Likely reason: the safe rename stops a half-written status file, and the retries handle short locks.",
+      "watch_out": "An update saved only in memory is lost on restart."
+    },
+    {
+      "start": 192,
+      "end": 241,
+      "kind": "method",
+      "name": "JobStore: request_cancellation",
+      "id": "s7",
+      "hash": "5910eb2f25c68dc0",
+      "title": "Cancelling a running job",
+      "what": "For a job that is queued or running, creates a cancel marker file and sets a message saying cancellation was requested. Finished or failed jobs are returned unchanged.",
+      "why": "Likely reason: a marker file lets running work notice the request without shared memory.",
+      "watch_out": "Cancellation takes effect only at the checkpoints where the work looks for the marker, so it is not instant."
+    },
+    {
+      "start": 242,
+      "end": 301,
+      "kind": "method",
+      "name": "JobStore: cancelled",
+      "id": "s8",
+      "hash": "afa377d17a84836e",
+      "title": "Single schedule processing and cache",
+      "what": "Runs one schedule. Computes a cache key from the file and version numbers, applies any saved column mapping, waits for the key's lock, and then reuses a cached parse or parses the file and saves the result. The section label says cancelled, but the code is the middle of the process method.",
+      "why": "Likely reason: reusing a cached parse saves time when the same file is uploaded again.",
+      "watch_out": "A cancel request is checked before and during the cache wait, so a cancel during lock waiting stops the job cleanly."
+    },
+    {
+      "start": 302,
+      "end": 359,
+      "kind": "class",
+      "name": "JobStore (part 6)",
+      "id": "s9",
+      "hash": "8c3ae606e1706e1c",
+      "title": "Finishing a single schedule job",
+      "what": "Stores record counts, the project list and cache details, then sets the status to cancelled, mapping required or ready with a matching message. Unexpected errors set the status to failed. Its last lines begin the separate method for combined schedules.",
+      "why": "Likely reason: the status tells the frontend what to show next.",
+      "watch_out": "Any unexpected error is saved as failed with its raw text, which may be technical wording for the user."
+    },
+    {
+      "start": 360,
+      "end": 394,
+      "kind": "method",
+      "name": "JobStore: cancelled",
+      "id": "s10",
+      "hash": "97dbb86491fdaaeb",
+      "title": "Combining several schedules into one",
+      "what": "Parses each schedule separately, combines them into one report and database, and marks the job ready. Errors mark it failed, or cancelled if a cancel marker is present.",
+      "why": "Likely reason: combined runs are treated as fresh work, so no cache is reused.",
+      "watch_out": "Progress for combined runs only counts records and does not report source bytes, unlike single schedules."
+    },
+    {
+      "start": 395,
+      "end": 405,
+      "kind": "function",
+      "name": "new_job_state",
+      "id": "s11",
+      "hash": "7d6a642820195de9",
+      "title": "New job status",
+      "what": "Creates a fresh queued status for a new job, with the current time and the upload message.",
+      "why": "Likely reason: every new job starts in the same known state.",
+      "watch_out": "The message text here is shown to users, so changing it changes what they see."
+    }
+  ],
+  "explained_at": "2026-11-12T01:40:02+00:00",
+  "explained_by": "haiku",
+  "summary": "Keeps the state of each upload job on disk and in memory, and runs schedule processing with progress updates and cancellation.",
+  "purpose": "Gives the rest of the app one place to create, read, update, cancel and process jobs.",
+  "why": "Likely reason: saving state to disk lets a job survive page reloads and server restarts.",
+  "how": "1. A job folder is created for each upload. 2. Each change to the job is saved to its state file through a temporary file. 3. Processing computes a cache key from the file and version numbers. 4. If a cached result exists it is reused, otherwise the schedule is parsed into a database and a report. 5. The final status is recorded as ready, mapping required, cancelled or failed.",
+  "inputs": "Uploaded source files, a saved column mapping, cancel marker files, and cached results from earlier runs.",
+  "outputs": "A state.json file for each job, an ingestion-report.json file, a staging.sqlite3 database, paths to saved model files, and cache entries.",
+  "risks": "Cancellation works by looking for a file named cancel in the job folder, so deleting that file mid-run changes behaviour. Single schedules use the cache, but combined schedules never do.",
+  "debug": "Read the job's state.json under the work root. Its message field usually states what happened, and its status field shows where processing stopped.",
+  "summary_hash": "sha256:6314c7b03f958f8fc5bee8a189b77202c25745ac3262d2f4a7043f045750f2d6"
+}

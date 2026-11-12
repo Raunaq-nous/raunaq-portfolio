@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/packages/modeling.py",
+  "language": "Python",
+  "lines": 143,
+  "hash": "sha256:f922b8fee0d7ead352e092d782ae7d00fdca21f716fa53cade28d0ea48dfee44",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The file itself says this is an unreleased slice, and browser, packaged and release acceptance are not established.",
+      "No test or other evidence of correct behaviour is visible in the packet.",
+      "Depends on other modules whose behaviour is not in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "generation",
+      "meaning": "one saved version of a model, kept in its own folder"
+    },
+    {
+      "term": "staging database",
+      "meaning": "a SQLite file holding the parsed schedule rows"
+    },
+    {
+      "term": "SQLite",
+      "meaning": "a small database stored as a single file"
+    },
+    {
+      "term": "claim",
+      "meaning": "a statement from a document, with its source and review status"
+    },
+    {
+      "term": "assembly refinement",
+      "meaning": "adjusting model components using the claims"
+    },
+    {
+      "term": "ingestion report",
+      "meaning": "the summary of what was read from the schedule file"
+    },
+    {
+      "term": "receipt",
+      "meaning": "a summary file written at the end of a run"
+    }
+  ],
+  "depends_on": [
+    "schedule3d.ingest.contracts",
+    "schedule3d.model.grounding_assembly",
+    "schedule3d.model.package_assemblies",
+    "schedule3d.model.service",
+    "schedule3d.packages.archive",
+    "schedule3d.packages.claims",
+    "schedule3d.packages.extraction",
+    "schedule3d.packages.grounding",
+    "schedule3d.packages.paths",
+    "hashlib",
+    "shutil",
+    "time"
+  ],
+  "used_by": [
+    "backend/schedule3d/packages/worker.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "2d998ac3a147aceb",
+      "title": "File purpose and imports",
+      "what": "States that this module coordinates the steps for one package model without changing the source inputs, and lists the parts it brings together. Sets the 64 MiB limit on saved model files.",
+      "why": "The docstring says source inputs stay unchanged, and the imports show which parts are combined.",
+      "watch_out": "The size limit applies to every file saved here, so a larger model would fail to save."
+    },
+    {
+      "start": 26,
+      "end": 57,
+      "kind": "function",
+      "name": "build_package_model (part 1)",
+      "id": "s2",
+      "hash": "2ca78161cc7aa135",
+      "title": "Checking the request and project",
+      "what": "Reads the request, which must name a project. Then checks that the output folder does not exist, and that the project is in the ingestion report and within the visualization limit. Projects over the limit are refused with advice to use programme mode.",
+      "why": "Likely reason: refusing early means no half-built output is created for a bad request.",
+      "watch_out": "Refusal happens before any output is written, so a retry needs a new output folder name."
+    },
+    {
+      "start": 58,
+      "end": 117,
+      "kind": "method",
+      "name": "build_package_model: observe",
+      "id": "s3",
+      "hash": "e05671af4bce27b8",
+      "title": "Running each model step with progress",
+      "what": "Defines the progress report, which checks for cancellation first. Then runs the main steps in order: copy the staging database into the output, build the schedule model, collect claims, refine assemblies, and add grounding if a layout is found.",
+      "why": "The copy means the reused builder writes its annotations into the new version, not into the original raw snapshot.",
+      "watch_out": "Each step depends on the one before it, so changing the order here changes the saved model."
+    },
+    {
+      "start": 118,
+      "end": 143,
+      "kind": "function",
+      "name": "build_package_model (part 3)",
+      "id": "s4",
+      "hash": "22bdba25dd450ef6",
+      "title": "Publishing the model and receipt",
+      "what": "Adds the development-only limitation to the model and saves the claims and model files. Then writes the generation receipt with counts, the model fingerprint, timings, and an acceptance line stating that browser, packaged and release checks are not established.",
+      "why": "The limitation and acceptance wording record what this build does not yet prove.",
+      "watch_out": "The receipt says development only, so a successful generation must not be treated as release-accepted."
+    }
+  ],
+  "explained_at": "2026-11-12T02:06:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the steps that turn one schedule package into a saved model version in a new output folder, and writes a receipt describing what was produced.",
+  "purpose": "Combines the schedule, the document claims, the assembly refinement and the grounding layout for one selected project into one saved model version that the app can load.",
+  "why": "Likely reason: each version is written once into its own folder, so earlier results are never changed. The docstring calls it a worker-owned immutable generation.",
+  "how": "1. Read the small request file and check the selected project exists in the ingestion report and is within the visualization limit. 2. Refuse if the output folder already exists. 3. Create the output folder and copy the staging database into it. 4. Build the schedule model from that copy. 5. Collect claims from the extraction folder. 6. Refine assemblies using the claims. 7. Collect grounding and, if a layout exists, refine the model with it and save the layout file. 8. Add the development-only limitation, save the claims and model files, and write the generation receipt.",
+  "inputs": "A request file naming the project, the ingestion report, the staging database from the schedule step, and the package extraction folder. Also a cancel check and a progress callback.",
+  "outputs": "In the output folder: a copy of the staging database, claims.json, model.json, an optional grounding-layout.json, and generation.json, a receipt with counts, fingerprints, timings and an acceptance statement.",
+  "risks": "Time and memory limits are enforced outside this file, so this code only checks for cancellation. The output folder must be new. Saved files are capped at 64 MiB. Grounding display may rely on an inferred scale.",
+  "debug": "Read generation.json first. It lists claim review counts, grounding dispositions, timings and the acceptance statement. If a run fails before the receipt is written, read the error text and the stage metrics file in the control folder. Confirm that the output folder is new.",
+  "summary_hash": "sha256:f922b8fee0d7ead352e092d782ae7d00fdca21f716fa53cade28d0ea48dfee44"
+}

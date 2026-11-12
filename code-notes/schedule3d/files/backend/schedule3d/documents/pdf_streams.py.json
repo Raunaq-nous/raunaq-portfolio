@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/documents/pdf_streams.py",
+  "language": "Python",
+  "lines": 107,
+  "hash": "sha256:8baf27eff11ba0b511437c2eb177625c957dbbb8dc05efc179a6a1ce79b203c6",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The file is designed carefully for memory limits, but no test evidence is visible in the packet.",
+      "The counting is described as approximate, and the packet does not show how close it is to the real count.",
+      "In the document extraction file, this function is only used when a specific option is turned on, and that option is not set on the main path shown there."
+    ]
+  },
+  "terms": [
+    {
+      "term": "content stream",
+      "meaning": "the part of a PDF page that holds its drawing and text instructions"
+    },
+    {
+      "term": "Flate",
+      "meaning": "a common compression method used inside PDF files"
+    },
+    {
+      "term": "predictor",
+      "meaning": "an extra step that rearranges data before or after compression to make it smaller"
+    },
+    {
+      "term": "vector operator",
+      "meaning": "a drawing command word such as one that moves a pen, draws a line, or closes a shape"
+    },
+    {
+      "term": "raw bytes",
+      "meaning": "the stored data exactly as it sits in the file, before any decompression"
+    },
+    {
+      "term": "budget",
+      "meaning": "a fixed upper limit on size or work, enforced to keep the program safe"
+    }
+  ],
+  "depends_on": [
+    "pypdf",
+    "zlib (built into Python)"
+  ],
+  "used_by": [
+    "backend/schedule3d/documents/service.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 21,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a8bc084617358fb8",
+      "title": "Module description, imports, and patterns",
+      "what": "Explains the purpose of the module and defines the chunk size, the set of drawing command words, and the whitespace characters.",
+      "why": "The description states the limits of what this module does, so readers know it counts rather than interprets drawings.",
+      "watch_out": "The chunk size and the command word list directly control memory use and counts, so change them only with care."
+    },
+    {
+      "start": 22,
+      "end": 25,
+      "kind": "function",
+      "name": "_resolved",
+      "id": "s2",
+      "hash": "f36272a8dab6d7e3",
+      "title": "Following a reference to its object",
+      "what": "If a value is a reference to another object in the PDF, returns the object it points to. Otherwise returns the value unchanged.",
+      "why": "PDF files often store objects by reference, so this step is needed before reading their contents.",
+      "watch_out": "The same job is done by a near-identical helper in the service file, so the two must behave the same."
+    },
+    {
+      "start": 26,
+      "end": 70,
+      "kind": "function",
+      "name": "_chunks",
+      "id": "s3",
+      "hash": "8408029ef90df066",
+      "title": "Reading and decoding a stream in pieces",
+      "what": "Checks the stream's compression and prediction settings, rejects anything other than plain or single-compression streams, then yields the decoded content one piece at a time while checking for cancellation.",
+      "why": "Likely reason: decoding in pieces keeps memory use low even for large drawings, and rejecting unusual settings avoids decoding data the module cannot count reliably.",
+      "watch_out": "Any extra bytes after the compressed data cause a failure, so some valid files are rejected."
+    },
+    {
+      "start": 71,
+      "end": 107,
+      "kind": "function",
+      "name": "page_stream_metrics",
+      "id": "s4",
+      "hash": "b8ff3489e3d9afdb",
+      "title": "Counting bytes and drawing commands on a page",
+      "what": "Goes through every content stream for the page, adds up the decoded bytes, counts drawing command words, and carries a short tail between pieces so words split across pieces are counted correctly. It raises an error as soon as either budget is exceeded.",
+      "why": "Gives the page-level size and complexity numbers the document extraction uses to decide if the page is safe to accept.",
+      "watch_out": "Very long non-space runs are replaced by a placeholder tail, which is safe because drawing commands are at most two characters, but changing the command list could break this."
+    }
+  ],
+  "explained_at": "2026-11-12T01:46:52+00:00",
+  "explained_by": "haiku",
+  "summary": "This file counts the drawing commands and the decoded size of a PDF page's drawing instructions, one piece at a time, without loading the whole page into memory.",
+  "purpose": "Lets the app measure how complex a PDF page's vector drawing is, so an overly complex or hostile file is rejected before it uses too much time or memory.",
+  "why": "Its own description says it is bounded accounting only, not interpretation, and it avoids decompressing whole streams at once to keep memory use under control.",
+  "how": "It reads the raw bytes of each page's drawing stream, accepts only plain or single-compressed streams with no prediction step, and decompresses them in one-megabyte pieces. For each piece, it counts drawing operator words, carrying over a short tail between pieces so a word split across a boundary is still counted once. It stops with an error when the total decoded size or operator count exceeds the budget.",
+  "inputs": "A PDF page object, a byte budget, a vector operator budget, and a cancellation check.",
+  "outputs": "Two numbers for the page: total decoded bytes and total drawing operator count. It raises an error when a budget is exceeded or the stream is unsupported.",
+  "risks": "Only plain and single-compression streams are accepted, so other valid PDFs are rejected. The operator count is an estimate, as the file itself says. Trailing bytes after a compressed stream cause a failure, which may reject files that other readers accept.",
+  "debug": "If a page is rejected with an unsupported filter or predictor error, the page uses an encoding this file does not handle. If the decoded size error appears, the page's drawing content is larger than the budget. If the counts look too low, check the tail handling for operator words split across pieces.",
+  "summary_hash": "sha256:8baf27eff11ba0b511437c2eb177625c957dbbb8dc05efc179a6a1ce79b203c6"
+}

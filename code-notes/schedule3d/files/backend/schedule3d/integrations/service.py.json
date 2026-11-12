@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/integrations/service.py",
+  "language": "Python",
+  "lines": 174,
+  "hash": "sha256:1702486546c113090f5f45e13f000200130ffe3148d65dd0ce9ce7a513d18ea6",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The Autodesk path is deliberately blocked until a verification step is written.",
+      "No tests are visible in the packet.",
+      "The ALICE export overwrites files without a check and has no visible error handling for the database."
+    ]
+  },
+  "terms": [
+    {
+      "term": "environment variable",
+      "meaning": "a named setting that the operating system passes to the program, often used for paths."
+    },
+    {
+      "term": "read-only connection",
+      "meaning": "a database connection that can read data but cannot change it."
+    },
+    {
+      "term": "Autodesk runtime",
+      "meaning": "the installed Autodesk program that would do the actual file conversion."
+    },
+    {
+      "term": "JSON",
+      "meaning": "a plain text format for structured data that many programs can read."
+    }
+  ],
+  "depends_on": [
+    "schedule3d.integrations.contracts",
+    "schedule3d.model.contracts",
+    "schedule3d.sqlite_paths",
+    "os",
+    "sqlite3"
+  ],
+  "used_by": [
+    "backend/schedule3d/integrations/__init__.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 24,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "80e17971e59d3b51",
+      "title": "Imports and Autodesk tool table",
+      "what": "Brings in the contract models, the project model, and a read-only path helper. Also holds a table linking rvt, nwc, and nwd formats to their tool names and environment variable names.",
+      "why": "Likely reason: the table keeps the tool names and settings in one place for the capability check.",
+      "watch_out": "The environment variable names must match what the people setting up the machine use."
+    },
+    {
+      "start": 25,
+      "end": 73,
+      "kind": "function",
+      "name": "autodesk_capability",
+      "id": "s2",
+      "hash": "e6e921557836bc6b",
+      "title": "Autodesk capability check",
+      "what": "Looks up a format and reads its environment variable. It reports unavailable with a reason when the variable is missing, the path is a network path, the path is not absolute, or the file is not an existing .exe. Even when every check passes, it still reports unavailable and explains that verification is not written yet.",
+      "why": "Likely reason: the code refuses to trust a file just because it exists, so it stays unavailable until a proper verification step is built.",
+      "watch_out": "Because it never reports available, anything that depends on it stays blocked; changing that needs real verification of the product."
+    },
+    {
+      "start": 74,
+      "end": 85,
+      "kind": "function",
+      "name": "require_autodesk_runtime",
+      "id": "s3",
+      "hash": "691f5416182fea84",
+      "title": "Required Autodesk runtime",
+      "what": "Returns the runtime path only when the capability says it is available. Otherwise it raises an error that says no placeholder file was created.",
+      "why": "Likely reason: the error stops an export before any target file is started.",
+      "watch_out": "Since the capability check never reports available, this always raises an error for now."
+    },
+    {
+      "start": 86,
+      "end": 120,
+      "kind": "function",
+      "name": "build_alice_contract (part 1)",
+      "id": "s4",
+      "hash": "a0e88dd1d845fcc1",
+      "title": "ALICE builder: reading links and WBS paths",
+      "what": "Opens the database read-only and reads the WBS path for each activity in the project. It also reads every relationship that touches the project and turns each one into a hard logic link, ordered by a stored key.",
+      "why": "Likely reason: the read-only connection stops the export from changing the database, and the query includes links that cross project boundaries.",
+      "watch_out": "The query includes links where either end is in the project, so cross-project links are included."
+    },
+    {
+      "start": 121,
+      "end": 163,
+      "kind": "function",
+      "name": "build_alice_contract (part 2)",
+      "id": "s5",
+      "hash": "7a8abf22efb49f47",
+      "title": "ALICE builder: assets and contract",
+      "what": "For each component in the model, collects the distinct WBS paths of its supporting activities, then builds an asset with its provenance and confidence. It then builds the full contract with fixed readiness blockers and limitations.",
+      "why": "Likely reason: the blockers are fixed text that states the contract is not ready for real ALICE use.",
+      "watch_out": "The unit is copied straight from the component, and the blocker text must be updated once mapping and testing are done."
+    },
+    {
+      "start": 164,
+      "end": 174,
+      "kind": "function",
+      "name": "export_alice_contract",
+      "id": "s6",
+      "hash": "73249c68e038f399",
+      "title": "Writing the ALICE file",
+      "what": "Builds the contract, creates the destination folder if needed, writes it as formatted UTF-8 JSON with a final newline, and returns the contract.",
+      "why": "Likely reason: the file is written in one call so the caller gets both the file and the object.",
+      "watch_out": "An existing file at the destination is overwritten without warning."
+    }
+  ],
+  "explained_at": "2026-11-12T01:53:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks whether Autodesk export tools are available on this machine and builds and saves the ALICE construction-data handoff file from a project model.",
+  "purpose": "Gives the rest of the app a safe answer about Autodesk availability and a way to export the ALICE contract, while never claiming a tool is ready when it has not been verified.",
+  "why": "Likely reason: the code says it fails closed until a signed, product-specific probe is written, so the Autodesk check always reports unavailable for now.",
+  "how": "For Autodesk, it reads an environment variable, checks the path is a local absolute path to an existing .exe file, and still reports unavailable. For ALICE, it reads the activity WBS paths and logic links from a read-only database, builds one asset per component, and writes a JSON file.",
+  "inputs": "A format name such as rvt, nwc, or nwd; an environment variable naming the tool path; a project model; and a database path and destination path for the ALICE export.",
+  "outputs": "A capability report, a path or a raised error for Autodesk use, and a validated ALICE contract that is also written to disk as JSON.",
+  "risks": "The Autodesk check never returns available, so the export always fails by design. The ALICE builder fills assets from the model without checking that the database matches the model. The export overwrites an existing file at the destination without asking.",
+  "debug": "For Autodesk, read the reason text in the capability report and check the named environment variable. For ALICE, confirm the database contains the project's activities and relationships, and check the file written at the destination.",
+  "summary_hash": "sha256:1702486546c113090f5f45e13f000200130ffe3148d65dd0ce9ce7a513d18ea6"
+}

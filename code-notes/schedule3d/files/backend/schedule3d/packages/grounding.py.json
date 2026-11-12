@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/packages/grounding.py",
+  "language": "Python",
+  "lines": 350,
+  "hash": "sha256:be1f6df9f85095a2f1ac980a1713683b96ddd687154b67b8dc07672f786ec817",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test or other evidence of correct behaviour is visible in the packet.",
+      "Many rules are hard-coded, so real drawings may be refused with a reason rather than a clear error message.",
+      "Its own limitations say the association is inferred and is not an engineering approval."
+    ]
+  },
+  "terms": [
+    {
+      "term": "DXF",
+      "meaning": "a common drawing file format used by CAD programs, storing lines, shapes and layers"
+    },
+    {
+      "term": "fence",
+      "meaning": "here, a rectangle drawn on a layer named fence, used as a reference boundary"
+    },
+    {
+      "term": "study",
+      "meaning": "a project design document whose stated facts, such as fence size or burial depth, the app can read"
+    },
+    {
+      "term": "evidence bundle",
+      "meaning": "a collection of facts, each with its source, that the app checks against"
+    },
+    {
+      "term": "claim",
+      "meaning": "a statement taken from a source document, with its authority and limits recorded"
+    },
+    {
+      "term": "burial depth",
+      "meaning": "how far below ground a conductor sits"
+    },
+    {
+      "term": "DXF handle",
+      "meaning": "a unique internal identifier that a DXF file gives each drawn item"
+    }
+  ],
+  "depends_on": [
+    "schedule3d.evidence.contracts",
+    "schedule3d.evidence.reconciliation",
+    "schedule3d.packages.archive",
+    "schedule3d.packages.claims",
+    "schedule3d.packages.extraction",
+    "pydantic"
+  ],
+  "used_by": [
+    "backend/schedule3d/packages/modeling.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 40,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "2a5164363e7ddcd9",
+      "title": "File purpose and unit table",
+      "what": "Explains the module's purpose and the rule that an undeclared drawing unit is never silently treated as known. Sets the upper limit of 4096 route segments and a table that converts drawing unit codes into metres.",
+      "why": "The top-of-file comment states the conservative rule that the rest of the file enforces.",
+      "watch_out": "The unit table sets how large the drawing appears, so changing one factor changes every dimension in the model."
+    },
+    {
+      "start": 41,
+      "end": 49,
+      "kind": "class",
+      "name": "GroundSegment",
+      "id": "s2",
+      "hash": "c69ce7cdc644502d",
+      "title": "One grounding route record",
+      "what": "Describes one drawn grounding line: its identifier, its two end points, its source reference, and the evidence record holding its raw coordinates. Unknown fields are rejected.",
+      "why": "Likely reason: strict fields stop accidental extra data from getting into saved layouts.",
+      "watch_out": "Saved layouts that contain new fields will fail to load until this definition is updated."
+    },
+    {
+      "start": 50,
+      "end": 65,
+      "kind": "class",
+      "name": "GroundingLayout",
+      "id": "s3",
+      "hash": "339255d12cca6b21",
+      "title": "Whole grounding layout record",
+      "what": "Describes the complete result for one drawing: the project, the fence and source references, the list of routes (one to 4096), the scale in metres per drawing unit, the drawing origin, the study facts used, an optional burial depth, and the text explaining units, association and limitations.",
+      "why": "Likely reason: one saved record lets the model stage and the viewer read the same stated limits.",
+      "watch_out": "The basis and limitation texts are shown to users, so keep them accurate when behaviour changes."
+    },
+    {
+      "start": 66,
+      "end": 69,
+      "kind": "function",
+      "name": "_folder",
+      "id": "s4",
+      "hash": "ce75fccfdac1c56d",
+      "title": "Folder name normaliser",
+      "what": "Returns the folder part of a file path in lower case, with Windows separators converted, so that files in the same folder can be compared.",
+      "why": "Matching is done by folder so that a study is used only when it sits beside the drawing.",
+      "watch_out": "Comparison ignores case, so two folders that differ only in capitals are treated as the same."
+    },
+    {
+      "start": 70,
+      "end": 80,
+      "kind": "function",
+      "name": "_source",
+      "id": "s5",
+      "hash": "b3d7febd3d70f4f9",
+      "title": "Source reference for a drawn entity",
+      "what": "Builds the citation for one drawing entity: the first alphabetically sorted file path, the file's fingerprint, the entity's index, its line number and layer, and a note that it came from vector geometry in a coordinate file.",
+      "why": "Lets every drawn line be traced back to its exact place in the drawing.",
+      "watch_out": "The file named is the alphabetically first reference, which may not be the file a user expects when one drawing has several names."
+    },
+    {
+      "start": 81,
+      "end": 105,
+      "kind": "function",
+      "name": "_rectangle",
+      "id": "s6",
+      "hash": "b4d11bbbc2933063",
+      "title": "Checking for a rectangular fence",
+      "what": "Decides whether a drawn polyline is a flat, axis-aligned rectangle. It accepts four corners, or four corners with the first repeated. It returns the smallest and largest corner values, or nothing.",
+      "why": "Likely reason: a fence must be simple and exact so its size can be compared with study sizes.",
+      "watch_out": "Only exact coordinates count, so a fence that is slightly out of square, or has rounding differences, is rejected."
+    },
+    {
+      "start": 106,
+      "end": 132,
+      "kind": "function",
+      "name": "_raw_fact",
+      "id": "s7",
+      "hash": "61e9ee1c70bd1f08",
+      "title": "Evidence record for a route's coordinates",
+      "what": "Wraps the literal coordinates of one route into an evidence record marked as needing review. Its notes say that the coordinates are literal, that project matching and metric scale are separate display inferences, and that the vertical value is not burial depth.",
+      "why": "Keeps raw drawing facts separate from the inferred display, so a reviewer can see what was read directly.",
+      "watch_out": "Confidence is set to the top value and the state is source stated. This describes drawing text, not an approved engineering fact."
+    },
+    {
+      "start": 133,
+      "end": 192,
+      "kind": "function",
+      "name": "infer_grounding_layout (part 1)",
+      "id": "s8",
+      "hash": "1c8613bceba1ed92",
+      "title": "Entity scan and fence selection",
+      "what": "Reads one DXF record and stops with a reason if the file is unsupported, has conflicting or unsupported units, or names more than one project in its text. More than 50,000 entities raises a budget error. It then requires exactly one usable fence rectangle and collects the same-folder study facts for its two sides.",
+      "why": "Each early exit is a refusal rule that stops unclear drawings from producing a display.",
+      "watch_out": "Project names are read from drawing text with a pattern, so an unusual label style may be missed without any warning."
+    },
+    {
+      "start": 193,
+      "end": 252,
+      "kind": "function",
+      "name": "infer_grounding_layout (part 2)",
+      "id": "s9",
+      "hash": "3b2eb9971f87b974",
+      "title": "Matching study dimensions and units",
+      "what": "Tries each same-folder study pair. It takes the unit conversion from the declared unit, or assumes feet only when no unit is declared and all study values are in feet. A pair counts only when the converted fence size matches the study within a tiny tolerance. The single burial depth is taken only if all matched studies agree. Then it starts collecting ground grid or conductor lines by layer name.",
+      "why": "Likely reason: matching the fence size to the study is the only evidence that the drawing belongs to that study, so both must agree before any scale is used.",
+      "watch_out": "The fence size match is the main guard against a wrong unit, so loosening its tolerance weakens that guard."
+    },
+    {
+      "start": 253,
+      "end": 312,
+      "kind": "function",
+      "name": "infer_grounding_layout (part 3)",
+      "id": "s10",
+      "hash": "62c3685917f0b1ce",
+      "title": "Checking each ground route line",
+      "what": "For each line on a ground grid or conductor layer, checks that it has exactly two points on one flat plane, that its coordinates are finite numbers, that it sits near the fence, and that its real length is above zero and at most 10 km. Each accepted line becomes a segment with an identity from its DXF handle if present, otherwise from its entity order.",
+      "why": "Keeps out-of-place or unusual lines out of the model. The near-fence check reuses the same association boundary as the fence.",
+      "watch_out": "One route outside the fence area or the length limit causes the whole drawing to be refused, not only that route."
+    },
+    {
+      "start": 313,
+      "end": 318,
+      "kind": "function",
+      "name": "infer_grounding_layout (part 4)",
+      "id": "s11",
+      "hash": "79d4c615436d3fb5",
+      "title": "Building the final layout and its limits",
+      "what": "Packages all accepted routes into one layout with the fence origin, the study facts used, the depth, and a fixed list of limitations. The limitations say there is no survey or approved assignment, the conductor width is schematic, and unsupported blocks are not rebuilt. It returns the reason inferred-display-association with the layout.",
+      "why": "The limitations are written into the output so that users can see what the display does not prove.",
+      "watch_out": "The limitation texts describe rules in the code, such as the quarter-of-fence margin, so update them whenever those rules change."
+    },
+    {
+      "start": 319,
+      "end": 350,
+      "kind": "function",
+      "name": "collect_grounding_layout",
+      "id": "s12",
+      "hash": "6a080c1f2e162a2c",
+      "title": "Choosing one drawing for the model",
+      "what": "Reads the extraction index and refuses to continue if extraction was incomplete. For each DXF document it checks the fingerprint against the saved record, infers a layout, and returns a layout only if exactly one drawing qualifies. If several qualify, all of them are marked ambiguous and nothing is chosen.",
+      "why": "Likely reason: choosing between two plausible drawings would be a guess, so the code refuses instead.",
+      "watch_out": "Two valid drawings for one project produce no grounding at all, and the per-drawing reasons are the only place this is explained."
+    }
+  ],
+  "explained_at": "2026-11-12T02:06:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns one DXF drawing into labelled, inferred grounding conductor lines for the 3D model only when it can be safely matched to a project study in the same folder, and gives a reason when it cannot.",
+  "purpose": "Lets the model show buried grounding (earthing) conductor routes as a display hypothesis. The drawing's units and project identity are inferred from a matching fence rectangle and a study in the same folder. An engineer has not confirmed them.",
+  "why": "Likely reason: the code avoids silently trusting an ambiguous drawing, so each association step can refuse and return a reason. The top-of-file comment states this rule.",
+  "how": "1. Reject drawings that are not plain ASCII DXF, have conflicting or unsupported units, or name more than one project. 2. Find exactly one rectangle on a layer named fence. 3. Gather study facts for the two fence sides from the same folder. 4. Choose a unit conversion from the declared unit, or assume feet only when no unit is declared and all study values are in feet. 5. Keep only studies whose fence size matches within a tiny tolerance, and require one unit answer and one project identity. 6. Keep ground grid or conductor lines that lie near the fence, sit on one flat plane, and are at most 10 km long. 7. Build the layout with its limitations text, or return no layout and a reason. The collect step then chooses among drawings and refuses if more than one qualifies.",
+  "inputs": "An extraction record for one DXF file (entities, layers, declared units), the evidence bundle holding study and claim facts for the project, and a checkpoint callback. The collect step reads the extraction index and each DXF record from the extraction folder.",
+  "outputs": "Either a GroundingLayout (route segments, scale factor, origin, study fact identities, optional burial depth, basis and limitations text) with the reason inferred-display-association, or no layout with a reason string. collect_grounding_layout returns one layout or nothing, plus a list of per-drawing dispositions.",
+  "risks": "Hard-coded rules (layer names, the 10 km limit, the quarter-of-fence margin, the feet assumption) decide what appears. A drawing with other layer names silently produces nothing. Two plausible drawings in one folder cancel each other out. Scale may be wrong if units are assumed. Burial depth is shown only when matched studies agree on one value.",
+  "debug": "Start with the dispositions list from collect_grounding_layout. Each reason says which rule refused the drawing. Then check the drawing's layer names, declared units, fence rectangle, and whether a study with matching fence dimensions sits in the same folder. The ambiguous reason means two drawings qualified.",
+  "summary_hash": "sha256:be1f6df9f85095a2f1ac980a1713683b96ddd687154b67b8dc07672f786ec817"
+}

@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/cache.py",
+  "language": "Python",
+  "lines": 212,
+  "hash": "sha256:777df60967349009d1bf6bc447c81cade6b26fff809678bb550d3fdb02dc38c5",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this packet.",
+      "Partial files left by cancelled or failed copies are not removed in the visible code.",
+      "The progress-interval constant is defined but not used in the visible code.",
+      "The restore and store logic was not part of this packet, so its error handling is unknown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Cache",
+      "meaning": "A saved copy kept on disk so that work does not have to be repeated."
+    },
+    {
+      "term": "Fingerprint",
+      "meaning": "A short code computed from content that changes whenever the content changes."
+    },
+    {
+      "term": "SHA-256",
+      "meaning": "A common fingerprint method that produces a 64-character code."
+    },
+    {
+      "term": "Hexadecimal",
+      "meaning": "Text written with the digits 0 to 9 and the letters a to f."
+    },
+    {
+      "term": "SQLite",
+      "meaning": "A small database stored in a single file."
+    },
+    {
+      "term": "Schema",
+      "meaning": "The structure of tables and columns in a database, as opposed to its stored data."
+    },
+    {
+      "term": "Ingestion",
+      "meaning": "Reading and checking an outside schedule file so the app can use it."
+    },
+    {
+      "term": "Staging artifact",
+      "meaning": "An intermediate result produced while preparing data for use."
+    }
+  ],
+  "depends_on": [
+    "schedule3d.ingest.contracts",
+    "schedule3d.ingest.encoding",
+    "schedule3d.ingest.store",
+    "Python standard library modules (hashlib, json, sqlite3, collections.abc, pathlib)"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "174fc8f2784ef224",
+      "title": "Imports and copy size settings",
+      "what": "Brings in the tools the cache needs and sets three numbers: how many bytes are copied per piece, how many database pages are copied per step, and how many database steps pass between progress checks.",
+      "why": "Likely reason: fixed sizes keep copies predictable and let cancellation be checked often. The constant names show this purpose.",
+      "watch_out": "The progress-interval constant is defined but not used in the visible code, so changing it has no effect here."
+    },
+    {
+      "start": 24,
+      "end": 27,
+      "kind": "function",
+      "name": "file_sha256",
+      "id": "s2",
+      "hash": "93d4cc3d9a9927ea",
+      "title": "Fingerprinting a file",
+      "what": "Returns the content fingerprint of a file. It hands the work to the ingest module's binary fingerprint routine, passes along the cancellation check, and keeps only the first value, which is the hash.",
+      "why": "Reason not stated in the code. The cache reuses the ingest routine so that both modules agree on fingerprints.",
+      "watch_out": "Computing the fingerprint reads the file's contents, so very large sources take time before any cache lookup happens."
+    },
+    {
+      "start": 28,
+      "end": 50,
+      "kind": "function",
+      "name": "cache_key",
+      "id": "s3",
+      "hash": "f0683ad1ee7175e9",
+      "title": "Building the cache key",
+      "what": "Combines the inputs that decide whether a cached result is still valid, such as the source fingerprint, version numbers, column mapping, source identity and database layout version, into one text and hashes it. The same inputs always give the same key.",
+      "why": "One key that includes every input means a cache hit should match the result that would be computed fresh. The sorted, compact text keeps the key independent of ordering.",
+      "watch_out": "Any new input that changes results must be added to this key, or old cached results will be reused."
+    },
+    {
+      "start": 51,
+      "end": 55,
+      "kind": "function",
+      "name": "_raise_if_cancelled",
+      "id": "s4",
+      "hash": "a07daadfb2c8c541",
+      "title": "Stopping when cancelled",
+      "what": "Checks the cancellation signal from the caller. If it is set, raises a cancellation error that names the stage, such as cache restore or cache store.",
+      "why": "Lets a user stop long copies. The cancellation error message names the stage, which shows this purpose.",
+      "watch_out": "The check runs only at set points, so a copy can finish one more piece after cancellation is requested."
+    },
+    {
+      "start": 56,
+      "end": 74,
+      "kind": "function",
+      "name": "_copy_file",
+      "id": "s5",
+      "hash": "cd5619ca64d8058c",
+      "title": "Copying one file in pieces",
+      "what": "Copies a file to a new location one megabyte at a time. Creates missing folders first and checks for cancellation before, during and after the copy. A missing source file is reported as an error.",
+      "why": "Copying in pieces lets a cancel stop a large copy quickly. The chunk size and repeated checks show this purpose.",
+      "watch_out": "If the copy is stopped or fails midway, the destination file is left partly written."
+    },
+    {
+      "start": 75,
+      "end": 102,
+      "kind": "function",
+      "name": "_copy_database",
+      "id": "s6",
+      "hash": "2d804ceea3b182fe",
+      "title": "Copying a database safely",
+      "what": "Copies a SQLite database using SQLite's own backup feature. The source is set to read-only query mode, copying runs in steps of 256 pages, and cancellation is checked at each step. Both connections are closed afterward, even if an error occurs.",
+      "why": "Likely reason: SQLite's backup feature copies a database consistently, and the read-only setting protects the source. The code does not state this.",
+      "watch_out": "A cancelled backup leaves a partly written database at the destination, and nothing in the visible code removes it."
+    },
+    {
+      "start": 103,
+      "end": 108,
+      "kind": "function",
+      "name": "_has_current_database_schema",
+      "id": "s7",
+      "hash": "a81f4c28a6a59292",
+      "title": "Rejecting old database layouts",
+      "what": "Returns true only if the database's layout matches the layout this version of the code expects. Caches with an old layout are refused before the rest of the program reads them.",
+      "why": "The docstring states that stale cache databases must not reach current readers.",
+      "watch_out": "The check compares layout only, not stored data, so a correctly shaped but wrong database passes."
+    },
+    {
+      "start": 109,
+      "end": 168,
+      "kind": "function",
+      "name": "restore_ingestion_cache (part 1)",
+      "id": "s8",
+      "hash": "d5afd0fb42cd0d1b",
+      "title": "Restoring a saved ingestion result",
+      "what": "Looks up a saved copy of a previous schedule import using a key. If the saved copy is complete and still matches the current database layout, it copies the saved database into place and returns the saved summary report. Otherwise it returns nothing, so the caller must import the schedule again.",
+      "why": "Likely reason: re-importing a large schedule is slow, so a saved copy avoids repeat work. Every check must pass before the saved copy is trusted, which protects against stale or damaged data.",
+      "watch_out": "The code checks the stored schema version and the schema fingerprint but never reads the separate schema_version label, so changing only that label does not invalidate old caches."
+    },
+    {
+      "start": 169,
+      "end": 173,
+      "kind": "function",
+      "name": "restore_ingestion_cache (part 2)",
+      "id": "s9",
+      "hash": "f294106b4e639ab9",
+      "title": "Finishing the restore and writing the report",
+      "what": "After a successful restore, records the path of the restored database and the source name in the report, saves that report next to the caller's report file, and returns it to the caller.",
+      "why": "Likely reason: the caller expects the report file to exist and to show the local database location, not the location used when the cache was first saved.",
+      "watch_out": "Errors raised by the cancellation check inside the restore may not be caught by the error handler above, and the code does not show what type that cancellation error is."
+    },
+    {
+      "start": 174,
+      "end": 212,
+      "kind": "function",
+      "name": "store_ingestion_cache",
+      "id": "s10",
+      "hash": "b5b76aef3fc309c5",
+      "title": "Saving an ingestion result to the cache",
+      "what": "Stores a finished schedule import under its key: a copy of the database, a copy of the report, and a small metadata file. The metadata file is written last, so a saved entry counts as complete only after every part has been written.",
+      "why": "Likely reason: writing the metadata last means an interrupted save leaves no metadata, so a later restore treats the entry as missing rather than trusting half-written data.",
+      "watch_out": "If the metadata file is not written because of cancellation or a crash, the old copy is still on disk but unusable, and nothing cleans it up here."
+    }
+  ],
+  "explained_at": "2026-11-12T01:46:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Keeps validated ingestion results on disk so a later run can reuse them, but only when the source file, the rules and the database layout all still match.",
+  "purpose": "Saves time by avoiding a full re-ingestion of a schedule file that has not changed, and lets long copies be cancelled.",
+  "why": "Likely reason: ingestion can be slow, and the key design means reuse is safe only when every input that affects the result is part of the key. The module description calls the cache deterministic.",
+  "how": "First, the cache builds a key by combining the source file fingerprint with the parser, rules and archetype versions, the mapping, the source identity and the database layout version, then hashes the result. Copies of files and databases are made in pieces, with a check for cancellation between pieces. Database copies use SQLite's backup feature. A cached database is accepted only if its layout matches the current layout.",
+  "inputs": "A source file path, version text for the parser, rules and archetypes, an optional column mapping, an optional source identity text, a cancellation check function, and file paths for the cache.",
+  "outputs": "A 64-character hexadecimal key, a fingerprint for a file, copies of files and databases at the destination, and errors when a copy is cancelled, a file is missing, or a cached database layout is out of date.",
+  "risks": "Any input that changes the result but is missing from the key will return a stale result. A cancelled or failed copy can leave a partly written file, and the visible code does not remove it. The cache checks a database's layout but not its contents.",
+  "debug": "If results look old, compare the inputs to the key for the source file, and check the parser, rules and archetype versions. If a restore fails, check whether the cached database's layout matches the expected layout using the layout check. If a copy was cancelled, look for partial files at the destination and delete them before trying again. The restore and store logic is not in this packet, so check those sections too.",
+  "summary_hash": "sha256:777df60967349009d1bf6bc447c81cade6b26fff809678bb550d3fdb02dc38c5"
+}

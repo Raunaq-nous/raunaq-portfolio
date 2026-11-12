@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/packages/extraction.py",
+  "language": "Python",
+  "lines": 291,
+  "hash": "sha256:faa59b641097e47f1d5fbaaa2cd294047cb7349f72244fc1ded4068cd82e2f49",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet.",
+      "The time limit and size limits are fixed numbers in the code.",
+      "Some extension handling is shared between two lists, which can drift apart."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Disposition",
+      "meaning": "The recorded outcome for an item, such as pending, failed or processed."
+    },
+    {
+      "term": "Content hash",
+      "meaning": "A fingerprint of a file's bytes, used to find identical copies."
+    },
+    {
+      "term": "Sidecar",
+      "meaning": "A separate file that stores extra information about another file."
+    }
+  ],
+  "depends_on": [
+    "backend/schedule3d/documents/service.py",
+    "backend/schedule3d/packages/archive.py",
+    "backend/schedule3d/packages/dxf.py",
+    "backend/schedule3d/packages/office.py",
+    "backend/schedule3d/packages/paths.py",
+    "backend/schedule3d/packages/pdf.py"
+  ],
+  "used_by": [
+    "backend/schedule3d/packages/claims.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 28,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6adc29f45126bc60",
+      "title": "Constants and supported file types",
+      "what": "Sets the extraction version, the size limits for the index and each document, and the list of file types the extractor supports, including PDF, images, Office files and DXF.",
+      "why": "Keeping the supported list in one place decides which files are read and which are skipped.",
+      "watch_out": "Adding a file type here without a matching reader will leave it unprocessed."
+    },
+    {
+      "start": 29,
+      "end": 36,
+      "kind": "function",
+      "name": "bounded_json",
+      "id": "s2",
+      "hash": "1ad48f75ce3f69bb",
+      "title": "Reading a size-checked JSON file",
+      "what": "Reads a JSON file after checking its size, and returns it as a dictionary.",
+      "why": "The size check stops a huge file from being loaded into memory.",
+      "watch_out": "Invalid text or invalid JSON is not caught here, so the caller receives the raw error."
+    },
+    {
+      "start": 37,
+      "end": 62,
+      "kind": "function",
+      "name": "publish",
+      "id": "s3",
+      "hash": "d7644b73f1b1dbb3",
+      "title": "Publishing a JSON file safely",
+      "what": "Writes JSON to a temporary file and then replaces the target. Retries a few times if Windows is holding the file, and never deletes the old report or changes file permissions.",
+      "why": "Likely reason: Windows often locks files briefly, and writing to a temporary file avoids leaving a half-written report.",
+      "watch_out": "After eight failed attempts the error is raised, so the caller must handle a report that could not be saved."
+    },
+    {
+      "start": 63,
+      "end": 66,
+      "kind": "function",
+      "name": "auxiliary",
+      "id": "s4",
+      "hash": "270b1b35197272ad",
+      "title": "Identifying helper files to skip",
+      "what": "Recognises Windows thumbnail database files and Office lock files, which are not real content.",
+      "why": "Skipping them stops noise from being extracted as documents.",
+      "watch_out": ""
+    },
+    {
+      "start": 67,
+      "end": 70,
+      "kind": "function",
+      "name": "_retain_pdf_diagnostics",
+      "id": "s5",
+      "hash": "cae03a9919929200",
+      "title": "Attaching parser diagnostics",
+      "what": "Adds the parser's receipt to a document record under a parser diagnostics field.",
+      "why": "Reason not stated in the code beyond the field name. It appears to keep parser details with the document.",
+      "watch_out": ""
+    },
+    {
+      "start": 71,
+      "end": 83,
+      "kind": "function",
+      "name": "summary",
+      "id": "s6",
+      "hash": "e03e958cc9666b79",
+      "title": "Shortening a record for summaries",
+      "what": "Returns a copy of a document record without its bulky content, keeping only summary fields and each unit's kind, name, part, page, disposition and limitations.",
+      "why": "Lets the app show a document list without carrying all the extracted text.",
+      "watch_out": "Only the listed unit fields are kept, so any new field must be added to the list to appear in summaries."
+    },
+    {
+      "start": 84,
+      "end": 143,
+      "kind": "function",
+      "name": "extract_package_documents (part 1)",
+      "id": "s7",
+      "hash": "93f093c9384b56c3",
+      "title": "Starting document extraction",
+      "what": "Requires a complete inventory, creates a new output folder, groups entries by content hash and sets up the receipt. Defines a checkpoint that stops for cancellation or after 900 seconds, then begins the loop over each unique file with progress reporting.",
+      "why": "Grouping by hash means each unique file is processed once, however many paths point to it.",
+      "watch_out": "The 900 second limit is hard-coded, so large packages can hit it and fail."
+    },
+    {
+      "start": 144,
+      "end": 203,
+      "kind": "function",
+      "name": "extract_package_documents (part 2)",
+      "id": "s8",
+      "hash": "7eff7548e825f4af",
+      "title": "Processing each unique document",
+      "what": "For each unique file, checks that its alias file types agree. It then either marks the file as not read (Office lock or thumbnail files, schedule files waiting for a parser, unsupported types) or copies it into the output and reads its content. A failure is recorded on that document and does not stop the whole run unless the run is cancelled.",
+      "why": "Likely reason: one unreadable file should not stop a whole package from being processed, so each file's outcome is recorded separately.",
+      "watch_out": "A failure is recorded rather than raised, so a document can look handled when its content was never read. Always check the disposition and error fields."
+    },
+    {
+      "start": 204,
+      "end": 263,
+      "kind": "function",
+      "name": "extract_package_documents (part 3)",
+      "id": "s9",
+      "hash": "b23b0e8940e89780",
+      "title": "Recording results and failed PDF pages",
+      "what": "Sets each document's final status. A PDF needs visual review if any page has no text, needs review, or has limitations. A PDF is marked failed if a page warning says it could not be read or was cut short. Drawings and other Office files get their own statuses. The per-document record is then saved, and if it is too large, a short failed summary is saved instead.",
+      "why": "Likely reason: a record that is too large would otherwise break the save, so a smaller failed summary is written instead.",
+      "watch_out": "Failed PDF pages are found by matching words in warning messages, so a change in the PDF library's wording could hide a real failure."
+    },
+    {
+      "start": 264,
+      "end": 291,
+      "kind": "function",
+      "name": "extract_package_documents (part 4)",
+      "id": "s10",
+      "hash": "3eebb61d09d934cf",
+      "title": "Writing the run receipt and totals",
+      "what": "Stores each document's summary in the index, writes the overall receipt, and sets the complete flag only after every step finishes. A final block always runs, even after an error. It counts dispositions, lists failed documents, and sets whether all supported content was processed.",
+      "why": "Likely reason: the final block writes the totals even after an error, so a failed run still leaves a readable record.",
+      "watch_out": "The receipt is saved even after an error, so check the complete flag and error field rather than whether the file exists. A complete run does not prove that every document was understood."
+    }
+  ],
+  "explained_at": "2026-11-12T02:06:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Extracts text and data from each unique document in a package, stores one result per unique file, and records a disposition for every reference.",
+  "purpose": "Gives the rest of the app a complete, checkable record of what was read from a package, including what was skipped and why.",
+  "why": "Likely reason: processing each unique file once saves time, and a receipt for every reference keeps the process accountable.",
+  "how": "Requires a completed inventory. Groups the entries by content hash, then for each unique file picks a candidate name and runs the matching reader. Writes results to a sources folder, applies a 15 minute time limit and supports cancellation.",
+  "inputs": "An inventory file, an empty output folder, a cancel check and a progress callback.",
+  "outputs": "A receipt with one document record per unique file, the coverage counts and the processing status, written into the output folder.",
+  "risks": "The 15 minute time limit is fixed, so very large packages can fail. The output folder must not already exist.",
+  "debug": "Check that the inventory is complete. Read the receipt's core processing failures and each document's disposition. A failed document shows its reason in its record.",
+  "summary_hash": "sha256:faa59b641097e47f1d5fbaaa2cd294047cb7349f72244fc1ded4068cd82e2f49"
+}

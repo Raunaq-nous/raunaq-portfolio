@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "path": "frontend/src/scene/picking.ts",
+  "language": "TypeScript",
+  "lines": 90,
+  "hash": "sha256:91705a779efad723e8dafebd95532e37558a0d65cfc38b6b8ab2a59c9c24be57",
+  "area": "frontend-src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Tests cover priority, near-miss picking, ground fallback, off-site clicks and hidden items.",
+      "The rule text and the ground list disagree about gravel and earthworks, so the intended behaviour should be confirmed.",
+      "These tests were not run during this review."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Raycaster",
+      "meaning": "the tool that shoots an invisible line from the camera through the mouse position"
+    },
+    {
+      "term": "Bounding box",
+      "meaning": "an invisible box that encloses an object"
+    },
+    {
+      "term": "Camera field of view",
+      "meaning": "how wide the camera sees, in degrees"
+    },
+    {
+      "term": "Axis",
+      "meaning": "the long direction of an element, used as a stand-in line for thin items"
+    }
+  ],
+  "depends_on": [
+    "three",
+    "frontend/src/types"
+  ],
+  "used_by": [
+    "frontend/src/scene/picking.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup, GROUND",
+      "id": "s1",
+      "hash": "334bf070991224ef",
+      "title": "Imports and the ground list",
+      "what": "Brings in three.js and the element type, sets the click tolerance to 8 pixels, and marks slab as the only ground shape.",
+      "why": "The tolerance and ground list are the main settings that tune how clicking feels.",
+      "watch_out": "The comment on the pick rule says gravel and earthworks count as ground, but only slab is listed here. Confirm which is intended."
+    },
+    {
+      "start": 9,
+      "end": 11,
+      "kind": "value",
+      "name": "NO_NEAR_MISS",
+      "id": "s2",
+      "hash": "c753091bc2ac7e97",
+      "title": "Shapes skipped for near-miss picks",
+      "what": "Lists slab and fence as shapes too large or open to be picked from a distance.",
+      "why": "Their boxes cover other items, so a near miss could select the wrong thing.",
+      "watch_out": "Adding a large shape type here removes near-miss picking for it."
+    },
+    {
+      "start": 12,
+      "end": 21,
+      "kind": "function",
+      "name": "componentIdFor",
+      "id": "s3",
+      "hash": "60a315dadbff4af9",
+      "title": "Find element id from a shape",
+      "what": "Walks up from a hit shape through its parent groups until it finds the element id.",
+      "why": "A hit lands on a small piece inside a group, so the id must be found by moving up.",
+      "watch_out": "Returns nothing when no parent has the id, so callers must skip those hits."
+    },
+    {
+      "start": 22,
+      "end": 30,
+      "kind": "function",
+      "name": "isShown",
+      "id": "s4",
+      "hash": "2d202a3634080210",
+      "title": "Check a shape is visible",
+      "what": "Walks up through the parents and returns false if any of them is hidden.",
+      "why": "A hidden element should not be clickable even when its child parts still sit under the pointer.",
+      "watch_out": "Checks the whole parent chain for every hit, so it must match the visibility rule used elsewhere in the app."
+    },
+    {
+      "start": 31,
+      "end": 41,
+      "kind": "function",
+      "name": "axisSegment",
+      "id": "s5",
+      "hash": "8fe2aa408ec26424",
+      "title": "Line along the long side",
+      "what": "Returns the two ends of a line through the middle of a box, running along its longest side. It stands in for a pole, wire or pipe.",
+      "why": "A line is a simple shape to measure the ray against.",
+      "watch_out": "Round or angled items are approximated, so a diagonal item is treated as if it ran straight along its box."
+    },
+    {
+      "start": 42,
+      "end": 90,
+      "kind": "function",
+      "name": "pickComponent",
+      "id": "s6",
+      "hash": "92ed665fabb7dcde",
+      "title": "Choose the element under the pointer",
+      "what": "Applies three rules in order: a direct hit on equipment, structure or line wins; otherwise the closest slender item within the pixel tolerance wins; otherwise the ground hit is returned.",
+      "why": "Users expect equipment to win over the ground beneath it, and thin items to be clickable from a distance.",
+      "watch_out": "The order of the rules matters. Changing it changes which element wins a click."
+    }
+  ],
+  "explained_at": "2026-11-12T02:29:56+00:00",
+  "explained_by": "haiku",
+  "summary": "Works out which element the mouse is pointing at. It favours equipment over ground and lets thin items such as poles be clicked from a short distance.",
+  "purpose": "Choose one element under the cursor so the app can select and label it.",
+  "why": "Likely reason: thin poles and wires are almost impossible to hit exactly, and flat ground sits under everything, so equipment is given priority and thin items get extra tolerance.",
+  "how": "First, the ray is tested against visible parts of the scene, skipping hidden ones; a direct hit on a non-ground element is returned at once, while the first ground hit is remembered. Second, each element that is not a flat pad or fence is measured for how close the ray passes to its long axis. Third, the closest element within the pixel tolerance wins. Fourth, if nothing matched, the remembered ground hit is returned, or nothing.",
+  "inputs": "A ray from the mouse position, a map of 3D groups by id, a map of element records by id, the camera, and the viewport height in pixels.",
+  "outputs": "The chosen element id as text, or nothing when no element is under the pointer.",
+  "risks": "The pixel tolerance grows with distance, so distant elements are easier to pick than close ones. Large flat pads and fences are skipped for near-miss picks. Each element is approximated by a line along its longest side, so odd shapes can be picked wrongly. Only slab counts as ground here, although the rule text also mentions gravel and earthworks.",
+  "debug": "If the wrong element is picked, check its shape name in the element records and whether it is a slab or fence. If nothing is picked where you clicked, check visibility flags and the ray origin. To make clicks more or less forgiving, change PICK_TOLERANCE_PX. Run picking.test.ts after changes.",
+  "summary_hash": "sha256:91705a779efad723e8dafebd95532e37558a0d65cfc38b6b8ab2a59c9c24be57"
+}

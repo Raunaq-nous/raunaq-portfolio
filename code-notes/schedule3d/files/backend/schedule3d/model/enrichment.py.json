@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/model/enrichment.py",
+  "language": "Python",
+  "lines": 419,
+  "hash": "sha256:c39761a0fbb608a861560856a509b64accb70a717c3af01cbf2cfa4a39f6a6d7",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test or other evidence of correctness is visible in this file.",
+      "The function changes the input model in place, which can surprise callers.",
+      "Matching depends on fixed keyword lists, so small naming changes can move an asset to another activity.",
+      "Some safety checks, such as the undated-template error, are described as fail-closed but are rarely expected to trigger."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ProjectModel",
+      "meaning": "The whole saved project: its components, schedule links, evidence and notes, held as one object."
+    },
+    {
+      "term": "EvidenceRecord",
+      "meaning": "One recorded fact from a source file, such as a count or a dimension, with its source and confidence."
+    },
+    {
+      "term": "Provenance",
+      "meaning": "A note stating where a value came from and how it was produced, such as measured, typical or rule-based."
+    },
+    {
+      "term": "Activity-component mapping",
+      "meaning": "A stored link saying that a schedule activity supports a particular 3D component."
+    },
+    {
+      "term": "Review queue",
+      "meaning": "A list of items the owner should check because the app was not sure about them."
+    },
+    {
+      "term": "Staggering",
+      "meaning": "Splitting one date range into equal slices so that several identical items each get their own short interval."
+    },
+    {
+      "term": "Hash (SHA-256)",
+      "meaning": "A method that turns text into a fixed-length code, used here to build stable ids."
+    }
+  ],
+  "depends_on": [
+    "schedule3d.evidence",
+    "schedule3d.model.contracts",
+    "Python standard library: hashlib, math, re, datetime"
+  ],
+  "used_by": [
+    "Not visible in this file"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "bcfe66c1c803d98d",
+      "title": "Imports and shared text patterns",
+      "what": "Sets up the tools the module needs and defines shared text patterns: one that splits names into words, one that reads a two-number dimension, and a short list of filler words to ignore. It changes nothing in the model by itself.",
+      "why": "Likely reason: shared patterns are defined once so every helper reads names the same way.",
+      "watch_out": "Changing the filler word list changes which names match each other, which can silently change the activity an asset links to."
+    },
+    {
+      "start": 31,
+      "end": 34,
+      "kind": "function",
+      "name": "_tokens",
+      "id": "s2",
+      "hash": "10dfca19a7c838ea",
+      "title": "Turn a name into comparable words",
+      "what": "Takes a label such as an asset or activity name and returns its lowercase words without filler words, so two names can be compared fairly.",
+      "why": "Likely reason: lets matching ignore capitals, punctuation and small words such as the or and.",
+      "watch_out": "Words are split on letters and digits only, so names with unusual characters may split in unexpected places."
+    },
+    {
+      "start": 35,
+      "end": 39,
+      "kind": "function",
+      "name": "_inventory_quantity",
+      "id": "s3",
+      "hash": "3cdbd25361576c9d",
+      "title": "Read a positive count",
+      "what": "Returns the number from an inventory record only when it is a whole number above zero. True or false values and text are rejected, and the asset is skipped.",
+      "why": "Likely reason: a count of assets must be a real positive number before the app builds that many items.",
+      "watch_out": "A fractional or text count is skipped silently, so a missing asset may be a bad count rather than missing evidence."
+    },
+    {
+      "start": 40,
+      "end": 99,
+      "kind": "function",
+      "name": "_best_template",
+      "id": "s4",
+      "hash": "b2f5322865a2b1d1",
+      "title": "Pick the onsite activity for an asset",
+      "what": "Looks through components and their linked activities for one onsite, physical activity with planned dates that matches the asset's name, such as a control house install or a foundation. Broad aggregate groups are never borrowed, and if nothing matches well the result is nothing.",
+      "why": "The docstring says only an explicit activity may support an asset, so the asset does not inherit dates it did not earn.",
+      "watch_out": "Matching uses fixed keyword lists, so a renamed activity can move an asset to another activity or leave it unmatched. Ties go to the lower activity id."
+    },
+    {
+      "start": 100,
+      "end": 117,
+      "kind": "function",
+      "name": "_stagger",
+      "id": "s5",
+      "hash": "79450eba22123630",
+      "title": "Spread a date range across items",
+      "what": "When several identical assets share one activity, it divides that activity's start and finish into equal slices, one per item. With one item, or an empty range, the whole range is kept.",
+      "why": "Likely reason: avoids every asset appearing at the same moment. The temporal notes say these dates are computed slices, not schedule dates.",
+      "watch_out": "Staggered dates look precise but are invented from the activity's range, so they must not be presented as schedule dates."
+    },
+    {
+      "start": 118,
+      "end": 137,
+      "kind": "function",
+      "name": "_asset_shape",
+      "id": "s6",
+      "hash": "0c49c1530efa00aa",
+      "title": "Pick the shape and size of an asset",
+      "what": "From the asset's name, chooses a simple 3D shape, a size in meters and a material, such as a building envelope, a steel frame or a concrete foundation. Names that match nothing get a generic box.",
+      "why": "Likely reason: a schematic shape lets each asset type be recognised without a measured drawing. The code's comments indicate these are generic library values.",
+      "watch_out": "Checks run in order, so a name matching two groups takes the shape of the first group. The 110 mast height is a special case."
+    },
+    {
+      "start": 138,
+      "end": 155,
+      "kind": "function",
+      "name": "_control_house_dimensions",
+      "id": "s7",
+      "hash": "dc6debc5d5d53d4b",
+      "title": "Read the control house footprint",
+      "what": "Looks for a control house plan dimension recorded in feet and turns its two sides into a footprint in meters, with a fixed height of 4.5 m. If no usable dimension exists, it returns nothing and the generic shape is used.",
+      "why": "Likely reason: uses the real footprint from the source when one exists, which is more honest than a generic size.",
+      "watch_out": "Only exact feet values written as two numbers separated by x are accepted, so a plan in metres or another format falls back to the generic shape."
+    },
+    {
+      "start": 156,
+      "end": 205,
+      "kind": "function",
+      "name": "materialize_inventory_assets (part 1)",
+      "id": "s8",
+      "hash": "dfb60eff6020b95c",
+      "title": "Start adding inventory assets",
+      "what": "Entry point for adding source-listed assets to the model. It does nothing if inventory components were already added. Otherwise it keeps one usable record per asset name, refuses totals above 25,000 and works out a grid for placing the assets on the site plan or in a default area.",
+      "why": "Likely reason: the early stop makes running the step twice safe, and the cap protects the viewer from very large loads.",
+      "watch_out": "An inventory above the cap stops the whole step with an error."
+    },
+    {
+      "start": 206,
+      "end": 265,
+      "kind": "function",
+      "name": "materialize_inventory_assets (part 2)",
+      "id": "s9",
+      "hash": "585dcafbf9998bf3",
+      "title": "Match each asset type and create its items",
+      "what": "For each asset type, finds its activity. If none exists, it adds a review item saying the asset is only logical evidence and moves on. Otherwise it gets the shape and creates one item for each counted asset, each with a stable id and a grid position.",
+      "why": "Likely reason: an asset without a defensible activity is flagged for review rather than guessed into the schedule.",
+      "watch_out": "Ids come from the project id, fact id and item number, so changing any of these creates new ids and breaks saved links."
+    },
+    {
+      "start": 266,
+      "end": 325,
+      "kind": "function",
+      "name": "materialize_inventory_assets (part 3)",
+      "id": "s10",
+      "hash": "beef9341d0dc5e01",
+      "title": "Build the item record",
+      "what": "Creates each asset's component record: its label, class, quantity, material and reason, a confidence capped at 0.7, its schedule dates and its shape. The temporal note states whether the dates come from a rule or are staggered.",
+      "why": "Likely reason: records each item's source and reasoning so the viewer can explain the picture without overclaiming.",
+      "watch_out": "The 0.7 cap likely keeps these items looking less certain than measured components."
+    },
+    {
+      "start": 326,
+      "end": 385,
+      "kind": "function",
+      "name": "materialize_inventory_assets (part 4)",
+      "id": "s11",
+      "hash": "f8e98cd66876a421",
+      "title": "Attach items to the model and activities",
+      "what": "Adds each new component to the model and to its structure, creates an activity-to-component link for each supporting activity, and adds the item to the matching story's changed list and evidence.",
+      "why": "Likely reason: the timeline, story and structure views only show an item if it is linked from each of these places.",
+      "watch_out": "These links must stay in step with the component record, because the project model check rejects a story that changes a component without a matching mapping."
+    },
+    {
+      "start": 386,
+      "end": 419,
+      "kind": "function",
+      "name": "materialize_inventory_assets (part 5)",
+      "id": "s12",
+      "hash": "d6096ce955583153",
+      "title": "Rebuild playlists and add a limitation",
+      "what": "Creates two playlists, one for the component school and one for every represented asset. It keeps only a fixed set of playlist kinds, in a fixed order, and appends a plain limitation note saying these assets use generic shapes and rule-based positions.",
+      "why": "Likely reason: a playlist of every asset lets users watch the inventory, and the note tells them what kind of evidence it is.",
+      "watch_out": "Any playlist kind outside the fixed list is dropped silently."
+    }
+  ],
+  "explained_at": "2026-11-12T01:55:38+00:00",
+  "explained_by": "haiku",
+  "summary": "Adds one 3D component for each accepted inventory asset, such as control houses, masts and breakers, and links it to an explicit onsite activity in the schedule.",
+  "purpose": "Lets the viewer show counted equipment from source lists even when the source gives no positions or dates for each item.",
+  "why": "The module docstring says it stays independent of any fixture name. The code marks every added item with its rule-based origin, which suggests the aim is to avoid presenting computed positions or dates as measured facts. The broader reason is not stated in the code.",
+  "how": "First, it stops if inventory components already exist. Next it keeps one record per asset name and refuses totals above 25,000. It then picks each asset's onsite activity from the schedule. If none fits, it adds a review item and moves on. Otherwise it creates one item per counted asset with a shape, a size, a stable id, a grid position, staggered dates and provenance notes. Each item is linked to its activity and story. Last, it rebuilds the playlists and adds a limitation note.",
+  "inputs": "A ProjectModel (existing components, structures, activity stories, activity-to-component mappings, site plan, playlists and review queue) and a list of EvidenceRecords.",
+  "outputs": "Changes the model it is given in place and returns nothing. It adds components, mappings, review items, playlist entries and a limitation note.",
+  "risks": "It changes the model object directly rather than a copy, so a caller expecting no change will see one. An inventory above the cap stops the step with an error. Items with invented dates could be mistaken for schedule dates. Positions use a fixed grid, not survey data.",
+  "debug": "If an asset does not appear, check the review queue for inventory_schedule_mapping items, which mean no onsite activity matched. Check that the evidence record has the asset-inventory type, is model eligible, and has a positive whole-number count. If nothing is added at all, check whether any component class already starts with inventory, since that causes an early stop. For a cap error, check the summed counts. For an undated error, check that the matched activity has planned start and finish dates.",
+  "summary_hash": "sha256:c39761a0fbb608a861560856a509b64accb70a717c3af01cbf2cfa4a39f6a6d7"
+}

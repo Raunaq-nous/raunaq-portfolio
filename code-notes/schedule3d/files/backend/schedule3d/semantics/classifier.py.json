@@ -1,0 +1,286 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/semantics/classifier.py",
+  "language": "Python",
+  "lines": 813,
+  "hash": "sha256:265dbf2535bead05f1aa73be4c429b810754515f4363985e8828c6191f3d35c1",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The behaviour is defined by hand-written word lists and rules that the packet does not show being tested.",
+      "No test evidence is visible in the packet.",
+      "Unrecognised text is retained with low confidence rather than raising an error, which is safe but makes review necessary."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Materiality",
+      "meaning": "Whether an activity creates or changes a physical asset (physical) or is paperwork, planning or a schedule marker (abstract)."
+    },
+    {
+      "term": "Phase",
+      "meaning": "The stage of construction an activity belongs to, such as excavation, piping or commissioning."
+    },
+    {
+      "term": "Discipline",
+      "meaning": "The trade or field of work, such as civil, electrical or piping."
+    },
+    {
+      "term": "WBS",
+      "meaning": "Work breakdown structure, the tree of groups and sub-groups that organises a project's activities."
+    },
+    {
+      "term": "Stem",
+      "meaning": "The root of a word after common endings are removed, so related forms match."
+    },
+    {
+      "term": "Regular expression",
+      "meaning": "A compact pattern language used here to recognise word shapes and phrases in text."
+    },
+    {
+      "term": "Evidence terms",
+      "meaning": "The words or rule names that the classification is based on, shown so a reviewer can check the reason."
+    }
+  ],
+  "depends_on": [
+    "schedule3d.normalize.contracts",
+    "schedule3d.semantics.contracts",
+    "re",
+    "collections"
+  ],
+  "used_by": [
+    "backend/schedule3d/semantics/service.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 60,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "7a9a056ebafb4697",
+      "title": "Physical work vocabulary",
+      "what": "Lists words that point to physical work, such as excavation, concrete, steel, pipe, cable and tank. An activity that uses these words is a candidate for the physical lane.",
+      "why": "Likely reason: these words mark the work that creates something in the 3D model.",
+      "watch_out": "Adding a common word here makes office tasks look physical."
+    },
+    {
+      "start": 61,
+      "end": 120,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "d8641fa365df69c4",
+      "title": "Roads, rail, mining and wind vocabulary",
+      "what": "Adds words for roads, rail, pipelines, drainage, mining areas, stockpiles and wind turbines to the physical list.",
+      "why": "Likely reason: these industries use their own vocabulary, which the general list would miss.",
+      "watch_out": "Words such as track and marking are broad and can match unrelated text."
+    },
+    {
+      "start": 121,
+      "end": 180,
+      "kind": "setup",
+      "name": "File setup (part 3)",
+      "id": "s3",
+      "hash": "e7075543a5b19173",
+      "title": "Process, building and infrastructure vocabulary",
+      "what": "Adds words for process plants, buildings, airports, ports, hydro works, water treatment and storage, such as reactor, storey, runway, dam and battery.",
+      "why": "Likely reason: each sector has its own equipment and structure names, grouped by sector in the code.",
+      "watch_out": "Some sector words, such as basin and aeration, also appear in other rules, so one word can push an activity toward several results."
+    },
+    {
+      "start": 181,
+      "end": 238,
+      "kind": "setup",
+      "name": "File setup (part 4)",
+      "id": "s4",
+      "hash": "16edd5466557b248",
+      "title": "Office words and office context phrases",
+      "what": "Lists words for planning, approvals, contracts, testing and reporting, and phrases that mark a whole branch of the work breakdown as office work.",
+      "why": "Likely reason: these words keep schedule and paperwork tasks out of the physical lane.",
+      "watch_out": "Broad words such as test and model can mark real site work as office work."
+    },
+    {
+      "start": 239,
+      "end": 271,
+      "kind": "setup",
+      "name": "File setup (part 5)",
+      "id": "s5",
+      "hash": "0fc8fc8381a58eb0",
+      "title": "Document action words",
+      "what": "Lists words for document-type actions such as design, review, procurement, reporting and software, which are used to flag tasks that produce paperwork rather than building.",
+      "why": "Likely reason: a task with these words and no construction verb is treated as paperwork.",
+      "watch_out": "This list overlaps with the office words list, so changes must be made in both places when they should agree."
+    },
+    {
+      "start": 272,
+      "end": 331,
+      "kind": "setup",
+      "name": "File setup (part 6)",
+      "id": "s6",
+      "hash": "94e5875049f2cc48",
+      "title": "Construction verbs and design phrase patterns",
+      "what": "Lists construction action words such as excavate, pour, install and weld, and holds patterns for design, estimating, bidding and land work, placeholder work breakdown names, and verbs that physically build.",
+      "why": "Likely reason: a task that names an asset but only designs or estimates it must not reveal geometry, so these patterns separate the two.",
+      "watch_out": "Short verbs such as set and pull can match ordinary text, so the word boundaries in the patterns matter."
+    },
+    {
+      "start": 332,
+      "end": 391,
+      "kind": "setup",
+      "name": "File setup (part 7)",
+      "id": "s7",
+      "hash": "a8f2734357fc2126",
+      "title": "Phase keyword order, first half",
+      "what": "Lists the phase groups in order, with words for enabling work, excavation, foundations, structure, piping, electrical and instrumentation.",
+      "why": "Likely reason: the order decides which phase wins when one activity matches several groups.",
+      "watch_out": "The first matching group wins, so reordering these groups changes many phase results."
+    },
+    {
+      "start": 392,
+      "end": 437,
+      "kind": "setup",
+      "name": "File setup (part 8)",
+      "id": "s8",
+      "hash": "ec467315b586438e",
+      "title": "Phase keyword order, second half, and discipline words",
+      "what": "Completes the phase groups with envelope, fit-out, equipment, commissioning, testing, readiness, engineering, procurement, management and milestone. It also lists equipment words and the discipline groups, such as mechanical or electrical.",
+      "why": "Likely reason: discipline is chosen by counting matches, so each trade needs its own word list.",
+      "watch_out": "A discipline is kept only when it has strictly more matches than the one before it, so the order of the list breaks ties."
+    },
+    {
+      "start": 438,
+      "end": 484,
+      "kind": "setup",
+      "name": "File setup (part 9)",
+      "id": "s9",
+      "hash": "3c758317f67461f3",
+      "title": "Structure type word groups",
+      "what": "Lists the words that suggest each structure class, such as below ground, concrete, steel frame, process block, electrical block, fitted building, linear run and open area.",
+      "why": "Likely reason: the 3D view needs a structure type to choose a shape for each group of activities.",
+      "watch_out": "Some words, such as pipe, cable and tunnel, count toward more than one class, so they can pull a result either way."
+    },
+    {
+      "start": 485,
+      "end": 491,
+      "kind": "function",
+      "name": "stem",
+      "id": "s10",
+      "hash": "8b9acca7b27f85f1",
+      "title": "Word trimming",
+      "what": "Removes common endings from a word, such as ing, ed and ment, so that related forms match. It only trims when enough of the word remains.",
+      "why": "Likely reason: schedule text uses many forms of the same word, and trimming lets them match the same entry.",
+      "watch_out": "The trimming is crude, so a word can be cut in a way that matches an unrelated word."
+    },
+    {
+      "start": 492,
+      "end": 495,
+      "kind": "function",
+      "name": "tokenize",
+      "id": "s11",
+      "hash": "6127ce0bfb74c4a7",
+      "title": "Splitting text into words",
+      "what": "Turns a piece of text into lower-case word pieces and trims each one, keeping number-plus-number forms such as chainage values together.",
+      "why": "Likely reason: all matching depends on the same word pieces, so the text is prepared in one place.",
+      "watch_out": "Punctuation other than letters, digits and plus signs is dropped, so a code like an identifier can split into pieces."
+    },
+    {
+      "start": 496,
+      "end": 508,
+      "kind": "function",
+      "name": "_matching",
+      "id": "s12",
+      "hash": "7d74296676a06a4c",
+      "title": "Matching words to a vocabulary",
+      "what": "Returns the words from a set that match any term in a vocabulary, using an exact match or a shared start of at least four letters.",
+      "why": "Likely reason: this is the single matching rule used across the file, so all results follow the same test.",
+      "watch_out": "Changing the four-letter minimum changes many results at once."
+    },
+    {
+      "start": 509,
+      "end": 568,
+      "kind": "function",
+      "name": "classify_activity (part 1)",
+      "id": "s13",
+      "hash": "b203b596c37f8732",
+      "title": "Reading the activity name and path, part 1",
+      "what": "Builds the word sets from the name and path, and works out flags such as milestone, construction context, office context and administrative schedule work.",
+      "why": "Likely reason: these flags are the first clues used to decide whether the task is physical.",
+      "watch_out": "The construction context flag depends on the exact word construction appearing in the path, so renamed branches change results."
+    },
+    {
+      "start": 569,
+      "end": 628,
+      "kind": "function",
+      "name": "classify_activity (part 2)",
+      "id": "s14",
+      "hash": "4212c83639e6a987",
+      "title": "Reading the activity name and path, part 2",
+      "what": "Works out administrative handoffs, boundary-only tasks such as start or complete at the end of a name, and design deliverables. It also sets the rule for strong abstract actions, which are office words that override physical words.",
+      "why": "Likely reason: many schedule rows are receipts or handoffs that name equipment without building it, so they need their own rules.",
+      "watch_out": "The handoff phrases are exact text, so a small wording change in the schedule removes the match."
+    },
+    {
+      "start": 629,
+      "end": 678,
+      "kind": "function",
+      "name": "classify_activity (part 3)",
+      "id": "s15",
+      "hash": "a09a5cec72e6d589",
+      "title": "Deciding physical or abstract",
+      "what": "Adds the remaining office phrases and then combines all flags. Office overrides win unless a construction action or construction context is present, and the result is recorded as physical or abstract.",
+      "why": "Likely reason: the override list lets the office rules win over physical words in the cases where the code author found the physical word misleading.",
+      "watch_out": "There are many override rules, so a change to one can flip activities that look unrelated."
+    },
+    {
+      "start": 679,
+      "end": 727,
+      "kind": "function",
+      "name": "classify_activity (part 4)",
+      "id": "s16",
+      "hash": "f4bb737480cf1c3c",
+      "title": "Choosing phase and discipline",
+      "what": "Limits office tasks to office phases, picks the first phase whose words match, sets equipment for certain install activities, forces the milestone phase on milestones, and chooses the discipline with the most matching words.",
+      "why": "Likely reason: office tasks must not be given physical phases such as excavation, and milestones should always show as milestones.",
+      "watch_out": "The milestone rule overrides every other phase, so a real construction activity with a milestone flag will lose its phase."
+    },
+    {
+      "start": 728,
+      "end": 778,
+      "kind": "function",
+      "name": "classify_activity (part 5)",
+      "id": "s17",
+      "hash": "9ad4c84b13b60f27",
+      "title": "Evidence, confidence and the returned record",
+      "what": "Builds the list of evidence words and rule names, sets high, medium or low confidence from the number of matching rules, writes a plain sentence explaining the decision, and returns the activity record.",
+      "why": "Likely reason: reviewers need to see why each activity was labelled, so the reason is kept with the result.",
+      "watch_out": "The rule labels and rationale sentences are shown to reviewers, so changing them changes what people read."
+    },
+    {
+      "start": 779,
+      "end": 813,
+      "kind": "function",
+      "name": "classify_structure",
+      "id": "s18",
+      "hash": "1c27c6d72875e068",
+      "title": "Choosing a structure type for a group",
+      "what": "Scores each structure class by how often its words appear in the group, sorts the classes, and returns the best one with a confidence, its evidence words, a runner-up and the score for every class. With no matches it returns the open area class at low confidence.",
+      "why": "Likely reason: the 3D view needs one structure type per group, and the score breakdown lets the user see how the choice was made.",
+      "watch_out": "Confidence can look high when only a few words match, because the formula adds a fixed bonus whenever any word matches."
+    }
+  ],
+  "explained_at": "2026-11-12T02:10:36+00:00",
+  "explained_by": "haiku",
+  "summary": "Decides, for each schedule activity, whether it builds something physical or is office or schedule work, and which construction phase, discipline and structure type it belongs to, using fixed word lists with the evidence shown.",
+  "purpose": "Turns free-text activity names and work breakdown paths into structured labels that the 3D view and reports can use.",
+  "why": "The app needs a repeatable answer for every activity, and this file uses fixed rules so the same input always gives the same label.",
+  "how": "Splits each activity name and path into word pieces and trims common endings. It then checks the pieces against word lists for physical work, office work and phases. Special rules catch milestones, handoffs, boundary tasks and design work. The result is one activity record with materiality, phase, discipline, confidence and evidence. A separate function scores the structure type for a group of words.",
+  "inputs": "One normalized activity with its name, its work breakdown path, its task type and its activity identifier. For the structure function, a count of words from the whole project.",
+  "outputs": "An activity semantics record for each activity, and for the structure function a class, a confidence number, the evidence words, an alternate class and a score for each class.",
+  "risks": "Word lists are hand-written, so a missed or extra word changes results silently. Common short words such as set or pull can match unrelated text. No failure is raised for unusual input, so odd text falls into the low confidence group rather than an error.",
+  "debug": "Start with the activity's evidence terms and rationale, which show which rule or word fired. If an activity is labelled abstract when it should be physical, check the abstract override group and the document action words. If a phase looks wrong, check the order of the phase list, since the first match wins. Test with the activity name alone, then with the path.",
+  "summary_hash": "sha256:265dbf2535bead05f1aa73be4c429b810754515f4363985e8828c6191f3d35c1"
+}

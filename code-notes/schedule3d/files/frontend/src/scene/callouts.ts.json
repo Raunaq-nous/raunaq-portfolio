@@ -1,0 +1,261 @@
+{
+  "schema_version": 1,
+  "path": "frontend/src/scene/callouts.ts",
+  "language": "TypeScript",
+  "lines": 191,
+  "hash": "sha256:6419afbcc7b710988ac662f36fe59b52048cb18f03af20f2110d146cbdaa38e6",
+  "area": "frontend-src",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Tests in callouts.test.ts cover most of this file, which is good evidence.",
+      "Six sections of this file (the Rect type, overlaps, placeCallout, leaderEnd and related code) were not included in this packet, so their notes are missing.",
+      "The comment about pinned labels and the off mode test contradict each other."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Callout",
+      "meaning": "a label card placed next to an element in the 3D view that shows its schedule details"
+    },
+    {
+      "term": "Basis",
+      "meaning": "which set of dates is used, such as planned, baseline, forecast or actual"
+    },
+    {
+      "term": "Pinned",
+      "meaning": "a label the user has added so it stays visible"
+    },
+    {
+      "term": "Priority rank",
+      "meaning": "a number that sets which label is placed first when space is short"
+    }
+  ],
+  "depends_on": [
+    "frontend/src/timeline",
+    "frontend/src/types"
+  ],
+  "used_by": [
+    "frontend/src/scene/SceneView.tsx",
+    "frontend/src/scene/callouts.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7bf43d0287eac220",
+      "title": "Imports timing and schedule types",
+      "what": "Brings in the date helpers, the timing types and the activity and element types the callout rules need.",
+      "why": "The rules need to compare dates and read the schedule details.",
+      "watch_out": ""
+    },
+    {
+      "start": 4,
+      "end": 6,
+      "kind": "type",
+      "name": "CalloutMode",
+      "id": "s2",
+      "hash": "1f042f2760d02061",
+      "title": "Callout modes",
+      "what": "Defines the four choices for which labels appear: off, only selected, in progress, or all. The comment says pinned elements always carry a label.",
+      "why": "Gives the user one control over how much schedule text appears in the view.",
+      "watch_out": "The comment says pinned labels always show, but the test shows off mode hides them too. One of them is out of date."
+    },
+    {
+      "start": 7,
+      "end": 17,
+      "kind": "type",
+      "name": "CalloutFields, CalloutField",
+      "id": "s3",
+      "hash": "0f56a9ae4c9dbb8f",
+      "title": "Five switchable label parts",
+      "what": "Defines the five parts a label can show: element name, activity ID, activity name, status and progress, and start to finish dates.",
+      "why": "Lets the user decide how much detail each label carries.",
+      "watch_out": "Changing a part name here changes what the code expects, so the saved user choices may need matching."
+    },
+    {
+      "start": 18,
+      "end": 22,
+      "kind": "value",
+      "name": "DEFAULT_CALLOUT_FIELDS",
+      "id": "s4",
+      "hash": "b8067ca2d6d62822",
+      "title": "Default label content",
+      "what": "Sets the default so a label shows only the element name.",
+      "why": "Keeps the view clean until the user asks for more detail.",
+      "watch_out": ""
+    },
+    {
+      "start": 23,
+      "end": 30,
+      "kind": "value",
+      "name": "CALLOUT_FIELD_LABELS",
+      "id": "s5",
+      "hash": "a33a10a3e791a368",
+      "title": "Human names for label parts",
+      "what": "Gives each label part a plain English name for the settings panel.",
+      "why": "Lets a non-programmer read and change the settings without knowing the field names.",
+      "watch_out": "Changing a name here changes only the panel text, not the behavior."
+    },
+    {
+      "start": 31,
+      "end": 35,
+      "kind": "type",
+      "name": "CalloutActivity",
+      "id": "s6",
+      "hash": "87666a6a82651c0f",
+      "title": "Activity entry shape",
+      "what": "Defines one activity line on a label as a code and a name.",
+      "why": "Gives cards a consistent way to show each linked activity.",
+      "watch_out": ""
+    },
+    {
+      "start": 36,
+      "end": 48,
+      "kind": "type",
+      "name": "SceneCallout",
+      "id": "s7",
+      "hash": "5f5f7a8f50a67c74",
+      "title": "Shape of one callout",
+      "what": "Defines everything a card needs: element name, up to two activities, a count of any extra activities, dates, state, progress, and whether it is selected or pinned.",
+      "why": "Keeps the card data in one shape so the view and the tests use the same fields.",
+      "watch_out": "Only two activities are listed. Any extra activities are counted, not shown."
+    },
+    {
+      "start": 49,
+      "end": 51,
+      "kind": "value",
+      "name": "STATE_RANK",
+      "id": "s8",
+      "hash": "62e7ada57c01f91d",
+      "title": "Priority order for states",
+      "what": "Ranks states so in progress comes first, then complete, then future, then unavailable.",
+      "why": "Decides which labels win space when the view is crowded.",
+      "watch_out": "Unavailable always ranks last, so those labels are the first to be dropped."
+    },
+    {
+      "start": 52,
+      "end": 58,
+      "kind": "function",
+      "name": "storyWindow",
+      "id": "s9",
+      "hash": "437712b90b1162e6",
+      "title": "Activity start and finish",
+      "what": "Reads the start and finish dates of one activity for the chosen timing basis. If one date is missing, it uses the other for both.",
+      "why": "An activity with only one known date still gets a usable time window.",
+      "watch_out": "Badly formatted date text is not rejected, so it becomes an invalid number that later comparisons may misread."
+    },
+    {
+      "start": 59,
+      "end": 70,
+      "kind": "function",
+      "name": "dateRange",
+      "id": "s10",
+      "hash": "b20e4f8b6fc96fd9",
+      "title": "Readable date range for an element",
+      "what": "Writes an element's dates in words: a single date, a range, a finish-only date, or a message saying no dates exist for that basis.",
+      "why": "Users read dates in words, not in the stored date format.",
+      "watch_out": "When start and finish match, only one date is shown, which is intentional but can look like a missing range."
+    },
+    {
+      "start": 71,
+      "end": 76,
+      "kind": "function",
+      "name": "elementName",
+      "id": "s11",
+      "hash": "c608f2d741abd507",
+      "title": "Element name without phase suffix",
+      "what": "Removes the trailing phase words the model adds to a label, so the name matches the schedule.",
+      "why": "The schedule name is the one users recognize.",
+      "watch_out": "The suffix must match exactly. If it does not, the full label is returned unchanged."
+    },
+    {
+      "start": 77,
+      "end": 136,
+      "kind": "function",
+      "name": "buildCallouts (part 1)",
+      "id": "s12",
+      "hash": "dcba235fbc39446f",
+      "title": "Choosing which labels to build",
+      "what": "Goes through every model component and decides whether it gets a label card. A label is made if the element is selected, pinned by the user, or (depending on the display mode) active or still relevant. Elements hidden by the user are skipped. For each chosen element it gathers linked activities, with ones running at the current date listed first, and records the element name, dates, state and progress.",
+      "why": "Likely reason: labels should follow what the user chose, and current work should be listed first. Reason not stated in the code for the exact split between modes.",
+      "watch_out": "The hidden check runs first, so an element the user hid stays hidden even if it is selected or pinned."
+    },
+    {
+      "start": 137,
+      "end": 145,
+      "kind": "function",
+      "name": "buildCallouts (part 2)",
+      "id": "s13",
+      "hash": "60916619b4d50908",
+      "title": "Sorting and trimming the label list",
+      "what": "Puts the selected element first, then pinned elements, then orders the rest by state using a rank table. Keeps at most the limit (80 by default) so the screen is not flooded with cards.",
+      "why": "Likely reason: the most important labels survive when there are many elements.",
+      "watch_out": "The cut happens after sorting, so lowering the limit silently removes the lowest-ranked labels. A new state name missing from the rank table would break the ordering."
+    },
+    {
+      "start": 146,
+      "end": 154,
+      "kind": "type",
+      "name": "Rect",
+      "id": "s14",
+      "hash": "dc720f85ac5a1092",
+      "title": "Rectangle shape for label cards",
+      "what": "Describes a flat rectangle on screen with a position and a width and height. Also sets a fixed gap of 6 units that keeps label cards apart.",
+      "why": "Reason not stated in the code beyond the shared shape used by the placement logic.",
+      "watch_out": "The rectangle must use the same screen coordinates as the anchor points passed to placeCallout, or cards will land in the wrong place."
+    },
+    {
+      "start": 155,
+      "end": 158,
+      "kind": "function",
+      "name": "overlaps",
+      "id": "s15",
+      "hash": "a502896c5a51c065",
+      "title": "Checking two cards collide",
+      "what": "Reports whether two card rectangles overlap once the 6 unit gap is added around each one, so cards never sit almost touching.",
+      "why": "Likely reason: the padding keeps text from crowding neighbouring cards.",
+      "watch_out": "The gap is in the same units as the rectangles, so changing one without the other changes the spacing."
+    },
+    {
+      "start": 159,
+      "end": 185,
+      "kind": "function",
+      "name": "placeCallout",
+      "id": "s16",
+      "hash": "239f3b9caa7b5ca0",
+      "title": "Finding a free spot for a label",
+      "what": "Tries four positions around the anchor point in order: above right, above left, below right, below left. Rejects any spot that leaves the viewport or overlaps an occupied card, and returns the first spot that fits, or nothing.",
+      "why": "Keeps each label next to its element without covering other labels or going off screen.",
+      "watch_out": "It returns nothing when all four spots fail, so the caller must handle a missing label rather than assume one exists."
+    },
+    {
+      "start": 186,
+      "end": 191,
+      "kind": "function",
+      "name": "leaderEnd",
+      "id": "s17",
+      "hash": "05254ccecd0b0e40",
+      "title": "Where the leader line meets a card",
+      "what": "Finds the point on the card edge that a thin leader line should attach to, so the line runs cleanly from the element to its card.",
+      "why": "Likely reason: attaching to the nearest edge keeps the line short and tidy.",
+      "watch_out": "It assumes the card and the anchor share the same coordinates. A mismatch draws the line to the wrong edge."
+    }
+  ],
+  "explained_at": "2026-11-12T02:29:56+00:00",
+  "explained_by": "haiku",
+  "summary": "Decides which schedule labels appear in the 3D view, what text each label shows, and how they are ordered.",
+  "purpose": "Turns the schedule and the user's label choices into a list of cards for the 3D view, ordered by priority.",
+  "why": "Likely reason: the schedule has many activities per element, so the module limits what is shown and orders it so the most useful labels win space.",
+  "how": "Reads each element's linked activities and dates for the chosen timing basis. Decides which labels to include based on the mode, selection, pinned and hidden sets. Builds the card text from the chosen fields. Provides helpers that place a card on screen and draw its leader line.",
+  "inputs": "The model components, the schedule activity records, the chosen mode, timing basis, visible ids, selected id, pinned and hidden sets, and the screen size for placement.",
+  "outputs": "A list of schedule callout objects in priority order, plus a placement rectangle and leader line end point for each card.",
+  "risks": "The off mode comment and the test disagree about pinned labels. Date text that cannot be read is not rejected. Placement runs again on every redraw.",
+  "debug": "If a label is missing, check the mode, the visible set and the hidden set. If the order looks wrong, check the state rank values and the selected flag. If dates show as no dates, check the timing basis and the schedule fields. If cards overlap, check the placement helper and its screen size.",
+  "summary_hash": "sha256:6419afbcc7b710988ac662f36fe59b52048cb18f03af20f2110d146cbdaa38e6"
+}

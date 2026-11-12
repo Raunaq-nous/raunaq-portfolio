@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/model/assemblies.py",
+  "language": "Python",
+  "lines": 243,
+  "hash": "sha256:ac24c8e9c54aa855616e335741dc6ecbe41062a08b6eb561b86dbfa1c9975a66",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Validation of requests, recipes, and results is present and explicit.",
+      "No tests are visible in the packet.",
+      "The rules for which components are changed together are complex and cannot be confirmed from this file alone."
+    ]
+  },
+  "terms": [
+    {
+      "term": "recipe",
+      "meaning": "a written description of a part that the code can expand into one or more shapes."
+    },
+    {
+      "term": "expansion",
+      "meaning": "turning a recipe into the full list of shapes, including repeated copies."
+    },
+    {
+      "term": "semantic slot",
+      "meaning": "the name that identifies one part within a component."
+    },
+    {
+      "term": "envelope",
+      "meaning": "the smallest box, centred on the origin, that holds all parts of a component."
+    },
+    {
+      "term": "provenance",
+      "meaning": "a note saying where a value came from; manual means a person entered it."
+    },
+    {
+      "term": "phase group",
+      "meaning": "a set of components that share a construction phase group key and belong to the same structure."
+    },
+    {
+      "term": "deep copy",
+      "meaning": "a full independent copy of a data object, so changes to the copy do not affect the original."
+    }
+  ],
+  "depends_on": [
+    "schedule3d.model.assembly_contracts",
+    "schedule3d.model.contracts",
+    "schedule3d.model.identities",
+    "schedule3d.model.specifications",
+    "pydantic"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 32,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a3e2c4b6c6574d15",
+      "title": "Setup, axes, and label maps",
+      "what": "Brings in the tools and defines the three axis names, the three groups of values (size, position, and rotation), and which provenance field goes with each group.",
+      "why": "Likely reason: the same mapping is needed each time a value is checked or labelled, so it is defined once.",
+      "watch_out": "The group names must match the field names on the part geometry, or edits will go to the wrong place."
+    },
+    {
+      "start": 33,
+      "end": 46,
+      "kind": "class",
+      "name": "AssemblyRequest",
+      "id": "s2",
+      "hash": "49b0ce56998db97c",
+      "title": "Request to attach an assembly",
+      "what": "Describes a request to set a component's assembly. The request must give either explicit recipes or a template ID, but not both, and any explicit recipes are validated.",
+      "why": "Likely reason: exactly one source of parts keeps the request unambiguous.",
+      "watch_out": "Sending both or neither is rejected, so callers must choose one."
+    },
+    {
+      "start": 47,
+      "end": 59,
+      "kind": "class",
+      "name": "TemplateRequest",
+      "id": "s3",
+      "hash": "d7f617a911b02ce1",
+      "title": "Request to save a template",
+      "what": "Describes a request to save a named set of recipes as a reusable template. The name must not be blank, and the recipes are validated.",
+      "why": "Likely reason: templates let the same arrangement be reused on other components.",
+      "watch_out": "Leaving the template ID empty creates a new template each time the request is made."
+    },
+    {
+      "start": 60,
+      "end": 75,
+      "kind": "function",
+      "name": "expanded_geometry",
+      "id": "s4",
+      "hash": "90a0e462c3ddcd91",
+      "title": "Expanding recipes into shapes",
+      "what": "Walks through each recipe, makes the requested number of copies, offsets each copy by the repeat offset, and gives copies after the first a numbered suffix. Any position outside the allowed range is rejected.",
+      "why": "Likely reason: one shared expansion means the viewer and the exporters build the same shapes.",
+      "watch_out": "The numbered suffix is how copies are told apart, so it is important that slot names do not already use the same pattern."
+    },
+    {
+      "start": 76,
+      "end": 88,
+      "kind": "function",
+      "name": "validate_definition",
+      "id": "s5",
+      "hash": "f1c626c3ad1d40fe",
+      "title": "Checking stored recipes against parts",
+      "what": "If a component has a stored recipe, expands it again and checks that the component's stored parts match it exactly in slot, geometry, material, and role.",
+      "why": "Likely reason: stored parts and the recipe must describe the same thing, or the saved file would be inconsistent.",
+      "watch_out": "Editing a part without updating its recipe, or the reverse, makes this check fail."
+    },
+    {
+      "start": 89,
+      "end": 138,
+      "kind": "function",
+      "name": "_updated_part",
+      "id": "s6",
+      "hash": "ff223d719c966418",
+      "title": "Building an updated part",
+      "what": "Creates a new part when none exists, with manual provenance for each value. When a part already exists, it copies it and marks each changed size, position, or rotation axis as manual, removes its source evidence links for those axes, and marks primitive, material, or role changes the same way.",
+      "why": "Likely reason: a value that a person changed must not keep claiming it came from a source document.",
+      "watch_out": "A manual change removes the link to source evidence for that value, so the change cannot be traced back to the document."
+    },
+    {
+      "start": 139,
+      "end": 155,
+      "kind": "function",
+      "name": "envelope",
+      "id": "s7",
+      "hash": "99213b433d102486",
+      "title": "Overall size of a component",
+      "what": "Works out the overall size of all parts, allowing for each part's rotation, and returns a box size that covers them all around the origin. Parts are not moved to recentre them.",
+      "why": "Likely reason: the component's overall size is needed for the viewer and exports, and the code keeps the origin fixed on purpose.",
+      "watch_out": "The result is an estimate of the bounding box, not an exact outline of rotated shapes."
+    },
+    {
+      "start": 156,
+      "end": 215,
+      "kind": "function",
+      "name": "apply_assembly (part 1)",
+      "id": "s8",
+      "hash": "ca1ecd56b4edcc91",
+      "title": "Applying an assembly to the model",
+      "what": "Copies the model and finds the chosen component. It then picks the component and any matching siblings in other phases, excluding foundations and slabs, inventory items, and package items. It checks the total part budget, rebuilds each target's parts, stores the recipe, recalculates size, changes manual labels where needed, and records that assembly and dimensions were overridden.",
+      "why": "Likely reason: a structure's sibling components in other phases usually share the same shape, so the edit is applied to them too.",
+      "watch_out": "One edit can change several components at once, and the part budget check counts every target."
+    },
+    {
+      "start": 216,
+      "end": 217,
+      "kind": "function",
+      "name": "apply_assembly (part 2)",
+      "id": "s9",
+      "hash": "adc83b19e793491b",
+      "title": "Blank line section",
+      "what": "Contains only blank lines. The logic of the assembly function is in the previous section.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 218,
+      "end": 235,
+      "kind": "function",
+      "name": "save_template",
+      "id": "s10",
+      "hash": "3dd7bf5c55d004a8",
+      "title": "Saving a template",
+      "what": "Copies the model, checks that the template exists if an ID is given, creates a new template with a random ID if not, and checks the expanded positions. It then replaces or adds the template and returns a validated model.",
+      "why": "Likely reason: checking the expanded positions catches a template that is valid as a list of recipes but produces shapes that are too far away.",
+      "watch_out": "Each save without an ID creates a new template with a new random ID."
+    },
+    {
+      "start": 236,
+      "end": 243,
+      "kind": "function",
+      "name": "delete_template",
+      "id": "s11",
+      "hash": "79803285d84c39a1",
+      "title": "Deleting a template",
+      "what": "Copies the model, checks that the template exists, removes it, and returns a validated model. Components that already have their own copy of the recipe keep it.",
+      "why": "Likely reason: deleting a template should only remove the saved template, not change the components that used it.",
+      "watch_out": "The code does not check whether any component still refers to the template, so deleting it is quiet."
+    }
+  ],
+  "explained_at": "2026-11-12T01:53:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Lets a user build or edit a component out of repeated and combined simple shapes, save reusable templates, and delete templates, while keeping the evidence labels correct.",
+  "purpose": "Applies manual assembly edits to a project model, expanding each recipe into the full list of shapes once so the viewer and the exporters see the same result.",
+  "why": "The module docstring says recipes are expanded once for both viewer and exporters. Likely reason: one shared expansion prevents the viewer and the exports from disagreeing.",
+  "how": "A request names a component and either gives explicit recipes or points to a saved template. The code copies the model, picks the target components, expands the recipes into shapes, updates the parts with manual labels where values changed, recalculates the overall size, and validates the result. Templates can be saved or deleted in the same way.",
+  "inputs": "A project model and an assembly or template request with a component ID, recipe lists, and optional template ID.",
+  "outputs": "A new, validated project model. The original is not changed.",
+  "risks": "One edit can change several components that share a phase group and structure, which is easy to miss. The part budget check counts all targets. Deleting a template does not change components that already stored their own copy of the recipe.",
+  "debug": "If an edit fails, read the error: it names the missing component, the unknown template, the part budget, or the disagreement between recipe and parts. Check the component's stored assembly definition against its parts list.",
+  "summary_hash": "sha256:ac24c8e9c54aa855616e335741dc6ecbe41062a08b6eb561b86dbfa1c9975a66"
+}

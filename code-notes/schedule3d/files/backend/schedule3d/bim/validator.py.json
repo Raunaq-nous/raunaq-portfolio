@@ -1,0 +1,352 @@
+{
+  "schema_version": 1,
+  "path": "backend/schedule3d/bim/validator.py",
+  "language": "Python",
+  "lines": 865,
+  "hash": "sha256:7ec9c3de6758f8b64ea53a35c61df8354b00bbe460b257368cb5a9d1a982e6a1",
+  "area": "backend-schedule3d",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this packet, so correctness is not shown by evidence here.",
+      "Part and component failures often produce one general message, which makes causes harder to find.",
+      "The component geometry path does not reject non-finite numbers the way the part path does.",
+      "The right-angle placement tolerance is very tight and may reject files with small rounding differences.",
+      "The fingerprint must match the exporter exactly, so the two files must change together."
+    ]
+  },
+  "terms": [
+    {
+      "term": "IFC",
+      "meaning": "Industry Foundation Classes, a standard text format for describing buildings and their parts."
+    },
+    {
+      "term": "IFC4",
+      "meaning": "The fourth major edition of the IFC standard, which this code targets."
+    },
+    {
+      "term": "STEP",
+      "meaning": "The file layout IFC uses (ISO-10303-21): numbered lines inside a DATA section."
+    },
+    {
+      "term": "Entity",
+      "meaning": "One numbered record in the IFC file, such as a component, a task or a property."
+    },
+    {
+      "term": "Reference",
+      "meaning": "A pointer from one entity number to another entity, written with a hash mark."
+    },
+    {
+      "term": "Property set",
+      "meaning": "A named group of values attached to an item, used here to carry schedule and evidence data."
+    },
+    {
+      "term": "Placement",
+      "meaning": "Where an item sits in space: a point plus two direction arrows that describe its orientation."
+    },
+    {
+      "term": "SHA-256",
+      "meaning": "A fingerprint method that gives a different code whenever the content changes."
+    }
+  ],
+  "depends_on": [
+    "schedule3d.bim.contracts",
+    "schedule3d.evidence",
+    "schedule3d.model.contracts",
+    "schedule3d.model.identities",
+    "pydantic",
+    "Python standard library modules (json, math, re, collections, dataclasses, datetime, pathlib, uuid)"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 59,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "059c3295d8559384",
+      "title": "Imports, parser name and entity rules",
+      "what": "Brings in the tools the checker needs and names this checker and its version, so every report says which checker produced it. Also holds the patterns that find entity numbers and entity starts, and the table of how many values each supported IFC entity type must have.",
+      "why": "Likely reason: the checker reads only a fixed subset of IFC, so anything outside the table is reported as an error rather than guessed at.",
+      "watch_out": "Any new entity type the writer emits must be added to the table here, or the checker reports it as unsupported."
+    },
+    {
+      "start": 60,
+      "end": 66,
+      "kind": "class",
+      "name": "_Entity",
+      "id": "s2",
+      "hash": "dd4900827ce792de",
+      "title": "Simple record for one IFC entity",
+      "what": "Holds one parsed entity: its number, its type name and its raw values as text. It is frozen, so it cannot be changed after it is read.",
+      "why": "Reason not stated in the code. It likely keeps parsed data from being changed by accident during checks.",
+      "watch_out": "Values stay as raw text, so later code must interpret each one correctly."
+    },
+    {
+      "start": 67,
+      "end": 96,
+      "kind": "function",
+      "name": "_split_arguments",
+      "id": "s3",
+      "hash": "2385f6608b2da8ca",
+      "title": "Splitting an entity's values safely",
+      "what": "Splits the text inside one entity into separate values. It only splits on commas outside quotes and brackets, and handles doubled quote marks inside text. Unbalanced quotes or brackets are refused with an error.",
+      "why": "IFC values can contain commas and brackets inside text or lists, so a simple split would break them. The quote handling shows this purpose.",
+      "watch_out": "A malformed line raises an error that the caller counts as a bad line, so one bad value does not stop the whole check."
+    },
+    {
+      "start": 97,
+      "end": 107,
+      "kind": "function",
+      "name": "_parse_entity",
+      "id": "s4",
+      "hash": "808291b436627978",
+      "title": "Reading one entity line",
+      "what": "Takes one line from the data section and checks it has the expected shape: a number, a type name, an opening bracket, and a closing bracket with a semicolon. It returns the parsed entity or refuses the line.",
+      "why": "Keeps the parser strict, so lines it cannot read are counted and reported instead of guessed at.",
+      "watch_out": "Only single-line entities are read. An entity wrapped over several lines is counted as malformed."
+    },
+    {
+      "start": 108,
+      "end": 135,
+      "kind": "function",
+      "name": "_unquote",
+      "id": "s5",
+      "hash": "67acca5d3f78e285",
+      "title": "Decoding quoted IFC text",
+      "what": "Turns IFC quoted text into plain text. It handles doubled quote marks, backslash escapes and the encoded wide-character forms. If the text uses a form it does not know, it returns nothing rather than guessing.",
+      "why": "The code states it refuses to reinterpret unknown escapes silently.",
+      "watch_out": "An empty result means the text could not be read, and the caller reports a problem without saying why."
+    },
+    {
+      "start": 136,
+      "end": 140,
+      "kind": "function",
+      "name": "_reference",
+      "id": "s6",
+      "hash": "92bdd0b3f17d276d",
+      "title": "Reading a single reference",
+      "what": "Reads a single pointer to another entity, written as a hash mark and a number, and returns that number. Anything else returns nothing.",
+      "why": "Reason not stated in the code. It is a small helper that lets other checks follow links between entities.",
+      "watch_out": "Only an exact single reference matches. Extra text around it makes the value count as not a reference."
+    },
+    {
+      "start": 141,
+      "end": 153,
+      "kind": "function",
+      "name": "_reference_list",
+      "id": "s7",
+      "hash": "c2de94239c26cd7d",
+      "title": "Reading a list of references",
+      "what": "Reads a bracketed list of entity pointers and returns the list of numbers. An empty bracket pair gives an empty list. If any item is not a pointer, the whole list is treated as invalid.",
+      "why": "IFC relationships link several entities at once, so the checker needs a list reader. The reason is not otherwise stated.",
+      "watch_out": "One bad item makes the whole list invalid, which hides the other links in that list from later checks."
+    },
+    {
+      "start": 154,
+      "end": 162,
+      "kind": "function",
+      "name": "_typed_value",
+      "id": "s8",
+      "hash": "bd31760445f840ce",
+      "title": "Reading a typed value",
+      "what": "Reads a value written as a type name with a value inside, such as a label or text value. Returns the type name and the plain value. If the inside is not quoted, it returns the raw text as the value.",
+      "why": "Property values carry their IFC type, so the checker must read both the type and the value.",
+      "watch_out": "A value not in this typed form returns nothing, so it is reported as missing rather than as wrong."
+    },
+    {
+      "start": 163,
+      "end": 174,
+      "kind": "function",
+      "name": "_number_tuple",
+      "id": "s9",
+      "hash": "0cff2a35648df37e",
+      "title": "Reading a set of numbers",
+      "what": "Reads a bracketed set of numbers with an exact expected count, such as three values for a point or a direction. Returns them as decimal numbers, or nothing if the count or format is wrong.",
+      "why": "Positions and directions are stored as number sets, so the checker needs a reader for them. The reason is not otherwise stated.",
+      "watch_out": "The reader accepts text such as not-a-number and infinity. Callers must check for finite values, and one caller path does not."
+    },
+    {
+      "start": 175,
+      "end": 189,
+      "kind": "function",
+      "name": "_entity_counts",
+      "id": "s10",
+      "hash": "bd0126b8d6dd93a1",
+      "title": "Counting entities by type",
+      "what": "Counts how many entities of each relevant kind were found. The project, site, building and storey are grouped together as spatial items. The totals are compared later with the expected counts from the export.",
+      "why": "Used to confirm the file holds exactly what the exporter said it wrote.",
+      "watch_out": "The counts show how many lines of each type exist, not whether those lines are valid."
+    },
+    {
+      "start": 190,
+      "end": 248,
+      "kind": "function",
+      "name": "validate_conceptual_ifc (part 1)",
+      "id": "s11",
+      "hash": "df7a87399a8c9759",
+      "title": "Checking file envelope, types and links",
+      "what": "Opens the file, checks its start and end lines, and reads the schema name. Then goes through every data line, recording unsupported types, wrong value counts, malformed lines, duplicate numbers and links that point to nothing. Each problem goes on a list of discrepancies, and the check continues.",
+      "why": "Collecting every problem lets one run report the full picture. The discrepancy list design shows this purpose.",
+      "watch_out": "Quoted text is removed before looking for links, so a number-like string inside text is not counted as a link."
+    },
+    {
+      "start": 249,
+      "end": 304,
+      "kind": "function",
+      "name": "validate_conceptual_ifc (part 2)",
+      "id": "s12",
+      "hash": "98124028398a380d",
+      "title": "Checking counts, spatial chain and containment",
+      "what": "Compares each count with the export summary. Confirms there is exactly one project, site, building and storey, and checks that they link in the correct order. Also confirms each component sits in the storey exactly once.",
+      "why": "Confirms the building structure matches what a viewer or tool expects. The messages state these rules.",
+      "watch_out": "Asset-to-part links are skipped here on purpose and checked in a later section, so a broken asset link does not show up in this section's messages."
+    },
+    {
+      "start": 305,
+      "end": 341,
+      "kind": "function",
+      "name": "validate_conceptual_ifc (part 3)",
+      "id": "s13",
+      "hash": "9f9ffcc4d9fde29f",
+      "title": "Checking properties and their attachments",
+      "what": "Reads every single property and every property group, and checks that each group only refers to known properties. Then checks that every group is attached to exactly one entity, and that each attached entity exists.",
+      "why": "IFC attaches property groups through separate link records. The checker verifies these links are one-to-one, as the messages state.",
+      "watch_out": "If a property name repeats inside one group, the later value silently replaces the earlier one."
+    },
+    {
+      "start": 342,
+      "end": 401,
+      "kind": "method",
+      "name": "validate_conceptual_ifc: check_profile",
+      "id": "s14",
+      "hash": "35f7eac3eff71c67",
+      "title": "Checking required fields on each item",
+      "what": "A helper inside the checker. For a set of items and a group name, it finds the one property group with that name attached to each item, and lists any required property names that are missing. It returns the parsed values for each item that passes.",
+      "why": "Each kind of item (component, part, task, project) must carry a fixed set of fields, and this check enforces that contract.",
+      "watch_out": "The required names are a fixed list. Adding a field to the writer means adding it here too. This check confirms a field exists, not that its value is right."
+    },
+    {
+      "start": 402,
+      "end": 453,
+      "kind": "function",
+      "name": "validate_conceptual_ifc (part 5)",
+      "id": "s15",
+      "hash": "fef9bcfea9b52b20",
+      "title": "Checking evidence references",
+      "what": "Rebuilds the project's evidence records from their stored text and checks that each component and task refers only to evidence that exists. Also confirms that every task has a matching schedule activity record.",
+      "why": "Makes sure every value in the file can be traced to a recorded source.",
+      "watch_out": "If the evidence text is broken, the list of available evidence can stay empty, so many unrelated errors can appear as side effects of one problem."
+    },
+    {
+      "start": 454,
+      "end": 490,
+      "kind": "function",
+      "name": "validate_conceptual_ifc (part 6)",
+      "id": "s16",
+      "hash": "ce1072bd9121b7b9",
+      "title": "Checking ids, scopes and dates",
+      "what": "Checks that component and task identifiers are present and unique, and that each item carries the right project id. Confirms each task is marked as local or external with a matching project id. Checks that start and finish dates are valid date text, and that a component's tag matches its stable id.",
+      "why": "Stops the same item being counted twice or attached to the wrong project.",
+      "watch_out": "An empty date is accepted, so a missing date does not fail this check."
+    },
+    {
+      "start": 491,
+      "end": 545,
+      "kind": "function",
+      "name": "validate_conceptual_ifc (part 7)",
+      "id": "s17",
+      "hash": "22d3ab4985acd563",
+      "title": "Gathering values for the content fingerprint",
+      "what": "Collects every property and geometry value the checker has read, in a form that can feed the same fingerprint the exporter used. Also defines two helpers: one rounds a number to twelve decimal places and refuses infinite or not-a-number values, and the other reads a point or direction and checks that its values are finite. Identifies explicit assets, which are components whose geometry is given as explicit parts.",
+      "why": "Used to rebuild the exporter's fingerprint, so the file is checked against what was actually written.",
+      "watch_out": "The component geometry path reads positions without the same finiteness rule, so a not-a-number position could reach the fingerprint and only show up as a fingerprint mismatch."
+    },
+    {
+      "start": 546,
+      "end": 585,
+      "kind": "method",
+      "name": "validate_conceptual_ifc: read_placement",
+      "id": "s18",
+      "hash": "32c46b07d0602ce9",
+      "title": "Checking placement and part ownership",
+      "what": "Reads a placement, which is the position and direction frame of an item, and checks that it is attached to the expected parent. Checks that its two direction vectors have unit length and sit at right angles. Also checks that each explicit part belongs to exactly one explicit asset, and that all parts are owned.",
+      "why": "A bad placement would move a part away from its intended spot, so the checker verifies the frame is a proper right-angled set.",
+      "watch_out": "The right-angle tolerance is very tight, so a file with rounding noise above that tolerance would be reported as wrong."
+    },
+    {
+      "start": 586,
+      "end": 645,
+      "kind": "function",
+      "name": "validate_conceptual_ifc (part 9)",
+      "id": "s19",
+      "hash": "eec148790d395061",
+      "title": "Checking each part's identity and shape",
+      "what": "For each part, checks that its stable id, parent, slot, material and name match its stored contract. Recomputes the part's global identifier and confirms it matches. Then reads the part's placement and shape, which must be a single extruded solid built from a rectangle or circle and centred on its own position.",
+      "why": "Stops a part from being edited by hand or drifting away from its contract. The recomputed identifier shows this purpose.",
+      "watch_out": "The identifier is rebuilt from a fixed namespace string plus the project and part ids, so changing that string or the id scheme makes every real file fail."
+    },
+    {
+      "start": 646,
+      "end": 705,
+      "kind": "function",
+      "name": "validate_conceptual_ifc (part 10)",
+      "id": "s20",
+      "hash": "ffc429a1cbf0dc7a",
+      "title": "Checking solid sizes and asset boxes",
+      "what": "Confirms each part's solid has positive sizes, is centred, has its base at half its height below the origin, and points upward. Records each valid part's shape and size. For explicit assets, checks that no extra box is attached. For other components, starts checking their simple box placement and shape.",
+      "why": "The centred-solid rule matches how parts are written, as the messages and checks show.",
+      "watch_out": "Part failures all report one general message, so the exact cause has to be found by checking that item again."
+    },
+    {
+      "start": 706,
+      "end": 765,
+      "kind": "function",
+      "name": "validate_conceptual_ifc (part 11)",
+      "id": "s21",
+      "hash": "e0edd9f7d32a31f0",
+      "title": "Checking component boxes and task assignments",
+      "what": "Finishes reading each simple box component and checks that its shape is a rectangle extruded upward, recording its size. Then reads each task-to-component assignment, checks that its ends are a component and a task, and records the assignment with its quantity text.",
+      "why": "Ties the file's task links back to the source schedule, as the messages state.",
+      "watch_out": "An assignment pointing to an unknown component is reported and skipped. The rest of the list is still checked, but the missing link is not added to the results."
+    },
+    {
+      "start": 766,
+      "end": 817,
+      "kind": "function",
+      "name": "validate_conceptual_ifc (part 12)",
+      "id": "s22",
+      "hash": "cb97b1c96a107add",
+      "title": "Reading task sequence links and lags",
+      "what": "Reads each schedule link between two tasks. Checks both ends are tasks with property records, converts the link type back to its standard name, and reads the lag from the stored text. Refuses any link whose lag text lacks the expected prefix.",
+      "why": "Lets the checker rebuild the schedule logic and compare it with the export.",
+      "watch_out": "The lag is checked for its prefix only, not as a number, so a non-numeric lag is accepted here."
+    },
+    {
+      "start": 818,
+      "end": 865,
+      "kind": "function",
+      "name": "validate_conceptual_ifc (part 13)",
+      "id": "s23",
+      "hash": "c3246c2df20a9b02",
+      "title": "Final checks and overall result",
+      "what": "Confirms the project record states the same suitability and link counts as the export summary. If every component and task was read correctly, recomputes the content fingerprint and compares it with the export's. Then returns one result that says whether the file is valid and lists every discrepancy.",
+      "why": "This is the final check that the file matches what the export claimed.",
+      "watch_out": "The fingerprint is recomputed only when every component and task was read. Otherwise it is left empty, and the result shows no fingerprint."
+    }
+  ],
+  "explained_at": "2026-11-12T01:44:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads an exported IFC file back in, checks its structure and content against what the exporter reported, and returns a valid or invalid result with a list of problems.",
+  "purpose": "Acts as an independent second reader, so a broken or altered IFC export is caught before anyone relies on it. It checks only the constrained IFC4 subset that the exporter writes, not all of IFC.",
+  "why": "The module description says it is an independent parser for the constrained profile. Likely reason: the exporter should not be trusted to check its own output.",
+  "how": "First it reads the whole text and checks the start and end lines and the schema name. Then it parses each data line, checking value counts, duplicate numbers and references. Next it compares entity counts with the export summary. After that it checks the spatial structure, containment, property groups and required fields. Then it checks evidence references, ids, dates and placements. It reads parts, component boxes, assignments and sequence links. Last, it recomputes the content fingerprint and returns the result.",
+  "inputs": "A path to an IFC text file, and the export summary from the exporter. The summary holds expected counts, the project id, suitability, link counts, the schema name and the expected fingerprint.",
+  "outputs": "An IfcValidationResult containing a valid flag, the parser name and version, the schema found, the counts found, the recomputed fingerprint, unresolved references, duplicate entity numbers and a list of discrepancy messages.",
+  "risks": "A false pass is unlikely for the checks shown, because the result is only valid when the discrepancy list is empty. The real risks are these: some failures show one general message that hides the cause; the placement tolerance is tight and may reject valid rounding; non-finite numbers can reach the component geometry path; and the fingerprint must match the exporter exactly, so any change to the exporter breaks validation until this file is updated. The whole file is also read into memory at once.",
+  "debug": "Start with the discrepancy list in the result. It says which check failed and often names the entity number. Find that number in the IFC file. For a general invalid geometry message on a part, check that part's contract text against the file, and add temporary output at the failing step. If counts match but the fingerprint does not, compare the exporter and this checker for changes made in different places, especially the required field lists. A schema mismatch usually means the exporter changed its schema name.",
+  "summary_hash": "sha256:7ec9c3de6758f8b64ea53a35c61df8354b00bbe460b257368cb5a9d1a982e6a1"
+}
