@@ -125,4 +125,19 @@ Open questions: which layer should personalize first, the application, the model
     builds: [],
     plate: 'die',
   },
+  {
+    id: 'before-the-tender',
+    title: 'Before the Tender',
+    role: 'BUILDER + RESEARCHER',
+    year: '2026',
+    status: 'ACTIVE',
+    calm: `Big capital projects are visible years before anyone issues a tender: a utility asks for capacity, a developer joins a grid queue, a pipeline opens a season, a company files a new estimate. The same public record also shows which projects are in trouble, and why.
+
+I am rebuilding the Opportunity Map as one engine that reads that record, tests whether forming projects can be built by their date, turns trouble on live projects into lessons with receipts, and ranks the decisions each lesson should change. The research behind it is in a flip-through notebook, with every source captured and graded.`,
+    nerd: `One intake, three outputs, one project record. Signals from grid queues, plant trackers, filings and audits are stored raw and versioned, resolved to projects with Fellegi–Sunter matching plus model adjudication for the uncertain band, and turned into typed events with verbatim evidence. Deliverability is the latest-arriving constraint (step-up transformers, breakers, turbines, interconnection, labour) at P80. Lessons carry a driver taxonomy, a gate and an artefact to change; exposure and fit are explainable weighted overlaps. Models classify and extract; code computes every number.`,
+    tags: ['capital projects', 'opportunity intelligence', 'entity resolution', 'LLMs', 'reference class forecasting', 'research notebook'],
+    thesis: 'The same public event is a lesson about one project and a lead for the next.',
+    builds: [],
+    plate: 'layers',
+  },
 ];
