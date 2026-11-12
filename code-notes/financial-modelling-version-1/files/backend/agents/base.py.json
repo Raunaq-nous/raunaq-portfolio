@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/base.py",
+  "language": "Python",
+  "lines": 198,
+  "hash": "sha256:8cfd2143aadbd6a90bd741d4ad9ce2f0443c06ce378424f4bef838eb3cc772be",
+  "area": "backend-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are returned as text instead of raised, so callers can miss them.",
+      "No test is visible for this file.",
+      "Behaviour depends on settings in config, which is not in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "LLM",
+      "meaning": "large language model, the AI system that writes text from a prompt"
+    },
+    {
+      "term": "Ollama",
+      "meaning": "a program that runs open-source AI models on your own computer"
+    },
+    {
+      "term": "OpenAI",
+      "meaning": "a company whose paid cloud service provides AI models through an API"
+    },
+    {
+      "term": "API",
+      "meaning": "a doorway other programs use to ask a service for answers or data"
+    },
+    {
+      "term": "Provider",
+      "meaning": "the service or program that actually runs the AI model"
+    },
+    {
+      "term": "Temperature",
+      "meaning": "a setting for how predictable an answer is; low values give steadier answers"
+    },
+    {
+      "term": "Token",
+      "meaning": "a small piece of text, often part of a word, that AI models count to measure length"
+    },
+    {
+      "term": "System prompt",
+      "meaning": "hidden instructions that set the AI's role before the user's question"
+    },
+    {
+      "term": "Logger",
+      "meaning": "a built-in way for code to write messages to a log for later review"
+    }
+  ],
+  "depends_on": [
+    "config",
+    "requests",
+    "openai (only for the OpenAI provider)",
+    "logging"
+  ],
+  "used_by": [
+    "backend/agents/benchmark.py",
+    "backend/agents/comparables.py",
+    "backend/agents/model_builder.py",
+    "backend/agents/questionnaire.py",
+    "backend/agents/reasoning.py",
+    "backend/agents/research.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "24c3385b8b5427dd",
+      "title": "Imports and logging setup",
+      "what": "Brings in the libraries for web requests, timing, and logging, plus the shared settings. Creates a logger so errors from this agent are recorded under this file's name.",
+      "why": "Logging records problems without stopping the app, and shared settings let the provider and model be chosen in one place.",
+      "watch_out": "If the config file or its settings object is missing or renamed, every agent fails to load."
+    },
+    {
+      "start": 19,
+      "end": 67,
+      "kind": "class",
+      "name": "BaseAgent (part 1)",
+      "id": "s2",
+      "hash": "1abb1a11715388a2",
+      "title": "Creating an agent and choosing its provider",
+      "what": "When an agent is created, it picks Ollama (local) or OpenAI (paid cloud) from the provider argument or settings. For OpenAI it creates a client using the key and address from settings; for Ollama it saves the local server address.",
+      "why": "Lets the same agent code run with either provider without changes elsewhere.",
+      "watch_out": "A missing OpenAI key or package raises an error at creation, so settings must be right before any agent starts."
+    },
+    {
+      "start": 68,
+      "end": 114,
+      "kind": "method",
+      "name": "BaseAgent: generate",
+      "id": "s3",
+      "hash": "fae0a8533c1e3961",
+      "title": "Routing one prompt to the provider",
+      "what": "Takes a prompt and an optional system instruction, sends it to whichever provider the agent uses, and returns the answer text with the number of seconds taken.",
+      "why": "Gives every agent one simple method to call, so they do not need to know which provider runs underneath.",
+      "watch_out": "Errors come back as text beginning with Error rather than as exceptions, so callers must check the text before trusting it."
+    },
+    {
+      "start": 115,
+      "end": 152,
+      "kind": "method",
+      "name": "BaseAgent: _generate_openai",
+      "id": "s4",
+      "hash": "a2b9623a8d7edc29",
+      "title": "Sending a prompt to OpenAI and routing chat",
+      "what": "Builds the message list with an optional system instruction and the user prompt, calls the OpenAI chat service, and returns the reply and elapsed time. On failure it returns error text and zero time. It also holds the chat method, which does the same for a full list of messages.",
+      "why": "Likely reason: keeps the OpenAI call details in one place so the rest of the app uses the same result shape.",
+      "watch_out": "On failure the time is zero, which can make a failed call look fast if someone measures speed from it."
+    },
+    {
+      "start": 153,
+      "end": 198,
+      "kind": "method",
+      "name": "BaseAgent: _chat_ollama",
+      "id": "s5",
+      "hash": "737595ba92b1345d",
+      "title": "Sending a chat history to Ollama",
+      "what": "Sends a list of messages to the local Ollama chat address, waits up to 120 seconds, and returns the reply text and elapsed time. Failures return error text instead.",
+      "why": "Likely reason: a list of earlier messages lets the model keep track of a conversation.",
+      "watch_out": "The 120 second limit is fixed, so a slow computer running a large model may time out and return error text."
+    }
+  ],
+  "explained_at": "2026-11-12T00:30:23+00:00",
+  "explained_by": "haiku",
+  "summary": "Shared starting point for every AI agent in the app. It sends prompts to either a local Ollama model or the paid OpenAI service and returns the reply.",
+  "purpose": "Gives the other agents one way to ask a language model a question, with the provider chosen in settings.",
+  "why": "Likely reason: keeps the provider choice in one place so agents do not each need separate code for Ollama and OpenAI.",
+  "how": "On creation, it reads the provider and model name from arguments or settings, then sets up either an OpenAI client or the Ollama server address. When another agent asks a question, it sends the prompt to the chosen provider, measures the time, and returns the text with the time.",
+  "inputs": "A prompt text, an optional system instruction, or a list of chat messages. Settings include the provider, model name, temperature, maximum tokens, Ollama host, and OpenAI key and address.",
+  "outputs": "A pair of values: the reply text and the number of seconds taken. On failure, the text starts with Error and the time is zero.",
+  "risks": "Errors are not raised, so a failed call looks like a normal reply to the caller. Ollama calls wait up to 120 seconds. Missing OpenAI settings stop the agent from starting.",
+  "debug": "If answers read as errors, look for text beginning with Error and check the log messages written under this file's name. Confirm the Ollama server is running at the configured host and the model is downloaded. For OpenAI, check the key, address, and that the openai package is installed.",
+  "summary_hash": "sha256:8cfd2143aadbd6a90bd741d4ad9ce2f0443c06ce378424f4bef838eb3cc772be"
+}

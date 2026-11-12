@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/model_builder.py",
+  "language": "Python",
+  "lines": 285,
+  "hash": "sha256:7cede9f4b7d85d793121e4b295abbeb69d6571b3f32133d1a0b875f22b3cba1b",
+  "area": "backend-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Silent defaults can hide missing inputs.",
+      "Simplified finance (no depreciation, interest, or working capital) and some labels can mislead.",
+      "No test is visible for this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Revenue",
+      "meaning": "the total money a company brings in from sales"
+    },
+    {
+      "term": "COGS",
+      "meaning": "cost of goods sold, the direct cost of making what is sold"
+    },
+    {
+      "term": "Gross margin",
+      "meaning": "the share of revenue left after direct costs"
+    },
+    {
+      "term": "EBITDA",
+      "meaning": "earnings before interest, taxes, depreciation, and amortisation, a measure of operating profit"
+    },
+    {
+      "term": "Free cash flow",
+      "meaning": "the cash left after running and investing costs are paid"
+    },
+    {
+      "term": "CapEx",
+      "meaning": "capital expenditure, money spent on long-lived equipment and buildings"
+    },
+    {
+      "term": "WACC",
+      "meaning": "weighted average cost of capital, the rate used to discount future cash to today"
+    },
+    {
+      "term": "CAPM",
+      "meaning": "capital asset pricing model, a formula for the return investors expect from a stock"
+    },
+    {
+      "term": "Beta",
+      "meaning": "a measure of how much a stock moves compared with the whole market"
+    },
+    {
+      "term": "Terminal value",
+      "meaning": "the value of all cash flows after the forecast years, estimated as one figure"
+    },
+    {
+      "term": "Enterprise value",
+      "meaning": "the estimated total value of the company's operations"
+    },
+    {
+      "term": "Discounting",
+      "meaning": "converting future money into today's value by reducing it for time and risk"
+    }
+  ],
+  "depends_on": [
+    "backend/agents/base.py"
+  ],
+  "used_by": [
+    "backend/agents/orchestrator.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3f8c462a8b0fb899",
+      "title": "File purpose and imports",
+      "what": "Describes the file as a builder that makes a multi-year model step by step, with each formula visible. Brings in the base agent and logging.",
+      "why": "The step-by-step record is meant so a user can check the arithmetic behind every number.",
+      "watch_out": "The class inherits from the base agent but no visible method asks the model for anything, so the numbers are plain arithmetic."
+    },
+    {
+      "start": 15,
+      "end": 73,
+      "kind": "class",
+      "name": "ModelBuilderAgent (part 1)",
+      "id": "s2",
+      "hash": "3a21ce6eb8c999b8",
+      "title": "Income statement: revenue and cost of goods",
+      "what": "Creates the builder and the income statement function. Starting revenue defaults to 10 million dollars and growth rates default to a fixed list that falls from 50 to 20 percent, then 15. Each year's revenue is recorded as a step, and cost of goods is worked out from gross margin (75 percent by default).",
+      "why": "Likely reason: the step list shows the working behind each number.",
+      "watch_out": "Default values such as the 10 million starting revenue silently apply whenever the matching assumption is missing, so a gap looks like a real input."
+    },
+    {
+      "start": 74,
+      "end": 132,
+      "kind": "class",
+      "name": "ModelBuilderAgent (part 2)",
+      "id": "s3",
+      "hash": "db2c691dba356977",
+      "title": "Income statement: profit lines",
+      "what": "Records cost of goods steps, then calculates gross profit as revenue minus cost of goods. Next it works out operating costs as percentages of revenue for research and development, sales and marketing, and general and administrative, then EBITDA as gross profit minus those costs, and finally after-tax profit before its own step list.",
+      "why": "Likely reason: follows the usual income statement order from the top line down.",
+      "watch_out": "The operating cost percentages are fixed defaults of 15, 25, and 10 percent and do not reflect the company's own history."
+    },
+    {
+      "start": 133,
+      "end": 185,
+      "kind": "class",
+      "name": "ModelBuilderAgent (part 3)",
+      "id": "s4",
+      "hash": "d656d812ca9b30c4",
+      "title": "Net income steps and cash flow start",
+      "what": "Records a step for each year's after-tax profit, then returns the income statement with its summary lists, and starts the cash flow function. The cash flow function takes net income and subtracts capital spending at 5 percent of revenue to get free cash flow for each year.",
+      "why": "Likely reason: each statement's steps are kept so the user can follow the chain from revenue to cash.",
+      "watch_out": "The figure called net income here ignores interest and depreciation, so it is closer to after-tax EBITDA than to the net income in a real set of accounts."
+    },
+    {
+      "start": 186,
+      "end": 245,
+      "kind": "class",
+      "name": "ModelBuilderAgent (part 4)",
+      "id": "s5",
+      "hash": "76054c4520be32aa",
+      "title": "Cash flow summary and valuation start",
+      "what": "Returns the cash flow statement with its free cash flow list. Then starts the valuation: it works out the cost of equity using the capital asset pricing model, uses that as the discount rate, discounts each year's cash flow to today, and calculates the terminal value.",
+      "why": "Likely reason: the valuation needs a discount rate and a long-term value to turn yearly cash into a company value.",
+      "watch_out": "The discount rate is just the cost of equity, ignoring debt, and the terminal value divides by the discount rate minus growth, which breaks when growth is equal to or above that rate."
+    },
+    {
+      "start": 246,
+      "end": 285,
+      "kind": "class",
+      "name": "ModelBuilderAgent (part 5)",
+      "id": "s6",
+      "hash": "a21c1463dca4c4ed",
+      "title": "Terminal value and company value",
+      "what": "Records the terminal value steps, discounts that value back to today, then adds the discounted yearly cash flows to get the enterprise value. Returns the valuation with its summary.",
+      "why": "Likely reason: shows the final value as a sum of its parts so the user can see how much comes from the long-term estimate.",
+      "watch_out": "The terminal value often makes up most of the total, so small changes in the inputs can move the final answer a lot."
+    }
+  ],
+  "explained_at": "2026-11-12T00:30:23+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds a simple five-year income statement, cash flow, and discounted cash flow valuation, with each formula written out in plain steps.",
+  "purpose": "Turns a set of assumptions into a basic three-statement style model that a user can read step by step.",
+  "why": "Likely reason: the arithmetic is done by plain code so results repeat exactly, and the steps are kept so users can see how each number was reached.",
+  "how": "Projects revenue from growth rates, subtracts costs using percentage assumptions, works out profit lines and free cash flow, then discounts those cash flows using a rate based on the cost of equity and adds a terminal value. Each step records its formula, the numbers plugged in, the result, and a plain reason.",
+  "inputs": "Company name, a dictionary of assumptions (starting revenue, growth rates, gross margin, operating cost percentages, tax rate, capital spending percent, risk-free rate, beta, market risk premium, terminal growth rate), and the number of years.",
+  "outputs": "Three dictionaries (income statement, cash flow, valuation). Each has a list of steps and a summary, and the valuation includes the enterprise value.",
+  "risks": "Missing assumptions silently use hard-coded defaults. The figure labelled net income ignores interest and depreciation. The terminal value divides by the discount rate minus growth, which fails if growth is equal to or higher than the rate. Assumption key names must match what the orchestrator provides.",
+  "debug": "If the valuation looks odd, read the steps in order and check the inputs first. Compare the assumptions you supplied with the defaults in the code. A zero or negative denominator in the terminal value step means the discount rate is at or below the growth rate.",
+  "summary_hash": "sha256:7cede9f4b7d85d793121e4b295abbeb69d6571b3f32133d1a0b875f22b3cba1b"
+}

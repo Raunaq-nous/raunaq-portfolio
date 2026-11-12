@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "path": "backend/calc/capex.py",
+  "language": "Python",
+  "lines": 168,
+  "hash": "sha256:73702963c9fd78d1130120cb494cfc30a1c0dda2010dcf08db1b895c0cbb654c",
+  "area": "backend-calc",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The first year's spending is left out of gross assets while still being depreciated, which gives wrong asset figures.",
+      "Opening gross assets are never depreciated, and the code does not say whether that is intended.",
+      "No tests or input checks were visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "CapEx (capital expenditure)",
+      "meaning": "money spent on long-lived assets such as buildings, machines, or equipment"
+    },
+    {
+      "term": "Depreciation",
+      "meaning": "the yearly write-off of an asset's cost over the years it is used"
+    },
+    {
+      "term": "Gross PPE",
+      "meaning": "the total original cost of long-lived assets, before any write-off"
+    },
+    {
+      "term": "Accumulated depreciation",
+      "meaning": "the total write-off taken so far"
+    },
+    {
+      "term": "Net PPE",
+      "meaning": "gross cost minus accumulated write-off, the book value of the assets"
+    },
+    {
+      "term": "Straight-line",
+      "meaning": "writing off the same amount each year"
+    },
+    {
+      "term": "Tranche",
+      "meaning": "one batch of spending that is depreciated as a group"
+    },
+    {
+      "term": "Useful life",
+      "meaning": "the number of years an asset is expected to be used"
+    }
+  ],
+  "depends_on": [
+    "backend/calc/utils.py"
+  ],
+  "used_by": [
+    "backend/calc/statements.py (its build_three_statement_model reads these results)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 24,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e79050337ef82037",
+      "title": "Module overview and imports",
+      "what": "Nothing runs here. It describes what the module does and the core formulas, and loads the helper that makes exact decimal numbers.",
+      "why": "Gives the reader the big picture and formulas before the detail.",
+      "watch_out": ""
+    },
+    {
+      "start": 25,
+      "end": 42,
+      "kind": "function",
+      "name": "calculate_capex_percent_revenue",
+      "id": "s2",
+      "hash": "2b58c34b7802d9ed",
+      "title": "Capital spending as share of revenue",
+      "what": "Turns each year's revenue into a capital spending amount by multiplying by one chosen percentage.",
+      "why": "Likely reason: lets spending rise and fall with sales without manual entry.",
+      "watch_out": "The percentage must be a decimal such as 0.05 for 5 percent; entering 5 would make spending 100 times too high."
+    },
+    {
+      "start": 43,
+      "end": 57,
+      "kind": "function",
+      "name": "calculate_capex_fixed",
+      "id": "s3",
+      "hash": "7865aad29bfef98f",
+      "title": "Fixed capital spending schedule",
+      "what": "Returns the yearly spending list exactly as it was given.",
+      "why": "Likely reason: keeps the same shape as the percentage option so both can be used the same way.",
+      "watch_out": "It does no checking, so an empty or missing list passes straight through to later steps."
+    },
+    {
+      "start": 58,
+      "end": 117,
+      "kind": "function",
+      "name": "calculate_depreciation_tranches (part 1)",
+      "id": "s4",
+      "hash": "766df99d8a0aede0",
+      "title": "Building gross assets and yearly depreciation",
+      "what": "Goes year by year, adds each year's spending to the asset total, and works out how much each earlier spending batch is written off that year.",
+      "why": "Depreciation spreads each purchase's cost over its useful life, so it affects profit and asset values.",
+      "watch_out": "First-year spending is depreciated but never added to gross assets, so the asset figures can disagree with each other."
+    },
+    {
+      "start": 118,
+      "end": 129,
+      "kind": "function",
+      "name": "calculate_depreciation_tranches (part 2)",
+      "id": "s5",
+      "hash": "fe88fc4fc9560fce",
+      "title": "Net assets and returned results",
+      "what": "Subtracts accumulated depreciation from gross PPE to get net PPE, then returns capex, depreciation, gross PPE, accumulated depreciation and net PPE in one dictionary.",
+      "why": "Net PPE is the book value of fixed assets after depreciation.",
+      "watch_out": "The capex entry is the original schedule object, not a copy, so later changes to it alter the result. The other series are converted to floats."
+    },
+    {
+      "start": 130,
+      "end": 168,
+      "kind": "function",
+      "name": "calculate_capex_full",
+      "id": "s6",
+      "hash": "eddc69f7db476b20",
+      "title": "Choosing spending method and running schedule",
+      "what": "Picks between the percentage of revenue method and the fixed schedule, then runs the full depreciation calculation. Any other type causes an error.",
+      "why": "Gives the rest of the model a single entry point, so callers do not need the individual steps.",
+      "watch_out": "A type spelled differently, such as with a capital letter, stops the run with an error."
+    }
+  ],
+  "explained_at": "2026-11-12T00:19:48+00:00",
+  "explained_by": "haiku",
+  "summary": "Works out how much the company spends on long-lived assets each year and how that spending is written off as depreciation over time.",
+  "purpose": "Produces yearly capital spending, depreciation, and the asset balances (gross, accumulated depreciation, and net) used by the three-statement model.",
+  "why": "Large purchases such as buildings and machines are not treated as one-year costs. Their cost is spread over several years, so the model needs a yearly schedule for them.",
+  "how": "1. Get yearly capital spending either as a share of revenue or from a fixed list. 2. Add each year's spending to the gross asset total. 3. For each earlier spending batch still within its useful life, take one equal slice as depreciation. 4. Add the year's depreciation to the running total. 5. Subtract accumulated depreciation from gross assets to get net assets.",
+  "inputs": "A revenue list per year; a spending type of percent_revenue or fixed; a percent (for percent_revenue) or a yearly spending list (for fixed); a useful life in years (default 5); optional opening gross assets and opening accumulated depreciation.",
+  "outputs": "A dictionary with the spending list, depreciation list, gross asset list, accumulated depreciation list, and net asset list, one value per year.",
+  "risks": "Spending in the first year is depreciated but never added to gross assets, so net assets are understated by that amount. Opening gross assets are never depreciated. A useful life of zero stops the calculation. A missing spending list or percentage causes an error. Negative spending is ignored when calculating depreciation.",
+  "debug": "If net assets look too low, compare first-year gross assets with first-year spending. If the balance sheet looks wrong, check the asset lines it receives from this file. To check by hand, use one spending value and a useful life of 1.",
+  "summary_hash": "sha256:73702963c9fd78d1130120cb494cfc30a1c0dda2010dcf08db1b895c0cbb654c"
+}

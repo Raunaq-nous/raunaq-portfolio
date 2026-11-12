@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "path": "backend/api/routes/orchestrator.py",
+  "language": "Python",
+  "lines": 183,
+  "hash": "sha256:b9c1e20792c8ba357c8ca266410d092a10203a824afbf93e625193a43a51735b",
+  "area": "backend-api",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The quick model route uses fixed numbers and is meant for testing.",
+      "Agent output is passed on without checking its shape.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "comparables",
+      "meaning": "similar public companies used to judge whether a company's numbers are reasonable."
+    },
+    {
+      "term": "benchmark",
+      "meaning": "a typical figure for an industry, such as a usual profit margin."
+    },
+    {
+      "term": "profile",
+      "meaning": "a summary of what a company does and how it earns money."
+    }
+  ],
+  "depends_on": [
+    "agents.orchestrator",
+    "config",
+    "fastapi",
+    "pydantic"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a47c85e5fc1d20ad",
+      "title": "Imports and logging setup",
+      "what": "Loads the web tools, the orchestrator agent and the settings, and sets up logging for this file.",
+      "why": "Likely reason: logging lets the team trace what each workflow step did.",
+      "watch_out": "The server log is the first place to look when these routes fail."
+    },
+    {
+      "start": 17,
+      "end": 21,
+      "kind": "class",
+      "name": "DiscoverRequest",
+      "id": "s2",
+      "hash": "1b9aeb4378e62ee6",
+      "title": "Request shape for discovery",
+      "what": "Holds just a company name for the discovery routes.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The quick model route reuses this same shape."
+    },
+    {
+      "start": 22,
+      "end": 27,
+      "kind": "class",
+      "name": "AssumptionsRequest",
+      "id": "s3",
+      "hash": "9c6c9453ef464480",
+      "title": "Request shape for assumptions",
+      "what": "Holds the company profile and the comparables data, both as free-form dictionaries.",
+      "why": "Likely reason: these come from earlier steps and their exact shape can change.",
+      "watch_out": "Whatever the caller sends is passed on without checks."
+    },
+    {
+      "start": 28,
+      "end": 68,
+      "kind": "function",
+      "name": "discover_company",
+      "id": "s4",
+      "hash": "277ea857abf390b4",
+      "title": "Discovering a company",
+      "what": "Runs two steps in order: first a company profile, then comparables and benchmarks. Returns them together.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The two agent calls run one after the other, so a slow web search slows the whole request."
+    },
+    {
+      "start": 69,
+      "end": 100,
+      "kind": "function",
+      "name": "determine_assumptions",
+      "id": "s5",
+      "hash": "d8a98102a9369552",
+      "title": "Setting model assumptions",
+      "what": "Turns the profile and comparables into a full set of model assumptions backed by research, so the user can review and edit them before building.",
+      "why": "Likely reason: the docstring says the user reviews assumptions first, which is why this is a separate step.",
+      "watch_out": "The assumptions are only as good as the research behind them, so the user should check the numbers."
+    },
+    {
+      "start": 101,
+      "end": 107,
+      "kind": "class",
+      "name": "BuildModelRequest",
+      "id": "s6",
+      "hash": "b7c6e43f91043e02",
+      "title": "Request shape for building a model",
+      "what": "Holds the profile, the assumptions and the number of years, which defaults to 5.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The year count is not limited here."
+    },
+    {
+      "start": 108,
+      "end": 141,
+      "kind": "function",
+      "name": "build_progressive_model",
+      "id": "s7",
+      "hash": "af99e0d09340be9b",
+      "title": "Building the full model",
+      "what": "Builds the three-statement model from the profile and assumptions over the chosen years, and returns it with its formulas and steps.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Assumption names must match what the agent expects, or the build may fail or leave gaps."
+    },
+    {
+      "start": 142,
+      "end": 183,
+      "kind": "function",
+      "name": "build_quick_model",
+      "id": "s8",
+      "hash": "aad08e39682b56f7",
+      "title": "Quick test model",
+      "what": "Builds a five-year model for a company name using fixed starting numbers, not the company's own data.",
+      "why": "Likely reason: the docstring says it is a simplified endpoint for testing.",
+      "watch_out": "The model looks like a real forecast but uses the same starting revenue and growth for every company."
+    }
+  ],
+  "explained_at": "2026-11-12T00:25:29+00:00",
+  "explained_by": "haiku",
+  "summary": "Routes that run the whole modeling workflow in steps: discover a company, set its assumptions, build a model, and build a quick test model with fixed numbers.",
+  "purpose": "Let the user type a company name and get a profile, comparable companies, benchmarks, assumptions and a finished model.",
+  "why": "Likely reason: replaces the older question-and-answer process, as the discovery docstring says.",
+  "how": "Discover asks the orchestrator agent for a profile, then finds comparables and benchmarks. Assumptions turns the profile and comparables into numbers. Build model creates a model over a number of years from those assumptions. Quick model uses hardcoded assumptions and the company name only.",
+  "inputs": "A company name; profile and comparables dictionaries; an assumptions dictionary and a year count defaulting to 5.",
+  "outputs": "A success status with the profile, comparables, benchmarks, assumptions or model.",
+  "risks": "The quick model builds from invented numbers, not the company's data. Web research results may be outdated or wrong, and nothing here checks them.",
+  "debug": "If discovery fails, check the orchestrator agent and the AI provider setting. Errors are logged with full traces in the server log, so start there.",
+  "summary_hash": "sha256:b9c1e20792c8ba357c8ca266410d092a10203a824afbf93e625193a43a51735b"
+}

@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "path": "backend/export/excel.py",
+  "language": "Python",
+  "lines": 618,
+  "hash": "sha256:5692fbd86def7c4d50a326e78d0ff2e82aba26417f70326d2fc6211ddc8e6223",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Most tabs are placeholders with titles only.",
+      "Growth rates are fixed numbers in formulas, not read from inputs.",
+      "Valuation inputs are typed in, not taken from research.",
+      "The balance check reads an empty cell and can give a false PASS.",
+      "No tests are visible for this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "xlsxwriter",
+      "meaning": "a Python library that writes Excel files"
+    },
+    {
+      "term": "formula",
+      "meaning": "a cell rule that calculates from other cells, so results update when inputs change"
+    },
+    {
+      "term": "named range",
+      "meaning": "a short label for a cell, such as Tax_Rate, so other formulas can use the name"
+    },
+    {
+      "term": "workbook",
+      "meaning": "one Excel file that holds several tabs"
+    },
+    {
+      "term": "tab",
+      "meaning": "one sheet inside an Excel workbook"
+    },
+    {
+      "term": "driver",
+      "meaning": "an assumption, such as tax rate or inflation, that the model uses across the years"
+    },
+    {
+      "term": "WACC",
+      "meaning": "weighted average cost of capital, the blended return a company must earn to pay its lenders and owners, used to value future cash"
+    },
+    {
+      "term": "DCF",
+      "meaning": "discounted cash flow, a valuation that adds up future cash and reduces it to today's value"
+    },
+    {
+      "term": "equity risk premium",
+      "meaning": "the extra return investors expect for holding stocks instead of safe government bonds"
+    },
+    {
+      "term": "beta",
+      "meaning": "a measure of how much a company's value tends to move with the whole market"
+    }
+  ],
+  "depends_on": [
+    "xlsxwriter",
+    "Python logging module"
+  ],
+  "used_by": [
+    "Not visible in the code provided"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 35,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "51182bb5fd20536e",
+      "title": "File purpose and planned tabs",
+      "what": "Holds the description of the file, the planned list of tabs and the libraries it needs. It only loads tools and sets up logging when it runs.",
+      "why": "The top comment works as a design brief for the workbook.",
+      "watch_out": "The tab list is a plan, and several tabs in it are only titles in the code below."
+    },
+    {
+      "start": 36,
+      "end": 88,
+      "kind": "class",
+      "name": "ExcelExporter (part 1)",
+      "id": "s2",
+      "hash": "fae006ad74b5c3ef",
+      "title": "Exporter setup and the full export run",
+      "what": "Creates the exporter object that holds the model and scenario data, then runs the export. The export builds every tab in order, saves the file and returns its name.",
+      "why": "Likely reason: one place controls the order of tabs and closes the file at the end.",
+      "watch_out": "The file is only saved at the end, so a failure in any tab means no complete file is written."
+    },
+    {
+      "start": 89,
+      "end": 148,
+      "kind": "method",
+      "name": "ExcelExporter: _create_formats",
+      "id": "s3",
+      "hash": "48aff638d3e20c56",
+      "title": "Colour and style rules for cells",
+      "what": "Defines the cell styles: blue headers, yellow input cells, grey formula cells, and green or red for pass or fail.",
+      "why": "Likely reason: consistent colours tell the user which cells to type into.",
+      "watch_out": "Nothing enforces the colour meaning, so a formula cell can be coloured as an input by mistake."
+    },
+    {
+      "start": 149,
+      "end": 193,
+      "kind": "class",
+      "name": "ExcelExporter (part 3)",
+      "id": "s4",
+      "hash": "dd50a5f9f98fe787",
+      "title": "README tab with usage steps",
+      "what": "Writes the README tab with steps for using the model, colour rules, the model and scenario names, and a note that valuation inputs come from Damodaran Online.",
+      "why": "Likely reason: gives a new user instructions inside the file itself.",
+      "watch_out": "The README says changes update everywhere automatically, which is only partly true because several tabs are unbuilt."
+    },
+    {
+      "start": 194,
+      "end": 238,
+      "kind": "method",
+      "name": "ExcelExporter: create_control_timeline_tab",
+      "id": "s5",
+      "hash": "97a4b570d523c9e8",
+      "title": "Core settings and the timeline",
+      "what": "Writes the start year, horizon in years, unit divisor, currency and scenario name, and gives names to the first three. It then writes year headers across the timeline.",
+      "why": "Likely reason: keeps central settings in one place that other formulas refer to by name.",
+      "watch_out": "The unit divisor scales every money figure, so changing it changes all values at once."
+    },
+    {
+      "start": 239,
+      "end": 296,
+      "kind": "method",
+      "name": "ExcelExporter: create_assumptions_drivers_tab",
+      "id": "s6",
+      "hash": "ed1ad8f7d83e578e",
+      "title": "Shared driver table",
+      "what": "Writes a table of shared assumptions (tax rate, three inflation rates, three working capital day counts and interest rate) with yearly values, and names the first-year cell of each.",
+      "why": "Likely reason: keeps shared assumptions in one table that other tabs can refer to.",
+      "watch_out": "A missing driver value defaults to zero, which can quietly turn off a rate."
+    },
+    {
+      "start": 297,
+      "end": 356,
+      "kind": "class",
+      "name": "ExcelExporter (part 6)",
+      "id": "s7",
+      "hash": "3b5648bfe4cad1a6",
+      "title": "Revenue volume table",
+      "what": "Finishes the driver table by naming first-year cells, then starts the Revenue_Build tab. It writes the volume table: the base volume is typed in, and each later year grows by a fixed 5 percent.",
+      "why": "Likely reason: a first version of revenue. The code comment says growth should come from an input cell instead.",
+      "watch_out": "The 5 percent is built into every formula, so changing the growth driver does nothing."
+    },
+    {
+      "start": 357,
+      "end": 415,
+      "kind": "class",
+      "name": "ExcelExporter (part 7)",
+      "id": "s8",
+      "hash": "91cd6ac73feda0f5",
+      "title": "Price table and revenue headers",
+      "what": "Writes the price table in the same way: the base price is typed in, and each later year grows by a fixed 2 percent. It then writes the revenue section headers.",
+      "why": "Likely reason: the same pattern as volume, so price and volume can be multiplied together later.",
+      "watch_out": "The 2 percent price growth is fixed in the formula and not read from any input."
+    },
+    {
+      "start": 416,
+      "end": 474,
+      "kind": "class",
+      "name": "ExcelExporter (part 8)",
+      "id": "s9",
+      "hash": "065fdfd6ef738bed",
+      "title": "Revenue by product line and total",
+      "what": "Works out revenue for each product line in each year as volume times price, divided by the unit divisor. Then adds a total row for all lines.",
+      "why": "Likely reason: the division converts to the reporting unit, such as thousands, so totals read cleanly.",
+      "watch_out": "The total adds a fixed block of rows, so the layout must stay in step with this code if rows are added or removed."
+    },
+    {
+      "start": 475,
+      "end": 531,
+      "kind": "method",
+      "name": "ExcelExporter: create_working_capital_tab",
+      "id": "s10",
+      "hash": "5dc59e152e398355",
+      "title": "Placeholder tabs and start of valuation",
+      "what": "Writes titles only for the Working_Capital, Debt_Equity, Taxes, Three_Statement and KPIs tabs. Then starts the Valuation_DCF tab with a title and the first WACC input lines.",
+      "why": "Reason not stated in the code. The empty tabs appear to be placeholders for later work.",
+      "watch_out": "Several financial statements are empty, so the balance check and the valuation cannot be relied on yet."
+    },
+    {
+      "start": 532,
+      "end": 565,
+      "kind": "class",
+      "name": "ExcelExporter (part 10)",
+      "id": "s11",
+      "hash": "5ea8fc8790b5774b",
+      "title": "Valuation inputs and cost of equity",
+      "what": "Writes the WACC inputs: risk-free rate 4 percent, equity risk premium 5.5 percent, country risk 0, and unlevered beta 1.0, each with a source label. It then writes the cost of equity formula from those cells.",
+      "why": "Likely reason: shows each valuation input next to a source label so the user can check it.",
+      "watch_out": "The cost of equity uses the unlevered beta with no adjustment for debt, which may be wrong for a company that carries debt."
+    },
+    {
+      "start": 566,
+      "end": 604,
+      "kind": "method",
+      "name": "ExcelExporter: create_checks_log_tab",
+      "id": "s12",
+      "hash": "bedc4968d7597a97",
+      "title": "Balance check tab",
+      "what": "Writes the Checks_Log tab with one check: the balance sheet should balance. It shows PASS in green when the difference is under 0.01, and FAIL in red otherwise. It reads its value from a cell on the Three_Statement tab, which is not built.",
+      "why": "Likely reason: a built-in test that the balance sheet adds up.",
+      "watch_out": "The value cell points to an empty cell, so the check shows PASS even when the model is unbalanced."
+    },
+    {
+      "start": 605,
+      "end": 618,
+      "kind": "function",
+      "name": "export_to_excel",
+      "id": "s13",
+      "hash": "e7aedb8e9596e52d",
+      "title": "Simple entry point for the export",
+      "what": "Takes the model data, scenario data and a file name, runs the exporter and returns the file name.",
+      "why": "Likely reason: callers do not need to know how the exporter class works inside.",
+      "watch_out": "Errors are not caught here, so the code that calls this must handle them."
+    }
+  ],
+  "explained_at": "2026-11-12T00:38:00+00:00",
+  "explained_by": "haiku",
+  "summary": "Writes the financial model to an Excel workbook, using formulas so that changing an input updates the results, but most tabs are still empty placeholders.",
+  "purpose": "Lets the user download the model as an Excel file they can open, check and edit.",
+  "why": "Likely reason: formulas instead of fixed numbers let the user test what-if changes inside Excel itself. The header comment states this as a critical requirement.",
+  "how": "1. Creates the workbook file. 2. Defines the colour styles for inputs, formulas, headers and pass or fail. 3. Creates each tab in a fixed order. 4. On the Control_Timeline tab, writes the start year, horizon, unit divisor and currency, and gives names to the key cells. 5. On the Assumptions_Drivers tab, writes driver values and names their first-year cells. 6. On the Revenue_Build tab, writes volume and price rows with growth formulas, then revenue as volume times price divided by the unit divisor. 7. On the Valuation_DCF tab, writes fixed WACC inputs and a cost of equity formula. 8. On the Checks_Log tab, writes one balance check. 9. Saves and closes the file. Most other tabs only write a title.",
+  "inputs": "model_data with name, currency, start_year, horizon_years and unit_divisor. scenario_data with name, drivers and lines (each line with region, product, line_id, base_volume and base_price). A file name to write to.",
+  "outputs": "An .xlsx Excel file at the given path. The function returns the same file name.",
+  "risks": "Revenue growth is fixed at 5 percent for volume and 2 percent for price inside the formulas, so the drivers and inputs for growth do nothing. Valuation inputs (risk-free rate 4 percent, equity risk premium 5.5 percent, beta 1.0) are typed in and are not taken from the research code, although the labels cite Damodaran. The balance check reads an empty cell, so it can show PASS even when the model does not balance. Missing driver values default to zero, which can silently switch off a rate. Most tabs are titles only, so the workbook looks more complete than it is. The file is only saved at the end, so an error midway can leave no complete file.",
+  "debug": "Do not trust the Checks_Log PASS yet, because it reads an empty cell. If a KeyError appears, check that model_data and scenario_data contain the listed keys. If a formula shows an error in Excel, click the cell and follow what it points to. Check that the driver names in the scenario match the names in the driver list. Look for log lines from this module's logger to see which tab was being built when things failed.",
+  "summary_hash": "sha256:5692fbd86def7c4d50a326e78d0ff2e82aba26417f70326d2fc6211ddc8e6223"
+}

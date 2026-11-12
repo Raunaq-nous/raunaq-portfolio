@@ -1,0 +1,277 @@
+{
+  "schema_version": 1,
+  "path": "backend/db/models.py",
+  "language": "Python",
+  "lines": 320,
+  "hash": "sha256:9ddf7d72042bf595d175a84a60c7e69ade9e4a67b0b568cb708eb8b2581fbe18",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No migrations.",
+      "No tests visible.",
+      "Expected values are described only in comments."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Table",
+      "meaning": "A grid of rows and columns in a database."
+    },
+    {
+      "term": "Column",
+      "meaning": "One named field in a table."
+    },
+    {
+      "term": "Primary key",
+      "meaning": "The column that uniquely identifies each row."
+    },
+    {
+      "term": "Index",
+      "meaning": "A lookup aid that makes searches faster."
+    },
+    {
+      "term": "Cascade delete",
+      "meaning": "Deleting a parent row also deletes its linked child rows."
+    },
+    {
+      "term": "Scenario",
+      "meaning": "A named set of assumptions, such as base, upside or downside."
+    },
+    {
+      "term": "Driver",
+      "meaning": "A model-wide assumption such as a tax rate."
+    },
+    {
+      "term": "Time bucket",
+      "meaning": "One time period, such as Year 1 or Q1 2024."
+    },
+    {
+      "term": "Balance sheet",
+      "meaning": "A summary of what a company owns, owes and has as equity at a point in time."
+    },
+    {
+      "term": "WACC",
+      "meaning": "Weighted average cost of capital, the discount rate used to value a company."
+    },
+    {
+      "term": "Enterprise value",
+      "meaning": "The value of a company's operations before subtracting net debt."
+    }
+  ],
+  "depends_on": [
+    "sqlalchemy",
+    "backend/db/database.py"
+  ],
+  "used_by": [
+    "backend/db/database.py",
+    "backend routes and calculation code (not in packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "16fd6835639897de",
+      "title": "Imports and base class",
+      "what": "Brings in the column types, relationship tools, timestamps and the shared base class.",
+      "why": "Likely reason: needed to define every table.",
+      "watch_out": "The base class must come from database.py or the tables will not be registered."
+    },
+    {
+      "start": 20,
+      "end": 24,
+      "kind": "function",
+      "name": "generate_uuid",
+      "id": "s2",
+      "hash": "c8af659a46d27842",
+      "title": "Row id generator",
+      "what": "Creates a unique text id for each new row.",
+      "why": "Likely reason: avoids clashes and lets ids be made before saving.",
+      "watch_out": "The ids are random text, so sorting by id does not give creation order."
+    },
+    {
+      "start": 25,
+      "end": 44,
+      "kind": "class",
+      "name": "Model",
+      "id": "s3",
+      "hash": "fbdbb51bb802a3b8",
+      "title": "Model table",
+      "what": "Stores one financial model: name, currency, unit scale, start year, forecast length and granularity, plus links to its scenarios, drivers and segments.",
+      "why": "Likely reason: the top-level record that everything else belongs to.",
+      "watch_out": "The unit divisor must be applied consistently in every calculation; nothing here enforces it."
+    },
+    {
+      "start": 45,
+      "end": 64,
+      "kind": "class",
+      "name": "Scenario",
+      "id": "s4",
+      "hash": "fe03a563b4334305",
+      "title": "Scenario table",
+      "what": "Stores a named version of a model, such as base, upside or downside, with a default flag and links to its periods, driver values and inputs.",
+      "why": "Likely reason: lets one model be tested under several sets of assumptions.",
+      "watch_out": "Nothing stops two scenarios in one model from both being marked default."
+    },
+    {
+      "start": 65,
+      "end": 82,
+      "kind": "class",
+      "name": "TimeBucket",
+      "id": "s5",
+      "hash": "8101047ae752987d",
+      "title": "Time bucket table",
+      "what": "Stores one period within a scenario, with a label, dates, granularity and an ordering number.",
+      "why": "Likely reason: calculations need a fixed order of periods.",
+      "watch_out": "Gaps or duplicate ordering numbers would confuse calculations."
+    },
+    {
+      "start": 83,
+      "end": 99,
+      "kind": "class",
+      "name": "Driver",
+      "id": "s6",
+      "hash": "8ff9e803abb9fe5d",
+      "title": "Driver table",
+      "what": "Stores a model-wide assumption with its key, description and unit.",
+      "why": "Likely reason: one definition shared by all scenarios.",
+      "watch_out": "The key is free text, so a typo creates a new driver instead of matching the old one."
+    },
+    {
+      "start": 100,
+      "end": 116,
+      "kind": "class",
+      "name": "DriverValue",
+      "id": "s7",
+      "hash": "11640f09e70a47ee",
+      "title": "Driver value table",
+      "what": "Stores the value of one driver for one scenario in one period.",
+      "why": "Likely reason: lets the same driver change over time and between scenarios.",
+      "watch_out": "A unique index allows only one value per scenario, driver and period, so a duplicate insert will fail."
+    },
+    {
+      "start": 117,
+      "end": 133,
+      "kind": "class",
+      "name": "Segment",
+      "id": "s8",
+      "hash": "5287e141c01d40b8",
+      "title": "Segment table",
+      "what": "Stores a business part defined by region and product code, which holds lines.",
+      "why": "Likely reason: groups related revenue and cost items.",
+      "watch_out": "Region and product code are free text, so spelling differences split a segment."
+    },
+    {
+      "start": 134,
+      "end": 149,
+      "kind": "class",
+      "name": "Line",
+      "id": "s9",
+      "hash": "310d941a5390e85a",
+      "title": "Line table",
+      "what": "Stores one revenue or cost item inside a segment, with an on or off switch.",
+      "why": "Likely reason: the switch lets a user test a line without deleting it.",
+      "watch_out": "Whether inactive lines are excluded from results is not visible in this file."
+    },
+    {
+      "start": 150,
+      "end": 169,
+      "kind": "class",
+      "name": "LineInput",
+      "id": "s10",
+      "hash": "0a42c2e581e39d51",
+      "title": "Line input table",
+      "what": "Stores one input number for a line, such as volume, price or growth rate, for a scenario and optional period.",
+      "why": "Likely reason: the inputs that drive every calculation.",
+      "watch_out": "Metric names are free text and must match exactly what calculations look for. The unique index may not block duplicates when the period is empty, because databases treat empty values as distinct."
+    },
+    {
+      "start": 170,
+      "end": 184,
+      "kind": "class",
+      "name": "ResultRevenue",
+      "id": "s11",
+      "hash": "e0fff8d1c029fc55",
+      "title": "Revenue result table",
+      "what": "Stores calculated volume, price and revenue for each line and period.",
+      "why": "Likely reason: saves results so they need not be recalculated on every view.",
+      "watch_out": "These are saved outputs, so they go stale if inputs change and nothing recalculates them."
+    },
+    {
+      "start": 185,
+      "end": 200,
+      "kind": "class",
+      "name": "ResultCOGS",
+      "id": "s12",
+      "hash": "760248f1045c14d7",
+      "title": "Cost of goods result table",
+      "what": "Stores calculated variable and fixed cost of goods sold, plus the cost per unit, for each line and period.",
+      "why": "Likely reason: same purpose as the revenue results table.",
+      "watch_out": "Same stale-result risk as the revenue table."
+    },
+    {
+      "start": 201,
+      "end": 251,
+      "kind": "class",
+      "name": "ResultStatement",
+      "id": "s13",
+      "hash": "83529b08fff5e6ff",
+      "title": "Financial statement result table",
+      "what": "Stores the income statement, cash flow and balance sheet figures for each period in one table.",
+      "why": "Likely reason: keeps the three statements together for easy reading.",
+      "watch_out": "The balance check should be zero when the model is correct. A non-zero value means the model has an error. Many columns allow empty values."
+    },
+    {
+      "start": 252,
+      "end": 285,
+      "kind": "class",
+      "name": "ResultValuation",
+      "id": "s14",
+      "hash": "a9e5cb67eb55cb4a",
+      "title": "Valuation result table",
+      "what": "Stores the discount rate parts and valuation outputs, with one row per scenario.",
+      "why": "Likely reason: one set of valuation numbers per scenario.",
+      "watch_out": "The scenario link is unique, so rerunning the valuation must replace the old row, not add another."
+    },
+    {
+      "start": 286,
+      "end": 309,
+      "kind": "class",
+      "name": "ResearchData",
+      "id": "s15",
+      "hash": "62121ee06f7be6c6",
+      "title": "Research data table",
+      "what": "Stores facts gathered from outside sources, such as a metric, value, country and sector, with the original data kept as JSON.",
+      "why": "Likely reason: caches research so it is not fetched again each time.",
+      "watch_out": "This table does not expire old rows. Expiry, if any, is controlled elsewhere; the code that does it is not in the packet."
+    },
+    {
+      "start": 310,
+      "end": 320,
+      "kind": "class",
+      "name": "ResearchCitation",
+      "id": "s16",
+      "hash": "6e0ed8b296cd0f6e",
+      "title": "Research citation table",
+      "what": "Stores a short citation key and full reference text, linked to one research data row.",
+      "why": "Likely reason: keeps the source of each number traceable.",
+      "watch_out": "Citations are deleted automatically when their research row is deleted."
+    }
+  ],
+  "explained_at": "2026-11-12T00:35:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines every database table the app uses: models, scenarios, drivers, segments, lines, inputs, calculated results and research data.",
+  "purpose": "Describes the shape of all stored data in one file.",
+  "why": "Likely reason: one file keeps the tables and their links consistent.",
+  "how": "Each class becomes one table. Each row gets a generated text id. Foreign keys link child tables to parents, and cascade rules remove children when a parent is deleted. Indexes speed up lookups. Results tables store calculated numbers.",
+  "inputs": "Data written by the app and its calculation code.",
+  "outputs": "Rows stored in the tables defined here.",
+  "risks": "Changing a column later will not update existing databases, since no migrations are visible. Several result columns allow empty values. The balance check is only a comment; nothing enforces it. Deleting a parent can remove many child rows at once.",
+  "debug": "After a model change, a missing column error means the database predates the change, so it needs migrating or recreating, which loses data. Check table name text matches the class.",
+  "summary_hash": "sha256:9ddf7d72042bf595d175a84a60c7e69ade9e4a67b0b568cb708eb8b2581fbe18"
+}

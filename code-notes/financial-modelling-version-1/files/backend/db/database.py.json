@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "path": "backend/db/database.py",
+  "language": "Python",
+  "lines": 81,
+  "hash": "sha256:dbd9dfcba5bdaa0a8e9c894be73ed71aef4f4a7874e7675eb74e456b38f54dd3",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No migrations, so table changes do not reach existing databases.",
+      "No tests visible.",
+      "drop_all has no safety check."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SQLAlchemy",
+      "meaning": "A Python library for talking to databases using Python classes."
+    },
+    {
+      "term": "Engine",
+      "meaning": "The object that holds the connection to the database."
+    },
+    {
+      "term": "Session",
+      "meaning": "A short working space for reading and writing database rows."
+    },
+    {
+      "term": "SQLite",
+      "meaning": "A small database stored in a single file."
+    },
+    {
+      "term": "Foreign key",
+      "meaning": "A link from one table row to a row in another table that must exist."
+    },
+    {
+      "term": "Migration",
+      "meaning": "A managed change to a database structure over time."
+    }
+  ],
+  "depends_on": [
+    "sqlalchemy",
+    "backend/config.py",
+    "backend/db/models.py"
+  ],
+  "used_by": [
+    "backend/db/models.py",
+    "FastAPI route files (not in packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 38,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ae6ddd7a8ce0481d",
+      "title": "Connection setup",
+      "what": "Creates the database engine, turns on foreign key checks for SQLite, and builds the session factory and base class for tables.",
+      "why": "Likely reason: one shared connection setup for the whole backend.",
+      "watch_out": "The foreign key switch only applies to SQLite databases."
+    },
+    {
+      "start": 39,
+      "end": 54,
+      "kind": "function",
+      "name": "get_db",
+      "id": "s2",
+      "hash": "c9d22e0f95c07fd7",
+      "title": "Per-request session",
+      "what": "Opens a database session for a web request and closes it when the request ends.",
+      "why": "Likely reason: prevents sessions from being left open.",
+      "watch_out": "The return type says Session, but the function yields one, which is a looser contract than it looks."
+    },
+    {
+      "start": 55,
+      "end": 70,
+      "kind": "function",
+      "name": "get_db_context",
+      "id": "s3",
+      "hash": "30e3c5afd35f8031",
+      "title": "Session for scripts",
+      "what": "Provides the same open-and-close behaviour for scripts or one-off tasks.",
+      "why": "Likely reason: lets non-web code use the database safely.",
+      "watch_out": "Code that forgets to use the with statement can leave sessions open."
+    },
+    {
+      "start": 71,
+      "end": 77,
+      "kind": "function",
+      "name": "init_db",
+      "id": "s4",
+      "hash": "52abe58707d1fdaa",
+      "title": "Create tables",
+      "what": "Imports the models and creates every table that does not exist yet.",
+      "why": "Likely reason: sets up a new database in one call.",
+      "watch_out": "Existing tables are not updated when the models change."
+    },
+    {
+      "start": 78,
+      "end": 81,
+      "kind": "function",
+      "name": "drop_all",
+      "id": "s5",
+      "hash": "ebfe8c9181fd4e68",
+      "title": "Drop all tables",
+      "what": "Deletes every table and all their data.",
+      "why": "Likely reason: for resetting a development database.",
+      "watch_out": "This erases all data with no confirmation. Never run it against real data."
+    }
+  ],
+  "explained_at": "2026-11-12T00:35:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Sets up the database connection, gives code a way to open a session, and creates or drops all tables.",
+  "purpose": "The connection layer that every database operation uses.",
+  "why": "Likely reason: one shared setup for the whole backend. SQLite foreign key checks are switched on because SQLite leaves them off by default.",
+  "how": "Creates the engine from the database address. For SQLite, allows multi-thread use and turns on foreign keys for each connection. Builds a session factory and a base class for tables. get_db gives FastAPI a session per request and closes it afterwards. get_db_context does the same for scripts. init_db creates tables from the models. drop_all deletes them.",
+  "inputs": "The database_url setting and the table definitions in models.py.",
+  "outputs": "Database sessions and tables in the database.",
+  "risks": "drop_all deletes all data with no confirmation. init_db creates only missing tables and does not change existing ones, and no migration tool is visible. The declarative base import location is older and may warn with newer SQLAlchemy.",
+  "debug": "For no such table errors, run init_db. For foreign key errors, confirm the database is SQLite. For connection failures, check database_url in the .env file.",
+  "summary_hash": "sha256:dbd9dfcba5bdaa0a8e9c894be73ed71aef4f4a7874e7675eb74e456b38f54dd3"
+}

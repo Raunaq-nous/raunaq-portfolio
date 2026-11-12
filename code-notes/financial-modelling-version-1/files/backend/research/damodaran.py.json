@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "path": "backend/research/damodaran.py",
+  "language": "Python",
+  "lines": 260,
+  "hash": "sha256:bc4b9ca4dc4285d74635a4bb237081c31dc814cd9165558e189dd4df9f75c84c",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Column reading is guessed and labelled as simplified.",
+      "Failures are silent and return empty results.",
+      "The cache folder is created but not used.",
+      "Results are not connected to the Excel valuation tab.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "beta",
+      "meaning": "a measure of how much a company's value moves with the market"
+    },
+    {
+      "term": "unlevered beta",
+      "meaning": "beta with the effect of the company's debt removed"
+    },
+    {
+      "term": "equity risk premium",
+      "meaning": "the extra return investors expect for holding stocks over safe bonds"
+    },
+    {
+      "term": "country risk premium",
+      "meaning": "an extra return investors want for investing in a country seen as riskier"
+    },
+    {
+      "term": "scrape",
+      "meaning": "to pull data out of a web page automatically"
+    },
+    {
+      "term": "HTML table",
+      "meaning": "a grid of rows and columns inside a web page"
+    },
+    {
+      "term": "BeautifulSoup",
+      "meaning": "a Python library that reads the structure of a web page"
+    },
+    {
+      "term": "pandas",
+      "meaning": "a Python library for working with tables of data"
+    }
+  ],
+  "depends_on": [
+    "requests",
+    "beautifulsoup4 (BeautifulSoup)",
+    "pandas",
+    "Damodaran Online website (pages.stern.nyu.edu)"
+  ],
+  "used_by": [
+    "Not visible in the code provided"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 32,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "2ab64101d2c8f93b",
+      "title": "Sources and imports",
+      "what": "Explains the data sources and how the scraper works, then loads the tools for web requests, page reading, tables, dates and logging.",
+      "why": "The notes at the top summarize the design.",
+      "watch_out": "The web addresses are fixed in the code, so a change to the site breaks the scraper."
+    },
+    {
+      "start": 33,
+      "end": 91,
+      "kind": "class",
+      "name": "DamodaranScraper (part 1)",
+      "id": "s2",
+      "hash": "0afe397d93bd63c4",
+      "title": "Scraper setup and industry beta download",
+      "what": "Sets up the scraper with its page addresses and default cache folder, then starts the industry beta download by fetching the page and finding its tables.",
+      "why": "Likely reason: keeps all web addresses in one place.",
+      "watch_out": "The default cache folder is a fixed path that may not exist on another computer."
+    },
+    {
+      "start": 92,
+      "end": 123,
+      "kind": "class",
+      "name": "DamodaranScraper (part 2)",
+      "id": "s3",
+      "hash": "fb2db3d417ff4f6d",
+      "title": "Turning beta rows into records",
+      "what": "Reads the first table on the industry beta page into records. It tries column names first and falls back to column positions, skipping rows it cannot read.",
+      "why": "Likely reason: the page layout is not stable, so the code tries names first and then positions.",
+      "watch_out": "Falling back to column positions can read the wrong number if the table layout changes."
+    },
+    {
+      "start": 124,
+      "end": 172,
+      "kind": "method",
+      "name": "DamodaranScraper: fetch_implied_erp",
+      "id": "s4",
+      "hash": "c7bd7205394a6dcf",
+      "title": "Implied equity risk premium download",
+      "what": "Downloads the implied equity risk premium page and turns each row into a record, using the second column as the value and the first as a date note.",
+      "why": "Likely reason: the valuation needs a current market premium, which this page provides.",
+      "watch_out": "It assumes the first column is a date and the second is the value, so a layout change gives wrong numbers without an error."
+    },
+    {
+      "start": 173,
+      "end": 221,
+      "kind": "method",
+      "name": "DamodaranScraper: fetch_country_risk_premiums",
+      "id": "s5",
+      "hash": "81889e0aa6940c27",
+      "title": "Country risk premium download",
+      "what": "Downloads the country risk page and makes one record per country, with its premium and rating note.",
+      "why": "Likely reason: lets the model use a higher premium for countries that are riskier than the US.",
+      "watch_out": "Values come from fixed column positions, so a shifted column gives a wrong premium with no error."
+    },
+    {
+      "start": 222,
+      "end": 260,
+      "kind": "method",
+      "name": "DamodaranScraper: fetch_all_datasets",
+      "id": "s6",
+      "hash": "07aaba69620c4da5",
+      "title": "Fetch all datasets and build citations",
+      "what": "Runs all three downloads, adds up the record counts and logs them. Also builds a citation line for a record.",
+      "why": "Likely reason: one entry point gets all the data, and citations are needed to credit each source.",
+      "watch_out": "If one download fails, the others still run, so the total can look normal while one dataset is empty."
+    }
+  ],
+  "explained_at": "2026-11-12T00:38:00+00:00",
+  "explained_by": "haiku",
+  "summary": "Downloads three data tables from Aswath Damodaran's NYU website (industry betas, implied equity risk premium and country risk premiums) and turns them into standard records with citations.",
+  "purpose": "Supplies sourced market numbers that could feed valuation inputs.",
+  "why": "Likely reason: the valuation needs current market data, and the code keeps the source with each number.",
+  "how": "1. For each dataset, downloads the page with a 30 second limit. 2. Finds the first table on the page. 3. Reads the table and turns each row into a record with source, title, date, value and unit. 4. Skips rows that cannot be read. 5. Returns all records grouped by dataset. 6. Builds a citation for a record when asked.",
+  "inputs": "The fixed Damodaran web addresses in the code, and an optional cache folder.",
+  "outputs": "Lists of records for each dataset, empty lists when a download fails, and citation text.",
+  "risks": "Column positions are guessed, and the code itself calls this a simplified example, so values may come from the wrong column. A failure returns an empty list with only a log line, so 'no data' and 'site down' look the same. The cache folder is created but never used in the code shown. The default folder is a fixed path that may not exist or may not be writable. The website layout can change without warning. The Excel valuation tab uses fixed numbers, so these results do not reach the workbook.",
+  "debug": "If results are empty, check the log for fetch errors, then open the page in a browser to see whether its layout changed. If values look wrong, print one row and compare its columns with the page. Check the internet connection and any proxy settings. Confirm the cache folder exists and is writable.",
+  "summary_hash": "sha256:bc4b9ca4dc4285d74635a4bb237081c31dc814cd9165558e189dd4df9f75c84c"
+}

@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "path": "backend/main.py",
+  "language": "Python",
+  "lines": 110,
+  "hash": "sha256:619f6dbc93d5264c7ef8448ead295bd9c191b4cb76e4cd824fc4a4ffb3f8286d",
+  "area": "backend",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The health check does not really test the database.",
+      "Error responses expose internal error text.",
+      "The root redirect target is not confirmed to exist.",
+      "The reload setting comes from configuration and must be checked before live use.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "FastAPI",
+      "meaning": "a Python framework for building web APIs"
+    },
+    {
+      "term": "API",
+      "meaning": "a doorway that other programs use to ask this app for data"
+    },
+    {
+      "term": "route",
+      "meaning": "a web address the app answers, such as one for models"
+    },
+    {
+      "term": "router",
+      "meaning": "a group of related routes registered together"
+    },
+    {
+      "term": "CORS",
+      "meaning": "a browser rule that blocks a page from calling a server on another address unless the server allows it"
+    },
+    {
+      "term": "static files",
+      "meaning": "pages, images or scripts sent to the browser exactly as stored"
+    },
+    {
+      "term": "uvicorn",
+      "meaning": "the server program that actually receives web requests"
+    },
+    {
+      "term": "health check",
+      "meaning": "a simple address that reports whether the app is running"
+    },
+    {
+      "term": "Ollama",
+      "meaning": "a program that runs AI language models on a computer"
+    }
+  ],
+  "depends_on": [
+    "fastapi",
+    "uvicorn",
+    "configuration module (imported as settings)",
+    "database module (db/database)",
+    "API route modules (api/routes)"
+  ],
+  "used_by": [
+    "Run directly as the entry point, or started by uvicorn using main:app"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 22,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e0c03840a24f1e32",
+      "title": "Imports and logging setup",
+      "what": "Loads the web framework, the CORS helper, the static file helper, the configuration and database setup, and sets logging to info level.",
+      "why": "Likely reason: loads the tools the app needs before it is built.",
+      "watch_out": ""
+    },
+    {
+      "start": 23,
+      "end": 51,
+      "kind": "function",
+      "name": "lifespan",
+      "id": "s2",
+      "hash": "8784fc12e43d824f",
+      "title": "Startup steps and allowed front ends",
+      "what": "Defines the startup step (prepare the database) and the shutdown message, then creates the app with its title, version and CORS rules that allow only the two local front-end ports.",
+      "why": "Likely reason: sets up the database before any request arrives.",
+      "watch_out": "If database setup fails, startup stops, so check the log first."
+    },
+    {
+      "start": 52,
+      "end": 59,
+      "kind": "function",
+      "name": "root",
+      "id": "s3",
+      "hash": "6a1113174aa5a389",
+      "title": "Root address redirect",
+      "what": "When someone opens the root address, sends them to the static page at static/index.html.",
+      "why": "Likely reason: the first page users see is the web interface, not the API.",
+      "watch_out": "The file name must match what is in the static folder, or the user gets a 404 error."
+    },
+    {
+      "start": 60,
+      "end": 92,
+      "kind": "function",
+      "name": "health_check",
+      "id": "s4",
+      "hash": "7c9316e5303544a0",
+      "title": "Health check, feature groups and static folder",
+      "what": "Provides a health endpoint that reports healthy, a connected database and the Ollama host. Registers each feature group under its web address, then mounts the static folder if it exists.",
+      "why": "Likely reason: a simple check that the app is running, and a clear grouping of features.",
+      "watch_out": "The health check says connected without testing the database, so a healthy result does not prove the database works."
+    },
+    {
+      "start": 93,
+      "end": 102,
+      "kind": "function",
+      "name": "global_exception_handler",
+      "id": "s5",
+      "hash": "bbbddc8a3478c29f",
+      "title": "Catch-all error handler",
+      "what": "Catches any unhandled error, writes it to the log, and returns a 500 response with the error text in the detail field.",
+      "why": "Likely reason: keeps the server running and gives the browser a readable error.",
+      "watch_out": "The raw error text goes to the caller, which can reveal file paths or internal details."
+    },
+    {
+      "start": 103,
+      "end": 110,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s6",
+      "hash": "68071cf167200055",
+      "title": "Direct start-up block",
+      "what": "When the file is run directly, starts the server with the host, port and reload settings from configuration.",
+      "why": "Likely reason: lets a developer start the app with one command.",
+      "watch_out": "Reload restarts the server on every code change, so it should be off for a live server."
+    }
+  ],
+  "explained_at": "2026-11-12T00:38:00+00:00",
+  "explained_by": "haiku",
+  "summary": "Starts the backend web application. It prepares the database at startup, connects all feature groups of the API, serves the static web page and offers a health check.",
+  "purpose": "This is the front door of the backend. It is the program that runs the whole API.",
+  "why": "Likely reason: the standard way to start a FastAPI app, with each feature group registered under its own web address.",
+  "how": "1. Sets up logging. 2. At startup, prepares the database. 3. Allows the two local front-end ports to call the API. 4. Registers each feature group under its web address. 5. Serves the static folder if it exists. 6. Provides a root redirect and a health check. 7. When run directly, starts the server using host, port and reload settings from configuration.",
+  "inputs": "Settings from the configuration module (host, port, reload and the Ollama host). Web requests from a browser or other programs. The static folder next to the backend.",
+  "outputs": "Web responses: a redirect to the static page, a health status, JSON from each feature group, and status 500 error responses.",
+  "risks": "The health check reports the database as connected without testing it. The error handler sends the raw error text to the caller, which can reveal internal details. CORS allows only two local ports, so other front ends are blocked. The root redirect points to static/index.html, but the static file in this review is named app.html, so check that index.html exists. The reload setting must be off for a live server.",
+  "debug": "If the app will not start, read the first log lines, since database setup runs at startup. If a page shows Internal server error, the text after the colon names the cause. If the browser blocks calls, check the allowed origins list. If the root page is blank or shows 404, check the static folder and the redirect target.",
+  "summary_hash": "sha256:619f6dbc93d5264c7ef8448ead295bd9c191b4cb76e4cd824fc4a4ffb3f8286d"
+}

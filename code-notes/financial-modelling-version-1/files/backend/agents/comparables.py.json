@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/comparables.py",
+  "language": "Python",
+  "lines": 282,
+  "hash": "sha256:05f8e4182e483cc608ca11f70c0d154587d8d40bd324eb2d2e01ea9ec3071d0a",
+  "area": "backend-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Figures and tickers come from a language model without checks against sources.",
+      "Several broad except clauses can hide errors.",
+      "No test is visible for this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Tavily",
+      "meaning": "a web search service built for AI apps, used here to find pages"
+    },
+    {
+      "term": "Comparable company",
+      "meaning": "a similar business, usually public, used as a reference point"
+    },
+    {
+      "term": "Ticker",
+      "meaning": "the short letter code a stock is traded under"
+    },
+    {
+      "term": "Benchmark",
+      "meaning": "a typical range that a result can be compared against"
+    },
+    {
+      "term": "Percentile",
+      "meaning": "the value below which a given share of results falls; the 25th percentile is below 25 percent of values"
+    }
+  ],
+  "depends_on": [
+    "backend/agents/base.py",
+    "config",
+    "tavily (optional web search package)",
+    "json (built in)"
+  ],
+  "used_by": [
+    "backend/agents/orchestrator.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ce579ff2e6fff388",
+      "title": "Imports and logging setup",
+      "what": "Brings in the shared agent base, settings, and logging, and creates a logger for this file.",
+      "why": "Lets warnings and errors from comparable searches appear in the logs.",
+      "watch_out": ""
+    },
+    {
+      "start": 16,
+      "end": 64,
+      "kind": "class",
+      "name": "ComparablesAgent (part 1)",
+      "id": "s2",
+      "hash": "9a26b9c1bc15aee3",
+      "title": "Setting up the optional web search",
+      "what": "Creates the agent with research settings. If a Tavily key is present, it creates a web search client. If that client cannot start, it logs a warning and continues without web search.",
+      "why": "Likely reason: the agent still works from the model's own knowledge when web search is not set up.",
+      "watch_out": "Without a Tavily key, every search step is skipped and results come only from the model's memory, which can be outdated or invented."
+    },
+    {
+      "start": 65,
+      "end": 123,
+      "kind": "class",
+      "name": "ComparablesAgent (part 2)",
+      "id": "s3",
+      "hash": "831a9f281fc3b922",
+      "title": "Finding comparable companies",
+      "what": "Asks for a list of public companies similar to the target. If web search works, it runs one search, passes the top five results to the model, and asks for comparables with reasons. If the search fails or is missing, it asks the model from memory instead.",
+      "why": "Likely reason: current search results help the model choose real, traded companies.",
+      "watch_out": "When search is missing or fails, the model names companies and tickers from memory, and nothing here checks those tickers."
+    },
+    {
+      "start": 124,
+      "end": 174,
+      "kind": "class",
+      "name": "ComparablesAgent (part 3)",
+      "id": "s4",
+      "hash": "8a7e4d6fffd49a84",
+      "title": "Memory fallback and starting the financial lookup",
+      "what": "Finishes the memory-only search by reading the model's answer as JSON and returning raw text if reading fails. Then starts the financial lookup, which skips any comparable with no company name.",
+      "why": "Likely reason: keeps the feature from crashing when the model returns text that is not valid JSON.",
+      "watch_out": "The bare except clauses catch every error, including coding mistakes, so real bugs can be hidden."
+    },
+    {
+      "start": 175,
+      "end": 229,
+      "kind": "class",
+      "name": "ComparablesAgent (part 4)",
+      "id": "s5",
+      "hash": "8f78d9fb64b3eeaf",
+      "title": "Searching and extracting financial figures",
+      "what": "For each comparable, runs a list of searches (3 results each), sends them to the model to extract metrics. If the reply parses as JSON, stores metrics with the search results as sources; otherwise stores the raw reply without sources.",
+      "why": "Likely reason: keeping the search results beside the figures lets a user check where numbers came from.",
+      "watch_out": "Figures are not verified against sources, and when the reply is not valid JSON the entry has no sources at all."
+    },
+    {
+      "start": 230,
+      "end": 282,
+      "kind": "method",
+      "name": "ComparablesAgent: synthesize_industry_benchmarks",
+      "id": "s6",
+      "hash": "d5419978fba3bcfc",
+      "title": "Turning company figures into benchmark ranges",
+      "what": "Sends all collected figures to the model and asks for minimum, 25th percentile, median, 75th percentile, and maximum values for growth, margins, and spending. Returns the model's JSON, or raw text if reading fails.",
+      "why": "Benchmarks give the model builder typical ranges for its assumptions.",
+      "watch_out": "The percentiles are estimated by the language model, not calculated by code, so with only a few comparables they can be guesses presented as statistics."
+    }
+  ],
+  "explained_at": "2026-11-12T00:30:23+00:00",
+  "explained_by": "haiku",
+  "summary": "Agent that finds public companies similar to a target company and gathers their financial figures and typical industry ranges.",
+  "purpose": "Supplies comparable companies and industry benchmarks that the orchestrator uses to judge a company's assumptions.",
+  "why": "Likely reason: a model needs reference companies to set realistic growth and margin values.",
+  "how": "Sets up optional web search. Asks the model for comparable companies, using web search results when available and its own memory otherwise. Then runs four searches per comparable for financial figures, asks the model to extract the numbers with sources, and finally asks for benchmark ranges.",
+  "inputs": "Target company name, industry, business model, and the number of comparables. Later steps take the list of comparables and their analyses.",
+  "outputs": "Dictionaries with comparables, search results, the prompts used, per-company analyses with sources, and industry benchmark ranges. Raw model text is kept when the JSON cannot be read.",
+  "risks": "Model memory can produce invented tickers. Extracted figures are not checked against their sources. Broad except clauses can hide coding bugs. Without a Tavily key, no financial figures are gathered.",
+  "debug": "If the comparables list is empty, check the Tavily key and look for log lines starting with ComparablesAgent. If figures look wrong, open the sources saved with each analysis and compare. If results are raw text, the model did not return JSON; read the raw_response field.",
+  "summary_hash": "sha256:05f8e4182e483cc608ca11f70c0d154587d8d40bd324eb2d2e01ea9ec3071d0a"
+}

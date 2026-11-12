@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/orchestrator.py",
+  "language": "Python",
+  "lines": 365,
+  "hash": "sha256:979c171964cf9d062cbf84c29dc06827510aad596e0a1a3b683f8424d87f1b8a",
+  "area": "backend-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors from the model are not surfaced; they appear as fallback data.",
+      "Assumption structure is requested in words, not enforced.",
+      "No test is visible for this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Orchestrator",
+      "meaning": "a coordinator that calls other agents in sequence"
+    },
+    {
+      "term": "Profile",
+      "meaning": "a structured summary of a company's products, industry, and business model"
+    },
+    {
+      "term": "NAICS",
+      "meaning": "the North American standard system for classifying industries by code"
+    },
+    {
+      "term": "Confidence score",
+      "meaning": "the model's own estimate of how sure it is; not a measured accuracy"
+    },
+    {
+      "term": "Fallback",
+      "meaning": "a backup result used when the main method fails"
+    },
+    {
+      "term": "Raw response",
+      "meaning": "the model's reply as plain text, before it was read as structured data"
+    }
+  ],
+  "depends_on": [
+    "backend/agents/base.py",
+    "backend/agents/research.py",
+    "backend/agents/comparables.py",
+    "backend/agents/model_builder.py",
+    "config"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4dc9c50ee007c755",
+      "title": "File purpose and imports",
+      "what": "Describes the orchestrator as the coordinator that runs research, comparables, assumptions, and model building in order. Brings in the other agent classes it uses.",
+      "why": "Keeps the whole workflow in one place so the app calls a single class.",
+      "watch_out": "If any imported agent file fails to load, this whole agent fails to start."
+    },
+    {
+      "start": 24,
+      "end": 63,
+      "kind": "class",
+      "name": "OrchestratorAgent (part 1)",
+      "id": "s2",
+      "hash": "bbceae909ecd4281",
+      "title": "Setting up the orchestrator and discovery prompt",
+      "what": "Creates the orchestrator with its three helper agents. Begins the company discovery function by writing instructions asking the model to describe the company's products, industry classification, business and revenue model, stage, and geography.",
+      "why": "Likely reason: the classification fields feed later steps such as the comparables search.",
+      "watch_out": "All helper agents receive the same provider choice, so switching provider here switches every step."
+    },
+    {
+      "start": 64,
+      "end": 122,
+      "kind": "class",
+      "name": "OrchestratorAgent (part 2)",
+      "id": "s3",
+      "hash": "edc8bbd3a8f0947a",
+      "title": "Discovery: JSON layout and web searches",
+      "what": "Shows the model the JSON layout it must return, then runs five web searches about the company, keeping up to five results each. Sends the results to the model with a request for a complete profile.",
+      "why": "Likely reason: current web results give the model facts to work from instead of memory alone.",
+      "watch_out": "Searches use the research agent's web client; if that client is not set, the research data is empty and the profile relies on the model's memory."
+    },
+    {
+      "start": 123,
+      "end": 160,
+      "kind": "class",
+      "name": "OrchestratorAgent (part 3)",
+      "id": "s4",
+      "hash": "3e4f3ee50ea0c142",
+      "title": "Discovery: reading the answer",
+      "what": "Tries to read the model's answer as JSON and adds the search data and queries to it. If the answer is not valid JSON, it builds a basic profile with low confidence and guesses SaaS, e-commerce, or manufacturing from keywords in the text.",
+      "why": "Likely reason: the model does not always return clean JSON, so the fallback keeps the workflow running.",
+      "watch_out": "A failed model call returns error text, which looks like a non-JSON answer, so the failure appears only inside the raw response text."
+    },
+    {
+      "start": 161,
+      "end": 215,
+      "kind": "method",
+      "name": "OrchestratorAgent: find_and_analyze_comparables",
+      "id": "s5",
+      "hash": "ea88bea4894d5d67",
+      "title": "Finding and analysing comparable companies",
+      "what": "Passes the company name, industry, and business model to the comparables agent to find peers, then gathers their financial figures and builds benchmark ranges. If nothing is found, it returns an empty list with no benchmarks.",
+      "why": "Benchmarks give the assumptions a real-world reference point.",
+      "watch_out": "The industry defaults to Unknown when missing, which makes the peer search much less precise."
+    },
+    {
+      "start": 216,
+      "end": 273,
+      "kind": "method",
+      "name": "OrchestratorAgent: determine_model_assumptions",
+      "id": "s6",
+      "hash": "2c7ec1eacd5c8a31",
+      "title": "Choosing model assumptions",
+      "what": "Writes a long list of assumptions a model needs, covering revenue growth, margins, working capital, capital spending, debt, and valuation rates. Asks the model to give each one a value, a source, a confidence level, and whether a user should review it.",
+      "why": "Likely reason: makes each model input traceable and open to review.",
+      "watch_out": "The list is described in words and does not name the exact keys the model builder reads, so the answer may not match and defaults will apply silently."
+    },
+    {
+      "start": 274,
+      "end": 308,
+      "kind": "class",
+      "name": "OrchestratorAgent (part 6)",
+      "id": "s7",
+      "hash": "54eed18535bec007",
+      "title": "Assumptions request and reading the answer",
+      "what": "Finishes the assumptions request by sending the profile, comparables, and benchmarks to the model. Tries to read the answer as JSON and records the prompts used. If reading fails, returns an empty assumptions set with the raw text.",
+      "why": "Keeping the prompts with the result lets a user see exactly what was asked.",
+      "watch_out": "On failure an empty assumptions set is returned, and the next build step then uses all default values without saying so."
+    },
+    {
+      "start": 309,
+      "end": 365,
+      "kind": "method",
+      "name": "OrchestratorAgent: build_progressive_model",
+      "id": "s8",
+      "hash": "1aff81d614032dd7",
+      "title": "Building the full model",
+      "what": "Runs the income statement, cash flow, and valuation steps in order using the assumptions, then returns one combined result marked complete, with every step explanation joined into a single list.",
+      "why": "Likely reason: one call gives the app the whole model along with its working.",
+      "watch_out": "The result says complete even when defaults filled the gaps, and nothing in it shows which inputs were real."
+    }
+  ],
+  "explained_at": "2026-11-12T00:30:23+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the whole modelling workflow in order, from researching a company through to a finished model, by calling the other agents.",
+  "purpose": "A single entry point that turns a company name into a profile, comparables, assumptions, and a finished model.",
+  "why": "Likely reason: the workflow has several steps that depend on each other, so one class keeps them in the right order.",
+  "how": "discover_company builds a company profile from web searches and the model. find_and_analyze_comparables finds peers and benchmarks. determine_model_assumptions asks the model for assumptions. build_progressive_model runs the model builder for the income statement, cash flow, and valuation.",
+  "inputs": "Company name, then the profile, the comparables data, and the assumptions dictionary as each step is called.",
+  "outputs": "A profile dictionary, comparables data, an assumptions dictionary, and a complete model dictionary marked with status complete.",
+  "risks": "Failed model calls are often hidden as fallback data. Assumption key names may not match what the model builder reads, so defaults apply silently. The model is marked complete even when defaults were used.",
+  "debug": "Check each stage's output in order: profile, comparables, assumptions, then model. If a value looks like a default, compare the assumption keys with those the model builder reads. Look at raw_response fields for model text that did not parse. Confirm web search is configured.",
+  "summary_hash": "sha256:979c171964cf9d062cbf84c29dc06827510aad596e0a1a3b683f8424d87f1b8a"
+}

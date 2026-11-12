@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "path": "backend/agents/research.py",
+  "language": "Python",
+  "lines": 312,
+  "hash": "sha256:ccdb46ea7628ab1dbfef5ed2159843b64f790c0c942c1ef255c590272eb48115",
+  "area": "backend-agents",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only setup lines were given.",
+      "The orchestrator's use of tavily_client cannot be confirmed from this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Web research",
+      "meaning": "collecting facts from public web pages to support a decision"
+    },
+    {
+      "term": "Tavily",
+      "meaning": "a web search service built for AI apps"
+    }
+  ],
+  "depends_on": [
+    "backend/agents/base.py",
+    "config"
+  ],
+  "used_by": [
+    "backend/agents/orchestrator.py"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d7076849c45da160",
+      "title": "File purpose and imports",
+      "what": "Describes the research agent as analysing web research and suggesting model inputs, using Tavily search when available. Brings in the base agent, settings, logging, and the JSON and time helpers.",
+      "why": "Likely reason: web search gives current facts for model inputs when a search key exists.",
+      "watch_out": "Whether the Tavily client is actually created here cannot be seen in this packet."
+    },
+    {
+      "start": 19,
+      "end": 73,
+      "kind": "class",
+      "name": "ResearchAgent (part 1)",
+      "id": "s2",
+      "hash": "cdb7832051094d26",
+      "title": "Research agent setup and valuation request",
+      "what": "Sets up the research agent. If a Tavily search key is present, it creates a web search client; if not, it logs a warning and the agent later relies on the AI's memory. The valuation request asks the AI for beta, risk premiums, risk-free rate and sector margins.",
+      "why": "Likely reason: the app still works without a paid search key.",
+      "watch_out": "A missing key does not stop the app, so results can quietly come from AI memory only. Check the logs to see which path ran."
+    },
+    {
+      "start": 74,
+      "end": 128,
+      "kind": "class",
+      "name": "ResearchAgent (part 2)",
+      "id": "s3",
+      "hash": "7883a5a1a4111f79",
+      "title": "Valuation answer and start of company research",
+      "what": "Returns the valuation suggestions as raw AI text with the sector, country and data sources. Then `research_company` resets the research log, sets default topics if none were given and creates an empty result container.",
+      "why": "Reason not stated in the code for returning unparsed text.",
+      "watch_out": "The valuation answer is free text, not numbers, so any code that expects numbers will fail. Also, the research log resets on every call, so earlier logs are lost."
+    },
+    {
+      "start": 129,
+      "end": 183,
+      "kind": "class",
+      "name": "ResearchAgent (part 3)",
+      "id": "s4",
+      "hash": "c051c02bdf79bcc0",
+      "title": "Searching each research topic",
+      "what": "For each topic, runs a web search with up to five results at advanced depth and keeps the answer and source links, skipping duplicate sources. If search is not available, the AI answers each topic from memory. Errors are stored as text inside the findings.",
+      "why": "Likely reason: the search gives sources a reader can check, and the AI fallback keeps the feature working without search.",
+      "watch_out": "Each advanced search is a paid external call, so five topics cost more and take longer. A failed search is stored as a text message, not raised as an error, so it can look like data."
+    },
+    {
+      "start": 184,
+      "end": 235,
+      "kind": "method",
+      "name": "ResearchAgent: research_industry_benchmarks",
+      "id": "s5",
+      "hash": "814f4d3ab63a865b",
+      "title": "Industry benchmark search",
+      "what": "Starts `research_industry_benchmarks`. It sets default metrics such as gross margin and EBITDA margin, then searches for typical industry averages for each metric with three results per search.",
+      "why": "Reason not stated in the code for the choice of three results instead of five.",
+      "watch_out": "The fallback path without search returns no source links, so AI-only benchmarks carry no citations."
+    },
+    {
+      "start": 236,
+      "end": 273,
+      "kind": "class",
+      "name": "ResearchAgent (part 5)",
+      "id": "s6",
+      "hash": "201baf1e201a98ee",
+      "title": "Benchmark results and AI fallback",
+      "what": "Collects source links for each benchmark and records any search error as text. If search is not available, asks the AI for ranges and tries to parse them as JSON, otherwise keeps the raw reply.",
+      "why": "Likely reason: keeps the result usable even when a search or parse step fails.",
+      "watch_out": "Because failures become text rather than errors, a broken search may look like a normal benchmark. Check the findings text for the words Search failed."
+    },
+    {
+      "start": 274,
+      "end": 312,
+      "kind": "method",
+      "name": "ResearchAgent: _synthesize_research",
+      "id": "s7",
+      "hash": "b928a94aec6ab8a6",
+      "title": "Turning research into modelling advice",
+      "what": "Sends all findings to the AI and asks for key insights, recommended assumptions, uncertainties and suggested ranges for inputs such as growth and margins. Returns the reply as text.",
+      "why": "Likely reason: turns raw search results into guidance a modeller can use.",
+      "watch_out": "The output is free text, so check any suggested numbers before using them as model inputs."
+    }
+  ],
+  "explained_at": "2026-11-12T00:35:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Research agent meant to analyse web research and suggest values for model inputs, using the Tavily web search service when it is set up.",
+  "purpose": "Provides web research support for the other agents.",
+  "why": "Likely reason: web search gives current facts the model can use for inputs.",
+  "how": "Only the setup part is visible: it imports the base agent, settings, logging, and the JSON and time helpers. The search and synthesis steps are not in this packet.",
+  "inputs": "Not visible in this packet beyond the settings it imports.",
+  "outputs": "Not visible in this packet.",
+  "risks": "The orchestrator reads a tavily_client attribute on this agent, and that attribute is not visible here, so the link cannot be confirmed.",
+  "debug": "Search the file for tavily_client to confirm it is set when a key exists. Check the logs for research steps.",
+  "summary_hash": "sha256:ccdb46ea7628ab1dbfef5ed2159843b64f790c0c942c1ef255c590272eb48115"
+}

@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "path": "backend/calc/taxes.py",
+  "language": "Python",
+  "lines": 156,
+  "hash": "sha256:e0c5b3ffd7d06f822c034c16058303ca6a3840c0b5efdd984e293df693e84a61",
+  "area": "backend-calc",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The loss pool has no yearly cap, and the code does not say whether that is intended.",
+      "No tests or input checks were visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "EBIT",
+      "meaning": "profit before interest and tax"
+    },
+    {
+      "term": "Pretax income",
+      "meaning": "profit after interest but before tax"
+    },
+    {
+      "term": "Net operating loss (NOL)",
+      "meaning": "a loss that can be carried forward to reduce taxes in later profitable years"
+    },
+    {
+      "term": "Tax rate",
+      "meaning": "the share of taxable profit paid as tax"
+    },
+    {
+      "term": "Carryforward",
+      "meaning": "moving a loss or unused amount into a later year"
+    }
+  ],
+  "depends_on": [
+    "backend/calc/utils.py"
+  ],
+  "used_by": [
+    "backend/calc/statements.py (its build_three_statement_model reads tax and net income)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 22,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "2c18d6e803c95f58",
+      "title": "Module overview and imports",
+      "what": "Nothing runs here. It explains how pretax income and tax are found and loads the helper tools.",
+      "why": "Gives the reader the formulas before the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 23,
+      "end": 53,
+      "kind": "function",
+      "name": "calculate_tax_simple",
+      "id": "s2",
+      "hash": "ccb5d3fd6013dc3d",
+      "title": "Simple tax with no loss carryover",
+      "what": "Charges tax at the rate on each positive pretax year. Loss years pay no tax and get no refund.",
+      "why": "Likely reason: this is the simplest treatment, and the code notes it as an assumption.",
+      "watch_out": "Losses earn no tax relief here, so a company with losses in some years shows more tax than it would under loss carryforward."
+    },
+    {
+      "start": 54,
+      "end": 107,
+      "kind": "function",
+      "name": "calculate_tax_with_nol (part 1)",
+      "id": "s3",
+      "hash": "a995278d7d4fb197",
+      "title": "Tax with past losses carried forward",
+      "what": "Each year, adds losses to a pool, and uses that pool to cut taxable profit in profit years before the rate is applied.",
+      "why": "Likely reason: many tax systems let losses offset later profits, so this mode is closer to that.",
+      "watch_out": "The whole pool can be used in one year with no limit, which may overstate tax relief."
+    },
+    {
+      "start": 108,
+      "end": 116,
+      "kind": "function",
+      "name": "calculate_tax_with_nol (part 2)",
+      "id": "s4",
+      "hash": "111c7199bd52b244",
+      "title": "Returning loss-mode results",
+      "what": "Returns the loss pool balance, taxable income, tax, and net income for each year.",
+      "why": "Lets the reader see how losses were stored and used.",
+      "watch_out": ""
+    },
+    {
+      "start": 117,
+      "end": 156,
+      "kind": "function",
+      "name": "calculate_net_income",
+      "id": "s5",
+      "hash": "ce6b3a08c277f5f1",
+      "title": "Choosing a tax method and building net income",
+      "what": "Works out pretax income from EBIT and interest, then applies either the simple or the loss carryforward tax method, depending on the switch.",
+      "why": "Likely reason: a single entry point means the rest of the model does not need to know which method is used.",
+      "watch_out": "The starting loss pool is quietly ignored when the switch is off."
+    }
+  ],
+  "explained_at": "2026-11-12T00:19:48+00:00",
+  "explained_by": "haiku",
+  "summary": "Works out income tax each year and net income after tax, with an optional mode that carries past losses forward to reduce future tax.",
+  "purpose": "Produces pretax income, tax, and net income for each year.",
+  "why": "Tax depends on profit, and net income feeds the statements and the cash flow.",
+  "how": "1. Pretax income equals EBIT minus interest. 2. In simple mode, positive pretax income is taxed at the rate and loss years pay no tax. 3. In loss carryforward mode, losses go into a pool and are used to reduce later taxable profit before the rate is applied. 4. Net income equals pretax income minus tax.",
+  "inputs": "An EBIT list; an interest list; a tax rate; an optional switch for loss carryforward; an optional starting loss pool.",
+  "outputs": "Pretax income, tax, and net income lists. Loss mode also returns the loss pool balance per year and taxable income.",
+  "risks": "Simple mode gives no tax relief for losses, which can overstate tax. The loss pool has no yearly cap on how much can be used, and the code does not explain why. The starting loss pool is ignored unless the carryforward switch is on. Results stop at the shorter input list.",
+  "debug": "Compare pretax income with tax. Tax should be zero in loss years. In loss mode, check the loss pool list to see losses being stored and then used up.",
+  "summary_hash": "sha256:e0c5b3ffd7d06f822c034c16058303ca6a3840c0b5efdd984e293df693e84a61"
+}
