@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/wind-import.ts",
+  "language": "TypeScript",
+  "lines": 310,
+  "hash": "sha256:1ee01c1ec8b7a13f4c6774d2ad12c14dd093409230f00adbdf5b53d29c54fc2c",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The safety gates are thorough, but no automated test of this script is visible in the file.",
+      "Several values are typed into the code, including the Dogger legacy budget and the capacities and stages for three projects, so changes to the source need code changes.",
+      "Company records are reloaded for every participant, which will slow down as the data grows."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Transaction",
+      "meaning": "a group of database changes that either all save together or all get undone"
+    },
+    {
+      "term": "Dry run",
+      "meaning": "a practice run that does the work and then undoes it, so you can see the result without keeping it"
+    },
+    {
+      "term": "Digest",
+      "meaning": "a short fingerprint of some data, made with SHA-256, that changes whenever the data changes"
+    },
+    {
+      "term": "Baseline",
+      "meaning": "a saved snapshot of the data before the import, used to detect later changes"
+    },
+    {
+      "term": "Rollback",
+      "meaning": "undoing all changes made in the current transaction"
+    },
+    {
+      "term": "Advisory lock",
+      "meaning": "a database lock that stops two imports of the same batch from running at the same time"
+    },
+    {
+      "term": "Evidence quote",
+      "meaning": "a stored piece of source text that supports a specific project fact"
+    },
+    {
+      "term": "Connection pool",
+      "meaning": "a set of reusable connections to the database, so the script does not open a new one each time"
+    }
+  ],
+  "depends_on": [
+    "pg",
+    "node:crypto",
+    "node:fs",
+    "node:path",
+    "src/ingest/wind/prepared.json",
+    "src/ingest/wind/sourcePack",
+    "src/ingest/wind/participants",
+    "src/lib/canonicalize",
+    "src/mappers/toProjectDetailDTO",
+    "src/shared/ingest/conform",
+    "src/ingest/wind/reconcile",
+    "data/wind/dry-run.json"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup, digest, uuid, norm",
+      "id": "s1",
+      "hash": "1564d9f1a907dc28",
+      "title": "Setup, fingerprints and name matching",
+      "what": "Loads the batch data, the source list, the company aliases and the helper tools. It reads the mode from the command flags and defines the fingerprint function and a name-cleaning rule that removes accents and punctuation before matching.",
+      "why": "Likely reason: one script serves as a dry run, a commit and a verification, so the mode is decided up front.",
+      "watch_out": "Removing punctuation before matching can make two different organisations look the same, which is why a stricter check is added later."
+    },
+    {
+      "start": 26,
+      "end": 28,
+      "kind": "value",
+      "name": "pool",
+      "id": "s2",
+      "hash": "6be9d77e337e232f",
+      "title": "Database connection pool",
+      "what": "Creates a pool of database connections and takes one connection for the whole run. The output file name is chosen from the mode, so a dry run and a commit write to different files.",
+      "why": "A single connection lets every step share one transaction.",
+      "watch_out": "The connection is only released in the final cleanup, so an early failure can leave the pool open until the process ends."
+    },
+    {
+      "start": 29,
+      "end": 39,
+      "kind": "value",
+      "name": "out",
+      "id": "s3",
+      "hash": "824600ecbb917656",
+      "title": "Result record skeleton",
+      "what": "Creates the result object that will hold counts, project decisions, company roles, evidence coverage and the fingerprints. This object is saved as the audit record at the end.",
+      "why": "Keeps every result in one structure so the saved file is a complete record of the run.",
+      "watch_out": "The count names must match the names used by the later checks, or the checks will read zero."
+    },
+    {
+      "start": 40,
+      "end": 95,
+      "kind": "function",
+      "name": "audit (part 1)",
+      "id": "s4",
+      "hash": "b6043500bb0aaa25",
+      "title": "Audit writer and transaction start",
+      "what": "Defines a helper that records each change in the change log and in the result object. It starts the transaction, takes a lock for this batch, and captures the current project and evidence snapshots. In commit mode it compares these with the approved dry run and stops if they differ.",
+      "why": "The lock and the snapshots protect against runs that overlap or that use stale approval.",
+      "watch_out": "Any database change made after the dry run blocks the commit, so the dry run must be repeated after such a change."
+    },
+    {
+      "start": 96,
+      "end": 141,
+      "kind": "method",
+      "name": "audit: if",
+      "id": "s5",
+      "hash": "7a9ee5e0d4ba16cd",
+      "title": "Create or update each project",
+      "what": "For each wind project, finds the matching existing record by source key, name or known identifier, and refuses ambiguous or changed matches. New projects are inserted with fixed stage and capacity values for three of them. Existing records get the dossier added, or are updated in reconcile mode. The Dogger legacy planned budget is cleared after checking it has not changed.",
+      "why": "Reason not stated in the code for the fixed stage and capacity values. The Dogger budget is removed because the code says it has no currency.",
+      "watch_out": "The stage and capacity values for the named projects and the Dogger budget are typed into the code, so they must be changed by hand when the source changes."
+    },
+    {
+      "start": 142,
+      "end": 188,
+      "kind": "method",
+      "name": "audit: for",
+      "id": "s6",
+      "hash": "c6f1d3e081698520",
+      "title": "Evidence quotes and publisher links",
+      "what": "Adds the field-specific evidence quotes for each project and, with the reconcile flag, updates changed metadata. For each reference used, it reuses an existing publisher source with the same domain or adds one from the source pack, then links it to the project.",
+      "why": "The stored quotes are the proof for each field, and the source links show where each publisher came from.",
+      "watch_out": "An existing publisher record is reused by domain even if it belongs to another industry, and a domain missing from the source pack stops the whole run."
+    },
+    {
+      "start": 189,
+      "end": 248,
+      "kind": "method",
+      "name": "audit: for",
+      "id": "s7",
+      "hash": "e0ebf1a7f4fa99f4",
+      "title": "Companies, aliases and project roles",
+      "what": "For each participant, finds the matching company by name or alias, refusing ambiguous matches, and creates it with a type from a fixed map if it is missing. It then adds aliases, links the company to the project with its role and source address, and in reconcile mode updates its source notes.",
+      "why": "Likely reason: matching existing companies first avoids creating duplicate records.",
+      "watch_out": "Matching ignores punctuation and only falls back to a strict check when that causes a clash, so a wrong match would attach a company to the wrong project."
+    },
+    {
+      "start": 249,
+      "end": 301,
+      "kind": "function",
+      "name": "audit (part 5)",
+      "id": "s8",
+      "hash": "22aef74ea55cf94e",
+      "title": "Company sources and final checks",
+      "what": "Adds the reference links for each company as document sources, skipping any already stored. With the reconcile flag, it retires superseded batch evidence and marks company source notes that are not supporting evidence. It then confirms that unrelated projects and pre-existing evidence are unchanged, checks the coverage counts, and computes the review fingerprint.",
+      "why": "These checks prove that the import touched only what it was supposed to touch.",
+      "watch_out": "The review fingerprint covers the counts and decisions, so any change after the dry run changes it and blocks the commit."
+    },
+    {
+      "start": 302,
+      "end": 310,
+      "kind": "method",
+      "name": "audit: if",
+      "id": "s9",
+      "hash": "efc68feaf948351f",
+      "title": "Commit or roll back, then save the result",
+      "what": "In commit mode, confirms the fingerprint still matches the approved dry run, then commits. Otherwise it rolls back. The result file is written and a short summary is printed. Any error rolls the transaction back, and the connection is released and the pool closed at the end.",
+      "why": "Each mode must leave the database exactly as intended, and only a real commit may keep changes.",
+      "watch_out": "A dry run always rolls back, so its database changes never persist, and the saved result must be read as a preview."
+    }
+  ],
+  "explained_at": "2026-11-12T03:19:31+00:00",
+  "explained_by": "haiku",
+  "summary": "Loads the reviewed wind research batch into the project database inside one transaction, and refuses any change that has not been approved.",
+  "purpose": "Adds or updates wind projects, their evidence quotations, their companies and source links, and records every change so it can be audited.",
+  "why": "The header comments describe the script as narrow, transactional, additive and gated on an approved dry run. Likely reason: to make repeated imports safe and reviewable.",
+  "how": "Connects to the database and starts a transaction, then locks the batch and records the current project and evidence snapshots. In commit mode it checks that the snapshots and the manifest still match the approved dry run. For each project it finds the existing record, refuses ambiguous or drifted matches, inserts or updates the record, and writes audit entries. It then adds evidence quotes, links publisher sources, and matches or creates companies and their project roles. Superseded batch evidence is only retired with the reconcile flag. Unrelated data is checked to be unchanged, a review fingerprint is computed, and the transaction is committed or rolled back. A JSON result file is written at the end.",
+  "inputs": "The DATABASE_URL environment variable. Command flags: commit, verify, reconcile-metadata, and approved-digest with a value. The prepared wind data, the source pack, the company alias list, and in commit mode data/wind/dry-run.json.",
+  "outputs": "A JSON result file in data/wind (dry-run.json, verification.json or commit.json), a console summary, and, in commit mode only, lasting changes to the database.",
+  "risks": "Commit mode writes to the live database, so a bug in matching could attach data to the wrong project. The dry run also writes inside its transaction before rolling back, so it must never be run against a database that another process is using. Safety depends on the approved digest being accurate and up to date.",
+  "debug": "If the output says Commit refused, run the dry run again and approve the new digest. For Ambiguous match or Ambiguous company aliases, check the project names and aliases in the database. For Wind dossier changed, rerun with reconcile-metadata only after reviewing the change. For Unrelated project scalar changes or Pre-existing evidence changed, stop and inspect the data before doing anything else.",
+  "summary_hash": "sha256:1ee01c1ec8b7a13f4c6774d2ad12c14dd093409230f00adbdf5b53d29c54fc2c"
+}

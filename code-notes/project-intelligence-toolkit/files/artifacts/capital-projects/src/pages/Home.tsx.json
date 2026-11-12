@@ -1,0 +1,385 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/capital-projects/src/pages/Home.tsx",
+  "language": "TypeScript (React)",
+  "lines": 697,
+  "hash": "sha256:fa358e1514ec50c3754c919f3054e1acf794ad18c4bf8853a2fc0adc26fdfbe4",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Loading and error states are handled, and a retry button is provided.",
+      "The page relies on several fields from the server without visible checks for missing values.",
+      "A few helpers, such as formatMoney, appear unused in the visible code.",
+      "No tests or other evidence of checking are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Lifecycle stage",
+      "meaning": "The step a project is in, from planning through to operating, such as UNDER_CONSTRUCTION."
+    },
+    {
+      "term": "Maturity",
+      "meaning": "How far a project has moved toward being certain enough for investors, from CONCEPT to BANKABLE."
+    },
+    {
+      "term": "Likelihood",
+      "meaning": "The estimated chance a project will reach commercial operation."
+    },
+    {
+      "term": "Confidence",
+      "meaning": "How well sourced and checked the project data is, not whether the project will succeed."
+    },
+    {
+      "term": "KPI",
+      "meaning": "Key performance indicator, a headline number used to judge progress at a glance."
+    },
+    {
+      "term": "Segment",
+      "meaning": "A named subgroup of an industry, used to filter the projects shown."
+    },
+    {
+      "term": "Sub-industry",
+      "meaning": "A narrower area inside an industry, passed in the web address to narrow the data."
+    }
+  ],
+  "depends_on": [
+    "React",
+    "@tanstack/react-query",
+    "wouter",
+    "lucide-react",
+    "@/content/intelligence",
+    "@/shared/segments",
+    "@/shared/industries via segments hook",
+    "../lib/api",
+    "../lib/projectDisplay",
+    "../lib/mappers/updateToCitation",
+    "CitationDrawer component",
+    "IndustrialCard component",
+    "DataLabel component",
+    "SegmentChip component",
+    "tooltip component",
+    "useDatapointSources hook",
+    "useIndustryContext hook",
+    "useSegment hook"
+  ],
+  "used_by": [
+    "Not visible in the code shown."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 32,
+      "kind": "setup",
+      "name": "File setup, MATURITY_ORDER",
+      "id": "s1",
+      "hash": "ae507849fa6c76dc",
+      "title": "Imports and maturity order",
+      "what": "Brings in the shared pieces the page uses, such as the data fetchers, icons, cards and tooltips, and sets the five maturity levels in their order from lowest to highest.",
+      "why": "Likely reason: the maturity order is fixed so the cards always appear from CONCEPT to BANKABLE.",
+      "watch_out": "The order is written as a fixed list, so a new maturity level must be added here and in the maturity descriptions."
+    },
+    {
+      "start": 33,
+      "end": 48,
+      "kind": "value",
+      "name": "LIFECYCLE_ORDER",
+      "id": "s2",
+      "hash": "1530374dc480c2f2",
+      "title": "Lifecycle stage order",
+      "what": "Lists the lifecycle stages from earliest to latest, which sets the left-to-right order of the lifecycle bar.",
+      "why": "Likely reason: a fixed order keeps the bar readable from planning through to operation.",
+      "watch_out": "Stages not in this list are still shown, but they are placed after the known ones."
+    },
+    {
+      "start": 49,
+      "end": 64,
+      "kind": "value",
+      "name": "STAGE_TONE",
+      "id": "s3",
+      "hash": "b019402af3cb025e",
+      "title": "Colors",
+      "what": "Assigns each lifecycle stage a background color and a small swatch color for the bar and legend.",
+      "why": "Likely reason: colors separate stages visually. The comment says the palette follows the warm theme, and the red was replaced with charcoal and blue.",
+      "watch_out": "Colors are looked up by the exact stage name, so a renamed stage loses its color."
+    },
+    {
+      "start": 65,
+      "end": 68,
+      "kind": "function",
+      "name": "stageTone",
+      "id": "s4",
+      "hash": "2bb64d2f3997837a",
+      "title": "Color lookup with fallback",
+      "what": "Returns the color for a stage, or a plain grey when the stage has no entry.",
+      "why": "Likely reason: so an unknown stage still displays instead of breaking the page.",
+      "watch_out": "Unknown stages all look the same grey, so they are hard to tell apart."
+    },
+    {
+      "start": 69,
+      "end": 79,
+      "kind": "function",
+      "name": "orderLifecycle",
+      "id": "s5",
+      "hash": "1e92ca2a011c0880",
+      "title": "Sorting lifecycle stages",
+      "what": "Drops stages with zero projects, puts known stages in the fixed order and puts unknown stages after them, largest count first.",
+      "why": "Likely reason: the bar shows only stages that have projects, in a readable order.",
+      "watch_out": "Unknown stages with zero projects are removed, so a stage added to the data with no projects will not show."
+    },
+    {
+      "start": 80,
+      "end": 88,
+      "kind": "value",
+      "name": "LIFECYCLE_DESCRIPTIONS",
+      "id": "s6",
+      "hash": "1444a4a097ecbe1e",
+      "title": "Lifecycle stage tooltips",
+      "what": "Stores short plain descriptions for several stages, shown when a reader hovers over a segment.",
+      "why": "Likely reason: helps a non-specialist understand what each stage means.",
+      "watch_out": "Some stages have no description, so their hover text shows only the count and percentage."
+    },
+    {
+      "start": 89,
+      "end": 96,
+      "kind": "value",
+      "name": "MATURITY_DESCRIPTIONS",
+      "id": "s7",
+      "hash": "6eb29b6cb8655bf8",
+      "title": "Maturity level tooltips",
+      "what": "Stores a short description for each maturity level, shown on hover over its card.",
+      "why": "Likely reason: explains what each maturity level requires, so the number on the card is understood.",
+      "watch_out": "The wording mentions licences and financing, which may not suit every industry. Reason not stated in the code for this wording."
+    },
+    {
+      "start": 97,
+      "end": 101,
+      "kind": "value",
+      "name": "LIKELIHOOD_VS_CONFIDENCE",
+      "id": "s8",
+      "hash": "2bf8098e5d7d5062",
+      "title": "Likelihood and confidence wording",
+      "what": "Holds two plain explanations, one for likelihood and one for confidence, shown next to the maturity cards.",
+      "why": "Likely reason: the two percentages are easy to confuse, so each gets its own definition.",
+      "watch_out": "These texts are shown as given, so any change to their meaning must be made here and nowhere else in this file."
+    },
+    {
+      "start": 102,
+      "end": 113,
+      "kind": "value",
+      "name": "SOURCE_LABELS",
+      "id": "s9",
+      "hash": "67cd2b36a2ff1633",
+      "title": "Friendly source names",
+      "what": "Maps internal source codes, such as ENRICHMENT or MANUAL, to readable names like Manual Edit.",
+      "why": "Likely reason: internal codes mean little to a reader of the change history.",
+      "watch_out": "Any source code not in this map is shown with underscores removed, which may still read awkwardly."
+    },
+    {
+      "start": 114,
+      "end": 135,
+      "kind": "value",
+      "name": "FIELD_LABELS",
+      "id": "s10",
+      "hash": "ad381cfe29288990",
+      "title": "Friendly field names",
+      "what": "Maps internal field names such as plannedBudget and fidDate to readable labels such as Planned Budget and FID Date.",
+      "why": "Likely reason: the change history should read in plain language.",
+      "watch_out": "Matching is exact, so a field name spelled differently in the data will not be translated."
+    },
+    {
+      "start": 136,
+      "end": 143,
+      "kind": "function",
+      "name": "formatDate",
+      "id": "s11",
+      "hash": "f70a5a686127a07b",
+      "title": "Date display format",
+      "what": "Turns a date string into a short US-style date such as Nov 12, 2026.",
+      "why": "Likely reason: a consistent, short date keeps the updates list tidy.",
+      "watch_out": "A date string that cannot be read will show as an invalid date rather than failing quietly."
+    },
+    {
+      "start": 144,
+      "end": 156,
+      "kind": "function",
+      "name": "friendlyField",
+      "id": "s12",
+      "hash": "ee8914c6e45033fc",
+      "title": "Turning field names readable",
+      "what": "Converts a raw field name into a readable label, using the fixed labels first and otherwise splitting words at capitals and underscores.",
+      "why": "Likely reason: a fallback covers field names not listed in the labels map.",
+      "watch_out": "Fields that are not in the map get automatic labels that may be odd, such as splitting an acronym into letters."
+    },
+    {
+      "start": 157,
+      "end": 161,
+      "kind": "function",
+      "name": "friendlySource",
+      "id": "s13",
+      "hash": "377bb4371389a3aa",
+      "title": "Turning source names readable",
+      "what": "Gives a readable name for a change's source, using the source map first and otherwise replacing underscores with spaces.",
+      "why": "Likely reason: a fallback keeps unknown sources visible instead of hiding them.",
+      "watch_out": "An empty source returns an empty name, so the source line is simply left out."
+    },
+    {
+      "start": 162,
+      "end": 193,
+      "kind": "type",
+      "name": "DashboardData",
+      "id": "s14",
+      "hash": "f9c19277b182e675",
+      "title": "Shape of dashboard data",
+      "what": "Describes the summary the server returns: totals, counts by stage and status, maturity counts, budget range, latest updates and recent approved changes.",
+      "why": "Likely reason: it makes the expected data explicit so mistakes are caught when the page is written.",
+      "watch_out": "This shape is a promise to the server. If the server changes a field name, the page will show blanks or errors."
+    },
+    {
+      "start": 194,
+      "end": 211,
+      "kind": "function",
+      "name": "InfoTip",
+      "id": "s15",
+      "hash": "6a85ef1bf5f94bd9",
+      "title": "Hover help icon",
+      "what": "Shows a small question-mark icon that displays a short explanation when hovered, with a wider box for longer text.",
+      "why": "Likely reason: lets the page explain terms without cluttering the layout.",
+      "watch_out": "The explanation appears on hover only, so it is not available to someone who cannot use a mouse."
+    },
+    {
+      "start": 212,
+      "end": 271,
+      "kind": "function",
+      "name": "SegmentChooser (part 1)",
+      "id": "s16",
+      "hash": "d3166609a5aef0b6",
+      "title": "Segment chooser loading and groups",
+      "what": "Loads the segments for an industry and groups them under their group names, staying hidden while loading or when nothing is returned.",
+      "why": "Likely reason: only some industries use segments, and the page should not show an empty block while waiting.",
+      "watch_out": "Groups are keyed by name, so two groups with the same name would merge."
+    },
+    {
+      "start": 272,
+      "end": 292,
+      "kind": "function",
+      "name": "SegmentChooser (part 2)",
+      "id": "s17",
+      "hash": "aeb299ff254bb601",
+      "title": "Segment cards with empty ones",
+      "what": "Draws each segment as a link to the filtered project list when it has projects, and as a greyed, unclickable chip labelled no data yet when it is empty.",
+      "why": "Likely reason: a visitor can see which segments exist without being sent to an empty list.",
+      "watch_out": "The segment name is placed in the web address, so the name must be encoded correctly, which the code handles."
+    },
+    {
+      "start": 293,
+      "end": 351,
+      "kind": "function",
+      "name": "Home (part 1)",
+      "id": "s18",
+      "hash": "aa8ee911f1be1c09",
+      "title": "Home page state and KPI sources",
+      "what": "Holds the state for the update drawer and expanded changes, loads the dashboard, builds the list of projects behind each headline number, and shows an error message with a retry button when loading fails.",
+      "why": "Likely reason: each headline number must be traceable to the projects that make it up, so the sources can be opened on click.",
+      "watch_out": "Each click on a headline number fetches up to 5000 projects, so a large industry will make that click slow."
+    },
+    {
+      "start": 352,
+      "end": 399,
+      "kind": "method",
+      "name": "Home: if",
+      "id": "s19",
+      "hash": "26927549c973f957",
+      "title": "Money formatting and page setup",
+      "what": "Sets up helper values for the page: a money formatter, the budget range label, the dairy special case, the stage ordering and the total. Shows a loading message while data arrives.",
+      "why": "Likely reason: these values are prepared once so the layout below can use them directly.",
+      "watch_out": "The formatMoney helper is defined here but the visible code never uses it, so check before relying on it."
+    },
+    {
+      "start": 400,
+      "end": 453,
+      "kind": "function",
+      "name": "Home (part 3)",
+      "id": "s20",
+      "hash": "d66763cb893ff28a",
+      "title": "Key metric cards",
+      "what": "Shows four headline cards: projects in scope, total capacity or operational plants for dairy, under construction, and budget range. Each has a sources button.",
+      "why": "Likely reason: a quick summary at the top. Capacity is shown in gigawatts with a note for renewables, whose figures mix two measuring bases.",
+      "watch_out": "Capacity is divided by 1000 for display, so a unit error in the data would show a wrong total."
+    },
+    {
+      "start": 454,
+      "end": 513,
+      "kind": "function",
+      "name": "Home (part 4)",
+      "id": "s21",
+      "hash": "38b4da082d1c0e0c",
+      "title": "Lifecycle breakdown bar",
+      "what": "Draws a proportional bar of lifecycle stages, each segment linking to the filtered project list, with a matching legend below. Shows an empty message when there are no stages.",
+      "why": "Likely reason: lets a reader see at a glance where projects sit in their life, and jump to them.",
+      "watch_out": "The stage name is placed directly into the web address without encoding, which could break if a stage name contains unusual characters."
+    },
+    {
+      "start": 514,
+      "end": 565,
+      "kind": "function",
+      "name": "Home (part 5)",
+      "id": "s22",
+      "hash": "c114887ff853c911",
+      "title": "Maturity pipeline cards",
+      "what": "Shows one card for each maturity level with its count, each linking to the filtered list, plus a legend explaining likelihood and confidence.",
+      "why": "Likely reason: maturity is the main way the page ranks progress toward investment-grade projects.",
+      "watch_out": "Missing maturity levels show as zero, so a data gap looks the same as a real zero."
+    },
+    {
+      "start": 566,
+      "end": 614,
+      "kind": "function",
+      "name": "Home (part 6)",
+      "id": "s23",
+      "hash": "0600c3e53f6997a5",
+      "title": "Latest updates list",
+      "what": "Lists recent research updates with date, project name link, headline and source. Clicking a row opens the citation drawer, and the project link does not.",
+      "why": "Likely reason: lets a reader see what changed recently and check the source.",
+      "watch_out": "The project link stops the click from also opening the drawer, so removing that stop would open both at once."
+    },
+    {
+      "start": 615,
+      "end": 674,
+      "kind": "function",
+      "name": "Home (part 7)",
+      "id": "s24",
+      "hash": "fe88ddadc7489520",
+      "title": "Recent approved changes",
+      "what": "Lists projects with approved changes in the last 30 days, showing up to five changes each with a readable field name, value and source, and an expandable admin view.",
+      "why": "Likely reason: shows the evidence behind recent changes without flooding the page.",
+      "watch_out": "The value is assumed to be text, so a missing value would fail when its length is checked."
+    },
+    {
+      "start": 675,
+      "end": 697,
+      "kind": "function",
+      "name": "Home (part 8)",
+      "id": "s25",
+      "hash": "a1adfbdfda80cda3",
+      "title": "Admin details and citation drawer",
+      "what": "Shows the raw field names, sources and timestamps for the expanded admin view, then places the citation drawer at the end of the page.",
+      "why": "Likely reason: admins need the raw names and times to audit a change, while the main view stays readable.",
+      "watch_out": "Timestamps are shown in the viewer's local time, so two readers in different places see different times."
+    }
+  ],
+  "explained_at": "2026-11-12T06:10:57+00:00",
+  "explained_by": "haiku",
+  "summary": "Overview page for one industry that shows headline numbers, lifecycle and maturity breakdowns, latest updates and recent approved changes.",
+  "purpose": "Gives a visitor a quick picture of an industry's projects, and links each number or bar to the matching filtered project list.",
+  "why": "Likely reason: a dashboard lets a reader judge the whole industry before drilling into projects. The source of each number is shown so the reader can check it.",
+  "how": "1. Reads the industry and any sub-industry choice from the web address. 2. Fetches the dashboard summary. 3. Shows a segment chooser for some industries. 4. Draws the key metric cards, the lifecycle bar, the maturity cards, the latest updates and the recent approved changes. 5. Opens a source panel when a number is clicked.",
+  "inputs": "The industry from the industry context, the sub-industry and segment from the web address, and the dashboard and segment data from the server.",
+  "outputs": "The overview page with its numbers, bars, lists and drawers. Nothing is saved.",
+  "risks": "Several displays rely on the server returning complete fields, such as budget range and maturity counts. The KPI source panel fetches up to 5000 projects, which can be slow for big industries. A few helper functions are defined but not used in the visible code.",
+  "debug": "If numbers look wrong, check the dashboard response and the projectsWithMW and projectsWithBudget fields. If a bar links to the wrong filter, check the stage or maturity name. If the page shows the error message, use the retry button and check the dashboard request.",
+  "summary_hash": "sha256:fa358e1514ec50c3754c919f3054e1acf794ad18c4bf8853a2fc0adc26fdfbe4"
+}

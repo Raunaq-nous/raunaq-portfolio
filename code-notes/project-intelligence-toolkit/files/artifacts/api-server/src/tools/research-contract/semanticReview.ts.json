@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/semanticReview.ts",
+  "language": "TypeScript",
+  "lines": 84,
+  "hash": "sha256:aa6c270119c053daeff3b22835516fb8f9577a72b74cf547c49d02590efbc0fc",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No dedicated test for this file is visible in the packet.",
+      "The instruction text was cut off in the packet, so its full wording could not be reviewed.",
+      "A batch that still fails after four tries stops the whole review.",
+      "Model behaviour cannot be checked without a live run."
+    ]
+  },
+  "terms": [
+    {
+      "term": "batch",
+      "meaning": "a group of facts sent to the reviewer together, here up to twelve"
+    },
+    {
+      "term": "cache",
+      "meaning": "a saved copy of an earlier answer, reused so the same work is not paid for twice"
+    },
+    {
+      "term": "gateway error",
+      "meaning": "a temporary failure at the service that relays requests to the AI model, such as the 520 error mentioned in the code"
+    },
+    {
+      "term": "schema check",
+      "meaning": "a test that a reply has exactly the fields and types required before it is trusted"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/lib/modelCallCache",
+    "artifacts/api-server/src/lib/modelConfig",
+    "artifacts/api-server/src/lib/portkeyOpenAI",
+    "artifacts/api-server/src/tools/research-contract/collection",
+    "artifacts/api-server/src/tools/research-contract/semanticPolicy",
+    "artifacts/api-server/src/tools/lessons-learnt/recipeResult",
+    "zod",
+    "node:crypto"
+  ],
+  "used_by": [
+    "None visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1eb28fb44a84c3f4",
+      "title": "File imports",
+      "what": "Brings in hashing, the reply checker, the AI chat client, model selection, the collection types, the claim review rule, and the cache helpers.",
+      "why": "Likely reason: keeps the review's model choice, caching and validation in one place.",
+      "watch_out": ""
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "kind": "value",
+      "name": "reviewSchema, SemanticReviewCache",
+      "id": "s2",
+      "hash": "31fdb1b9d15374a5",
+      "title": "Reply shape and length limit",
+      "what": "Defines the required shape of the reviewer's answer and the type for saved answers. It also sets a 600 character limit on each statement.",
+      "why": "Likely reason: a fixed shape lets a malformed reply be rejected rather than trusted.",
+      "watch_out": "The 600 character limit and the field names must match what the reviewer is told to return."
+    },
+    {
+      "start": 16,
+      "end": 21,
+      "kind": "type",
+      "name": "FactReview",
+      "id": "s3",
+      "hash": "a0cc6b8917d665be",
+      "title": "Reviewer instructions and cache label",
+      "what": "Holds the instructions sent to the AI reviewer. They tell it to treat source text as data, return one verdict per fact, and quote exact wording. Also holds the cache label and a second set of policy instructions about price basis, milestone and number format.",
+      "why": "Stated in the comment: the cache label is bumped when the instructions or policy change.",
+      "watch_out": "The instruction text is cut off in the packet, and editing it without bumping the cache label would reuse old verdicts."
+    },
+    {
+      "start": 22,
+      "end": 75,
+      "kind": "function",
+      "name": "reviewClaimSemantics (part 1)",
+      "id": "s4",
+      "hash": "d8ca751f66bc66bf",
+      "title": "Running the review in batches",
+      "what": "Filters candidate facts, reuses saved verdicts where possible, and sends the rest in batches of twelve. Each batch is validated, and failures are retried up to four times with a pause between tries.",
+      "why": "Stated in the comments: short labels avoid copying errors, retries cover temporary gateway errors, and a timeout is set because a backup model answers first.",
+      "watch_out": "A batch that fails all four tries stops the whole review, so one bad batch can block the run."
+    },
+    {
+      "start": 76,
+      "end": 84,
+      "kind": "method",
+      "name": "reviewClaimSemantics: for",
+      "id": "s5",
+      "hash": "e7da60a032e6f2fc",
+      "title": "Applying verdicts and saving them",
+      "what": "Goes through each verdict in a validated batch, applies it to its fact, and saves it for reuse. Returns the full list with reviewed facts swapped in.",
+      "why": "Likely reason: saving each verdict per fact means later runs skip repeat model calls.",
+      "watch_out": "Verdicts are saved only after a batch passes validation, so a run stopped midway keeps earlier batches and redoes later ones."
+    }
+  ],
+  "explained_at": "2026-11-12T05:13:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Sends candidate research facts in small batches to an AI reviewer that checks each claim against its passage, validates the answers, retries failures, and caches verdicts so repeated work is skipped.",
+  "purpose": "Gets an independent second opinion on whether each candidate research fact is really supported by its source text.",
+  "why": "Stated in the comments: the review may reject candidates but never rescue a missing quote. Batches are short because long identifiers were copied wrongly. Retries cover temporary gateway errors.",
+  "how": "First, keep only candidate facts that passed the source, relevance and direct checks. Second, reuse saved verdicts for facts already judged by the same model under the same instructions. Third, send the rest in batches of twelve with short labels. Fourth, check for cancellation, call the model, validate the reply, reject over-long statements, confirm exactly one answer per fact, and save the batch. Retry up to four times with a growing pause. Fifth, apply each verdict and cache it.",
+  "inputs": "The list of research facts, the project record, and options including saved earlier results, a save function and a cancellation check.",
+  "outputs": "The same list of facts, with reviewed facts replaced by versions marked verified or held out.",
+  "risks": "Each batch costs a model call and can take up to four minutes per try. If a reply is missing or duplicates an answer, the whole batch is retried, and if it still fails, the review stops. The cache key includes the instructions, so editing them invalidates old results. The cache label must be changed by hand when the policy changes.",
+  "debug": "Look for the error text that says the review omitted or duplicated candidate identifiers, or a gateway error. Check whether the review was cancelled. If verdicts look stale, check the cache label and the instruction text. Re-running the review is the first step after a temporary failure.",
+  "summary_hash": "sha256:aa6c270119c053daeff3b22835516fb8f9577a72b74cf547c49d02590efbc0fc"
+}

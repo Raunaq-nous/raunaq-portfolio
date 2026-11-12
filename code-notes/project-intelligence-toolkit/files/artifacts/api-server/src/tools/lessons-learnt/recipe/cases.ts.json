@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/recipe/cases.ts",
+  "language": "TypeScript",
+  "lines": 206,
+  "hash": "sha256:d1fdd874578897ecd5c5b1a3a9c27842c6274d24043449553aa5485c6d79524a",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only six of the eight sections were available to review, so the end of the file was not seen.",
+      "No test file is visible in the packet.",
+      "Two long prompt strings were cut off in the packet, so the exact model instructions could not be read.",
+      "Output quality depends on an external AI model, which cannot be checked by reading the code."
+    ]
+  },
+  "terms": [
+    {
+      "term": "case study",
+      "meaning": "a detailed look at one project, written from its own evidence"
+    },
+    {
+      "term": "stance",
+      "meaning": "a grade for one pillar: strength, weakness, mixed, or insufficient evidence"
+    },
+    {
+      "term": "citation",
+      "meaning": "a link from a claim to the fact IDs that support it"
+    },
+    {
+      "term": "memo",
+      "meaning": "a saved copy of a model result that is reused if the same request runs again"
+    },
+    {
+      "term": "pool",
+      "meaning": "a way of running several tasks at once with a fixed limit"
+    },
+    {
+      "term": "logarithm",
+      "meaning": "a way of shrinking very large numbers so that size can be compared fairly"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/lib/portkeyOpenAI",
+    "artifacts/api-server/src/lib/modelConfig",
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/framework",
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/text",
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/synthesis",
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/types",
+    "node:crypto"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 28,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "94aac198e2dc61b2",
+      "title": "Purpose and imports",
+      "what": "Explains the three steps: choose the successful and cautionary projects, grade each one against each pillar from its own admitted facts, then write recipes and failure modes from cited facts. Brings in the model helper and text helpers.",
+      "why": "The header states this plan.",
+      "watch_out": "The rule that every claim cites its own project's facts keeps claims from leaking between projects, so removing it would weaken the study."
+    },
+    {
+      "start": 29,
+      "end": 40,
+      "kind": "function",
+      "name": "llm, rank",
+      "id": "s2",
+      "hash": "113ca0e3b788e12d",
+      "title": "Model call wrapper and fact ranking",
+      "what": "Sends a prompt with a fixed instruction to the reasoning model and reads the JSON reply. Ranks facts higher when they are verified, then by length.",
+      "why": "The system instruction says no invented numbers, names or causes, and allows an insufficient stance. Ranking likely puts the strongest evidence first.",
+      "watch_out": "Each call allows up to five minutes and retries on failure, so one slow project can hold up the whole stage."
+    },
+    {
+      "start": 41,
+      "end": 46,
+      "kind": "function",
+      "name": "budgetM",
+      "id": "s3",
+      "hash": "3d12fe963789fc0c",
+      "title": "Budget in millions",
+      "what": "Returns a project's actual or planned budget in millions, or nothing if none is recorded. Raw dollar figures are divided by one million.",
+      "why": "Likely reason: makes capital size comparable across projects for ranking.",
+      "watch_out": "No currency conversion happens here; the figure is only scaled."
+    },
+    {
+      "start": 47,
+      "end": 56,
+      "kind": "function",
+      "name": "performanceLine",
+      "id": "s4",
+      "hash": "2e3a197db2f2f805",
+      "title": "Plain cost and schedule line",
+      "what": "Writes one sentence describing the recorded cost overrun and delay, or says the outcome is not recorded.",
+      "why": "The comment says this comes only from Yard records and is never inferred from status.",
+      "watch_out": "A blank field reads as not recorded, which may mean missing data rather than a good result."
+    },
+    {
+      "start": 57,
+      "end": 84,
+      "kind": "function",
+      "name": "selectCases",
+      "id": "s5",
+      "hash": "c4e040dd84f4ade8",
+      "title": "Choose projects to assess",
+      "what": "Keeps projects with at least five admitted facts. Ranks delivered projects by on-plan performance, capital size and evidence depth, and ranks overran or cautionary projects by severity. Takes up to 10 per group, marks the top six as featured, and writes a reason for each pick.",
+      "why": "The rule text is stored with the result so readers can see how cases were chosen.",
+      "watch_out": "Projects with no budget count as zero size, so they rank lower regardless of their evidence."
+    },
+    {
+      "start": 85,
+      "end": 144,
+      "kind": "function",
+      "name": "assessCases (part 1)",
+      "id": "s6",
+      "hash": "7ee855a3668010bb",
+      "title": "Grade each case against pillars, first part",
+      "what": "For each chosen project, sends up to 50 of its admitted facts with short IDs to the model, and asks for a headline, outcome, context and a stance per pillar. Claims without valid citations are dropped and counted. A failed call is recorded as a failure so the stage can be retried.",
+      "why": "The code says a model failure is not the same as insufficient evidence, so the stage fails and a resume retries it. Saved model results are reused.",
+      "watch_out": "Claims that cite unknown short IDs are dropped, and the drop count is not shown in the output."
+    },
+    {
+      "start": 145,
+      "end": 204,
+      "kind": "function",
+      "name": "assessCases (part 2)",
+      "id": "s7",
+      "hash": "1f2d305e7a06203c",
+      "title": "Sorting cases and writing pillar lessons",
+      "what": "Puts the graded project cases in their chosen order, then for each driver pillar asks a language model to write a headline, a note on what separated good cases from cautionary ones, and recipe and failure-mode points. Each point is kept only if it cites real evidence, and if any model call failed the run stops with a message to retry.",
+      "why": "Likely reason: every lesson must point back to a fact, so anything unsupported is dropped. Failed calls are checked so the retry can resume from saved progress.",
+      "watch_out": "Both failure checks throw on any failed call, so one bad model reply stops the whole result; keep both checks if you change the pillar loop."
+    },
+    {
+      "start": 205,
+      "end": 206,
+      "kind": "function",
+      "name": "assessCases (part 3)",
+      "id": "s8",
+      "hash": "1348d7c43249ba26",
+      "title": "Returning the case results",
+      "what": "Hands back the sorted cases, the pillar lessons, the success and cautionary pools used for selection with their rule, and the count of model claims that were dropped for lacking valid citations.",
+      "why": "Likely reason: the caller needs everything in one package, including the dropped count so the deck can report it.",
+      "watch_out": "The dropped count appears in the deck's verification notes, so changing how it is counted changes what readers see."
+    }
+  ],
+  "explained_at": "2026-11-12T04:38:54+00:00",
+  "explained_by": "haiku",
+  "summary": "Picks the most instructive delivered and troubled projects, asks an AI model to grade each one against every pillar using only its own cited facts, and keeps only claims that cite real facts.",
+  "purpose": "Produce the per-project case studies for the lessons study that the deck then shows.",
+  "why": "The header states the three steps and the rule that every claim must cite the project's own facts. The strict citation rule is stated as a way to avoid unsupported claims.",
+  "how": "First, choose cases from outcome labels and recorded performance. Second, keep only projects with at least five admitted facts. Third, for each chosen project, build a prompt with short fact IDs and the pillar rubric. Fourth, call the model with retries and cached results. Fifth, map short IDs back to real fact IDs and drop claims with no valid citation. Sixth, mark any pillar with no citations as insufficient. Seventh, record the headline, outcome, context, worked and went-wrong items, and timeline. The write-up of recipes and failure modes is not visible in this packet.",
+  "inputs": "The framework with its pillars, a list of methodology items, the projects, and the admitted facts.",
+  "outputs": "A case analysis with the chosen projects, a grade for each pillar, cited text with fact IDs, pool sizes, and the selection rule text.",
+  "risks": "Model output is untrusted. Citations are checked, but the wording of each claim is not verified beyond that. A failed model call fails the whole stage. Up to four projects run at once, and each call can take up to five minutes. Selection favours projects with recorded performance, so projects without it are under-represented.",
+  "debug": "Start with the trace messages, which list the selected projects and any failures with their reasons. A project missing from the output usually failed in its model call, so check the error text in the trace. If a pillar often shows insufficient, check that its facts have pillar IDs and that the citations map to the short IDs. The count of dropped claims is kept in a variable and is not returned, so add a log line to see it.",
+  "summary_hash": "sha256:d1fdd874578897ecd5c5b1a3a9c27842c6274d24043449553aa5485c6d79524a"
+}

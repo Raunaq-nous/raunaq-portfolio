@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/research.ts",
+  "language": "TypeScript",
+  "lines": 227,
+  "hash": "sha256:288dadd3d907387f9ac80892fef41d89e7057ae8b0fcaa66faa0a1e66184e31e",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Failures are caught and recorded: failed searches, unreadable pages and invalid findings all produce notes instead of crashes.",
+      "The prompt and the code disagree on the maximum number of findings (four versus eight).",
+      "No test file for this module is in the packet, so the quote checks and scoring are not shown to be verified.",
+      "Results depend on live search, news and AI services, so behaviour can change when those change."
+    ]
+  },
+  "terms": [
+    {
+      "term": "AI model",
+      "meaning": "a language model service that reads the pages and writes structured findings"
+    },
+    {
+      "term": "Grounding",
+      "meaning": "tying every claim to exact text that appears in a fetched page"
+    },
+    {
+      "term": "Quote",
+      "meaning": "exact words copied from a source page"
+    },
+    {
+      "term": "Account",
+      "meaning": "one specific company the team researches, as opposed to a whole industry"
+    },
+    {
+      "term": "Whitespace",
+      "meaning": "an apparent gap where demand or capability is missing; the code always treats it as low confidence"
+    },
+    {
+      "term": "Hash",
+      "meaning": "a short fixed fingerprint of a piece of text, used to tell whether the text changed"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/search/createRouter.ts",
+    "artifacts/api-server/src/lib/safeFetch.ts",
+    "artifacts/api-server/src/lib/portkeyOpenAI.ts",
+    "artifacts/api-server/src/lib/modelConfig.ts",
+    "artifacts/api-server/src/lib/researchSources.ts",
+    "artifacts/api-server/src/tools/reality-scan/deckResearch.ts",
+    "artifacts/api-server/src/tools/opportunity-map/store.ts",
+    "artifacts/api-server/src/tools/opportunity-map/types.ts",
+    "artifacts/api-server/src/tools/opportunity-map/news.ts",
+    "artifacts/api-server/src/tools/opportunity-map/catalog.ts",
+    "artifacts/api-server/src/tools/opportunity-map/mapping.ts",
+    "artifacts/api-server/src/lib/modelCallCache.ts",
+    "artifacts/api-server/src/tools/opportunity-map/branding.ts",
+    "artifacts/api-server/src/evidence/runEvents.ts",
+    "drizzle-orm"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/worker.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup, seenKey",
+      "id": "s1",
+      "hash": "3253022570fef3ef",
+      "title": "Imports and the already-analysed page check",
+      "what": "Brings in the shared tools this research needs, and sets up a check that skips any web page already analysed with identical text, so the same page is not paid for twice.",
+      "why": "The code comment says a page already analysed with identical text cannot yield new findings.",
+      "watch_out": "The check uses the page address and a fingerprint of its text, so any change to the text forces a fresh analysis."
+    },
+    {
+      "start": 20,
+      "end": 26,
+      "kind": "function",
+      "name": "markDocumentsAnalysed, SourceDocument, normal",
+      "id": "s2",
+      "hash": "98674fc2c835106f",
+      "title": "Marks pages as analysed after saving",
+      "what": "After findings are saved, marks each analysed page so later runs skip it. It also defines the shape of a source page and a text-cleaning helper that standardises spacing and character forms.",
+      "why": "The code comment says marking happens only after findings are committed, so a failed save is analysed again next time.",
+      "watch_out": "If this runs before the save commits, a failed save would leave its pages marked and skipped until the cache expires."
+    },
+    {
+      "start": 27,
+      "end": 41,
+      "kind": "function",
+      "name": "groundFinding",
+      "id": "s3",
+      "hash": "97db1436eaee2872",
+      "title": "Checks each finding quotes real page text",
+      "what": "Keeps a finding only when every quote the model gave appears word for word in a page that was really fetched. It replaces model-supplied links with the real page details, keeps only project ids that match the page, and lowers confidence to medium when only one website supports a high-confidence claim. If any quote fails, the whole finding is rejected.",
+      "why": "The code comment says quote existence is checked by code, because model-supplied links and ids are never trusted.",
+      "watch_out": "Matching ignores only spacing and character-form differences, so a paraphrase fails the check, which is intended but can drop real findings."
+    },
+    {
+      "start": 42,
+      "end": 86,
+      "kind": "function",
+      "name": "researchIndustry (part 1)",
+      "id": "s4",
+      "hash": "cf9b019bc459f340",
+      "title": "Finds candidate pages to read",
+      "what": "Builds search questions for an industry or a company, runs them along with a public news feed, drops results older than about six months and any address that is not a web link, and records notes about gaps. It stops with an error if the AI model is not configured.",
+      "why": "Reason not stated in the code beyond the notes it records: the research is described as bounded and not comprehensive.",
+      "watch_out": "Search errors are caught and turned into notes, so a broken search can look like a quiet run rather than a failure."
+    },
+    {
+      "start": 87,
+      "end": 146,
+      "kind": "method",
+      "name": "researchIndustry: if",
+      "id": "s5",
+      "hash": "3c354994b117e436",
+      "title": "Reads pages and sends them to the model",
+      "what": "Ranks candidate pages, official company pages first when researching an account, then reads up to six. Pages that are PDFs, errors, or bot walls are recorded as unusable. Readable text, cut to 18,000 characters, is passed to the AI model under strict instructions, including that page text is data and never instructions. Pages already analysed are skipped.",
+      "why": "The code comment says official-source pages are prioritised, and the strict instructions limit claims to what the sources show.",
+      "watch_out": "Text beyond 18,000 characters never reaches the model, so an important fact placed further down a long page is missed."
+    },
+    {
+      "start": 147,
+      "end": 202,
+      "kind": "function",
+      "name": "researchIndustry (part 3)",
+      "id": "s6",
+      "hash": "e8eec5c04290646f",
+      "title": "Validates findings and runs the hard checks",
+      "what": "Continues the model instructions with the solution mapping fields, confidence levels and cautions such as pending investment decisions not counting as delay. Reads the model reply, drops invalid findings with a note, and then runs checks: quotes found, account named, mapping present, and no banned branding. A finding that fails a hard check is withheld and the reason is recorded.",
+      "why": "Reason not stated in the code for every wording choice; the checks exist so that unsupported findings are not saved.",
+      "watch_out": "The model reply is parsed directly, so a malformed reply throws an error and the whole research run fails."
+    },
+    {
+      "start": 203,
+      "end": 227,
+      "kind": "method",
+      "name": "researchIndustry: for",
+      "id": "s7",
+      "hash": "bd574ff3cb7486e7",
+      "title": "Saves sources and builds each kept finding",
+      "what": "For each kept finding, saves its sources, builds a stable id from the account or industry, kind, themes, addresses and project ids, and sets its priority from the mapping score. It also writes a visible explanation of the score for the event log.",
+      "why": "Likely reason: the stable id means the same signal updates instead of being duplicated on each run.",
+      "watch_out": "Changing any ingredient of the id, such as the list of themes or addresses, creates a new signal instead of updating the old one."
+    }
+  ],
+  "explained_at": "2026-11-12T04:57:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Finds recent capital-project signals on the web for one industry or one company, checks each quote against the real page text, and saves only the findings that pass.",
+  "purpose": "Turns web pages plus an AI model's reading of them into grounded opportunity signals for the Opportunity Map.",
+  "why": "Likely reason: AI output can invent quotes or facts, so the code checks every quote against the fetched page and withholds anything it cannot prove. It also skips pages already analysed with identical text to avoid paying for the same analysis twice.",
+  "how": "1. Builds the project list and search queries for the industry or account. 2. Runs search and a public news feed, and drops items older than about six months. 3. Reads up to six pages and records each check. 4. Skips pages already analysed with identical text. 5. Sends the remaining pages to an AI model with strict rules. 6. Validates each finding against a schema. 7. Checks quotes, account naming, solution mapping and branding. 8. Registers sources and builds each signal with a stable id, score and priority. The caller saves results and only then marks pages as analysed.",
+  "inputs": "An industry code and name, an optional account, an optional progress callback and an optional event log. Relies on search providers, the news feed, fetched web pages, the AI model, and project and evidence rows in the database.",
+  "outputs": "A list of opportunities, the number of pages checked, human-readable coverage notes, and the page keys to mark as analysed.",
+  "risks": "The AI model may give a finding whose quotes are real but whose interpretation is wrong, and the checks do not catch that. The prompt asks for at most four findings while the code accepts up to eight. Pages are cut to 18,000 characters. Search and news failures become notes, so a broken source can look like a quiet result. Model output is parsed directly, so a malformed reply stops the run.",
+  "debug": "Start with the coverage notes on the job row in the opportunity_jobs table: they say which pages failed, which were skipped and which findings were withheld and why. Check the job's error text. Confirm the AI model is configured, because the function stops at once without it. If expected findings are missing, look at the withheld-finding events in the event log. If pages keep being skipped, check whether their text changed.",
+  "summary_hash": "sha256:288dadd3d907387f9ac80892fef41d89e7057ae8b0fcaa66faa0a1e66184e31e"
+}

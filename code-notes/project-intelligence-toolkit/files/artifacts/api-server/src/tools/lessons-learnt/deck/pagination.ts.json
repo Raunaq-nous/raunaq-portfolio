@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/deck/pagination.ts",
+  "language": "TypeScript",
+  "lines": 226,
+  "hash": "sha256:90490a530ba500c3c88c313e1a55fb31d246ddd4618dac7e32dbc476f02b5605",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for this file was shown.",
+      "Some cases are reported with warnings and can still overflow, by design.",
+      "Line measurement uses a fixed safety factor and a default width for unknown characters."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Pillar",
+      "meaning": "one of the main topic slides in the deck, each covering one theme."
+    },
+    {
+      "term": "Driver",
+      "meaning": "a sub-topic inside a pillar, shown with a heading and its evidence."
+    },
+    {
+      "term": "Tail",
+      "meaning": "the closing block of a pillar with the unattached bullets, the arithmetic check and the basis notes."
+    },
+    {
+      "term": "Carlito font",
+      "meaning": "a free font whose letter widths match Calibri, used so measurements match the real rendering."
+    },
+    {
+      "term": "Greedy packing",
+      "meaning": "filling each page with as many groups as fit, in order, before starting the next page."
+    },
+    {
+      "term": "Legacy fallback",
+      "meaning": "a rule for older saved slides that did not store their group map, so the groups are rebuilt from the text."
+    }
+  ],
+  "depends_on": [
+    "../recipeResult",
+    "./branding"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/lessons-learnt/deck/registry.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ae7b7bd42f370f1c",
+      "title": "Imports and purpose of pagination",
+      "what": "Brings in the slide type and the shared layout and text settings. The file header explains that large pillar slides are split into pages without breaking topic groups.",
+      "why": "Keeps the page fitting tied to the same numbers the slides are drawn with.",
+      "watch_out": "Relies on exact branding names, so a rename breaks it."
+    },
+    {
+      "start": 16,
+      "end": 40,
+      "kind": "value",
+      "name": "CHAR_EM",
+      "id": "s2",
+      "hash": "8f83dee83fdbc62d",
+      "title": "Character width table",
+      "what": "Holds how wide each letter, digit and common symbol is in the Carlito font, so line lengths can be estimated before drawing.",
+      "why": "Stated in the comment: matches Calibri metrics, which the renderer substitutes when Calibri is missing.",
+      "watch_out": "Characters not in the table use a default width, so unusual symbols may be measured wrongly."
+    },
+    {
+      "start": 41,
+      "end": 46,
+      "kind": "function",
+      "name": "textWidthIn",
+      "id": "s3",
+      "hash": "d6fc657b4dbef472",
+      "title": "Measuring text width in inches",
+      "what": "Adds up the widths of the characters in a string at a given font size and converts the total to inches.",
+      "why": "Needed to decide whether the next word still fits on the current line.",
+      "watch_out": "Any character missing from the table is treated as an average-width letter."
+    },
+    {
+      "start": 47,
+      "end": 63,
+      "kind": "function",
+      "name": "estimateLines",
+      "id": "s4",
+      "hash": "f1a86ddc83262893",
+      "title": "Counting wrapped lines",
+      "what": "Counts how many lines a bullet will take by adding words one at a time and starting a new line when the next word would overflow the usable width.",
+      "why": "Stated in the comment: a real word-wrap based on font widths, not a characters-per-line guess.",
+      "watch_out": "Measures at the body font size only, and uses a fixed safety fraction of the box width."
+    },
+    {
+      "start": 64,
+      "end": 71,
+      "kind": "function",
+      "name": "bulletLines",
+      "id": "s5",
+      "hash": "acbc0a4ff34ce403",
+      "title": "Line count for one bullet",
+      "what": "Gives the number of lines one bullet takes. Top-level driver headings are narrowed to leave room for the bullet symbol, while indented sub-lines use the full width.",
+      "why": "Stated in the comment: un-indented headings carry a bullet symbol, indented lines do not.",
+      "watch_out": "Indentation is detected by a leading space, so stray leading spaces change the measured height."
+    },
+    {
+      "start": 72,
+      "end": 77,
+      "kind": "function",
+      "name": "pillarLinesPerPage",
+      "id": "s6",
+      "hash": "79bd2bcd51e51516",
+      "title": "Lines available on a pillar page",
+      "what": "Works out how many text lines fit in the body area of a pillar slide, using the layout positions for the top, the footnote line and the gap.",
+      "why": "Stated in the comment: derived from layout, not hard-coded.",
+      "watch_out": "Any layout position change changes how many lines fit, which changes every page split."
+    },
+    {
+      "start": 78,
+      "end": 83,
+      "kind": "type",
+      "name": "PillarUnit",
+      "id": "s7",
+      "hash": "b185cef58561e006",
+      "title": "Shape of one bullet group",
+      "what": "Describes one group of consecutive bullets: where it starts, how many bullets it holds, and whether it is a driver group or the final tail.",
+      "why": "Stated in the comment: drivers must stay together and the tail must appear once.",
+      "watch_out": "Start and count values must line up exactly with the bullets, or the validation step rejects them."
+    },
+    {
+      "start": 84,
+      "end": 88,
+      "kind": "type",
+      "name": "PaginationResult",
+      "id": "s8",
+      "hash": "07422003119d7dc2",
+      "title": "Shape of the pagination result",
+      "what": "The result holds the list of slide pages and a list of warnings about anything that could not be split cleanly.",
+      "why": "Lets the caller show warnings instead of failing silently.",
+      "watch_out": "Warnings are only shown if the caller reads them, which the registry does through a callback."
+    },
+    {
+      "start": 89,
+      "end": 111,
+      "kind": "function",
+      "name": "validUnits",
+      "id": "s9",
+      "hash": "8699e5f92237f6a2",
+      "title": "Checking the stored group map",
+      "what": "Confirms the stored group list covers every bullet exactly once, in order, and ends with exactly one tail group.",
+      "why": "Stated in the comment: the stored structure must be validated before use.",
+      "watch_out": "A single gap or overlap makes the whole map invalid and triggers the rebuild path."
+    },
+    {
+      "start": 112,
+      "end": 134,
+      "kind": "function",
+      "name": "reconstructUnits",
+      "id": "s10",
+      "hash": "745b8bdbfce76c8d",
+      "title": "Rebuilding groups for older slides",
+      "what": "For slides saved before the group map existed, rebuilds groups from the bullet shapes. Un-indented lines start a driver group, and the line beginning with the unattached phrase starts the tail.",
+      "why": "Stated in the comment: a legacy fallback for older saved blocks.",
+      "watch_out": "Depends on the exact wording of the unattached phrase, so changing that wording stops old slides from being rebuilt."
+    },
+    {
+      "start": 135,
+      "end": 193,
+      "kind": "function",
+      "name": "paginatePillar (part 1)",
+      "id": "s11",
+      "hash": "549e73b91b896ae2",
+      "title": "Choosing groups and packing drivers",
+      "what": "Measures each group's height, then packs driver groups onto pages one after another until a page is full. It warns when a single group is taller than a page.",
+      "why": "Stated in the docstring: drivers are never split across pages.",
+      "watch_out": "A driver taller than a page is placed alone and not split, so it can overflow the slide."
+    },
+    {
+      "start": 194,
+      "end": 226,
+      "kind": "method",
+      "name": "paginatePillar: if",
+      "id": "s12",
+      "hash": "3a8a52985e886dd4",
+      "title": "Placing the tail and building pages",
+      "what": "Adds the tail to the last page if it fits, or starts a new page for it. Each page then gets its own bullets, a page-number title and matching citations.",
+      "why": "Stated in the docstring: titles get the page count only when there is more than one page.",
+      "watch_out": "New page ids and titles are created here, so any lookup by the original slide id fails after splitting."
+    }
+  ],
+  "explained_at": "2026-11-12T04:29:58+00:00",
+  "explained_by": "haiku",
+  "summary": "Splits a pillar slide that has too much text into several slides, keeping each topic group whole and the closing summary on the last page.",
+  "purpose": "Lets dense topic slides spread over several pages without breaking a topic apart or losing its summary.",
+  "why": "Stated in the file comment: drivers stay together, the arithmetic summary appears once on the last page, and line counts come from a real measure of the font, not a guess.",
+  "how": "First, the stored group map for the slide is checked. If it is missing or broken, the code rebuilds groups from the bullet shapes. Next, each group's height in lines is measured with the character width table. Driver groups are then packed greedily into pages within the lines budget derived from the layout. The tail group goes on the last page if it fits. Finally, each page is built as a new slide with a page-number title and matching citations.",
+  "inputs": "One pillar slide block with its bullets, optional stored group map (units), and any citation data attached to the slide.",
+  "outputs": "A list of slide blocks, one per page, with new ids ending in page numbers, plus a list of warnings.",
+  "risks": "A driver group larger than a whole page is placed alone and not split, so it can overflow. The tail group is never split. If both the stored map and rebuild fail, the slide is returned unsplit with a warning.",
+  "debug": "If a page overflows, look at the warnings returned, then check the line budget from pillarLinesPerPage and the width measure in estimateLines. If a slide is not split when it should be, check validUnits and reconstructUnits. Watch for the exact phrase that starts the tail group, because the rebuild relies on it.",
+  "summary_hash": "sha256:90490a530ba500c3c88c313e1a55fb31d246ddd4618dac7e32dbc476f02b5605"
+}

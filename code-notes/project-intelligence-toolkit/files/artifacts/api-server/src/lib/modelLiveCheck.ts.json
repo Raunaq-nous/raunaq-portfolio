@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/lib/modelLiveCheck.ts",
+  "language": "TypeScript",
+  "lines": 189,
+  "hash": "sha256:3c6d68cd8746c8879ee77cbda422409a83c09ee91e9e8ebfdf8f9ca0a0ade26d",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible for the classification rules.",
+      "Verdicts depend on matching words in error text."
+    ]
+  },
+  "terms": [
+    {
+      "term": "live check",
+      "meaning": "a real but very small request sent to a service to confirm it works now"
+    },
+    {
+      "term": "verdict",
+      "meaning": "the label given to a check result, such as ok or gateway-auth"
+    },
+    {
+      "term": "upstream",
+      "meaning": "the AI provider behind the gateway, which the gateway itself calls"
+    },
+    {
+      "term": "scrub",
+      "meaning": "remove sensitive text from a message before it is shown or logged"
+    }
+  ],
+  "depends_on": [
+    "./portkeyOpenAI",
+    "./keyChain",
+    "./modelConfig"
+  ],
+  "used_by": [
+    "Not visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 21,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "69666af786065e32",
+      "title": "Imports and purpose",
+      "what": "Loads the model call, key status, and role settings. The header explains the three failures this check exists to tell apart.",
+      "why": "Stated in the header.",
+      "watch_out": "Renaming any imported function breaks this check."
+    },
+    {
+      "start": 22,
+      "end": 32,
+      "kind": "type",
+      "name": "LiveCheckVerdict",
+      "id": "s2",
+      "hash": "a61c78bb5a1110a5",
+      "title": "Possible outcome labels",
+      "what": "Lists every label a check can return: ok, not configured, gateway auth, provider key, model not found, rate limited, usage limit, timeout, and unknown.",
+      "why": "Likely reason: fixed labels that health screens and tests can compare.",
+      "watch_out": "A new label needs matching advice in the classifier."
+    },
+    {
+      "start": 33,
+      "end": 49,
+      "kind": "type",
+      "name": "LiveCheckResult",
+      "id": "s3",
+      "hash": "87aa59764579e711",
+      "title": "Shape of one check result",
+      "what": "Defines the fields of one check result, including the role checked, the model, latency, scrubbed error, advice, and key status names.",
+      "why": "Likely reason: one consistent report for health output.",
+      "watch_out": "Key status shows names only, by design. Values must never be added here."
+    },
+    {
+      "start": 50,
+      "end": 64,
+      "kind": "function",
+      "name": "scrubKeyMaterial",
+      "id": "s4",
+      "hash": "aabaa1735c25e428",
+      "title": "Removing key text from errors",
+      "what": "Removes anything that looks like a key or bearer token from error text, replacing it with a redaction marker.",
+      "why": "The header states that the upstream echoes partly masked keys, which still leak their start and end.",
+      "watch_out": "Only known key shapes are caught. A key in a new format could still leak."
+    },
+    {
+      "start": 65,
+      "end": 121,
+      "kind": "function",
+      "name": "classifyLiveError",
+      "id": "s5",
+      "hash": "61195a528f12d814",
+      "title": "Turning an error into a verdict",
+      "what": "Reads the error text and any status code in it, and returns a verdict with a short piece of advice.",
+      "why": "The header and the branch comments explain each category, especially that a model scoping error looks like an auth error.",
+      "watch_out": "The rule that matches integration and key is broad and could match unrelated messages."
+    },
+    {
+      "start": 122,
+      "end": 178,
+      "kind": "function",
+      "name": "runModelLiveCheck",
+      "id": "s6",
+      "hash": "513136a0f2182968",
+      "title": "Running one live check",
+      "what": "Sends one five-token call to the chosen model and returns success with latency, or the classified and scrubbed failure.",
+      "why": "The header describes a cheap call through the real transport.",
+      "watch_out": "Retries are off on purpose, so a single transient error is reported as a failure."
+    },
+    {
+      "start": 179,
+      "end": 189,
+      "kind": "function",
+      "name": "runRoleLiveChecks",
+      "id": "s7",
+      "hash": "18ef6919739ba37b",
+      "title": "Running one check per role",
+      "what": "Runs the live check once for each role in turn.",
+      "why": "The comment states this proves the role wiring, not only the model name.",
+      "watch_out": "Checks run one after another, so total time grows with each role added."
+    }
+  ],
+  "explained_at": "2026-11-12T03:57:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Makes one tiny real model call per role and reports why it failed, if it did, with secret text removed.",
+  "purpose": "Tell apart a rejected gateway login, a bad upstream provider key, a wrong model name, a rate limit, a spent usage limit, and a timeout.",
+  "why": "The header states these failures look the same from outside. Error text is scrubbed because the upstream provider echoes partly masked keys.",
+  "how": "Picks the role's model, confirms that a transport exists, sends a five-token ping with retries off, classifies any error text into a verdict, removes key-like text, and returns the result with key status names.",
+  "inputs": "A timeout, an optional role, and the environment settings read by the transport and model modules.",
+  "outputs": "A result object with ok, verdict, model, base address, latency, scrubbed error text, advice, and key status names.",
+  "risks": "Classification matches words in error text, so new wording falls to unknown. Each check spends a small amount of real money. The scrubbing only catches key shapes it knows.",
+  "debug": "Read rawError and verdict first. If verdict is unknown, read the raw text as written. If verdict is not-configured, check the secrets for the Portkey and OpenAI keys. Compare the model in the result with the role settings in modelConfig.",
+  "summary_hash": "sha256:3c6d68cd8746c8879ee77cbda422409a83c09ee91e9e8ebfdf8f9ca0a0ade26d"
+}

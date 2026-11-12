@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/evidence.ts",
+  "language": "TypeScript",
+  "lines": 113,
+  "hash": "sha256:378af030153f5e245ea9c28dac46241831a654a0770cdd938c5c211fdbbfcf9a",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are handled through checks that throw or return reasons.",
+      "A test file covers this file, but no test run result is shown here.",
+      "Matching is strict, so real-world wording can produce partial results."
+    ]
+  },
+  "terms": [
+    {
+      "term": "attribution",
+      "meaning": "proof that a passage is about the named project and not another one"
+    },
+    {
+      "term": "anchor",
+      "meaning": "the exact start and end position of a passage inside the source text"
+    },
+    {
+      "term": "passage",
+      "meaning": "a piece of source text that supports a claim"
+    },
+    {
+      "term": "normalise",
+      "meaning": "convert text to a standard form, such as one case and single spaces, so it can be compared"
+    },
+    {
+      "term": "schema",
+      "meaning": "a written rule set that checks data has the right shape"
+    },
+    {
+      "term": "sanctioned baseline",
+      "meaning": "the original approved budget or schedule, used as the starting point for comparison"
+    },
+    {
+      "term": "stale",
+      "meaning": "a source capture that is too old to trust as current"
+    }
+  ],
+  "depends_on": [
+    "zod"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/research-contract/collection.ts",
+    "artifacts/api-server/src/tools/research-contract/collection.test.ts",
+    "artifacts/api-server/src/tools/research-contract/projectAliases.ts",
+    "artifacts/api-server/src/tools/research-contract/evidence.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 2,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ba38846bd0629b43",
+      "title": "Imports the schema library",
+      "what": "Brings in the schema library that defines and checks the shape of evidence records. On its own this does nothing a user would notice.",
+      "why": "Likely reason: the file defines its checks as schemas, so the library is needed up front.",
+      "watch_out": ""
+    },
+    {
+      "start": 3,
+      "end": 21,
+      "kind": "value",
+      "name": "evidenceAssessmentSchema, EvidenceAssessment",
+      "id": "s2",
+      "hash": "63989f5b58f3d306",
+      "title": "Shape of an assessment result",
+      "what": "Defines the record kept for each check: source support level, project match, meaning status, check time, link, passage, exact text position and reasons.",
+      "why": "The header says each gate is independent, so each result records each gate separately.",
+      "watch_out": "Text positions count UTF-16 units, not visible characters, so reading them as characters gives the wrong place for some symbols."
+    },
+    {
+      "start": 22,
+      "end": 27,
+      "kind": "type",
+      "name": "EvidenceClaim",
+      "id": "s3",
+      "hash": "f2b1299f43755fb3",
+      "title": "Input shape for a claim",
+      "what": "Describes what is being checked: the passage text, the project name, the link, other known names, the competing names, and optionally a meaning check.",
+      "why": "The comment says only checked extraction schemas may claim a meaning, so the default is passage only.",
+      "watch_out": "If no meaning is supplied, the result is marked passage only, which is a weaker claim than full support."
+    },
+    {
+      "start": 28,
+      "end": 36,
+      "kind": "type",
+      "name": "CapturedSource, normal",
+      "id": "s4",
+      "hash": "0b03cfefb0c313cd",
+      "title": "Captured page shape and text normaliser",
+      "what": "Describes a captured page: its text, fingerprint, check time, accessibility, stale flag, document ID and stated publication date. Also defines a normalise helper that unifies Unicode forms, case and spacing.",
+      "why": "The normalise helper makes matching ignore harmless differences in case and spacing. The reason for the other fields is stated only in the publication date comment.",
+      "watch_out": "Matching ignores case, but exact text positions use the raw text, so the two can disagree."
+    },
+    {
+      "start": 37,
+      "end": 41,
+      "kind": "function",
+      "name": "phrase",
+      "id": "s5",
+      "hash": "fdd573bf21cc4eb7",
+      "title": "Whole-phrase match",
+      "what": "Tests whether a phrase appears in a text as a whole word or phrase, ignoring case and spacing.",
+      "why": "Likely reason: stops a short name matching inside a longer word. The code does not state this.",
+      "watch_out": "Phrases of two or fewer characters never match."
+    },
+    {
+      "start": 42,
+      "end": 54,
+      "kind": "function",
+      "name": "namesProject",
+      "id": "s6",
+      "hash": "06f407c213ba7d40",
+      "title": "Does a passage name this project",
+      "what": "Decides whether a passage names the project. For a numbered unit such as Unit 2, it also requires that the passage mention unit 2 and no other unit number.",
+      "why": "The comment says a passage must name the same unit and never inherit claims about the plant or programme.",
+      "watch_out": "A passage that mentions both unit 2 and unit 3 is rejected, even if it is about unit 2."
+    },
+    {
+      "start": 55,
+      "end": 67,
+      "kind": "function",
+      "name": "namesProjectNearPassage",
+      "id": "s7",
+      "hash": "2bd636c27cdd3dc1",
+      "title": "Attribution from nearby page text",
+      "what": "For a short stored quote, finds it in the full page and checks whether the project name appears within 1,500 characters before or after it.",
+      "why": "The comment says stored quotes are often short fragments that leave out the project name.",
+      "watch_out": "The quote must be at least 20 characters and must match after normalising, otherwise the answer is no."
+    },
+    {
+      "start": 68,
+      "end": 94,
+      "kind": "function",
+      "name": "assessEvidence",
+      "id": "s8",
+      "hash": "dfedc70adcb0494d",
+      "title": "Main evidence assessment",
+      "what": "Produces the assessment for one claim: source level (direct, partial, absent, inaccessible, stale or unsourced), project relevance (matched, off project or ambiguous), and the exact text position when the source matches directly.",
+      "why": "The header says that passage support never implies attribution, so both results are returned separately.",
+      "watch_out": "A direct match requires an exact string match against the raw page text. Any whitespace change turns it into partial."
+    },
+    {
+      "start": 95,
+      "end": 103,
+      "kind": "value",
+      "name": "comparableQuantitySchema, ComparableQuantity",
+      "id": "s9",
+      "hash": "829a9d4e4f3a392d",
+      "title": "Shape of a comparable amount",
+      "what": "Defines an amount with its value, unit, currency, price basis, kind (sanctioned, revision, forecast or final) and evidence IDs.",
+      "why": "Likely reason: so that two amounts are compared only when they are the same kind of figure. The code does not state this.",
+      "watch_out": "Unit, currency and price basis must all match exactly for a comparison to work."
+    },
+    {
+      "start": 104,
+      "end": 113,
+      "kind": "function",
+      "name": "calculateOverrun",
+      "id": "s10",
+      "hash": "87ab45f9f38a94c4",
+      "title": "Overrun percentage calculation",
+      "what": "Works out by what percentage the final outcome went over the sanctioned baseline, and returns the two evidence IDs and the formula. Refuses forecasts, revisions, zero baselines and mismatched units.",
+      "why": "The error messages state the rules: a sanctioned baseline and a final outcome are both required, and the amounts must be like-for-like.",
+      "watch_out": "A currency conversion needs its own sourced step first. This function will not convert amounts itself."
+    }
+  ],
+  "explained_at": "2026-11-12T05:10:33+00:00",
+  "explained_by": "haiku",
+  "summary": "Decides whether a quoted passage really comes from a captured source, names the right project and supports a field, and calculates a cost overrun percentage from two comparable amounts.",
+  "purpose": "Acts as the independent gate that stops unsupported facts from being accepted.",
+  "why": "The header says that source support never proves project attribution or the meaning of a value, so each check is kept separate.",
+  "how": "1. Defines the shape of an assessment and of a captured page. 2. Checks whether the project name appears in the passage, applying unit rules. 3. Checks for competing project names. 4. Looks for the exact passage in the captured text. 5. Combines the results into one assessment with a source level, a project match and an exact text position. 6. Provides a separate overrun calculation that accepts only matching sanctioned and final amounts.",
+  "inputs": "A claim (passage text, project name, link, other names, optional meaning check), a captured page record, and for overrun, a baseline amount and an outcome amount.",
+  "outputs": "An assessment record with source level, project relevance, meaning status, text position and reasons. Or an overrun percentage with the evidence IDs and the formula used.",
+  "risks": "Exact text matching means small wording or whitespace changes move a result from direct to partial. Unit rules can reject a valid unit reference. The overrun function throws errors for mismatched inputs, so callers must handle them.",
+  "debug": "Read the reasons list in an assessment, which names each failing check. Check the source level first, then project relevance. For overrun errors, the message says which input is missing or mismatched.",
+  "summary_hash": "sha256:378af030153f5e245ea9c28dac46241831a654a0770cdd938c5c211fdbbfcf9a"
+}

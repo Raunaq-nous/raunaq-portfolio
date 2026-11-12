@@ -1,0 +1,302 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/routes/evidenceLayer.ts",
+  "language": "TypeScript",
+  "lines": 361,
+  "hash": "sha256:96730706f923f910b08ea2289a90dc4df91c16b95c16b5b9628c20b586fd7d23",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Most of the work is done by helper modules that are not in this packet, so behaviour cannot be fully checked here.",
+      "No tests are visible.",
+      "Reading the run feed also starts capture work, which a maintainer may not expect."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Value point",
+      "meaning": "One recorded number, such as a cost, with its basis and the sources behind it."
+    },
+    {
+      "term": "Source capture",
+      "meaning": "A screenshot and text snapshot of a web page that backs a value."
+    },
+    {
+      "term": "Vetting",
+      "meaning": "A reviewer's decision on a value or source: tick (vetted), doubt, or clear."
+    },
+    {
+      "term": "Promotion",
+      "meaning": "Making a vetted value the current value for a project."
+    },
+    {
+      "term": "Revert",
+      "meaning": "Undoing a promotion. The record is kept and marked as reverted."
+    },
+    {
+      "term": "Calculation date",
+      "meaning": "The date used to work out a value's timing, which a reviewer can set with a note."
+    },
+    {
+      "term": "Date convention",
+      "meaning": "A rule that turns an unclear date, such as a month name, into a full date."
+    },
+    {
+      "term": "Genuine capture",
+      "meaning": "A capture the system trusts as a real page image rather than a stand-in."
+    },
+    {
+      "term": "Sequence number",
+      "meaning": "An ordering number that lets the run feed resume from where a reader stopped."
+    }
+  ],
+  "depends_on": [
+    "../evidence/metrics",
+    "../evidence/store",
+    "../evidence/dateConventions",
+    "../evidence/dateRules",
+    "../evidence/captureStorage",
+    "../evidence/captureService",
+    "../evidence/runEvents",
+    "../middleware/auth",
+    "../db",
+    "@workspace/db",
+    "drizzle-orm",
+    "express"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/routes/routes.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 33,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ce2ce8ee05178356",
+      "title": "Imports and API overview",
+      "what": "Lists in the header all the web addresses this file serves, and brings in the database tables, helper modules and login check.",
+      "why": "The header comment serves as a map of the file's routes.",
+      "watch_out": "The header list must be updated by hand when a route is added or removed."
+    },
+    {
+      "start": 34,
+      "end": 39,
+      "kind": "value",
+      "name": "capturing, METRIC_ORDER",
+      "id": "s2",
+      "hash": "ad2e0809033b81b5",
+      "title": "Limits on simultaneous captures",
+      "what": "Keeps track of which sources are being captured right now and how many browsers are open. Also builds a map from each metric key to its position in the metric list.",
+      "why": "The comment says one capture per source at a time and at most two browsers from this endpoint.",
+      "watch_out": "These counters live in memory, so they reset when the server restarts while a capture is running."
+    },
+    {
+      "start": 40,
+      "end": 51,
+      "kind": "function",
+      "name": "captureDto",
+      "id": "s3",
+      "hash": "56cb0a910939bc64",
+      "title": "Shapes capture data for the browser",
+      "what": "Turns a stored capture record into the fields the browser needs. Only genuine captures receive an image link.",
+      "why": "The code comment says a non-genuine capture never exposes an image, even if one is stored.",
+      "watch_out": "The genuine check is the only thing that hides an image, so a capture marked genuine by mistake will show its picture."
+    },
+    {
+      "start": 52,
+      "end": 58,
+      "kind": "function",
+      "name": "vettingDto",
+      "id": "s4",
+      "hash": "df451ad7cec8d16b",
+      "title": "Shapes review records for the browser",
+      "what": "Turns a stored vetting record into the fields returned to the browser, including the verdict, note and who made it.",
+      "why": "Likely reason: keeps the browser from receiving internal fields. Not fully stated in the code.",
+      "watch_out": "Fields are picked by name, so a new database column is not shown until it is added here."
+    },
+    {
+      "start": 59,
+      "end": 107,
+      "kind": "function",
+      "name": "projectValues (part 1)",
+      "id": "s5",
+      "hash": "a1cffdcb9d228741",
+      "title": "Gathers a project's values and sources",
+      "what": "Loads the project and all its value points, their source links, the alternative sources, the captures, and the reviews for each. Returns null if the project is missing.",
+      "why": "Likely reason: the inspector needs the whole picture in one response. Not stated in the code.",
+      "watch_out": "Several database queries are run in sequence, so a large project may be slow to load."
+    },
+    {
+      "start": 108,
+      "end": 148,
+      "kind": "function",
+      "name": "projectValues (part 2)",
+      "id": "s6",
+      "hash": "0ebb2ecff3a5eea3",
+      "title": "Builds the value list per metric",
+      "what": "Groups each metric's value points, works out which bases are current, notes when several current values are variants rather than conflicts, and assembles each point with its sources and reviews.",
+      "why": "The comment says several current values on different bases are variants, such as with or without a cost component, not conflicts.",
+      "watch_out": "Sorting puts current values first, so the order a reviewer sees depends on this sort."
+    },
+    {
+      "start": 149,
+      "end": 155,
+      "kind": "function",
+      "name": "userOf, RUN_TOOLS, registerEvidenceLayerRoutes",
+      "id": "s7",
+      "hash": "aba528b920c6718b",
+      "title": "Helper to read the user and run tool list",
+      "what": "Returns the logged-in user ID, or unknown if none is found. Also defines the list of tools whose run feeds can be read.",
+      "why": "Reason not stated in the code beyond what the names say.",
+      "watch_out": "A missing user is recorded as unknown, so audit entries can lose who acted."
+    },
+    {
+      "start": 156,
+      "end": 181,
+      "kind": "route",
+      "name": "get",
+      "id": "s8",
+      "hash": "aa33cb20a62b6b4d",
+      "title": "Live run feed reader",
+      "what": "Returns run events after a given sequence number, up to a limit, and says whether more remain. It also tries to restart queued captures for the run. At start-up it loads the date conventions, falling back to defaults if that fails.",
+      "why": "The comment says the conventions are data, loaded and seeded at boot.",
+      "watch_out": "Reading the feed triggers capture resumption, so a simple read can start browser work."
+    },
+    {
+      "start": 182,
+      "end": 211,
+      "kind": "route",
+      "name": "get",
+      "id": "s9",
+      "hash": "4f404471760cd408",
+      "title": "Returns a project's values",
+      "what": "Returns the full value picture for one project, plus its derived metrics, its change log of promotions and reverts, and its comparability scores.",
+      "why": "The comment explains that reverted entries are marked and kept, never removed.",
+      "watch_out": "Only change log entries whose source starts with the value point or revert prefixes are shown, so other changes are hidden here."
+    },
+    {
+      "start": 212,
+      "end": 231,
+      "kind": "route",
+      "name": "get",
+      "id": "s10",
+      "hash": "800556e23e4c9761",
+      "title": "Serves a genuine capture image",
+      "what": "Sends the stored screenshot of a capture to the browser, but only if the capture is genuine and the file exists in storage. The image is cached in the browser for one day.",
+      "why": "The code shows the genuine check happens before the file is opened.",
+      "watch_out": "Cache-Control is set to private for a day, so a replaced image may show old content until the cache expires."
+    },
+    {
+      "start": 232,
+      "end": 259,
+      "kind": "route",
+      "name": "post",
+      "id": "s11",
+      "hash": "456a72801b4c24de",
+      "title": "Records a tick, doubt or clear",
+      "what": "Saves a reviewer's verdict on a value: vetted, doubt or cleared. A doubt must include a note. It also stores a snapshot of the value and the top source's latest genuine capture, so the review records what was seen.",
+      "why": "The comment says the screenshot version the reviewer saw is recorded with the decision.",
+      "watch_out": "If no genuine capture exists, the review is still saved but without an image link."
+    },
+    {
+      "start": 260,
+      "end": 271,
+      "kind": "route",
+      "name": "post",
+      "id": "s12",
+      "hash": "6bad5da570798135",
+      "title": "Makes a vetted value current",
+      "what": "Promotes a vetted value so it becomes the project's current value, optionally writing it to the project field. Refused promotions return 409.",
+      "why": "Stated by the 409 handling: the promotion helper can refuse the change, and the reply says why.",
+      "watch_out": "With the write option on, the project's own field is changed, so the old value is only recoverable through the change log."
+    },
+    {
+      "start": 272,
+      "end": 282,
+      "kind": "route",
+      "name": "post",
+      "id": "s13",
+      "hash": "a82f0d27b77292eb",
+      "title": "Undoes a promotion",
+      "what": "Reverts a previous promotion and records a note from the reviewer. The original log entry is marked, not deleted.",
+      "why": "The comment on the project values route says reverted entries are kept forever and marked.",
+      "watch_out": "A revert also depends on the helper refusing unsafe reverts; a refused revert returns 409 and changes nothing here."
+    },
+    {
+      "start": 283,
+      "end": 304,
+      "kind": "route",
+      "name": "post",
+      "id": "s14",
+      "hash": "a51ffc0c858240c8",
+      "title": "Runs a capture on one source",
+      "what": "Starts a screenshot capture for one source and its alternatives. Refuses if the same source is already being captured, or if two browsers are already open. Always closes the browser afterwards.",
+      "why": "The comments explain the one-at-a-time rule and the two-browser limit.",
+      "watch_out": "The limits are per server process; a second server would have its own counters and could exceed two browsers."
+    },
+    {
+      "start": 305,
+      "end": 314,
+      "kind": "route",
+      "name": "post",
+      "id": "s15",
+      "hash": "fb8972d05ed96744",
+      "title": "Sets a reviewer's calculation date",
+      "what": "Sets the calculation date for one value, with a required note. Refused changes return 409.",
+      "why": "Stated in the header comment: the reviewer sets the date for values the rules cannot resolve.",
+      "watch_out": "The note is required by the helper, so an empty note will be refused."
+    },
+    {
+      "start": 315,
+      "end": 324,
+      "kind": "route",
+      "name": "delete",
+      "id": "s16",
+      "hash": "684045a1d354690f",
+      "title": "Clears a reviewer's calculation date",
+      "what": "Removes a calculation date that a reviewer had set for one value. Refused changes return 409.",
+      "why": "Stated by the route pairing with the set route above.",
+      "watch_out": "Clearing the date may return the value to its earlier date rule, which is not shown in this section."
+    },
+    {
+      "start": 325,
+      "end": 347,
+      "kind": "route",
+      "name": "get",
+      "id": "s17",
+      "hash": "422ce06b62748f72",
+      "title": "Lists date rules and their history",
+      "what": "Returns the date conventions, how many values use each, the fixed rules, and the edit history. Used for the date rules page.",
+      "why": "The fixed rules are written in the response to explain what the system always does.",
+      "watch_out": "Usage counts are read live, so a large project can make this route slower."
+    },
+    {
+      "start": 348,
+      "end": 361,
+      "kind": "route",
+      "name": "patch",
+      "id": "s18",
+      "hash": "6f809ec0171b90bc",
+      "title": "Edits a date rule",
+      "what": "Changes one date convention's month span or calculation month, or its definition, with a required note. The change re-resolves values that use that rule. Returns the updated rules.",
+      "why": "The header comment says editing a convention re-resolves values, so the change reaches every value that uses it.",
+      "watch_out": "One edit can change many values across projects at once, and a refused edit returns 409 with the reason."
+    }
+  ],
+  "explained_at": "2026-11-12T04:06:01+00:00",
+  "explained_by": "haiku",
+  "summary": "The value inspector: web routes that show where each project value came from, record reviewer decisions, promote or revert values, and set calculation dates.",
+  "purpose": "Lets reviewers check each project value against its sources and screenshots, mark it as vetted, doubted or cleared, make a vetted value the current one, and undo that choice.",
+  "why": "The header comment describes this as evidence traceability, Stage 1. The code comments say reverts are kept and marked rather than deleted, so the history is never lost.",
+  "how": "The project values route gathers every value point for a project with its sources, captures, alternatives and reviews, and returns them as one response. Write routes check their input, then call helpers in the evidence store and date convention files. Captures run one at a time per source, and at most two browsers are open at once. The run feed reads a log of events in order of sequence number, and can resume from a position.",
+  "inputs": "Project, value or source IDs in the web address; JSON bodies holding verdicts, notes, dates or convention edits; the database; stored capture images; the logged-in user.",
+  "outputs": "JSON with values, sources, captures, reviews, the change log, derived metrics and comparability scores; image bytes for genuine captures; JSON results of promotions, reverts, capture runs and date changes; error JSON with codes such as REFUSED, BUSY and NOT_FOUND.",
+  "risks": "Promotions and reverts change which value a project shows as current, so a wrong promotion changes what the app reports. Date convention edits re-resolve values across projects. Reading the run feed can also restart queued captures. Reviews take the user ID as the user name when no name is set.",
+  "debug": "Start from the route list in the file header. A 409 with code REFUSED means a rule blocked the change; read the message. A BUSY code on capture means the source is already being captured or two browsers are open. A 404 on an image means the capture is not genuine or the file is missing from storage. Look for the console error lines named in each catch block.",
+  "summary_hash": "sha256:96730706f923f910b08ea2289a90dc4df91c16b95c16b5b9628c20b586fd7d23"
+}

@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/recipe-harness/confirmFilter.ts",
+  "language": "TypeScript",
+  "lines": 419,
+  "hash": "sha256:f732bd85f219d131477316aab43decbcb8262af630e5a7517bc6cfba0588a67a",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only 2 of the 14 sections are visible, so error handling and tests cannot be judged.",
+      "Key loading, TLS settings and the verdict logic are not shown.",
+      "The visible rules for the request are clear and enforce limits."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Zod schema",
+      "meaning": "A set of rules that checks incoming data has the right shape before the code uses it."
+    },
+    {
+      "term": "Tavily",
+      "meaning": "A web search service the code uses to find sources for each project."
+    },
+    {
+      "term": "Portkey",
+      "meaning": "A gateway the code uses to send questions to an AI language model."
+    },
+    {
+      "term": "LLM",
+      "meaning": "Large language model, the AI system that reads text and gives a judgement."
+    },
+    {
+      "term": "Peer set",
+      "meaning": "The group of similar projects being compared against one another."
+    },
+    {
+      "term": "Heuristic verdict",
+      "meaning": "A rule-of-thumb decision used when the AI judgement is not available."
+    },
+    {
+      "term": "TLS verification",
+      "meaning": "The check that a secure web connection really reaches the server it claims to."
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "https",
+    "http",
+    "fs",
+    "path",
+    "./parseFilterLlm",
+    "../../lib/portkeyOpenAI",
+    "../../lib/keyChain",
+    "../../search/providers/tavily"
+  ],
+  "used_by": [
+    "Not visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 20,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "db4538fc71045ac5",
+      "title": "Setup and the harness folder",
+      "what": "Loads the libraries for web requests, validation, the AI model, key lookup and the search provider, and sets the recipe_harness folder as the root for its files.",
+      "why": "Reason stated in the header: it confirms a filtered peer set using web search and an AI model, then returns keep, drop or uncertain.",
+      "watch_out": "The harness root is a relative path, so it points at a different folder if the app is started from somewhere else."
+    },
+    {
+      "start": 21,
+      "end": 48,
+      "kind": "value",
+      "name": "confirmFilterBodySchema, ConfirmFilterBody, ResearchHit",
+      "id": "s2",
+      "hash": "b5eb68b3563cd328",
+      "title": "Request rules",
+      "what": "Defines the rules for an incoming request: a required prompt up to 2000 characters, optional filter fields, a list of 1 to 80 projects, and an optional research limit from 1 to 12.",
+      "why": "Likely reason: the checks run before any web search or AI call, so bad input cannot cost money.",
+      "watch_out": "The 80-project and 12-search limits cap spending per request, so raising them raises cost."
+    },
+    {
+      "start": 49,
+      "end": 71,
+      "kind": "function",
+      "name": "loadHarnessEnvFile",
+      "id": "s3",
+      "hash": "4dbb9bb5cf3d2997",
+      "title": "Reading the harness settings file",
+      "what": "Reads the `.env` file inside the recipe_harness folder and returns its settings as name and value pairs. It skips blank lines and comment lines and removes surrounding quotes from values.",
+      "why": "Likely reason: lets the team keep API keys and switches in one local file instead of in code. Reason not stated in the code.",
+      "watch_out": "The file is read again on every call with no caching, and the same reading logic is copied into parseFilterLlm.ts, so a fix in one copy must be made in the other."
+    },
+    {
+      "start": 72,
+      "end": 84,
+      "kind": "function",
+      "name": "sslVerifyEnabled",
+      "id": "s4",
+      "hash": "f0dfa7b5a46154fc",
+      "title": "Whether to check secure connection certificates",
+      "what": "Decides whether outgoing HTTPS calls verify the server's certificate. Checking is on by default and is turned off only if the setting is 0, false, or no.",
+      "why": "Likely reason: lets the team work behind a proxy or with a test certificate. Reason not stated in the code.",
+      "watch_out": "Turning this off stops the app from confirming it is talking to the real Tavily or Portkey server, so it should be off only on purpose."
+    },
+    {
+      "start": 85,
+      "end": 89,
+      "kind": "function",
+      "name": "resolveTavilyKey",
+      "id": "s5",
+      "hash": "ce030fbcabbc0912",
+      "title": "Finding the Tavily search key",
+      "what": "Returns the web search key from the environment or the settings file. It prefers the main key, then the fallback key, then the file value, and returns an empty text if none exists.",
+      "why": "Likely reason: lets the key live outside the code. Reason not stated in the code.",
+      "watch_out": "If no key is found, web research is skipped without an error, so the results simply look like there was no research."
+    },
+    {
+      "start": 90,
+      "end": 137,
+      "kind": "function",
+      "name": "httpJson",
+      "id": "s6",
+      "hash": "27a72b0768eef038",
+      "title": "Sending a JSON web request",
+      "what": "Sends a JSON message to a web address and returns the response status and text. A request that takes longer than the time limit (45 seconds by default) is stopped with a timeout error.",
+      "why": "Likely reason: lets the app call outside services with plain Node networking. Reason not stated in the code.",
+      "watch_out": "The caller must check the status code, since a bad response is returned as normal data and not thrown as an error."
+    },
+    {
+      "start": 138,
+      "end": 170,
+      "kind": "function",
+      "name": "tavilySearch",
+      "id": "s7",
+      "hash": "99405f272d2b050c",
+      "title": "Running a web search for a project",
+      "what": "Searches the web for a query and returns up to a few results with a title, a web address, and up to 500 characters of text. It uses the shared key manager when keys exist, and otherwise calls Tavily directly. Any failure returns an empty list.",
+      "why": "Gives the AI real web snippets to check each project's location and status. Reason beyond that not stated in the code.",
+      "watch_out": "Errors are swallowed, so a broken or expired key looks exactly like a search with no results."
+    },
+    {
+      "start": 171,
+      "end": 186,
+      "kind": "value",
+      "name": "verdictSchema",
+      "id": "s8",
+      "hash": "b92277afbfb5cdca",
+      "title": "Shape the AI answer must follow",
+      "what": "Defines the required structure of the AI's reply: a summary, counts, and a list of projects, each with an id and a verdict of keep, drop, or uncertain.",
+      "why": "Checks that the AI reply can be used safely before its verdicts are trusted. The check itself is clear from the code.",
+      "watch_out": "This shape must match the schema written in the prompt text, or the AI reply will fail the check and fall back to rules."
+    },
+    {
+      "start": 187,
+      "end": 216,
+      "kind": "function",
+      "name": "heuristicVerdict",
+      "id": "s9",
+      "hash": "1c9b018b7468058b",
+      "title": "Rule-based keep or drop decision",
+      "what": "Decides keep, drop, or uncertain for one project using only its country, location, and status text. It has a special case for USA and a fixed list of other countries that count as a conflict.",
+      "why": "Used as a backup when the AI is unavailable or its reply is bad. Reason beyond that not stated in the code.",
+      "watch_out": "The list of conflicting countries is hardcoded, so a new country or a changed geography rule has to be added by hand."
+    },
+    {
+      "start": 217,
+      "end": 269,
+      "kind": "function",
+      "name": "confirmFilterWithResearch (part 1)",
+      "id": "s10",
+      "hash": "b366e8f0ef9347e7",
+      "title": "Main confirm-filter function, start",
+      "what": "The main entry point. It reads the filter settings, picks which projects to research first (those with unclear country names), and works out whether web research is available. The result it returns lists which projects to keep, drop, or leave uncertain.",
+      "why": "Research is limited to a sample of up to 8 projects by default to keep cost and wait time down. Likely reason, not stated in the code.",
+      "watch_out": "Only the sampled projects get web research, so the rest are judged from the yard data and the AI alone."
+    },
+    {
+      "start": 270,
+      "end": 309,
+      "kind": "method",
+      "name": "confirmFilterWithResearch: for",
+      "id": "s11",
+      "hash": "aa8c1aec178cc17a",
+      "title": "Searching the web for each sampled project",
+      "what": "For each sampled project, it builds a search from the project name, the industry, and the active filters, then stores the results by project id.",
+      "why": "Gives each sampled project its own evidence before the AI judges it. Reason beyond that not stated in the code.",
+      "watch_out": "The searches run one after another, so a larger sample makes the request slower."
+    },
+    {
+      "start": 310,
+      "end": 344,
+      "kind": "function",
+      "name": "confirmFilterWithResearch (part 3)",
+      "id": "s12",
+      "hash": "77adb5852d7c5233",
+      "title": "Building the result and the no-AI fallback",
+      "what": "Defines a helper that turns a list of verdicts into the final answer with counts and id lists. If no Portkey key is set, it returns the rule-based verdicts with an error label of portkey_not_configured.",
+      "why": "Keeps one result format for every path. Likely reason: the app can still show a useful answer without the AI.",
+      "watch_out": "The fallback result still reports ok as true, so callers must check the error field to know the AI step did not run."
+    },
+    {
+      "start": 345,
+      "end": 388,
+      "kind": "function",
+      "name": "confirmFilterWithResearch (part 4)",
+      "id": "s13",
+      "hash": "2105af96bdf4dbb5",
+      "title": "Asking the AI to judge each project",
+      "what": "Sends the user's prompt, the filters, the industry, the project count, and the project list with web snippets to the Portkey AI gateway. It asks for a JSON-only reply and waits up to 60 seconds.",
+      "why": "The AI can weigh the prompt and the web text together, which fixed rules cannot do well. Reason beyond that not stated in the code.",
+      "watch_out": "If the gateway returns an error status, the function falls back to rule-based verdicts and records the error text in the result."
+    },
+    {
+      "start": 389,
+      "end": 419,
+      "kind": "method",
+      "name": "confirmFilterWithResearch: if",
+      "id": "s14",
+      "hash": "ad760199926c2569",
+      "title": "Checking the AI reply and merging verdicts",
+      "what": "Checks the AI reply against the expected shape. If the check fails, it uses rule-based verdicts and records llm_schema_failed. If it passes, it uses the AI verdict for each project and the rule-based verdict for any project the AI skipped.",
+      "why": "Protects the result from malformed AI output. Reason beyond that not stated in the code.",
+      "watch_out": "Projects the AI leaves out are quietly judged by the rules, so a partial AI reply can look complete in the result."
+    }
+  ],
+  "explained_at": "2026-11-12T05:06:04+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks a filtered list of peer projects by searching the web and asking an AI model whether each should be kept, dropped or left uncertain.",
+  "purpose": "Lets an analyst freeze a stable project count by confirming the filtered peer set with evidence.",
+  "why": "The header comment says it confirms the filtered peer set with Tavily web research and Portkey AI judgement, returning keep, drop or uncertain so the count can be frozen.",
+  "how": "Only the start and the request rules are visible. The file loads its settings and API keys, checks the request, and then (not shown) runs web searches, asks the AI model for a verdict, and falls back to a heuristic verdict. Only 2 of the 14 sections were visible.",
+  "inputs": "A request with a prompt of up to 2000 characters, optional industry, geography, status, years, evidence and sector filters, a list of 1 to 80 projects, and an optional research limit from 1 to 12.",
+  "outputs": "Described in the header as keep, drop or uncertain for each project. The code producing these results is not visible.",
+  "risks": "A function named sslVerifyEnabled suggests TLS checks can be switched off, but its code is not visible, so this cannot be confirmed. Web page text is passed toward an AI model, and the visible code does not show how that text is limited. The harness root is a relative path.",
+  "debug": "Check that the recipe_harness folder exists relative to where the app starts. Check that the API keys load from the env file. Check the request for validation errors against the rules listed above.",
+  "summary_hash": "sha256:f732bd85f219d131477316aab43decbcb8262af630e5a7517bc6cfba0588a67a"
+}

@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/yardRecords.ts",
+  "language": "TypeScript",
+  "lines": 84,
+  "hash": "sha256:e828eb38668b26054fd498818a07641623cc6443c9ae40ed059fb897f7d41ad6",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the first four of six sections were visible.",
+      "No test file was shown for this file.",
+      "The repeat-safety claim in the header was not verified from the visible code."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Yard",
+      "meaning": "the name the code uses for the app's shared store of project records."
+    },
+    {
+      "term": "idempotent",
+      "meaning": "running the same operation again gives the same result without duplicates."
+    },
+    {
+      "term": "stage summary",
+      "meaning": "the saved output of one stage of a run."
+    },
+    {
+      "term": "query",
+      "meaning": "a question sent to the database to fetch rows."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "artifacts/api-server/src/db",
+    "@workspace/db"
+  ],
+  "used_by": [
+    "None visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c13b89a8fcef43b1",
+      "title": "File purpose and imports",
+      "what": "Explains which older records are copied into the Yard, and brings in the database tools and table definitions.",
+      "why": "The header explains that v3 runs record themselves, so this copy is needed only for earlier engines.",
+      "watch_out": "The header says the file only reads stage summaries. If that changes, older runs could be altered by this code."
+    },
+    {
+      "start": 17,
+      "end": 21,
+      "kind": "type",
+      "name": "Row, LegacyFact",
+      "id": "s2",
+      "hash": "f3cd85d0d79aa663",
+      "title": "Record and older fact shapes",
+      "what": "Defines the shape of a Yard record to save, and the fields an older fact carries, such as text, source, honesty, relevance, pillar and project.",
+      "why": "Likely reason: older facts are loosely described, so most fields are optional.",
+      "watch_out": "Most fields are optional, so a missing value is not caught here and may save as blank."
+    },
+    {
+      "start": 22,
+      "end": 24,
+      "kind": "type",
+      "name": "LegacyProject",
+      "id": "s3",
+      "hash": "6b52aeed29637c95",
+      "title": "Older project shape",
+      "what": "Defines the fields an older project record carries, such as name, status, country, outcome, technology, budgets and delay. All are optional.",
+      "why": "Likely reason: the same reason as the fact shape, since older data may be incomplete.",
+      "watch_out": "Budget fields are named in millions, so a value in another unit would be recorded at the wrong size."
+    },
+    {
+      "start": 25,
+      "end": 35,
+      "kind": "function",
+      "name": "legacyLessonsRunIds",
+      "id": "s4",
+      "hash": "e404e745514f23ac",
+      "title": "Finding older succeeded runs",
+      "what": "Lists the IDs of succeeded runs that have a verification stage but no record_coverage stage, oldest first.",
+      "why": "The header says v3 runs record their own coverage, so this picks out only the earlier engines.",
+      "watch_out": "The selection depends on stage names, so a renamed stage will cause old runs to be missed or new runs to be copied."
+    },
+    {
+      "start": 36,
+      "end": 76,
+      "kind": "function",
+      "name": "buildLegacyLessonsRecords",
+      "id": "s5",
+      "hash": "59a568e558879df3",
+      "title": "Turning an old run into Yard records",
+      "what": "Reads a finished Lessons Learnt run from the database and turns it into a flat list of records: one for the run, one per project outcome and budget figure, and one per lesson fact. A lesson is marked admitted only if its source was verified and judged relevant; otherwise it is held with a stated reason. Returns an empty list if the verification stage did not succeed.",
+      "why": "Likely reason: keeps results from the older run in one uniform shape so they can be audited in the shared Yard store.",
+      "watch_out": "Only stages with status succeeded are read, so a failed stage quietly leads to missing records rather than an error."
+    },
+    {
+      "start": 77,
+      "end": 84,
+      "kind": "function",
+      "name": "recordLegacyLessonsRunInYard",
+      "id": "s6",
+      "hash": "e33ad5eb07bf6aac",
+      "title": "Saving a run's records to Yard",
+      "what": "Replaces all previously saved records for one run with a fresh set, inside a single database transaction, and returns a count of saved records for each kind.",
+      "why": "Likely reason: deleting then inserting in one transaction means a re-run never leaves duplicates or half-written data.",
+      "watch_out": "The delete matches on the tool name and run id, so changing the tool name would leave old records behind."
+    }
+  ],
+  "explained_at": "2026-11-12T04:49:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Copies the saved results of older Lessons Learnt runs, from before the v3 method, into the app's shared run record store, which the code calls the Yard.",
+  "purpose": "Makes older runs visible to the same record system as newer runs, so their projects, outcomes, budgets and facts can be looked up in one place.",
+  "why": "The header says v3 runs already record their own coverage, so only the earlier engines need this copy. The header also says it reads stage summaries without changing them and that repeat copies do not create duplicates.",
+  "how": "The visible part, legacyLessonsRunIds, finds succeeded runs that have a verification stage but no record_coverage stage, ordered by creation time. The remaining steps that build and save the records were not included in this packet, so they are not described here.",
+  "inputs": "Saved stage records for older runs, read from the database.",
+  "outputs": "A list of older run IDs. Records are meant to be saved under the tool name lessons_learnt, as the header states. The full record content is not visible here.",
+  "risks": "Only part of this file was reviewed. The no-duplicates claim in the header is not visible in the code shown. Run selection depends on stage names, so renaming a stage changes which runs are picked up.",
+  "debug": "If an older run is missing from the Yard, check that its stage records include verify_and_relevance with success, that no record_coverage stage exists, and that its run status is succeeded.",
+  "summary_hash": "sha256:e828eb38668b26054fd498818a07641623cc6443c9ae40ed059fb897f7d41ad6"
+}

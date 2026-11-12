@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/check-scan-evidence-baseline.ts",
+  "language": "TypeScript",
+  "lines": 59,
+  "hash": "sha256:6088931ab25f8309d29410725d7cc0fb25913ed22b74ff47bf9e11902079687d",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Has a self-test covering new values, changed values, incomplete output, and run failures.",
+      "Fails closed on any unexpected condition."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Baseline",
+      "meaning": "A saved list of problems that were reviewed and accepted for now."
+    },
+    {
+      "term": "Deferred gap",
+      "meaning": "A missing piece of evidence that is allowed to remain for now, but is still tracked."
+    },
+    {
+      "term": "Fail closed",
+      "meaning": "When something is unclear or breaks, the check reports failure instead of passing."
+    },
+    {
+      "term": "Self-test",
+      "meaning": "A built-in set of checks that confirms the script makes the right decision on sample input."
+    },
+    {
+      "term": "Exit code",
+      "meaning": "The number a program returns when it ends, where zero means success and any other number means failure."
+    }
+  ],
+  "depends_on": [
+    "node:child_process",
+    "node:fs",
+    "node:assert/strict",
+    "scan-evidence-known-gaps.json",
+    "pnpm run check:scan-evidence"
+  ],
+  "used_by": [
+    "Not shown in this packet; likely run as a project check command."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d5ab0cb1ffbf9379",
+      "title": "Setup and purpose note",
+      "what": "Loads the header describing the rule and reads the known gaps file into memory.",
+      "why": "The header says the baseline is a reviewed list that must not be regenerated from live failures.",
+      "watch_out": "Regenerating the known gaps file from current failures would hide new problems."
+    },
+    {
+      "start": 11,
+      "end": 13,
+      "kind": "value",
+      "name": "known",
+      "id": "s2",
+      "hash": "af07dee55be99a76",
+      "title": "Known gap count guard",
+      "what": "Turns the known gaps into a set and checks that it holds exactly 49 unique entries.",
+      "why": "Likely reason: pinning the count means any edit to the list is noticed immediately.",
+      "watch_out": "Adding or removing a gap requires updating this number as well."
+    },
+    {
+      "start": 14,
+      "end": 59,
+      "kind": "function",
+      "name": "evaluate",
+      "id": "s3",
+      "hash": "56c4b2b2b27a6bef",
+      "title": "Pass or fail decision",
+      "what": "Decides the result. It passes if the strict check passes outright, or if it fails only with gaps that are already on the known list. It fails on new or changed gaps, incomplete reports, and run errors. When run without the self-test flag, it runs the strict check and prints the verdict.",
+      "why": "The header says only explicitly deferred historical gaps may pass, so any other failure must stop the run.",
+      "watch_out": "The decision reads the exact text of the strict checker output, so a wording change in that output will make the check fail."
+    }
+  ],
+  "explained_at": "2026-11-12T02:57:01+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the strict scan evidence checker and lets it pass only when the only failures are the known, already reviewed gaps listed in a file.",
+  "purpose": "Keeps the strict check usable while older known gaps remain, but still fails on any new or changed unsupported value.",
+  "why": "The header says historical gaps are deferred on purpose, and that the baseline must never be regenerated from live failures, so new problems cannot hide inside it.",
+  "how": "Loads the list of known gaps and checks that it holds exactly 49 entries. If run without the self-test flag, it runs the project check script for scan evidence and reads its output. It compares the reported gaps with the known list and passes only if every reported gap is known and the report is complete. With the self-test flag it checks its own decisions against sample outputs.",
+  "inputs": "The file scan-evidence-known-gaps.json, the output and exit status of the pnpm check script for scan evidence, and the sample text used by the self-test.",
+  "outputs": "A printed PASS or FAIL message and an exit code of 0 or 1.",
+  "risks": "Its matching depends on the exact wording of the strict checker output. If the wording changes, it fails closed. Someone could edit the known gaps file by hand to hide a new problem. The run has a 120 second time limit.",
+  "debug": "Run with the self-test flag first to confirm the matching rules still work. If the message says the report is incomplete or could not complete, read the raw checker output printed above it. If the count check fails, the known gaps file was changed.",
+  "summary_hash": "sha256:6088931ab25f8309d29410725d7cc0fb25913ed22b74ff47bf9e11902079687d"
+}

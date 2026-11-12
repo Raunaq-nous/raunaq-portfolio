@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/recipe/relevance.ts",
+  "language": "TypeScript",
+  "lines": 97,
+  "hash": "sha256:ccae45c1841d1a7d96b81dc4841af0311b2979cc46f26a45e1c2538a21fb7556",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in this file.",
+      "Thresholds and the common-word list are fixed with no stated basis.",
+      "The model step has a timeout and retries, but the file only defaults unknown answers to unclear and does not check the verdict format further."
+    ]
+  },
+  "terms": [
+    {
+      "term": "token",
+      "meaning": "a single lowercase word of at least three letters taken from text"
+    },
+    {
+      "term": "stop word",
+      "meaning": "a common word that is ignored when matching"
+    },
+    {
+      "term": "foreign name",
+      "meaning": "a distinctive word from another project's name"
+    },
+    {
+      "term": "adjudicate",
+      "meaning": "have a language model give a final verdict on a fact"
+    },
+    {
+      "term": "borderline",
+      "meaning": "a fact that the word rules could not decide"
+    }
+  ],
+  "depends_on": [
+    "../../../lib/portkeyOpenAI",
+    "../../../lib/modelConfig",
+    "./text",
+    "./types"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/pipeline.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e0e568e72aae5333",
+      "title": "Imports and file purpose",
+      "what": "Loads the language model helpers, the model setting used for extraction, a text helper and the shared types. The header describes the file's job.",
+      "why": "The header explains the file is a port of an earlier check. The reason for porting is not stated.",
+      "watch_out": "Changing the model role here changes the cost and quality of every verdict."
+    },
+    {
+      "start": 13,
+      "end": 20,
+      "kind": "value",
+      "name": "STOP",
+      "id": "s2",
+      "hash": "23a6596841f80267",
+      "title": "Common words ignored when matching",
+      "what": "A fixed list of common English words and generic project words, such as site, phase and company, that the matcher ignores.",
+      "why": "Likely reason: so that matches are driven by meaningful words rather than filler.",
+      "watch_out": "If a real project word is also on this list, that word can never help identify a project."
+    },
+    {
+      "start": 21,
+      "end": 23,
+      "kind": "function",
+      "name": "toks",
+      "id": "s3",
+      "hash": "ed1b449feaa36c45",
+      "title": "Splitting text into words",
+      "what": "Turns text into lowercase words of at least three letters and drops the common words.",
+      "why": "Needed so facts and project profiles can be compared word by word.",
+      "watch_out": "Only plain English letters, hyphens and apostrophes are read, so names with digits or accents are not matched."
+    },
+    {
+      "start": 24,
+      "end": 28,
+      "kind": "function",
+      "name": "profileTokens",
+      "id": "s4",
+      "hash": "1d770075d7ea7b07",
+      "title": "Words that describe a project",
+      "what": "Gathers words from a project's name, operator, country, sub-industry, technology, description, EPC contractor and vendor into one profile.",
+      "why": "Likely reason: a wide profile catches facts that never name the project directly.",
+      "watch_out": "Broad fields such as country mean a fact about another project in the same country can match this one."
+    },
+    {
+      "start": 29,
+      "end": 31,
+      "kind": "function",
+      "name": "nameTokens",
+      "id": "s5",
+      "hash": "cbb8a34d2c319c53",
+      "title": "Distinctive name words",
+      "what": "Takes the words from a project's name and operator, keeping only those of four or more letters.",
+      "why": "Likely reason: short words are too common to identify one project.",
+      "watch_out": "Projects with very short names or names made only of short words get no name words at all."
+    },
+    {
+      "start": 32,
+      "end": 46,
+      "kind": "function",
+      "name": "scoreFact",
+      "id": "s6",
+      "hash": "f054e4d5b3aa1ff2",
+      "title": "Scoring one fact",
+      "what": "Compares a fact's words with the project's profile, the words that recur across its other facts, and other projects' names. Returns on project, likely, off project or unclear, with the reason.",
+      "why": "Reason not stated in the code; the fixed thresholds are the decision rule.",
+      "watch_out": "A fact is marked on project as soon as three profile words match, even if most of the fact is about something else."
+    },
+    {
+      "start": 47,
+      "end": 72,
+      "kind": "function",
+      "name": "heuristicRelevance",
+      "id": "s7",
+      "hash": "17604798fc586653",
+      "title": "Applying the scores to all facts",
+      "what": "For each project, builds the list of words that belong to other projects, then scores each of its facts and writes the result onto the fact.",
+      "why": "Likely reason: other projects' words are only trusted when they are rare, so common place names do not mark facts as off project.",
+      "watch_out": "A word counts as foreign only if at most three project names contain it, so adding many projects can stop a shared word from counting."
+    },
+    {
+      "start": 73,
+      "end": 97,
+      "kind": "function",
+      "name": "adjudicate",
+      "id": "s8",
+      "hash": "04976ca3ec7d21c1",
+      "title": "Asking a language model about borderline facts",
+      "what": "Sends a batch of facts, each with its project details, to a language model that answers on project, off project or unclear for each one. Returns the verdicts by fact id, ignores ids that were not sent, and turns unknown answers into unclear.",
+      "why": "Likely reason: word rules cannot handle subtle cases, so the model covers the grey zone.",
+      "watch_out": "Fact text comes from web sources and is passed straight to the model; the instruction only asks it to ignore instructions in data, so a hostile fact could still sway a verdict. This function does not store results itself; the caller saves them."
+    }
+  ],
+  "explained_at": "2026-11-12T04:40:51+00:00",
+  "explained_by": "haiku",
+  "summary": "Decides whether each research fact is about the project it is filed under, using word-matching rules first and a language model for unclear cases.",
+  "purpose": "Keeps facts about another project, or another company's asset, from being counted as lessons for this project.",
+  "why": "The header says this check is separate from source verification, because a fact can be accurately quoted and still be about a different project. Header also says it ports an earlier check script; the reason for the port is not stated.",
+  "how": "1) Build a list of words from each project's name and operator that are used by only a few projects, so they can identify other projects. 2) Build a profile of each project from its name, operator, country, type and related company fields. 3) For each fact, count how many of its words match this project's profile, how many match words that recur across the project's other facts, and how many match other projects' names. 4) Label the fact on project, likely, off project or unclear using fixed thresholds. 5) Send facts still unclear or off project to a language model in batches of 40, skipping any already judged, and replace their labels with the model's verdicts.",
+  "inputs": "Facts with their text and attribution, the projects they belong to, and an index of other projects' names and operators.",
+  "outputs": "Each fact gets a status (on project, likely, off project or unclear), a plain reason, and a flag saying whether a model made the decision. The model step returns verdicts keyed by fact id.",
+  "risks": "Short or generic project names can match ordinary facts. The thresholds (15 percent overlap, three matching words, and the limit of three projects for a word to count as foreign) are fixed and their basis is not stated. The word pattern only reads plain English letters, so words with digits or accents are missed. A failed model batch is caught in the caller and that batch keeps its word-based label.",
+  "debug": "Read each fact's reason first, because it lists its word matches and any foreign names. If a correct fact is marked off project, look for a foreign name that also appears in this project's description. If many facts are unclear, check that the project's name and operator fields are filled in. The adjudicated flag shows whether a model made the decision.",
+  "summary_hash": "sha256:ccae45c1841d1a7d96b81dc4841af0311b2979cc46f26a45e1c2538a21fb7556"
+}

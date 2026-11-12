@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/normalize-yard-usd.ts",
+  "language": "TypeScript",
+  "lines": 360,
+  "hash": "sha256:448d620c17e4cf227129e91d9e93fd273e8584680f952d3f89b5f5f4b3fd06a9",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test file is visible for this script.",
+      "Only lines 1 to 120 of 360 were readable here, so the later sections could not be checked.",
+      "It writes to production-style tables and depends on a currency helper that was not visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Dry run",
+      "meaning": "a trial run that does all the work inside a transaction and then undoes it, so nothing is saved"
+    },
+    {
+      "term": "Transaction",
+      "meaning": "a group of database changes that either all succeed together or all get cancelled"
+    },
+    {
+      "term": "Evidence quote",
+      "meaning": "a stored sentence from a source that backs up a number in the database"
+    },
+    {
+      "term": "Change log",
+      "meaning": "a table that records every edit made to a project, with old and new values"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/lib/money",
+    "artifacts/api-server/src/lib/fx",
+    "artifacts/api-server/src/tools/research-contract/scanInputs",
+    "pg"
+  ],
+  "used_by": [
+    "Run by hand from the api-server folder"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 39,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b1ac465e3fcba3b9",
+      "title": "Script setup and rules",
+      "what": "Loads libraries, reads the --commit flag, sets the output folder and a fixed date, and states the conversion rules in the header comment.",
+      "why": "Reason not stated in the code beyond the header comment, which says the change was requested on 2026-10-27.",
+      "watch_out": "The fixed date and the stamp name are used in the report file names, so changing them changes where reports land."
+    },
+    {
+      "start": 40,
+      "end": 42,
+      "kind": "value",
+      "name": "RAW_DOLLAR_BEFORE",
+      "id": "s2",
+      "hash": "2b66cc3500d2f071",
+      "title": "Markers for already-converted dairy and renewables",
+      "what": "Names the two industries that once stored raw dollars so the script can tell whether it has already rescaled them.",
+      "why": "The code comment says this keeps a rerun from dividing the values twice.",
+      "watch_out": "If this list is edited, rescaling could run twice or never run."
+    },
+    {
+      "start": 43,
+      "end": 51,
+      "kind": "value",
+      "name": "RAW_DOLLAR, Field, COL, Primary, parenDepth",
+      "id": "s3",
+      "hash": "ae0bbe8bffbdae55",
+      "title": "Field names and the upper-bound word list",
+      "what": "Maps internal field names to database columns and lists words such as over or up to that mark a bound rather than an exact figure.",
+      "why": "Reason not stated in the code beyond the names themselves; the bound words are used to refuse uncertain figures.",
+      "watch_out": "A new bound phrase that is missing from the list would be treated as an exact figure."
+    },
+    {
+      "start": 52,
+      "end": 58,
+      "kind": "function",
+      "name": "fixDollar",
+      "id": "s4",
+      "hash": "7f4cba51a226bf58",
+      "title": "Currency fix for USD marks",
+      "what": "When a bare dollar sign follows a currency code such as AUD, it treats the amount as that currency instead of US dollars.",
+      "why": "Likely reason: a bare dollar sign in some reports means Australian or Canadian dollars, so it must not be counted as US.",
+      "watch_out": "Only a three-letter code just before the dollar sign is checked, so unusual spacing can be missed."
+    },
+    {
+      "start": 59,
+      "end": 82,
+      "kind": "function",
+      "name": "primaryAmount",
+      "id": "s5",
+      "hash": "6be806288c4d9a1a",
+      "title": "Picks the main figure from a text",
+      "what": "Chooses the first real amount in a budget sentence and refuses ranges, bounds, and sentences with several unrelated amounts.",
+      "why": "The header says a text states one figure, with later amounts only as bracketed equivalents.",
+      "watch_out": "Refusals keep the old stored value, so a wrong refusal leaves a stale number in place."
+    },
+    {
+      "start": 83,
+      "end": 105,
+      "kind": "function",
+      "name": "statedYear, segment, capexAsReported, near, pool, report",
+      "id": "s6",
+      "hash": "804e8f1d72a2d152",
+      "title": "Finds the year a figure belongs to",
+      "what": "Looks for a single year written near the amount, such as a price date or an announcement year, and returns it only when exactly one year is found.",
+      "why": "The rate for conversion depends on the year, so a clear year is needed.",
+      "watch_out": "If two different years appear, the function returns nothing and the conversion falls back to other rules."
+    },
+    {
+      "start": 106,
+      "end": 159,
+      "kind": "function",
+      "name": "log (part 1)",
+      "id": "s7",
+      "hash": "b602875191aaa75c",
+      "title": "Shared helpers and the log function",
+      "what": "Defines small helpers for reading a segment of budget text, reading lithium capex values, and checking if two numbers are nearly equal, plus a function that writes each change to the change log.",
+      "why": "Reason not stated in the code beyond the names and the change log table.",
+      "watch_out": "The log function writes into the database through the same connection, so it must run inside the transaction."
+    },
+    {
+      "start": 160,
+      "end": 219,
+      "kind": "method",
+      "name": "log: for",
+      "id": "s8",
+      "hash": "fc12c60137156a28",
+      "title": "Main loop over projects (part 1 of the log)",
+      "what": "Reads the projects and evidence rows and prepares lookup tables for each project.",
+      "why": "Likely reason: the script needs all evidence for a project at once to decide what each figure is.",
+      "watch_out": "This part could not be read in full, so its exact steps are unclear here."
+    },
+    {
+      "start": 220,
+      "end": 264,
+      "kind": "function",
+      "name": "log (part 3)",
+      "id": "s9",
+      "hash": "d1f59ec64fc5bcd9",
+      "title": "Currency conversion step",
+      "what": "Not visible in the provided sample. Based on the header, this step converts budget columns to US millions.",
+      "why": "Reason not stated in the code visible here.",
+      "watch_out": "Unclear from the readable part; check the lines directly."
+    },
+    {
+      "start": 265,
+      "end": 294,
+      "kind": "function",
+      "name": "log (part 4)",
+      "id": "s10",
+      "hash": "33a8ab56f924ac59",
+      "title": "Filling empty columns step",
+      "what": "Not visible in the provided sample. Based on the header, it fills empty columns only from explicit, uncontested figures.",
+      "why": "Reason not stated in the code visible here.",
+      "watch_out": "Unclear from the readable part; check the lines directly."
+    },
+    {
+      "start": 295,
+      "end": 340,
+      "kind": "method",
+      "name": "log: for",
+      "id": "s11",
+      "hash": "976f759942c60794",
+      "title": "Year-as-cost clearing step",
+      "what": "Not visible in the provided sample. Based on the header, it clears a year that was stored as a cost.",
+      "why": "Reason not stated in the code visible here.",
+      "watch_out": "Unclear from the readable part; check the lines directly."
+    },
+    {
+      "start": 341,
+      "end": 360,
+      "kind": "method",
+      "name": "log: for",
+      "id": "s12",
+      "hash": "6ffd3fe815dd60f8",
+      "title": "Report and commit step",
+      "what": "Not visible in the provided sample. Based on the header, it writes the report and applies or rolls back the transaction.",
+      "why": "Reason not stated in the code visible here.",
+      "watch_out": "Unclear from the readable part; check the lines directly."
+    }
+  ],
+  "explained_at": "2026-11-12T03:13:00+00:00",
+  "explained_by": "haiku",
+  "summary": "One-off script that restates every money value in the Yard database in US dollars (millions), keeps the original reported figure beside it, and fills some empty budget fields from already-cited sources.",
+  "purpose": "Makes budgets comparable across projects that were recorded in other currencies or in raw dollars, while keeping a record of what the source actually said.",
+  "why": "The header says the change was requested by the owner after a sanity audit. The conversion rules are explained in the header comment.",
+  "how": "It opens one database transaction, reads all projects and active evidence quotes, and works out for each budget field whether the reported figure is in another currency. It converts when the rate year is clear and refuses when the figure is a range, bound, or ambiguous. It records each change in the change log and writes a JSON report. Without the commit flag the transaction is rolled back.",
+  "inputs": "The projects table, the evidence_quotes table, and the DATABASE_URL setting. The --commit flag switches from dry run to real writes.",
+  "outputs": "A JSON report under data/repairs (dry-run or commit file), new rows in change_log, and updated attributes and budget columns when committed.",
+  "risks": "Writes to live budget columns. A bad rate or a misread currency would change figures the owner relies on. Only the planned and actual budget figures for projects are touched.",
+  "debug": "Open the newest report under data/repairs and read the refused and currencyRelabelled lists. Compare a refused project's stored value with its quote. Re-run without --commit to see the plan first.",
+  "summary_hash": "sha256:448d620c17e4cf227129e91d9e93fd273e8584680f952d3f89b5f5f4b3fd06a9"
+}

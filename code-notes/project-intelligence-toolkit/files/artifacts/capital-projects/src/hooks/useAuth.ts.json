@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/capital-projects/src/hooks/useAuth.ts",
+  "language": "TypeScript",
+  "lines": 122,
+  "hash": "sha256:6058f2a38f58f40ef2567bb47f8c03c1a2176ea42fabe00c2d98ab38696a05c0",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The token is kept in browser storage, which page scripts can read.",
+      "The browser does not verify the token signature, so the server must enforce access.",
+      "No test or other evidence is visible.",
+      "The development bypass is blocked in production builds."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Token",
+      "meaning": "A short signed piece of text that proves a user has logged in."
+    },
+    {
+      "term": "Local storage",
+      "meaning": "A small amount of data the browser keeps for a site, even after the page is closed."
+    },
+    {
+      "term": "JWT",
+      "meaning": "A common token format that carries user details and an expiry time in readable text."
+    },
+    {
+      "term": "Role",
+      "meaning": "The kind of access a user has, here either admin or analyst."
+    },
+    {
+      "term": "Expiry",
+      "meaning": "The time after which a token is no longer valid."
+    }
+  ],
+  "depends_on": [
+    "react",
+    "/api/auth/login (server endpoint)"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 2,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c64744a4c1fc5746",
+      "title": "Imports",
+      "what": "Brings in the state, memo and effect tools from React.",
+      "why": "Needed for the shared login state.",
+      "watch_out": ""
+    },
+    {
+      "start": 3,
+      "end": 7,
+      "kind": "type",
+      "name": "AuthUser",
+      "id": "s2",
+      "hash": "d8b32d8bf96b53e4",
+      "title": "User shape",
+      "what": "Describes the signed-in user: an id and a role that is either admin or analyst.",
+      "why": "Limits roles to two known values for the screens.",
+      "watch_out": "A role outside these two is not caught here."
+    },
+    {
+      "start": 8,
+      "end": 20,
+      "kind": "type",
+      "name": "AuthState, DISABLED_USER",
+      "id": "s3",
+      "hash": "ea9cbda529fadca0",
+      "title": "Login state and development switch",
+      "what": "Describes the login state (token and user). Sets the storage key name, a development-only switch that is on only when the dev flag is set and the build is not production, and the fake admin user used while it is on.",
+      "why": "Stated in the code: lets developers skip login locally, never in production.",
+      "watch_out": "The switch is read at build time, so a wrong build setting can turn it on."
+    },
+    {
+      "start": 21,
+      "end": 29,
+      "kind": "function",
+      "name": "parseJwt",
+      "id": "s4",
+      "hash": "c3cb1a2f07462bb9",
+      "title": "Token reader",
+      "what": "Reads the middle part of a token and turns it into its contents, or returns nothing if the text is malformed.",
+      "why": "Lets the app read the user and expiry without asking the server.",
+      "watch_out": "The signature is not checked, so a readable token is not proof of login."
+    },
+    {
+      "start": 30,
+      "end": 47,
+      "kind": "function",
+      "name": "loadStoredAuth",
+      "id": "s5",
+      "hash": "8db96ba9e2451813",
+      "title": "Restoring login on load",
+      "what": "Loads the saved token at start-up. Drops it if it is missing, malformed or expired. Otherwise restores the user.",
+      "why": "Keeps users signed in across page reloads.",
+      "watch_out": "Only the expiry is checked here, not whether the token is genuine."
+    },
+    {
+      "start": 48,
+      "end": 51,
+      "kind": "function",
+      "name": "notify",
+      "id": "s6",
+      "hash": "9bee36a1bb4906a2",
+      "title": "Change notification",
+      "what": "Tells every listening component when the login state changes.",
+      "why": "Lets screens redraw after login or logout.",
+      "watch_out": "A component must register as a listener, or it will not update."
+    },
+    {
+      "start": 52,
+      "end": 65,
+      "kind": "function",
+      "name": "getToken",
+      "id": "s7",
+      "hash": "77f792720cc0cf59",
+      "title": "Current token for other code",
+      "what": "Returns the current token for server calls. Clears it first if it has expired.",
+      "why": "Stops the app from sending an expired token.",
+      "watch_out": "A token with no expiry field is never treated as expired here."
+    },
+    {
+      "start": 66,
+      "end": 122,
+      "kind": "function",
+      "name": "useAuth",
+      "id": "s8",
+      "hash": "269f4c458e1de7fd",
+      "title": "Login, logout and hook result",
+      "what": "Provides login (sends credentials, saves the token, notifies listeners) and logout (clears the token, notifies listeners). Returns the state for screens. While the development bypass is on, it always reports a signed-in admin.",
+      "why": "Gives screens one place to read and change login.",
+      "watch_out": "The login error shows the server's message when one is sent, otherwise a generic status message."
+    }
+  ],
+  "explained_at": "2026-11-12T06:01:44+00:00",
+  "explained_by": "haiku",
+  "summary": "Keeps the signed-in user and their login token in the browser, and offers login and logout to the rest of the app.",
+  "purpose": "Lets the app know who is signed in and whether their saved token is still valid, and lets screens log in or out.",
+  "why": "The token is saved in the browser so the user stays signed in after a page reload. A development-only bypass exists so developers can skip login locally.",
+  "how": "On load, reads the saved token from the browser's local storage and checks its expiry. Keeps the login state in one shared variable and tells listening components when it changes. Login sends the username and password to the login endpoint and saves the returned token. Logout clears it. A development-only switch makes every user an admin.",
+  "inputs": "Username and password for login. The saved token from local storage.",
+  "outputs": "The token, the user (id and role), a signed-in flag, and login and logout functions. getToken gives the current token to other code.",
+  "risks": "The token sits in browser storage, which any script on the page can read. The browser reads the token contents without checking the signature, so the server must enforce real access. A token with no expiry field is never treated as expired here. The bypass depends on a build setting, so a wrong build setting could enable it.",
+  "debug": "If users are signed out on reload, check the saved token and its expiry. If login fails, read the message from the login endpoint. If the bypass seems active outside development, check the build mode and the VITE_AUTH_DISABLED value. If screens do not update after login, check the listeners.",
+  "summary_hash": "sha256:6058f2a38f58f40ef2567bb47f8c03c1a2176ea42fabe00c2d98ab38696a05c0"
+}

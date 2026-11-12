@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "path": "lib/db/src/schema/evidence.ts",
+  "language": "TypeScript",
+  "lines": 359,
+  "hash": "sha256:69416de3465b939a5ada95bfd8671d05c8c480bf60fb73679414cfc589f28334",
+  "area": "lib-db",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Some rules, such as append-only history and verbatim checks, are comments rather than enforced rules.",
+      "The partial unique index for current value points exists only in SQL, so a schema diff could remove it.",
+      "No tests are visible in this file.",
+      "The file warns against drizzle push, which suggests migrations are the only supported way to change the database."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Table",
+      "meaning": "A grid of rows and columns in the database, such as one row per evidence source."
+    },
+    {
+      "term": "Provenance",
+      "meaning": "Where a piece of information came from and how it was obtained."
+    },
+    {
+      "term": "Partial unique index",
+      "meaning": "A rule that only applies to rows matching a condition, such as one current value per project and metric."
+    },
+    {
+      "term": "Append-only",
+      "meaning": "A table where new rows are added but old rows are never changed or removed."
+    },
+    {
+      "term": "Verbatim",
+      "meaning": "Copied exactly word for word from the original source."
+    },
+    {
+      "term": "Cascade",
+      "meaning": "When a parent row is deleted, its linked child rows are deleted automatically."
+    },
+    {
+      "term": "Migration",
+      "meaning": "A saved step that changes the database structure in a controlled order."
+    },
+    {
+      "term": "Basis key",
+      "meaning": "A text label made from the sorted basis tags of a value, used to tell apart values measured on different bases."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "drizzle-orm/pg-core",
+    "lib/db/src/schema/schema.ts",
+    "lib/db/migrations (SQL files 0014 and 0015)"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "0b067723708bc3a0",
+      "title": "Setup and migration warning",
+      "what": "Imports the column types and the projects table, and holds a header warning that these definitions must match the SQL migration files.",
+      "why": "Likely reason: the header is there to stop a future schema diff from proposing destructive changes.",
+      "watch_out": "Never run drizzle push on this schema. Keep this file and the SQL migrations in step."
+    },
+    {
+      "start": 12,
+      "end": 47,
+      "kind": "value",
+      "name": "evidenceSource",
+      "id": "s2",
+      "hash": "0ddd8f40e76433da",
+      "title": "Stored evidence source with exact quote",
+      "what": "Stores one web page or file together with an exact quote from it, its publisher, date, quality tier and confidence. Its identity is the normalized URL plus a hash of the quote, so the same quote on the same page is stored once. It also records retirement, so an outdated register code can be kept without being used.",
+      "why": "The header comment explains that identity is the URL and quote hash. The retirement fields were added in migration 0015 according to the comment.",
+      "watch_out": "Inserting the same URL and quote hash again will hit the unique index, so writers must check for an existing row first."
+    },
+    {
+      "start": 48,
+      "end": 89,
+      "kind": "value",
+      "name": "sourceCapture",
+      "id": "s3",
+      "hash": "2b2301ecb50c898d",
+      "title": "Record of each capture attempt",
+      "what": "Records every attempt to capture a source, such as a text copy, a screenshot or a PDF copy, with its status, the environment, and whether the expected text was found. Only genuine captures are marked as images that can be shown.",
+      "why": "The comment says the table is append-only and that only genuine captures are shown, which keeps a truthful history of attempts.",
+      "watch_out": "Nothing in this table definition enforces append-only. It is a rule that the code writing rows must follow."
+    },
+    {
+      "start": 90,
+      "end": 103,
+      "kind": "value",
+      "name": "sourceAlternative",
+      "id": "s4",
+      "hash": "9a8619877dd28fb3",
+      "title": "Alternative sources for a source",
+      "what": "Links a source to another source that could stand in for it, with a reason and a note. Each pair can be recorded only once.",
+      "why": "Likely reason: keeps a record of substitute pages. The code does not state this directly.",
+      "watch_out": "The foreign key name is shortened in SQL, so its name in SQL differs from the full name a reader might expect."
+    },
+    {
+      "start": 104,
+      "end": 117,
+      "kind": "value",
+      "name": "captureBlockedDomain",
+      "id": "s5",
+      "hash": "5588d8026b4d82ba",
+      "title": "Domains that cannot be captured",
+      "what": "Holds a configuration list of web domains that fail to capture in a given environment, and whether to skip them.",
+      "why": "The comment says this is configuration rather than code, so the list can change without a code change.",
+      "watch_out": "Skip capture defaults to true, so a new row added without that field set will skip capture silently."
+    },
+    {
+      "start": 118,
+      "end": 173,
+      "kind": "value",
+      "name": "valuePoint",
+      "id": "s6",
+      "hash": "a109c11c6e405a95",
+      "title": "A single value for one metric",
+      "what": "Stores one figure, such as a cost, capacity or date, for one project and metric, with its unit, currency, USD conversion, date resolution and provenance. A project can have several values for one metric, separated by basis and by time, but only one is marked current for each basis.",
+      "why": "The comment explains that the basis and time dimensions keep different measurements from being mixed up.",
+      "watch_out": "The rule for one current value per basis exists only as a partial unique index in SQL. A schema diff could remove it, so keep the SQL in step."
+    },
+    {
+      "start": 174,
+      "end": 188,
+      "kind": "value",
+      "name": "valuePointSource",
+      "id": "s7",
+      "hash": "4164288f87d01952",
+      "title": "Links a value to its supporting sources",
+      "what": "Records which sources back each value, their order, and whether each one is primary, corroborating or an alternative, together with how the link was made.",
+      "why": "Reason not stated in the code beyond the field comments. The link table pattern lets one value cite several sources.",
+      "watch_out": "Deleting a value or a source also deletes these links automatically."
+    },
+    {
+      "start": 189,
+      "end": 214,
+      "kind": "value",
+      "name": "vettingRecord",
+      "id": "s8",
+      "hash": "adc0b0b16f7237ec",
+      "title": "Reviewer verdicts on values and sources",
+      "what": "Stores each tick or doubt that a reviewer gives a value or a source, along with the reviewer, where they gave it, and a snapshot of the value at that time. Verdicts are vetted, doubt or cleared.",
+      "why": "The comment says one store is used for all entry points and that records are append-only.",
+      "watch_out": "The reviewer name is stored as plain text, so this table holds personal information and needs care. Append-only is a convention, not an enforced rule."
+    },
+    {
+      "start": 215,
+      "end": 240,
+      "kind": "value",
+      "name": "benchmarkProfile",
+      "id": "s9",
+      "hash": "dc8c82f98655d5f2",
+      "title": "Saved benchmark comparison setup",
+      "what": "Stores the settings for a benchmark comparison, either for one project or for an industry, including filters, weighted criteria, the rules for cancelled projects, and the basis used for unit cost.",
+      "why": "Likely reason: so a comparison can be rerun later with the same rules. The code does not state this directly.",
+      "watch_out": "Many settings are free text with allowed values listed only in comments. Nothing in this table enforces those lists."
+    },
+    {
+      "start": 241,
+      "end": 255,
+      "kind": "value",
+      "name": "comparabilityScore",
+      "id": "s10",
+      "hash": "5aa9a6cbbbbcec45",
+      "title": "Comparison score for each candidate",
+      "what": "Stores how closely one candidate project matches a benchmark profile, with its score, rank, score breakdown and whether it was shortlisted.",
+      "why": "Reason not stated in the code. The unique index means each candidate appears once per profile.",
+      "watch_out": "Candidates are identified by name rather than by project id, so renaming a candidate creates a separate row."
+    },
+    {
+      "start": 256,
+      "end": 284,
+      "kind": "value",
+      "name": "derivedMetric",
+      "id": "s11",
+      "hash": "712c2f9551a9f801",
+      "title": "Calculated number with its audit trail",
+      "what": "Stores a calculated result together with its formula, exact inputs, and which projects were included or excluded and why. It also keeps the display text shown to readers.",
+      "why": "The comment says it records formula, inputs and reasons so the number can be checked later.",
+      "watch_out": "The stored result is a fixed record. Nothing in this table recalculates it when the inputs change."
+    },
+    {
+      "start": 285,
+      "end": 304,
+      "kind": "value",
+      "name": "runClaim",
+      "id": "s12",
+      "hash": "226599254923a0d7",
+      "title": "Claim in a generated report",
+      "what": "Stores a statement shown in a generated report, grouped by slide or summary line, with its verdict and calculation text, plus the IDs of the values, sources and calculated numbers behind it.",
+      "why": "Likely reason: lets each claim in a report be traced back to its evidence. The code does not state this directly.",
+      "watch_out": "The linked IDs are stored as lists, not as checked foreign keys, so a deleted ID can leave a dangling reference."
+    },
+    {
+      "start": 305,
+      "end": 321,
+      "kind": "value",
+      "name": "runEvent",
+      "id": "s13",
+      "hash": "bcf455e3256feadb",
+      "title": "Ordered log of run events",
+      "what": "Records the steps that happened during one run, numbered in order, with an optional project, source, value or capture attached and a message.",
+      "why": "A unique rule on tool, run and sequence number keeps the steps in one clear order with no repeats.",
+      "watch_out": "If two events are given the same sequence number in the same run, the second insert will fail."
+    },
+    {
+      "start": 322,
+      "end": 338,
+      "kind": "value",
+      "name": "dateConvention",
+      "id": "s14",
+      "hash": "b8d5feb7b6bbb03a",
+      "title": "Editable date rules",
+      "what": "Stores each date convention as data: a label, a definition, the months it spans, the month whose last day is used for calculations, and whether the rule refuses to pick a date.",
+      "why": "The header and field comments say these rules are kept as editable data rather than fixed in code.",
+      "watch_out": "A refused rule has no calculation month, so code that assumes one exists will fail for those rules."
+    },
+    {
+      "start": 339,
+      "end": 359,
+      "kind": "value",
+      "name": "dateConventionChange, DateConvention, EvidenceSource, SourceCapture, ValuePoint, InsertValuePoint",
+      "id": "s15",
+      "hash": "4fd39720c5ea12ce",
+      "title": "Change history for date rules and type shortcuts",
+      "what": "Keeps a record of each change to a date rule, with the before and after values, the note, who made the change, and how many values were re-resolved or flagged. It also exports type names that other code uses to describe rows in these tables.",
+      "why": "The change record exists to keep an audit trail. The counts suggest a rule change re-resolves stored dates, but the code does not state this directly.",
+      "watch_out": "The type names are generated from the table definitions, so adding or renaming a column changes the types used by other code."
+    }
+  ],
+  "explained_at": "2026-11-12T06:48:44+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the database tables that store evidence sources, captures, values, reviewer verdicts, benchmarks, calculated numbers, report claims and run events.",
+  "purpose": "Describes the tables that hold the evidence trail behind project figures, so every number can be traced to a source.",
+  "why": "The file header says it was written for the Reality Scan evidence brief, Stage 1, and that migrations 0014 and 0015 must match these definitions.",
+  "how": "The file imports the column types it needs, then defines each table with its columns, defaults and indexes. Next it defines the rules for linking tables. At the end it exports TypeScript type names that other code uses to describe a row.",
+  "inputs": "Not visible in this file. The header says rows come from the evidence and reality scan work and from reviewers.",
+  "outputs": "Table definitions and exported types that the rest of the app uses to read and write these tables.",
+  "risks": "If these definitions drift from the SQL migration files, a future diff may propose destructive changes. Some rules are only comments and are not enforced here, such as append-only tables.",
+  "debug": "If a table is missing or a column is unknown, check that the matching SQL migration files 0014 and 0015 contain the same table. If a unique index seems to vanish after a schema change, check the SQL, because the partial unique index on value points is kept only there.",
+  "summary_hash": "sha256:69416de3465b939a5ada95bfd8671d05c8c480bf60fb73679414cfc589f28334"
+}

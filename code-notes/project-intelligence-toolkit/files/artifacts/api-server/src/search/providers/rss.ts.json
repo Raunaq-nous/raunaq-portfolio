@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/search/providers/rss.ts",
+  "language": "TypeScript",
+  "lines": 199,
+  "hash": "sha256:39ebac499ccd5e096273a4ac40e6e9c706473cec3618065e0609760cb46839a0",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "A failed fetch is cached as empty, which hides a working feed for 15 minutes after one error.",
+      "Feed parsing uses text patterns rather than a proper XML parser.",
+      "The industry is read through a type cast, which suggests the source type may not declare that field.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "RSS",
+      "meaning": "a standard feed format that lists recent articles from a website."
+    },
+    {
+      "term": "Atom",
+      "meaning": "another feed format, read here as a fallback."
+    },
+    {
+      "term": "XML",
+      "meaning": "a tagged text format that feeds are written in."
+    },
+    {
+      "term": "CDATA",
+      "meaning": "a wrapper that marks text as raw content, so special characters inside are kept."
+    },
+    {
+      "term": "cache",
+      "meaning": "a saved copy kept for a while so it does not have to be fetched again."
+    },
+    {
+      "term": "timeout",
+      "meaning": "a limit on how long to wait before giving up."
+    }
+  ],
+  "depends_on": [
+    "../interfaces",
+    "@workspace/db",
+    "Node built-in fetch"
+  ],
+  "used_by": [
+    "The search router, through createRouter.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7be96f74e2deebf2",
+      "title": "Imports and time limits",
+      "what": "Brings in the search and source types and sets the 10-second feed timeout and 15-minute cache length.",
+      "why": "Likely reason: a slow feed must not hold up the whole search, and feeds should not be refetched constantly.",
+      "watch_out": ""
+    },
+    {
+      "start": 7,
+      "end": 11,
+      "kind": "type",
+      "name": "CachedFeed",
+      "id": "s2",
+      "hash": "3a4de7389aed65d2",
+      "title": "Cached feed shape",
+      "what": "Describes a saved feed: its articles and the time it was fetched.",
+      "why": "Likely reason: needed to tell whether the saved copy is still fresh.",
+      "watch_out": ""
+    },
+    {
+      "start": 12,
+      "end": 21,
+      "kind": "type",
+      "name": "RSSItem, feedCache",
+      "id": "s3",
+      "hash": "40a090dbf646e7fb",
+      "title": "Article shape and feed store",
+      "what": "Describes one article read from a feed, and creates the in-memory store that keeps feeds for reuse, keyed by feed address.",
+      "why": "Likely reason: keying by address means each feed is fetched and cached separately.",
+      "watch_out": "The store lives only in memory and grows with each new feed address."
+    },
+    {
+      "start": 22,
+      "end": 26,
+      "kind": "function",
+      "name": "tierToScore",
+      "id": "s4",
+      "hash": "6c094655e7e2e1b8",
+      "title": "Tier to trust score",
+      "what": "Converts a source tier from 1 to 5 into a trust score from 100 down to 20. Any other tier gets 30.",
+      "why": "Likely reason: more trusted tiers get higher scores, and unknown tiers sit in the middle.",
+      "watch_out": "The same mapping is repeated in router.ts, so changing one without the other makes scores disagree."
+    },
+    {
+      "start": 27,
+      "end": 31,
+      "kind": "function",
+      "name": "keywordMatch",
+      "id": "s5",
+      "hash": "fb24054f94da2f7c",
+      "title": "Word match check",
+      "what": "Returns true when any search word longer than two letters appears in the given text, ignoring case.",
+      "why": "Likely reason: skips short filler words that would match almost anything.",
+      "watch_out": ""
+    },
+    {
+      "start": 32,
+      "end": 55,
+      "kind": "function",
+      "name": "parseFeed",
+      "id": "s6",
+      "hash": "e1e1ecacd41e134b",
+      "title": "Fetching one feed",
+      "what": "Downloads a feed address with a 10-second timeout and a named user agent, then reads its articles. A failed download or an error reply returns an empty list.",
+      "why": "Likely reason: one broken feed should not stop the rest of the search.",
+      "watch_out": "Failures return an empty list rather than an error, so a broken feed looks the same as a quiet one."
+    },
+    {
+      "start": 56,
+      "end": 109,
+      "kind": "function",
+      "name": "parseXml",
+      "id": "s7",
+      "hash": "e463084569ee3416",
+      "title": "Reading feed text",
+      "what": "Pulls articles out of the feed text. It reads standard feed items first, and only tries the Atom style if none are found.",
+      "why": "Likely reason: supports both common feed styles with one function.",
+      "watch_out": "Pattern-based reading can miss articles with unusual tag layouts."
+    },
+    {
+      "start": 110,
+      "end": 115,
+      "kind": "function",
+      "name": "extractTag",
+      "id": "s8",
+      "hash": "f781c379d84fe20a",
+      "title": "Finding one tag's text",
+      "what": "Returns the trimmed text inside the first matching tag, or nothing if the tag is missing.",
+      "why": "Likely reason: a small helper keeps the reader short.",
+      "watch_out": "Only the first occurrence of each tag is read."
+    },
+    {
+      "start": 116,
+      "end": 119,
+      "kind": "function",
+      "name": "cleanCdata",
+      "id": "s9",
+      "hash": "bd0c2525018b9f5d",
+      "title": "Removing wrapper text",
+      "what": "Strips the raw-content wrapper so only the text inside remains.",
+      "why": "Likely reason: many feeds wrap titles and summaries in this wrapper.",
+      "watch_out": ""
+    },
+    {
+      "start": 120,
+      "end": 171,
+      "kind": "class",
+      "name": "RSSProvider (part 1)",
+      "id": "s10",
+      "hash": "b1a0b9bd64668e16",
+      "title": "Provider entry point, part 1",
+      "what": "Loads enabled RSS sources, narrows them to the requested industry when one is given, then fetches or reuses each feed in parallel. A feed whose fetch fails contributes nothing.",
+      "why": "Likely reason: keeps feeds curated per industry, so unrelated feeds do not answer.",
+      "watch_out": "Industry narrowing relies on a field the source type may not declare."
+    },
+    {
+      "start": 172,
+      "end": 199,
+      "kind": "method",
+      "name": "RSSProvider: for",
+      "id": "s11",
+      "hash": "f162348e3af3215b",
+      "title": "Provider entry point, part 2",
+      "what": "Keeps articles whose title or summary matches the search words, gives each one a trust score from its source tier, sorts by publish date with newest first, and returns the requested number.",
+      "why": "Likely reason: newest first puts recent news ahead of older items.",
+      "watch_out": "Articles with no date sort to the bottom, so they can fall off the list when the limit is small."
+    }
+  ],
+  "explained_at": "2026-11-12T04:12:18+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads the curated news feeds for an industry and returns articles whose title or summary mention the search words, newest first.",
+  "purpose": "Gives search results from trusted industry news feeds, which need no API key.",
+  "why": "Likely reason: feed lists are curated per industry. The comment says unrelated articles appeared in results before this was added.",
+  "how": "Loads enabled RSS sources, keeps only those for the requested industry, and fetches each feed in parallel with a 10-second limit. Each feed is cached for 15 minutes. It reads each article from the feed text, keeps articles where a search word longer than two letters appears in the title or summary, gives each one a trust score from its source tier, sorts newest first, and returns the requested number.",
+  "inputs": "Search text, result limit, an optional industry, and a loader for enabled sources. Each source gives a web address, a tier, an industry, and a type.",
+  "outputs": "A list of search results with address, title, summary text, source name rss, trust score, and published date when present.",
+  "risks": "A failed fetch returns an empty list which is then cached for 15 minutes, so one error hides that feed for a while. Feed contents are read with text patterns rather than a real XML reader, so unusual feeds may be misread.",
+  "debug": "If a feed shows no results, check its address and whether the fetch timed out. A log line reports how many feeds are in scope for the industry. If results come from the wrong industry, check each source's industry value. The cache lives in memory, so a restart clears it.",
+  "summary_hash": "sha256:39ebac499ccd5e096273a4ac40e6e9c706473cec3618065e0609760cb46839a0"
+}

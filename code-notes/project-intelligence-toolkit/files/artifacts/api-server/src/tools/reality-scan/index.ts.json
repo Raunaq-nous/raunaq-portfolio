@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/reality-scan/index.ts",
+  "language": "TypeScript",
+  "lines": 249,
+  "hash": "sha256:6b4b5d17e983ced7d4fe0bb26562cfe96d210f37acad330a186381654dd3f2da",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in this file.",
+      "Most routes catch errors and log them, but the ledger and workbook routes do not.",
+      "The project search does not escape wildcard characters in the typed text.",
+      "The cancel route can cancel a failed run, which may be unexpected."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Express",
+      "meaning": "a library that lets this app answer web requests at set addresses"
+    },
+    {
+      "term": "Route",
+      "meaning": "one web address the app answers, together with the action it performs"
+    },
+    {
+      "term": "Router",
+      "meaning": "a group of routes that can be attached to the main app"
+    },
+    {
+      "term": "Zod",
+      "meaning": "a library that checks that incoming data has the expected shape"
+    },
+    {
+      "term": "Drizzle",
+      "meaning": "a library used to read and write the database without raw query text"
+    },
+    {
+      "term": "Scope",
+      "meaning": "the selection of projects a scan is asked to cover"
+    },
+    {
+      "term": "Stage",
+      "meaning": "one step of a scan, saved separately so it can be resumed"
+    },
+    {
+      "term": "Workbook",
+      "meaning": "an Excel spreadsheet file"
+    }
+  ],
+  "depends_on": [
+    "express",
+    "zod",
+    "drizzle-orm",
+    "@workspace/db",
+    "../types",
+    "../../db",
+    "./scope",
+    "./runner",
+    "./createRun",
+    "./deckRoutes",
+    "./entryRoutes",
+    "../research-contract/sourceBundle",
+    "../research-contract/workbookXlsx",
+    "../research-contract/quoteTranslation"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 26,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "0412bc0a632a7c7c",
+      "title": "Imports and router setup",
+      "what": "Brings in the libraries, database tables and sub-routers, then creates the router that the rest of the file adds routes to.",
+      "why": "The header comment says login is applied by the framework and all state lives in the database.",
+      "watch_out": "Nothing is remembered between requests here, so any state a route needs must come from the database."
+    },
+    {
+      "start": 27,
+      "end": 27,
+      "kind": "route",
+      "name": "use",
+      "id": "s2",
+      "hash": "2bf0dc25a4ca0113",
+      "title": "Attach deck routes",
+      "what": "Adds the slide-related sub-routes to this router.",
+      "why": "Likely reason: keeps slide code in its own file.",
+      "watch_out": "Route order matters in Express, so a sub-router added here can match requests before later routes do."
+    },
+    {
+      "start": 28,
+      "end": 29,
+      "kind": "route",
+      "name": "use",
+      "id": "s3",
+      "hash": "386d8439ec9216bf",
+      "title": "Attach project lookup routes",
+      "what": "Adds the project lookup and research routes from the entry file to this router.",
+      "why": "Likely reason: keeps project lookup code in its own file.",
+      "watch_out": "The same route order rule applies, so adding routes with overlapping addresses can change which one answers."
+    },
+    {
+      "start": 30,
+      "end": 39,
+      "kind": "route",
+      "name": "post",
+      "id": "s4",
+      "hash": "43d73bd77183e914",
+      "title": "Cancel a scan run",
+      "what": "Marks a run as cancelled if it is queued, running, failed or interrupted, and marks its running stages cancelled. Completed stages are kept. It returns a conflict error if the run is missing or already finished.",
+      "why": "Lets the user stop a scan without losing work already saved.",
+      "watch_out": "Failed and interrupted runs can be cancelled, and a cancelled run cannot be started again through the start route."
+    },
+    {
+      "start": 40,
+      "end": 54,
+      "kind": "route",
+      "name": "get",
+      "id": "s5",
+      "hash": "75a756a614094b34",
+      "title": "Download research record as JSON",
+      "what": "Returns a downloadable JSON file holding the run's source bundle, collection directory, workbook, research facts, and each stage's status and timing.",
+      "why": "Lets someone audit where each figure came from.",
+      "watch_out": "This route has no error handling, so a database failure will not produce a clean error response."
+    },
+    {
+      "start": 55,
+      "end": 100,
+      "kind": "route",
+      "name": "get, precheckBodySchema, createRunBodySchema",
+      "id": "s6",
+      "hash": "c09746c065dbba77",
+      "title": "Download run as Excel workbook",
+      "what": "Builds an Excel file for the run from its saved stage results. It includes Yard evidence, calculations, overrun reasons and quotes with English translations. It returns not found if no stages were recorded. This section also defines the two input checks used by preview and create.",
+      "why": "Likely reason: gives analysts a spreadsheet they can check line by line.",
+      "watch_out": "Like the research record route, it has no error handling, so a failure while building the file is not caught here."
+    },
+    {
+      "start": 101,
+      "end": 122,
+      "kind": "route",
+      "name": "post",
+      "id": "s7",
+      "hash": "8a1ab23a0f12c52c",
+      "title": "Preview a scope before running",
+      "what": "Takes a scope selection and reports how many projects it resolves to, the breakdown by industry, the mode for each item and the overall mode. Nothing is saved.",
+      "why": "Lets the user see what a run would cover before starting it.",
+      "watch_out": "The response sets the project cap to null, so a missing cap does not mean projects were dropped."
+    },
+    {
+      "start": 123,
+      "end": 150,
+      "kind": "route",
+      "name": "get",
+      "id": "s8",
+      "hash": "8d96715b74285098",
+      "title": "Search projects by name",
+      "what": "Returns up to twenty projects from all industries whose names contain the typed text, sorted by name. Searches shorter than two characters return nothing.",
+      "why": "The normal project list only shows one industry, so this gives a picker that spans industries.",
+      "watch_out": "The typed text is not escaped, so percent and underscore characters act as wildcards and can change the results."
+    },
+    {
+      "start": 151,
+      "end": 176,
+      "kind": "route",
+      "name": "post",
+      "id": "s9",
+      "hash": "2f4ebccc7cb98e4c",
+      "title": "Create and start a scan run",
+      "what": "Checks the scope, creates the run, starts it in the background, and returns the run with its preview and a success code.",
+      "why": "Starting straight away means the user does not need a second step.",
+      "watch_out": "If the start call fails, the failure is only logged, and the caller still receives a success response."
+    },
+    {
+      "start": 177,
+      "end": 191,
+      "kind": "route",
+      "name": "get",
+      "id": "s10",
+      "hash": "6b59ab0007f7fc86",
+      "title": "List recent runs",
+      "what": "Returns the twenty most recently created runs, newest first.",
+      "why": "Gives the run list page its data.",
+      "watch_out": "There is no paging, so older runs cannot be reached from this route."
+    },
+    {
+      "start": 192,
+      "end": 224,
+      "kind": "route",
+      "name": "get",
+      "id": "s11",
+      "hash": "e2d34f503b8704de",
+      "title": "View one run with stage progress",
+      "what": "Returns one run and its stages in running order. Stages from older versions are added at the end so old run pages still show them. It returns not found if the run does not exist.",
+      "why": "The run page reads this repeatedly to show progress, as the comments say.",
+      "watch_out": "Stages that have not started come back as empty entries, so the page must handle missing values."
+    },
+    {
+      "start": 225,
+      "end": 242,
+      "kind": "route",
+      "name": "post",
+      "id": "s12",
+      "hash": "9fbec9a6b03758a3",
+      "title": "Start or resume a run",
+      "what": "Starts a run, or resumes one that was interrupted or failed by skipping stages that already succeeded. It returns not found for a missing run and a conflict for one that is running, finished, cancelled or from an incompatible version.",
+      "why": "Lets a stopped run continue without repeating finished work.",
+      "watch_out": "Resuming depends on saved stage records, so a run from an older version is refused rather than resumed."
+    },
+    {
+      "start": 243,
+      "end": 249,
+      "kind": "value",
+      "name": "tool",
+      "id": "s13",
+      "hash": "4a82767cceb2480b",
+      "title": "Register the Reality Scan tool",
+      "what": "Packages the router with the tool's name and short address name so the app can list and attach it.",
+      "why": "The app needs one standard object for each tool.",
+      "watch_out": "The short name becomes part of the web address, so changing it breaks existing links."
+    }
+  ],
+  "explained_at": "2026-11-12T05:02:20+00:00",
+  "explained_by": "haiku",
+  "summary": "Web route module that exposes the Reality Scan tool, letting the app create, list, check, cancel, resume and export scan runs.",
+  "purpose": "Provides the web addresses the front end calls for Reality Scan: preview a scope, search projects, create and start a run, read run progress, and download the research record and the Excel workbook.",
+  "why": "Likely reason: keeps the web-facing part separate from the background work in the runner, so requests return quickly while the scan continues. The header comment says all state lives in the database, not in memory.",
+  "how": "The module creates a router, attaches the deck and project-lookup sub-routers, then defines the routes: cancel, research ledger download, workbook download, precheck, project search, create run, list runs, view one run, and start or resume a run. Each route checks its input, calls the matching logic, and returns JSON or a coded error.",
+  "inputs": "A scope selection in the request body for precheck and create; a run identifier in the web address; search text for project search; the saved runs and stage results in the database.",
+  "outputs": "JSON with run data, stage data, preview results and project lists; a JSON file and an Excel file for downloads; error messages with codes such as VALIDATION_ERROR, NOT_FOUND and SERVER_ERROR.",
+  "risks": "The project search places the typed text straight into a name pattern without escaping percent or underscore characters, so those characters act as wildcards. The cancel route also accepts failed and interrupted runs. The research ledger and workbook download routes have no error handling, so a database failure there is not turned into a clean error response.",
+  "debug": "Start with the server log lines that begin with reality-scan. A 409 from cancel or start means the run is finished, cancelled or already running. An empty ledger or a 404 means no stages were recorded for that run, so check its stage rows. For a workbook with no research, check the fetch stage summary for the reason research was skipped.",
+  "summary_hash": "sha256:6b4b5d17e983ced7d4fe0bb26562cfe96d210f37acad330a186381654dd3f2da"
+}

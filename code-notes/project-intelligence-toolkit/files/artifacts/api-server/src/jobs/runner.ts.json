@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/jobs/runner.ts",
+  "language": "TypeScript",
+  "lines": 380,
+  "hash": "sha256:03b384c60e492f7b621552c4c1b3e8401aa90d84b760cfc3a73fc2e2626615c3",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or other proof of correct behavior are visible in this file.",
+      "The running count is kept in memory and resets on restart.",
+      "Cancellation is only checked between steps, not during one.",
+      "Several values are cast to any, which hides type mismatches.",
+      "Errors from releasing the lock are not handled in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Job",
+      "meaning": "One queued research run for one project, tracked in the database from queued to completed or failed."
+    },
+    {
+      "term": "Step",
+      "meaning": "One of the four stages inside a job: retrieval, extraction, validation and commit."
+    },
+    {
+      "term": "Advisory lock",
+      "meaning": "A database lock keyed on a project, so only one job can work on that project at a time."
+    },
+    {
+      "term": "Stale job",
+      "meaning": "A job still marked running long after it should have finished, usually because the process stopped."
+    },
+    {
+      "term": "Verbatim gate",
+      "meaning": "The check that confirms each quote really appears in the text the model was shown."
+    },
+    {
+      "term": "Snapshot",
+      "meaning": "A saved copy of a step's output, kept for review."
+    },
+    {
+      "term": "Backoff",
+      "meaning": "Waiting longer before each retry so a busy service has time to recover."
+    }
+  ],
+  "depends_on": [
+    "./interfaces",
+    "./steps/retrieval",
+    "./steps/extraction",
+    "./steps/validation",
+    "./steps/verbatimGate",
+    "./steps/commit",
+    "../lib/safeFetch",
+    "../search/createRouter",
+    "../search/interfaces",
+    "../models/llmExtractor",
+    "../models/router",
+    "../db",
+    "../storage",
+    "drizzle-orm"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup, RETRY_BASE_DELAYS, JITTER_RANGE",
+      "id": "s1",
+      "hash": "349685ad2234c5cf",
+      "title": "Imports and timing settings",
+      "what": "Loads the four steps and the tools they need. Sets how many jobs may run at once (three by default, changeable by environment setting), 30 minutes before a job counts as stale, and five minutes between stale checks. Also sets retry waits of about 5, 25 and 125 seconds, each varied randomly.",
+      "why": "Likely reason: the concurrency limit controls load and cost, and the timeouts let stuck jobs recover.",
+      "watch_out": "Raising the concurrency limit raises model and search spending at the same time."
+    },
+    {
+      "start": 26,
+      "end": 31,
+      "kind": "function",
+      "name": "retryDelay",
+      "id": "s2",
+      "hash": "8fa46efc248369d6",
+      "title": "How long to wait before a retry",
+      "what": "Returns the wait before a retry. The wait grows with each attempt, stops growing after the third step in the list, and is multiplied by a random factor between 0.6 and 1.4.",
+      "why": "Likely reason: random spacing stops many retries from hitting a struggling service at the same moment.",
+      "watch_out": "After the third entry the wait stays at about two minutes, so later retries do not wait longer."
+    },
+    {
+      "start": 32,
+      "end": 38,
+      "kind": "function",
+      "name": "isRetryable",
+      "id": "s3",
+      "hash": "52823a2387e85173",
+      "title": "Deciding whether a failure is worth retrying",
+      "what": "Treats format-check errors and client errors from 400 to 499 as permanent, except for too-many-requests errors. Every other failure, including network and server errors, is retried.",
+      "why": "Likely reason: a bad request will fail the same way again, while a busy or broken service may recover.",
+      "watch_out": "Retry choice depends on a status field being present on the error. Errors without one are retried by default."
+    },
+    {
+      "start": 39,
+      "end": 45,
+      "kind": "function",
+      "name": "computeInputHash",
+      "id": "s4",
+      "hash": "5ec6538c10c95f71",
+      "title": "A fingerprint for each step's input",
+      "what": "Creates a fixed fingerprint from the project id and step name, saved with each step record. The commit step has none. The same section also declares the in-memory running count and the stale-check timer.",
+      "why": "Reason not stated in the code beyond recording the fingerprint with the step. It may help trace which input a step ran against.",
+      "watch_out": "The fingerprint depends only on the project and step name, not on the content, so different results can share the same value."
+    },
+    {
+      "start": 46,
+      "end": 90,
+      "kind": "class",
+      "name": "JobRunner, jobRunner (part 1)",
+      "id": "s5",
+      "hash": "9ad4aabde6be5f48",
+      "title": "Class setup and job start checks",
+      "what": "Creates the runner with a page fetcher. It uses the AI extractor if any model provider is configured and a placeholder extractor otherwise. Provides functions that take and release a database lock for a project. The start of the run checks the concurrency limit and that the job is still queued.",
+      "why": "Likely reason: the placeholder extractor lets the pipeline run without model keys, and the lock stops two jobs from editing one project at once.",
+      "watch_out": "Without a model provider the placeholder extractor runs and produces fake-looking results, so check the startup log line before trusting output."
+    },
+    {
+      "start": 91,
+      "end": 129,
+      "kind": "method",
+      "name": "JobRunner, jobRunner: if",
+      "id": "s6",
+      "hash": "f74fb42957cefd0a",
+      "title": "Handling a lock conflict and marking a job running",
+      "what": "If another job holds the project's lock, the job is put back in the queue for one minute. Otherwise the running count goes up, the job is marked running with a start time, and the project is loaded. Before each step the code checks whether the job was cancelled.",
+      "why": "Reason stated in the code: a locked project is deferred rather than edited by two jobs at once.",
+      "watch_out": "Cancellation is only checked before each step, so a job cancelled during a step still finishes that step."
+    },
+    {
+      "start": 130,
+      "end": 189,
+      "kind": "class",
+      "name": "JobRunner, jobRunner (part 3)",
+      "id": "s7",
+      "hash": "b30dae796ff21d10",
+      "title": "Retrieval step: choosing trusted domains and saving pages",
+      "what": "Reads a short list of trusted domains from the sources table, filtered by industry and region, and passes it to the retrieval step. Each page found is saved as a retrieval document with its domain and trust tier.",
+      "why": "Comment: industry scoping is strict, so one industry's sources never leak into another industry's search.",
+      "watch_out": "An industry with no tagged sources falls back to domains in its own search profile, so the list can differ from the table, and a failed lookup is logged and the search runs with no domains."
+    },
+    {
+      "start": 190,
+      "end": 246,
+      "kind": "class",
+      "name": "JobRunner, jobRunner (part 4)",
+      "id": "s8",
+      "hash": "0491ba177b21cf42",
+      "title": "Extraction step with the verbatim gate",
+      "what": "Runs the extraction on the retrieved pages, then sends the answer through the verbatim gate. The gate checks each quote against the text the model was shown, asks the model once more for failed quotes, and removes field values whose quotes did not survive. The gate's counts are saved with the job. If the gate itself crashes, every quote from this job is dropped.",
+      "why": "Comment: nothing may reach the evidence store without passing the gate.",
+      "watch_out": "The gate checks against the shortened text the model saw, so a real quote from further down a long page is rejected."
+    },
+    {
+      "start": 247,
+      "end": 304,
+      "kind": "class",
+      "name": "JobRunner, jobRunner (part 5)",
+      "id": "s9",
+      "hash": "a7fb4e4dc734df58",
+      "title": "Validation and commit steps, with retries",
+      "what": "Validation loads the project's existing updates and checks the extraction output. Commit writes approved changes, evidence and updates, and receives the full pages so quotes can be located. Each completed step saves its output, with the full page text removed from retrieval. Any failure is retried if it looks temporary and the job has retries left, otherwise the step and job are marked failed.",
+      "why": "Commit runs last so it writes only after every earlier check has passed.",
+      "watch_out": "A retried job runs every step again from retrieval, so it searches and calls the model again."
+    },
+    {
+      "start": 305,
+      "end": 360,
+      "kind": "class",
+      "name": "JobRunner, jobRunner (part 6)",
+      "id": "s10",
+      "hash": "d33dfd5315a34604",
+      "title": "Finishing a job and the stale-job cleanup",
+      "what": "Marks the job completed when every step passes. Any unhandled error marks the job failed and records the message. The finally block lowers the running count and releases the project lock. Also provides a cleanup that marks jobs running longer than 30 minutes as failed, and a function that starts queued jobs that are due, up to the limit.",
+      "why": "Reason stated in the code: the finally block keeps the running count and lock correct even after a failure.",
+      "watch_out": "The running count lives in memory, so after a restart jobs that were running are not counted until the cleanup marks them."
+    },
+    {
+      "start": 361,
+      "end": 380,
+      "kind": "method",
+      "name": "JobRunner, jobRunner: startStaleCheck",
+      "id": "s11",
+      "hash": "3750fe196efdd260",
+      "title": "Starting the automatic stale-job check",
+      "what": "Starts a timer that runs the stale-job cleanup every five minutes, and provides a way to stop it. Calling the start function twice has no extra effect.",
+      "why": "Likely reason: jobs stopped by a crash would otherwise show as running forever.",
+      "watch_out": "The cleanup only runs if the start function is called somewhere else, so stuck jobs stay running if it never is."
+    }
+  ],
+  "explained_at": "2026-11-12T03:52:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs one queued research job for one project through four steps, saves each step's record, retries failures that look temporary, and marks the job failed for anything else.",
+  "purpose": "Carries a queued research job from start to finish and keeps its job and step records up to date, so the app can show progress and errors.",
+  "why": "Likely reason: splitting the work into fixed steps lets each step be recorded, retried and reviewed on its own. The project lock stops two jobs from editing one project at the same time.",
+  "how": "Checks that the job is still queued, takes a database lock for the project, and marks the job running. It then runs retrieval, extraction with the verbatim gate, validation and commit in order, saving each step's output. Temporary failures are retried after growing delays. Other failures mark the job failed. Finally it releases the lock and the running count. A separate timer marks jobs running for over thirty minutes as failed.",
+  "inputs": "Queued job and project records from storage. The database, for locks and trusted domain lookups. The search and model routers. The MAX_CONCURRENT_JOBS environment setting.",
+  "outputs": "Updated job and step records with status, timing, errors and step snapshots. Retrieval documents, validation statistics, and the changes written by the commit step.",
+  "risks": "The running count is kept in memory, so a restart forgets which jobs were running. Cancellation is only checked between steps. A failure while releasing the lock is not handled separately, so its state after such a failure is not visible in this code.",
+  "debug": "Check the error field on the job and the step record that failed, since the step name is included. Search the console for runner lines: Lock conflict means another job holds the project, Max concurrent means the job was deferred, and Stale means it ran too long. If results look generic, the placeholder extractor may have run.",
+  "summary_hash": "sha256:03b384c60e492f7b621552c4c1b3e8401aa90d84b760cfc3a73fc2e2626615c3"
+}

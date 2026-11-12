@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/build-industry-closure.ts",
+  "language": "TypeScript",
+  "lines": 289,
+  "hash": "sha256:8a4f1c7cd2c6ad17cde455fb22190fb308537f05ef9e13ec3f327683e1894de2",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "Rebuilds and deletes output folders on each run.",
+      "Relies on helper modules that are not shown, so the exact checks cannot be verified here.",
+      "A comment says the default wording is offshore wind's, but the code falls back to renewables wording.",
+      "A limited --tools run reports unselected tools as closed."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Yard",
+      "meaning": "The name of the tool that holds the main project record, with its identity, stage and key facts."
+    },
+    {
+      "term": "Reality Scan",
+      "meaning": "The tool that checks cost and schedule figures against quotes from sources."
+    },
+    {
+      "term": "Lessons Learnt",
+      "meaning": "The tool that holds delivery facts such as causes of delay or overrun."
+    },
+    {
+      "term": "Opportunity Map",
+      "meaning": "The tool that holds news, owners and supply-chain companies for each project."
+    },
+    {
+      "term": "Worklist",
+      "meaning": "A list of research questions given to outside researchers, split into batches."
+    },
+    {
+      "term": "Closure",
+      "meaning": "The state in which a project has no open research questions left."
+    },
+    {
+      "term": "Segment",
+      "meaning": "A sub-industry, such as Offshore Wind, used to select a set of projects."
+    },
+    {
+      "term": "Round",
+      "meaning": "A repeat pass of research, given its own worklist ids so earlier results are not mixed in."
+    },
+    {
+      "term": "Not found",
+      "meaning": "An answer from a researcher saying a fact could not be located in any source."
+    },
+    {
+      "term": "FID",
+      "meaning": "Final investment decision, the point at which owners commit the money to build."
+    },
+    {
+      "term": "Evidence quote",
+      "meaning": "A sentence from a source supporting a fact, stored with its web address."
+    }
+  ],
+  "depends_on": [
+    "pg (PostgreSQL client library)",
+    "node:fs",
+    "node:path",
+    "src/tools/research-contract/fieldSemantics",
+    "src/tools/research-contract/yardHeld",
+    "src/mappers/toProjectDetailDTO",
+    "PROMPT.md in docs/research-prompts/<slug>",
+    "projects, evidence_quotes, company_project_links and companies tables"
+  ],
+  "used_by": [
+    "The importer, named in comments but not shown here"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a3b9cbb30588a9f8",
+      "title": "Purpose and tool completeness rules",
+      "what": "The header explains the purpose of the script and lists what counts as complete for each of the four tools. Below it, the code loads the database library and the helper modules that decide which facts are held.",
+      "why": "The header is the written rulebook for what complete means, so a reader can judge the status output against it.",
+      "watch_out": "The completeness rules exist in both the header text and the code. Changing one without the other makes the status output misleading."
+    },
+    {
+      "start": 31,
+      "end": 38,
+      "kind": "function",
+      "name": "arg, TOOLS",
+      "id": "s2",
+      "hash": "43a8cec94d5734e0",
+      "title": "Command options and tool selection",
+      "what": "Reads the industry, segment, slug, tools, round and ids-file options from the command line. It stops with a usage message if the required options are missing or the round is not a positive whole number.",
+      "why": "Options let a team run the full pass or limit it to one tool, such as a Reality Scan-only pass for a demo cohort. The round number keeps worklist ids unique across passes.",
+      "watch_out": "The round defaults to 1, so running again without a new round number replaces earlier worklists with the same ids."
+    },
+    {
+      "start": 39,
+      "end": 66,
+      "kind": "value",
+      "name": "NOTES, today",
+      "id": "s3",
+      "hash": "68a71a821374264d",
+      "title": "Industry-specific wording and run date",
+      "what": "Stores short wording for each industry describing the technology, supplier, construction start and contractor the research should report. It picks the wording for the chosen industry and sets the output folder, the batch size of six and today's date.",
+      "why": "The same generic questions need different words per industry, such as a reactor design for nuclear or a turbine model for renewables. The batch size reason is not stated in the code.",
+      "watch_out": "The header says the default wording is offshore wind's, but the code falls back to renewables wording for any industry not listed."
+    },
+    {
+      "start": 67,
+      "end": 77,
+      "kind": "function",
+      "name": "monthsAgo, Ask, Need",
+      "id": "s4",
+      "hash": "0336a2571501e664",
+      "title": "Date cutoffs and gap types",
+      "what": "Sets two cutoff dates: 18 months back for news and 12 months back for stage status. It defines the stage groups (finished, post-FID, terminal), a pattern for placeholder rows that are not real projects, the four ask types, and the shape of a gap record.",
+      "why": "The cutoffs implement the header rules on how recent news and status must be. The stage groups decide which outcome questions apply to each project.",
+      "watch_out": "Cutoffs are counted in calendar months from the run date, so the same database produces more open items as time passes. The placeholder pattern could also match a real project whose name happens to fit it."
+    },
+    {
+      "start": 78,
+      "end": 99,
+      "kind": "value",
+      "name": "pool, evBy",
+      "id": "s5",
+      "hash": "def414829cdb624e",
+      "title": "Loading projects and their evidence",
+      "what": "Loads the projects for the chosen industry or segment, optionally narrowed to a listed set in the listed order. It then loads active evidence quotes and company links, and groups the evidence by project.",
+      "why": "Every later check needs the evidence held for each project. The ids file sets the order so the highest-priority projects land in the first worklist.",
+      "watch_out": "The ids file must match the database exactly, and the script stops if the counts differ. A segment name typed wrongly fails only at the end with a no-projects error."
+    },
+    {
+      "start": 100,
+      "end": 105,
+      "kind": "value",
+      "name": "rolesBy, sourced, anyPath, factCats",
+      "id": "s6",
+      "hash": "074d32b22b0cc885",
+      "title": "Helper checks for sources and facts",
+      "what": "Builds a map of company roles for each project. Small checks answer whether a quote has a web address, whether any sourced quote uses one of the given field names, and which fact categories the sourced quotes cover.",
+      "why": "Gap rules need to know whether a fact is backed by a web source, not just recorded. Fact categories show which kinds of delivery facts are already covered.",
+      "watch_out": "A quote without a web address does not count as sourced, even if a person entered it, so the project can keep appearing as a gap."
+    },
+    {
+      "start": 106,
+      "end": 125,
+      "kind": "function",
+      "name": "latestDevelopment, UNFINISHED_PATH, Item, items",
+      "id": "s7",
+      "hash": "4c3195c90de20291",
+      "title": "Latest development date and final-value paths",
+      "what": "Finds the most recent dated milestone or development in a project's evidence, using the event date in the text and never a page's publication date. It maps each cost and completion field to the Reality Scan field name, using a final-value name for finished projects and an estimate name for unfinished ones, and defines the shape of an item and an empty list of items.",
+      "why": "The header asks for dated developments for the news page. Unfinished projects are asked for estimates, not final outcomes.",
+      "watch_out": "The date is read only when it appears as year and month, so a development recorded as a year alone or in another format counts as having no date. Dates are compared as text, which only works for the ISO format."
+    },
+    {
+      "start": 126,
+      "end": 156,
+      "kind": "value",
+      "name": "status, GENERIC_NOTES, GENERIC_NOTE (part 1)",
+      "id": "s8",
+      "hash": "424da6f2f82efd6e",
+      "title": "Yard checks: identity, stage and key facts",
+      "what": "For each project, builds the list of Yard asks. It asks for the stage when none is recorded or when the latest status is older than 12 months, and for capacity, technology and owner when missing. For finished or post-FID projects it also asks for the FID date, construction start, equipment supplier, contractor and funding. Placeholder rows get one request to name the real projects instead.",
+      "why": "These are the Yard requirements listed in the header. The 12-month rule keeps status information current.",
+      "watch_out": "A real project whose name matches the placeholder pattern and has no evidence is replaced by a request to find named projects, so its own facts are never asked for."
+    },
+    {
+      "start": 157,
+      "end": 209,
+      "kind": "method",
+      "name": "status, GENERIC_NOTES, GENERIC_NOTE: if",
+      "id": "s9",
+      "hash": "a4df6dd1ae27686c",
+      "title": "Reality Scan cost and schedule checks, plus Lessons Learnt",
+      "what": "For finished, post-FID or cancelled projects, checks four outcome figures: original budget, final or estimated cost, original completion date, and actual or forecast completion date. Each is either a request for a source, a request to resolve conflicting sources, or a request for a passage stating the value with its role. For Lessons Learnt, it asks for delivery facts in five groups not yet covered, and for the stated cause of any overrun, delay or cancellation.",
+      "why": "These are the inputs the header requires for cost and schedule outcomes. Re-asking when a quote does not support a value stops a figure being accepted on weak evidence.",
+      "watch_out": "Whether a quote supports a value depends on rules in helper files that are not shown, so changing those rules changes every worklist."
+    },
+    {
+      "start": 210,
+      "end": 242,
+      "kind": "method",
+      "name": "status, GENERIC_NOTES, GENERIC_NOTE: if",
+      "id": "s10",
+      "hash": "04cdee167f93c473",
+      "title": "News check and closing answered gaps",
+      "what": "For projects not cancelled or retired, asks for a dated development within the last 18 months when none is recorded. It removes any gap that an earlier closure import answered not found, except conflicts. It then records each project's status counts and remaining gaps, and clears the worklists folder. The last lines define the generic notes that are left out of chat text.",
+      "why": "The header says the Opportunity Map needs recent news for the project news page. A not-found answer closes an item so it is not asked again.",
+      "watch_out": "Clearing the worklists folder on every run deletes any file placed there by hand."
+    },
+    {
+      "start": 243,
+      "end": 251,
+      "kind": "function",
+      "name": "compactNote",
+      "id": "s11",
+      "hash": "dbc314e6b82a798a",
+      "title": "Short note text for chat worklists",
+      "what": "Builds the short explanation added after each gap line in the chat version. For source-check gaps it says what Yard holds and why the quote failed. For confirm-status gaps it says what Yard holds. Other notes are added unless they are generic.",
+      "why": "The chat version must stay short, so generic instructions are left out here because they already appear in the prompt.",
+      "watch_out": "This function reads the wording of notes with a text pattern. If the wording changes, the match fails and the reason is silently dropped from the chat text."
+    },
+    {
+      "start": 252,
+      "end": 260,
+      "kind": "function",
+      "name": "compactWorklist",
+      "id": "s12",
+      "hash": "693726ec93ba56c2",
+      "title": "Per-worklist text block for chat",
+      "what": "Writes one block per worklist: a header line with the news cutoff date, then one line per project with its id, name, country, stage, capacity and held facts, followed by one line per gap.",
+      "why": "The chat block is the compact version pasted into research prompts. The JSON file holds the full version.",
+      "watch_out": "Owner and latest-development facts are left out of the held-facts list in the chat block, so they do not appear there."
+    },
+    {
+      "start": 261,
+      "end": 267,
+      "kind": "value",
+      "name": "compactBlocks",
+      "id": "s13",
+      "hash": "5dd8a15c8ba2dd3d",
+      "title": "Store for prompt blocks",
+      "what": "Sets up an empty list for the text blocks and reads the hand-written PROMPT.md file. It keeps the text after the first separator line, then clears the ready folder so it can be refilled.",
+      "why": "PROMPT.md is maintained by hand and reused for every worklist, so the script fills it in rather than writing its own text.",
+      "watch_out": "If PROMPT.md has no separator line, no ready prompt files are written and no error is shown. The placeholder text must also stay in PROMPT.md, or the block is not inserted."
+    },
+    {
+      "start": 268,
+      "end": 278,
+      "kind": "value",
+      "name": "files",
+      "id": "s14",
+      "hash": "90dc5cfac90aedd6",
+      "title": "Writing worklists, ready prompts and block file",
+      "what": "Splits the projects with gaps into batches of six. For each batch it writes a JSON worklist, a ready-to-paste prompt when PROMPT.md exists, and adds the block to WORKLIST-BLOCKS.md. The round number is added to the worklist id when it is above one.",
+      "why": "Batches keep each research job a manageable size. Round-based ids keep new passes separate from earlier ones. The reason for six is not stated in the code.",
+      "watch_out": "Batch ids are set by position, so when a project closes and drops out, the same id may then hold different projects. The importer matches on these ids."
+    },
+    {
+      "start": 279,
+      "end": 289,
+      "kind": "function",
+      "name": "total",
+      "id": "s15",
+      "hash": "ce4ca73e934d1723",
+      "title": "Status summary and console line",
+      "what": "Adds up the open items for each tool and counts projects with no open items as closed. Writes STATUS.md with a summary, a worklist table and a per-project table, then prints a one-line summary to the console.",
+      "why": "STATUS.md shows where the industry stands at a glance, and the console line gives the same answer quickly.",
+      "watch_out": "A project counts as closed when none of the selected tools has an open item, so a run limited with --tools can report projects as closed when they are not."
+    }
+  ],
+  "explained_at": "2026-11-12T02:54:43+00:00",
+  "explained_by": "haiku",
+  "summary": "For each project in one industry segment, lists the facts each data tool still lacks and writes research worklists covering only those gaps, plus a status summary.",
+  "purpose": "Drives the goal of closing an industry: every project has no open questions, or research has honestly reported that a fact was not found.",
+  "why": "The header says the team closes industries one at a time, and that worklists must be regenerated after every import so finished items drop out.",
+  "how": "Reads command options for the industry, segment, output folder, tools to include and round number. Loads projects, active evidence quotes and company links from the database. For each project it works out the missing facts per tool using the completeness rules in the header, removes items already answered not found, and records a status row. It then deletes and rebuilds the worklists folder, writes JSON worklists in batches of six, writes ready-to-paste prompts if PROMPT.md exists, writes a text block file, and writes STATUS.md.",
+  "inputs": "Command options (industry, segment, slug, tools, round, ids-file). DATABASE_URL. The projects, evidence_quotes, company_project_links and companies tables. PROMPT.md in the output folder. Earlier closure import results stored on each project.",
+  "outputs": "In docs/research-prompts/<slug>: STATUS.md, worklists/*.json, ready/*.md (when PROMPT.md exists) and WORKLIST-BLOCKS.md. A one-line console summary.",
+  "risks": "Each run deletes the worklists and ready folders, so hand edits there are lost. Round 1 reuses worklist ids, so rerunning round 1 replaces earlier worklists the importer depends on. When --tools limits the pass, the projects not included are counted as closed.",
+  "debug": "Read the usage message if the script stops immediately. Open STATUS.md to see open counts per tool. Remember that only evidence with a web address counts as sourced, so a quote without a link still shows as a gap. Confirm PROMPT.md has its separator line and placeholder text, or ready files will not be written.",
+  "summary_hash": "sha256:8a4f1c7cd2c6ad17cde455fb22190fb308537f05ef9e13ec3f327683e1894de2"
+}

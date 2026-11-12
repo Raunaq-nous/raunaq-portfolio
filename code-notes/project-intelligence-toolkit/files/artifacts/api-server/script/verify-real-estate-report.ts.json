@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/verify-real-estate-report.ts",
+  "language": "TypeScript",
+  "lines": 77,
+  "hash": "sha256:b0336df928b333e682885093bdb16f5d927922a51e56372c19235a5fd9f94926",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Hard-coded counts will break on any legitimate data change",
+      "Depends on a live server, a database and saved import files",
+      "Uses an assertion on the secret that gives an unclear error if the secret is missing",
+      "The end of the result summary is cut off in the packet, so the full output is not confirmed"
+    ]
+  },
+  "terms": [
+    {
+      "term": "dry run",
+      "meaning": "a preview of an import that changes nothing"
+    },
+    {
+      "term": "replay",
+      "meaning": "running the same import again to confirm nothing changes twice"
+    },
+    {
+      "term": "digest",
+      "meaning": "a short fingerprint of data, used to check two sets match"
+    },
+    {
+      "term": "JWT",
+      "meaning": "a signed ticket that proves to the server who is calling"
+    },
+    {
+      "term": "DTO",
+      "meaning": "a shaped copy of data that the server sends to the front end"
+    },
+    {
+      "term": "endpoint",
+      "meaning": "a web address the server answers, returning data"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/db",
+    "@workspace/db",
+    "artifacts/api-server/src/scan/scanData",
+    "artifacts/api-server/src/mappers/toProjectDetailDTO",
+    "artifacts/api-server/src/ingest/realEstateReport",
+    "jsonwebtoken",
+    "drizzle-orm"
+  ],
+  "used_by": [
+    "Not visible in the packet; appears to be a manual check run after the real-estate import"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a586eacd06002265",
+      "title": "Setup and working folder",
+      "what": "Loads the libraries, database tables, scan helper and import constants. It then moves the working folder to the repository root so file paths resolve correctly.",
+      "why": "Needs database access, a token library, and the file paths the import wrote to.",
+      "watch_out": "Changing the working folder affects every relative path in the script that follows."
+    },
+    {
+      "start": 15,
+      "end": 46,
+      "kind": "function",
+      "name": "verify (part 1)",
+      "id": "s2",
+      "hash": "800c92d480089f15",
+      "title": "Checks on saved import results",
+      "what": "Reads the dry run, commit and replay files and checks that their fingerprints match and the replay inserted nothing. It then loads the imported rows from the database and checks their counts.",
+      "why": "Proves the import was previewed, saved and repeated without creating duplicates.",
+      "watch_out": "The exact expected counts must be updated whenever the real-estate data changes, or this check will fail."
+    },
+    {
+      "start": 47,
+      "end": 77,
+      "kind": "method",
+      "name": "verify: for",
+      "id": "s3",
+      "hash": "5d3424a48bd12ce2",
+      "title": "Per-project checks and report writing",
+      "what": "For each imported project, checks the industry is real-estate and that cost, delay, location and capacity fields are empty. It checks the scan makes no such figures and that the detail and evidence pages each show two distinct documents. Finally, it writes the results and an HTML page.",
+      "why": "Real-estate projects have no budget data in the source, so the script makes sure no figures were invented.",
+      "watch_out": "The script writes files even though the header calls it read-only, so run it knowing outputs will change."
+    }
+  ],
+  "explained_at": "2026-11-12T03:17:48+00:00",
+  "explained_by": "haiku",
+  "summary": "Reconciles the real-estate project import against the reviewed plan, the database and the live web API, and writes a reconciliation report.",
+  "purpose": "Confirms the imported real-estate projects match what was reviewed and that no invented cost, delay or capacity numbers appear.",
+  "why": "Likely reason: the header calls it a read-only check, and the imports were reviewed before being saved, so this confirms the stored data matches that review. Reason not further stated in the code.",
+  "how": "Reads three saved output files from the import: a dry run, a commit and a replay. Checks their fingerprints match and that the replay inserted nothing. Counts the imported projects, evidence rows, sources, milestones and company links against expected numbers. For each project, checks that budget, location and date fields are empty, that the scan produces no cost or capacity figures, and that the detail and evidence endpoints return two distinct source documents. Then writes a reconciliation JSON and an HTML page.",
+  "inputs": "Three saved JSON files from the import output folder. Database access. The REPLIT_DEV_DOMAIN address. A JWT_SECRET or SESSION_SECRET environment variable for signing a short-lived admin token.",
+  "outputs": "A reconciliation.json file and a reconciliation.html file in the output folder, and the summary printed to the console.",
+  "risks": "Despite being called read-only, the script writes two report files. Hard-coded counts such as 9 projects and 161 evidence rows will fail on any legitimate new data. The printed summary is cut off in the packet, so the full output shape is not confirmed.",
+  "debug": "Check that the three saved JSON files exist. Check that the secret and domain environment variables are set. If a count fails, compare it with the import output. If an HTTP check fails, the message includes the path and status returned.",
+  "summary_hash": "sha256:b0336df928b333e682885093bdb16f5d927922a51e56372c19235a5fd9f94926"
+}

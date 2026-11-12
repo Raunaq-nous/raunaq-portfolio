@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/collection.ts",
+  "language": "TypeScript",
+  "lines": 404,
+  "hash": "sha256:389a7f27b21ebc630b977a84a70afb07a0b25d42f57699b47dcb5f92ebd8c4e1",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are caught per source and per project, and cancellation is handled.",
+      "Tests exist for key behaviours, but no test run result is shown here.",
+      "The AI instruction text is cut off in this packet, so parts could not be verified."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ledger",
+      "meaning": "a per-project record of state, facts, sources, rejections and notes"
+    },
+    {
+      "term": "checkpoint",
+      "meaning": "a saved snapshot of progress that a run can restart from"
+    },
+    {
+      "term": "candidate",
+      "meaning": "a fact that has been found but not yet independently confirmed"
+    },
+    {
+      "term": "extraction",
+      "meaning": "an AI reads text and pulls out structured facts from it"
+    },
+    {
+      "term": "passage",
+      "meaning": "a chunk of source text, sent to the AI as one unit"
+    },
+    {
+      "term": "attribution",
+      "meaning": "proof that a passage is about the named project, not another one"
+    },
+    {
+      "term": "gap check",
+      "meaning": "a second round of targeted searches for fields still missing after the planned searches"
+    },
+    {
+      "term": "cache",
+      "meaning": "stored AI answers reused when the same request is sent again"
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "./assertion",
+    "../../search/createRouter",
+    "../../lib/portkeyOpenAI",
+    "../../lib/modelConfig",
+    "../../lib/researchSources",
+    "./verifyFacts",
+    "./evidence",
+    "../lessons-learnt/recipeResult",
+    "./researchSelection",
+    "./sourcePolicy",
+    "./scanInputs",
+    "../../lib/modelCallCache"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/research-contract/collection.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b41c49e7e7032a0f",
+      "title": "Imports used by the collector",
+      "what": "Brings in the tools for schema checks, web search, the AI client, source capture, evidence checks, source policy, caching and the model settings.",
+      "why": "Shows what the collector depends on.",
+      "watch_out": "Caching is shared with other runs, so changing its keys can affect them too."
+    },
+    {
+      "start": 15,
+      "end": 41,
+      "kind": "value",
+      "name": "COLLECTION_FIELDS",
+      "id": "s2",
+      "hash": "76bbda6ac7836bf3",
+      "title": "Fields the research may collect",
+      "what": "A list of allowed fields, each with a short definition that says what counts and what does not, such as sanctioned cost versus revised estimate.",
+      "why": "The header says these were adapted from an uploaded chain. The reasons for each wording are not stated in the code.",
+      "watch_out": "These definitions are the rules the AI follows. Editing them changes what counts as evidence."
+    },
+    {
+      "start": 42,
+      "end": 46,
+      "kind": "value",
+      "name": "QUALITATIVE_ONLY_FIELDS",
+      "id": "s3",
+      "hash": "5d85e7a0f0877b14",
+      "title": "Fields kept for qualitative scans",
+      "what": "Two fields, factual events and project overviews, are requested only in qualitative scans.",
+      "why": "The comment says they were the most frequent and least useful output of standard scans, since they never feed a calculation.",
+      "watch_out": "Removing or adding fields here changes every standard scan."
+    },
+    {
+      "start": 47,
+      "end": 54,
+      "kind": "function",
+      "name": "requestedFields, extractionSchema",
+      "id": "s4",
+      "hash": "bd2256adcad0ac0d",
+      "title": "Which fields a scan requests",
+      "what": "Returns the list of fields for a scan, leaving out the qualitative-only fields for balanced scans. Also defines the schema for returned facts, which requires an allowed field name and a non-empty value.",
+      "why": "The comment on the qualitative-only list gives the reason.",
+      "watch_out": "The extraction schema allows at most 60 facts per reply. A longer reply fails the whole source, not just the extra facts."
+    },
+    {
+      "start": 55,
+      "end": 73,
+      "kind": "value",
+      "name": "collectionLedgerSchema, LedgerEntry, CollectionCheckpoint, RESUMABLE_SOURCES",
+      "id": "s5",
+      "hash": "5ba39188c1f19240",
+      "title": "Ledger shape and resumable source states",
+      "what": "Defines the saved record for each project: state, attempts, facts, missing fields, queries, rejected items, sources and events. Also lists the source states that a later run can resume.",
+      "why": "Likely reason: progress must survive interruptions, and resumable states let a run pick up where it stopped. The code does not state this.",
+      "watch_out": "This shape is checked after each project. A change that breaks it stops the run."
+    },
+    {
+      "start": 74,
+      "end": 76,
+      "kind": "class",
+      "name": "CollectionBudgetReached",
+      "id": "s6",
+      "hash": "c52ce0b2cc60ffc8",
+      "title": "Signal that the time budget ran out",
+      "what": "A special error raised when a batch runs past its 20 minute limit. The run stops and can be resumed later.",
+      "why": "The error message says resume from the saved source checkpoints.",
+      "watch_out": "This error must be passed on rather than swallowed. The code does pass it on, so keep it that way."
+    },
+    {
+      "start": 77,
+      "end": 83,
+      "kind": "type",
+      "name": "CollectionServices",
+      "id": "s7",
+      "hash": "76286fdafa69d38f",
+      "title": "Steps that can be replaced",
+      "what": "Lets callers, mainly tests, swap out the capture, replay, extraction and register steps for other functions.",
+      "why": "The test file uses this to avoid real web and AI calls.",
+      "watch_out": "If a step is not replaced, the real version runs, which can contact the web and cost money."
+    },
+    {
+      "start": 84,
+      "end": 100,
+      "kind": "function",
+      "name": "fieldSemantics",
+      "id": "s8",
+      "hash": "4cbff4a7764fa940",
+      "title": "Checks that a quote means the right thing",
+      "what": "Checks that a quote supports a field's meaning. For example, a planned cost needs words such as approved or sanctioned, and an actual cost must not be a forecast. Fields without a rule always pass.",
+      "why": "Likely reason: the field definitions separate approvals, forecasts and final outcomes, and this check enforces that. The code does not state this.",
+      "watch_out": "Fields without a rule are not checked here, so they rely on later checks alone."
+    },
+    {
+      "start": 101,
+      "end": 122,
+      "kind": "function",
+      "name": "mayNameProject",
+      "id": "s9",
+      "hash": "d54485c1bb4bff4c",
+      "title": "Pre-check: could a passage name the project",
+      "what": "Decides whether a passage could name the project at all, so passages that could never pass attribution are not sent to the AI.",
+      "why": "The comment says this saves the cost of sending passages that will certainly be rejected.",
+      "watch_out": "This check must stay looser than the real attribution check. If it becomes stricter, valid quotes are dropped before review."
+    },
+    {
+      "start": 123,
+      "end": 167,
+      "kind": "function",
+      "name": "collectScopedProjects (part 1)",
+      "id": "s10",
+      "hash": "51ea913566ec94a1",
+      "title": "Main loop that researches each project",
+      "what": "Starts the collection run. It saves a queued entry for every selected project before any outside work, checks for cancellation, and handles resuming. It works through projects in groups of 10 under a 20 minute limit per group.",
+      "why": "The comments state that each project's progress is saved before the next project starts, and that the full scope is kept even if the run is cancelled.",
+      "watch_out": "Progress is only kept up to the last save, so the save function must work reliably."
+    },
+    {
+      "start": 168,
+      "end": 227,
+      "kind": "method",
+      "name": "collectScopedProjects: for",
+      "id": "s11",
+      "hash": "ba17c028bf883858",
+      "title": "Per-project loop: queries and budgets",
+      "what": "For each project, decides whether to skip it because it is already done, has failed too often, or falls outside the project budget. Then it builds the search queries and adds gap queries for missing fields.",
+      "why": "The comments describe the gap check as a second pass for calculation-critical fields that are still missing.",
+      "watch_out": "A project interrupted twice is marked failed on purpose and is not retried again."
+    },
+    {
+      "start": 228,
+      "end": 287,
+      "kind": "function",
+      "name": "collectScopedProjects (part 3)",
+      "id": "s12",
+      "hash": "23b674d962840049",
+      "title": "Searches, captures and filters sources",
+      "what": "For each candidate page, skips excluded sites, captures the page text, applies the publication date policy, and rejects pages that do not contain every identifying word of the project name.",
+      "why": "The comments describe the identity pre-filter. The reason for the publication date policy is not stated.",
+      "watch_out": "The identity check is a simple word-contains test, so a page that names the project in another form could be wrongly rejected."
+    },
+    {
+      "start": 288,
+      "end": 347,
+      "kind": "function",
+      "name": "collectScopedProjects (part 4)",
+      "id": "s13",
+      "hash": "3104045d1b00b965",
+      "title": "Builds AI extraction requests and reads replies",
+      "what": "Splits the page text into overlapping passages and keeps those that could name the project. Sends them to the AI with instructions, and reuses a stored answer when the same model, instructions and passages are sent again.",
+      "why": "The comments explain that the passage filter saves cost and that the cache avoids repeating identical calls.",
+      "watch_out": "The full AI instructions are cut off in this packet, so their exact wording is unclear. Passages overlap only partly, so a quote crossing a boundary can be missed. The cache time value is passed as 90, but the unit is not shown."
+    },
+    {
+      "start": 348,
+      "end": 404,
+      "kind": "function",
+      "name": "collectScopedProjects (part 5)",
+      "id": "s14",
+      "hash": "e702d9ef405ecd1a",
+      "title": "Checks each fact and keeps verified ones",
+      "what": "For each fact the AI returned, checks its shape, that it was requested, that its quote is a real passage, and that dates have a precision. Then checks the evidence and the meaning. If it passes, it registers a source record and adds the fact. An error in one source marks only that source as failed and the run continues.",
+      "why": "The comments state that the source register is separate from the project data and that other sources continue after a failure.",
+      "watch_out": "A fact whose ID already exists is skipped without a message, so duplicates disappear silently."
+    }
+  ],
+  "explained_at": "2026-11-12T05:08:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Researches a list of projects in bounded batches: it finds candidate web sources, captures their text, asks an AI to pull out facts, keeps only facts that pass checks, and saves progress so an interrupted run can resume.",
+  "purpose": "Produces candidate facts for each project, with a full record of what was tried, rejected or still missing.",
+  "why": "The header says the collector is bounded and resumable. Saved source checkpoints mean an interrupted run does not repeat web requests.",
+  "how": "1. Save a queued entry for every selected project. 2. Work through projects in groups of 10, with a 20 minute time limit per group. 3. For each project, choose search queries and skip fields already held. 4. Capture each candidate page, and skip pages from excluded or off-project sources. 5. Keep only passages that could name the project, and ask the AI for facts from them. 6. Check each returned fact against field rules and evidence checks. 7. Register facts that pass and add them to the results. 8. Save after each step and set each project's final state.",
+  "inputs": "Selected projects (ID, name, industry), an optional earlier checkpoint, a focus setting, a source limit, pre-supplied source URLs, fields already held, optional service replacements, and a save function and a cancel check.",
+  "outputs": "A checkpoint containing a ledger of each project's state and notes, plus a list of candidate facts with their evidence records.",
+  "risks": "Facts are candidates only, and the code says independent review is still required. Web and AI calls cost money and time. Cancellation and time limits can leave sources in an interrupted state. The AI instruction text is cut off in this packet, so its full content could not be checked.",
+  "debug": "Start with the ledger: each project's state, notices and events show what happened. Check rejected entries to see why facts were dropped. If a run stopped, look at the last saved checkpoint and at sources marked retrieving, extracting or interrupted. A time-limit error means one batch ran past 20 minutes.",
+  "summary_hash": "sha256:389a7f27b21ebc630b977a84a70afb07a0b25d42f57699b47dcb5f92ebd8c4e1"
+}

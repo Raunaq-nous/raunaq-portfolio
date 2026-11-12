@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/search/providers/serpapi.ts",
+  "language": "TypeScript",
+  "lines": 93,
+  "hash": "sha256:8c766240c24151ea1d4d0e97e164132943172c63d5569f1c8c55d1102e83bded",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Depends on the key chain module, which is not shown, so key switching cannot be fully verified.",
+      "No tests are visible.",
+      "Dropping every redirect link can silently return nothing."
+    ]
+  },
+  "terms": [
+    {
+      "term": "key chain",
+      "meaning": "a shared module that holds several keys for one service and switches to the next when one is used up."
+    },
+    {
+      "term": "redirect link",
+      "meaning": "a link that bounces through another address before reaching the page, often not openable directly."
+    }
+  ],
+  "depends_on": [
+    "../interfaces",
+    "../../lib/keyChain",
+    "Node built-in fetch"
+  ],
+  "used_by": [
+    "The search router, through createRouter.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "5333af35aab3fed4",
+      "title": "Imports, key helpers, and timeout",
+      "what": "Brings in the search types and the shared key helper functions, and sets the 15-second timeout.",
+      "why": "Likely reason: key switching is shared with the Tavily provider, so the logic lives in one common module.",
+      "watch_out": ""
+    },
+    {
+      "start": 6,
+      "end": 47,
+      "kind": "class",
+      "name": "SerpAPIProvider (part 1)",
+      "id": "s2",
+      "hash": "396e9a6896a059ef",
+      "title": "Availability and trying keys in order",
+      "what": "Reports available when a key exists. The search tries each key in turn, returns on the first answer that is not spent, and parks a spent key before trying the next. It also sends the request with the query and a result limit, with a timeout.",
+      "why": "Likely reason: a spent main key should not stop searches while a backup key still works.",
+      "watch_out": "If parking a key fails, the search stops with no results rather than trying the next key."
+    },
+    {
+      "start": 48,
+      "end": 93,
+      "kind": "class",
+      "name": "SerpAPIProvider (part 2)",
+      "id": "s3",
+      "hash": "03396d180e0c30f0",
+      "title": "Reading results and dropping unusable links",
+      "what": "Reads the organic results and keeps only those whose link starts with http or https and is not a Google redirect. Other results are counted and the count is logged.",
+      "why": "The comments say redirect links cannot be fetched and no field holds the real address, so dropping them keeps unfetchable items out.",
+      "watch_out": "The rule is fixed, so if a real link appears in a different field later, it will still be dropped."
+    }
+  ],
+  "explained_at": "2026-11-12T04:12:18+00:00",
+  "explained_by": "haiku",
+  "summary": "Searches Google through the SerpAPI service. It tries a backup key if the main key is used up or rejected, and keeps only results with a direct web address.",
+  "purpose": "Another paid Google search source, with key switching and filtering of links that cannot be opened.",
+  "why": "The comments say SerpAPI now returns redirect links that cannot be fetched, so they are dropped. The key switching is likely there because keys run out.",
+  "how": "Tries each configured key in order. Each attempt sends the query and a capped result count with a 15-second timeout. If the reply says the key is spent, the key is parked and the next one is tried. Results with redirect-style or non-web links are dropped and counted in a log line. Other failures return nothing.",
+  "inputs": "Query text, maximum result count, and the SerpAPI key settings managed by the key chain module.",
+  "outputs": "Standard search results labelled serpapi, with authority score 0 and only direct web addresses.",
+  "risks": "Keys are part of the request address, so full-address logs would expose them. Dropping redirect links can leave zero results with no error. Key switching behaviour is in a module that is not shown.",
+  "debug": "Check the serpapi log lines for HTTP errors, timeouts, and the count of dropped links. If every result is dropped, the service format may have changed again. Check the key chain settings and whether a key has been parked.",
+  "summary_hash": "sha256:8c766240c24151ea1d4d0e97e164132943172c63d5569f1c8c55d1102e83bded"
+}

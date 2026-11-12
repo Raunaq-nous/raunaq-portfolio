@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/deckStore.ts",
+  "language": "TypeScript",
+  "lines": 33,
+  "hash": "sha256:a72925cdb675445d3d768c6b22e84b75fa85f1d9441dac1b47ed5079ae88a63e",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Concurrency protection is in place, which is a strength.",
+      "No test for this file was shown.",
+      "Saving replaces the whole summary, which could lose data if other fields are later added."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Revision",
+      "meaning": "a counter that goes up by one on each save, used to spot conflicting edits."
+    },
+    {
+      "term": "Compare-and-swap",
+      "meaning": "a save that only succeeds if the stored value is still the expected one."
+    },
+    {
+      "term": "Yard",
+      "meaning": "the shared store of source data that this deck must never write to."
+    },
+    {
+      "term": "Stage",
+      "meaning": "one named step in a run, such as the scene deck step, with its own status and summary."
+    },
+    {
+      "term": "DeckError",
+      "meaning": "an error carrying an HTTP-style status code so the caller can show a clear message."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "../../db",
+    "@workspace/db",
+    "../../../../../lib/api-client-react/src/scan-deck",
+    "../reality-scan/deckStore"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/lessons-learnt/deck/registry.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6940e96979657236",
+      "title": "Imports for saved decks",
+      "what": "Brings in the database helpers and the run and stage tables, the deck type, and the shared error type from the reality-scan deck store.",
+      "why": "Likely reason: the shared error type keeps error messages consistent with the other deck store.",
+      "watch_out": "Long relative and cross-package imports break if either folder moves."
+    },
+    {
+      "start": 7,
+      "end": 22,
+      "kind": "function",
+      "name": "getLessonsDeck",
+      "id": "s2",
+      "hash": "77955c3e1868335a",
+      "title": "Loading the saved deck",
+      "what": "Loads the deck saved for a run. It reports not found if the run is missing, and a conflict error if the deck stage did not succeed or holds no deck.",
+      "why": "Stated in the comment: the deck lives inside the run and is never sent elsewhere.",
+      "watch_out": "A run whose deck build failed shows a conflict message asking for a rerun of the deck stages."
+    },
+    {
+      "start": 23,
+      "end": 33,
+      "kind": "function",
+      "name": "saveLessonsDeck",
+      "id": "s3",
+      "hash": "a7a06eaeab7885cc",
+      "title": "Saving edits safely",
+      "what": "Saves a changed deck with a new revision number, but only if the stored revision still matches the one the editor started from. If not, it refuses and asks the user to reload.",
+      "why": "Stated in the comment: a revision compare-and-swap prevents two edits from overwriting each other.",
+      "watch_out": "The whole summary is overwritten, so any other data stored beside the deck in that stage is lost on save."
+    }
+  ],
+  "explained_at": "2026-11-12T04:29:58+00:00",
+  "explained_by": "haiku",
+  "summary": "Loads and saves the editable slide deck for a Lessons Learnt run, stored inside that run's record in the database.",
+  "purpose": "Lets a user review and change the deck for one run without changing the shared source data.",
+  "why": "Stated in the comment: edits and approvals stay inside the run and are never written to the Yard, and saves use a revision check.",
+  "how": "getLessonsDeck finds the run, then reads its scene_deck stage. It returns the saved deck only if that stage succeeded and holds one. saveLessonsDeck writes a new deck with the revision number increased by one, but only if the stored revision still matches the one the editor started from. If no row matched, it reports a conflict.",
+  "inputs": "A run id for loading. A deck and the revision number the editor started from for saving.",
+  "outputs": "The stored deck for loading, or the updated deck with its new revision and timestamp for saving. Errors are returned as DeckError with a status code.",
+  "risks": "Saving replaces the whole stage summary with the deck and slide count, so any other data kept there is lost. The revision check depends on the stored revision being a number.",
+  "debug": "A 404 means the run id is wrong. A 409 on load means the deck stage did not succeed or is missing, so rerun the deck stages. A 409 on save means someone else saved first, so reload and retry. If saves always fail, check the stored summary's revision value in the database.",
+  "summary_hash": "sha256:a72925cdb675445d3d768c6b22e84b75fa85f1d9441dac1b47ed5079ae88a63e"
+}

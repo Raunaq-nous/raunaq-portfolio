@@ -1,0 +1,358 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/lib/portkeyOpenAI.ts",
+  "language": "TypeScript",
+  "lines": 353,
+  "hash": "sha256:e1e73c384e8f50e57ced23b28c0f0661256e653b481fc58f68a1aa6eef647fbf",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible for transport selection or retries.",
+      "Key handling and error handling are deliberate and documented in the file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Chat Completions",
+      "meaning": "the standard OpenAI request style for sending messages and getting a reply"
+    },
+    {
+      "term": "virtual key",
+      "meaning": "a Portkey setting that lets Portkey hold the upstream OpenAI key, so this app does not send it"
+    },
+    {
+      "term": "backup key",
+      "meaning": "a second Portkey key used automatically when the main key is spent or rejected"
+    },
+    {
+      "term": "timeout",
+      "meaning": "a limit on how long a request may wait before it is stopped"
+    },
+    {
+      "term": "JSON mode",
+      "meaning": "a setting that asks the model to reply with valid JSON only"
+    },
+    {
+      "term": "abort signal",
+      "meaning": "a cancel message a caller can send to stop a request in progress"
+    },
+    {
+      "term": "async local storage",
+      "meaning": "a Node tool that keeps a value attached to one chain of asynchronous work, used here for per-run counting"
+    }
+  ],
+  "depends_on": [
+    "node:async_hooks",
+    "./redact",
+    "./modelConfig",
+    "./keyChain"
+  ],
+  "used_by": [
+    "./modelCallCache.ts",
+    "./modelLiveCheck.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 49,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "62091e392cd2e4a6",
+      "title": "Settings and imports",
+      "what": "Lists every environment setting this file reads, with what each does, and loads the helpers it needs.",
+      "why": "The header states that routing and authentication live in this one file.",
+      "watch_out": "The setting names live in comments as well as code. Renaming one needs the header updated too."
+    },
+    {
+      "start": 50,
+      "end": 56,
+      "kind": "type",
+      "name": "OpenAITransport",
+      "id": "s2",
+      "hash": "359788e68bc73997",
+      "title": "Ways a request can be sent",
+      "what": "Names the five transports: the Replit proxy, Portkey with a virtual key, Portkey with a passthrough OpenAI key, direct OpenAI, and not configured.",
+      "why": "Likely reason: a fixed set of names for logs and health checks.",
+      "watch_out": "A new transport needs changes in the selection, address and header code together."
+    },
+    {
+      "start": 57,
+      "end": 67,
+      "kind": "type",
+      "name": "ChatCompletionOptions",
+      "id": "s3",
+      "hash": "655795e863f2ad83",
+      "title": "Settings for one request",
+      "what": "Defines what a caller passes for one request: model, messages, JSON mode, token cap, temperature, retry flag, timeout and cancel signal.",
+      "why": "Likely reason: one standard input for every caller.",
+      "watch_out": "Retries are off unless a caller turns them on."
+    },
+    {
+      "start": 68,
+      "end": 73,
+      "kind": "type",
+      "name": "ChatCompletionResult",
+      "id": "s4",
+      "hash": "1a7d0af3ad6fea39",
+      "title": "Shape of the reply",
+      "what": "Defines the reply: text, the model that answered, and token counts when they are provided.",
+      "why": "Likely reason: a stable reply shape for callers.",
+      "watch_out": "Token counts may be missing, so callers must handle an undefined value."
+    },
+    {
+      "start": 74,
+      "end": 85,
+      "kind": "class",
+      "name": "TransportError",
+      "id": "s5",
+      "hash": "1efd19b8d3bd12a9",
+      "title": "Error type with retry flag",
+      "what": "Defines an error type that carries the HTTP status and whether a retry is worth trying.",
+      "why": "The comment states it records whether one retry is worth it.",
+      "watch_out": "Retry decisions depend on this flag being set correctly."
+    },
+    {
+      "start": 86,
+      "end": 98,
+      "kind": "function",
+      "name": "resolveTransport",
+      "id": "s6",
+      "hash": "ab6833e35a2dfd93",
+      "title": "Choosing the transport",
+      "what": "Chooses the transport from which keys and settings are present. The Replit proxy is checked first, then Portkey, then direct OpenAI.",
+      "why": "The order of checks is the order of preference in the code.",
+      "watch_out": "A backup key alone switches routing to Portkey even with no main Portkey key."
+    },
+    {
+      "start": 99,
+      "end": 103,
+      "kind": "function",
+      "name": "isOpenAIConfigured",
+      "id": "s7",
+      "hash": "c41b7bb275af1ea2",
+      "title": "Is any transport usable",
+      "what": "Reports yes or no on whether any transport is usable, without throwing an error.",
+      "why": "The comment states callers should check this first.",
+      "watch_out": "It only checks that keys exist, not that they work."
+    },
+    {
+      "start": 104,
+      "end": 108,
+      "kind": "function",
+      "name": "getOpenAIConfigDescription",
+      "id": "s8",
+      "hash": "aca22c2532655144",
+      "title": "Transport name for reports",
+      "what": "Returns the name of the chosen transport, for logs and the health report. It never returns a key.",
+      "why": "Stated in the comment.",
+      "watch_out": ""
+    },
+    {
+      "start": 109,
+      "end": 123,
+      "kind": "function",
+      "name": "getGatewayBaseUrl, replitBase",
+      "id": "s9",
+      "hash": "ab2d54255fb17a24",
+      "title": "Address requests go to",
+      "what": "Returns the web address that requests will go to, and removes trailing slashes from the Replit address.",
+      "why": "The comment states this is configuration, safe to log and return from the health endpoint.",
+      "watch_out": ""
+    },
+    {
+      "start": 124,
+      "end": 162,
+      "kind": "function",
+      "name": "buildRequest",
+      "id": "s10",
+      "hash": "fe58d955c2a66a38",
+      "title": "Building address and headers",
+      "what": "Builds the web address and headers for one request, including the right key for the transport and whether this call is using the backup key.",
+      "why": "The comments explain each branch, including that Portkey header names follow its documented contract.",
+      "watch_out": "The rule for when the OpenAI key header is sent is subtle. Getting it wrong either breaks the gateway or sends an extra key."
+    },
+    {
+      "start": 163,
+      "end": 170,
+      "kind": "function",
+      "name": "debugLog, delay",
+      "id": "s11",
+      "hash": "b183527d0594ad7c",
+      "title": "Debug log and pause helper",
+      "what": "Writes a redacted request log when debugging is on, and provides a pause used between retries.",
+      "why": "The comment states this log is diagnostic only and not part of routing.",
+      "watch_out": "The log is redacted but still shows the address. Keep debugging off in normal use."
+    },
+    {
+      "start": 171,
+      "end": 228,
+      "kind": "function",
+      "name": "doOnce",
+      "id": "s12",
+      "hash": "f6cee75991a2a55e",
+      "title": "Sending one request",
+      "what": "Sends one request with a timeout, reads the reply, unwraps JSON in a code fence, records usage, and throws a typed error on failure. A non-OK reply includes the first 300 characters of its body in the error.",
+      "why": "The code comments explain the timeout and abort handling.",
+      "watch_out": "A timeout or network failure is retryable, but a cancel by the caller is not. Keep this distinction when editing."
+    },
+    {
+      "start": 229,
+      "end": 233,
+      "kind": "function",
+      "name": "unwrapJsonFence",
+      "id": "s13",
+      "hash": "d0f6183d78e66629",
+      "title": "Removing a code fence around JSON",
+      "what": "Removes a markdown code fence that wraps the whole reply, so the JSON inside can be read.",
+      "why": "The comment states that Portkey to Anthropic returns JSON fenced in this way.",
+      "watch_out": "Only a fence around the whole reply is removed. A fence in the middle of text is left alone."
+    },
+    {
+      "start": 234,
+      "end": 243,
+      "kind": "value",
+      "name": "usageTotals, ModelUsage, usageScope",
+      "id": "s14",
+      "hash": "0225b54a3b116785",
+      "title": "Usage counters",
+      "what": "Sets up process-wide counters and a per-run counter that follows asynchronous work.",
+      "why": "The comment states cost cannot be measured later, so counting happens here.",
+      "watch_out": "Counters live in memory and reset on restart."
+    },
+    {
+      "start": 244,
+      "end": 247,
+      "kind": "function",
+      "name": "meterModelUsage",
+      "id": "s15",
+      "hash": "803d67828d16036c",
+      "title": "Metering one job",
+      "what": "Runs a task and returns the usage counted during it.",
+      "why": "Likely reason: lets one job report its own model use.",
+      "watch_out": "Only calls made inside the run are counted. Work started outside it is missed."
+    },
+    {
+      "start": 248,
+      "end": 250,
+      "kind": "function",
+      "name": "emptyUsage",
+      "id": "s16",
+      "hash": "3022ede1059b1dba",
+      "title": "Empty usage record",
+      "what": "Creates a record with every count at zero.",
+      "why": "Likely reason: a starting point for a meter.",
+      "watch_out": ""
+    },
+    {
+      "start": 251,
+      "end": 255,
+      "kind": "function",
+      "name": "noteCachedModelCall",
+      "id": "s17",
+      "hash": "90d07a42d3ae9ea8",
+      "title": "Recording a cache hit",
+      "what": "Counts one answer served from cache within the current run.",
+      "why": "Likely reason: lets reports show cache use alongside real calls.",
+      "watch_out": "Only counted inside a metered run. Outside one, cache hits are not recorded."
+    },
+    {
+      "start": 256,
+      "end": 259,
+      "kind": "function",
+      "name": "describeUsage",
+      "id": "s18",
+      "hash": "456dc56352dca3e0",
+      "title": "Usage sentence",
+      "what": "Turns a usage record into one readable sentence with comma-separated token counts.",
+      "why": "Likely reason: a human-readable summary for reports.",
+      "watch_out": ""
+    },
+    {
+      "start": 260,
+      "end": 273,
+      "kind": "function",
+      "name": "recordUsage",
+      "id": "s19",
+      "hash": "142b21ac2f23ad62",
+      "title": "Adding one call to the counters",
+      "what": "Adds one call, and its tokens if the gateway returned them, to the run counter and the process totals.",
+      "why": "Likely reason: calls are counted even when no token figures come back.",
+      "watch_out": "A call without usage counts as a call but adds no tokens, so token totals can look low."
+    },
+    {
+      "start": 274,
+      "end": 277,
+      "kind": "function",
+      "name": "getUsageTotals",
+      "id": "s20",
+      "hash": "be47beb7c156556e",
+      "title": "Reading the process totals",
+      "what": "Returns a copy of the process totals, for health or status output.",
+      "why": "Likely reason: a safe read-only view.",
+      "watch_out": "It returns a copy, so changing the copy does nothing to the totals."
+    },
+    {
+      "start": 278,
+      "end": 285,
+      "kind": "function",
+      "name": "resetUsageTotals",
+      "id": "s21",
+      "hash": "ca79bf09a4b3bc24",
+      "title": "Clearing the process totals",
+      "what": "Sets the process totals back to zero.",
+      "why": "Likely reason: to measure a fresh period.",
+      "watch_out": "It clears only the process totals, not per-run meters."
+    },
+    {
+      "start": 286,
+      "end": 302,
+      "kind": "function",
+      "name": "requestBody",
+      "id": "s22",
+      "hash": "a6dae94ef7ca2776",
+      "title": "Building the request body",
+      "what": "Builds the JSON body for one request, picking the token-limit field and the temperature rule by model family.",
+      "why": "The comment states the rule lives in the model config, so no caller has to know the model generation.",
+      "watch_out": "Temperature is left out entirely for newer reasoning models, because any value causes an error."
+    },
+    {
+      "start": 303,
+      "end": 322,
+      "kind": "function",
+      "name": "withRetry",
+      "id": "s23",
+      "hash": "0e1d89e9edb609f7",
+      "title": "Retry wrapper",
+      "what": "Calls the single request up to two times when retries are on and the error is transient, with a short pause between tries.",
+      "why": "The code retries timeouts, network errors, server errors and rate limits only.",
+      "watch_out": "A retry sends the whole request again, so a call that succeeded upstream but timed out may be charged twice."
+    },
+    {
+      "start": 323,
+      "end": 353,
+      "kind": "function",
+      "name": "chatCompletion",
+      "id": "s24",
+      "hash": "60c384ea290b4acd",
+      "title": "Main entry point for model calls",
+      "what": "The public function callers use. It picks the transport, converts the model name when needed, and on Portkey tries the main key first and the backup key if the main key is spent or rejected.",
+      "why": "The comments state the backup key is used when the main key answers with a spent or rejected status.",
+      "watch_out": "A switch to the backup key can change which model name and account are billed, so check the logs after a switch."
+    }
+  ],
+  "explained_at": "2026-11-12T03:57:55+00:00",
+  "explained_by": "haiku",
+  "summary": "The one shared function that sends chat requests to OpenAI, either through the Portkey gateway or directly, handling keys, retries, backups and usage counting.",
+  "purpose": "Be the single place where every model call leaves the server.",
+  "why": "The header states that routing and authentication live in one file so that every caller behaves the same way.",
+  "how": "Picks the transport from the available keys and settings, builds the URL, headers and body for the model family, sends the request with a timeout, retries transient failures, switches to the backup key when the main key is spent or rejected, and records token usage.",
+  "inputs": "A model name, messages, optional JSON mode, token cap, temperature, retry flag, timeout, and a cancel signal. Also the environment settings for keys, gateway addresses, and the Replit proxy.",
+  "outputs": "A reply with its text, the model that answered, and token counts when given. Or a thrown error with a status when the call fails.",
+  "risks": "Keys are sent to outside services by design. Backup key use can change which account is billed. Usage counts live only in memory. Model family rules depend on name patterns. A retry repeats a request that may have already been charged.",
+  "debug": "Set PORTKEY_DEBUG to 1 for a redacted request log. Check the transport in the health report. Error text starts with OpenAI API error and a status number. A backup switch leaves a trace through the key status functions, so check keyChain.",
+  "summary_hash": "sha256:e1e73c384e8f50e57ced23b28c0f0661256e653b481fc58f68a1aa6eef647fbf"
+}

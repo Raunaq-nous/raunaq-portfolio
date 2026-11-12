@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/quoteTranslation.ts",
+  "language": "TypeScript",
+  "lines": 89,
+  "hash": "sha256:2e32bbac055e899224c7f5ce3f0915325a23b1dc438cf3c9ee9169e50d681132",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated tests were shown for the language guess or the lookup.",
+      "Depends on a stored agent translation table whose content could not be checked here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Translation basis",
+      "meaning": "The note saying whether a translation came from the researcher, an agent or no translation at all."
+    },
+    {
+      "term": "Fingerprint",
+      "meaning": "A short code made from a quote's text, used to find its translation."
+    },
+    {
+      "term": "Function words",
+      "meaning": "Common small words such as the, of or and, which help identify a language."
+    },
+    {
+      "term": "Workbook",
+      "meaning": "The downloadable spreadsheet the report produces."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/tools/research-contract/agentTranslations.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "07feb9df91804170",
+      "title": "Imports and translation rules",
+      "what": "Brings in the fingerprint tool, the query tool, the database connection and the stored agent translations. The header comment states that the quote always appears as published and that translations never feed any check.",
+      "why": "Likely reason: translations are for reading only, so no check can depend on them.",
+      "watch_out": "The rule in the header is a promise kept by convention, so any new check that reads translations would break it."
+    },
+    {
+      "start": 17,
+      "end": 30,
+      "kind": "value",
+      "name": "STOPWORDS",
+      "id": "s2",
+      "hash": "161f920138a6b7d9",
+      "title": "Common words for each language",
+      "what": "Lists frequent small words for English and ten other languages, used only to guess a quote's language.",
+      "why": "Likely reason: a language guess needs common words that rarely appear in other languages.",
+      "watch_out": "Norwegian and Danish share several words, so their guesses can be confused."
+    },
+    {
+      "start": 31,
+      "end": 46,
+      "kind": "function",
+      "name": "quoteLanguage",
+      "id": "s3",
+      "hash": "13cc581208f2efc2",
+      "title": "Guesses a quote's language",
+      "what": "Counts the common words of each language in a quote. Returns the best non-English match only when there are enough matches and they make up a real share of the text. Returns nothing for English or for text that only contains place names.",
+      "why": "The comment says a place name in an English sentence must not be read as a foreign quote.",
+      "watch_out": "Very short quotes may not reach the minimum word count, so a short foreign quote can be treated as English."
+    },
+    {
+      "start": 47,
+      "end": 51,
+      "kind": "function",
+      "name": "quoteKey, QuoteTranslation",
+      "id": "s4",
+      "hash": "8dc2eea7fd9f9cc9",
+      "title": "Stable fingerprint for a quote",
+      "what": "Creates a short fingerprint from a quote after tidying spacing and character forms, so the same quote always finds the same translation. Also defines the shape of a translation result: language, English text and basis.",
+      "why": "Likely reason: a fingerprint links a translation to its quote without storing the quote twice.",
+      "watch_out": "Changing the wording of a quote beyond spacing and character form changes its fingerprint, which orphans its stored translation."
+    },
+    {
+      "start": 52,
+      "end": 58,
+      "kind": "value",
+      "name": "BASIS",
+      "id": "s5",
+      "hash": "1f1c3b3fbf7fcc53",
+      "title": "Wording for translation sources",
+      "what": "Holds the plain sentences shown in the workbook to say where a translation came from: already English, researcher supplied and unchecked, agent produced and unreviewed, or not translated.",
+      "why": "Likely reason: readers need to know how far to trust a translation.",
+      "watch_out": "These sentences go straight into exported files, so a wording change alters every workbook."
+    },
+    {
+      "start": 59,
+      "end": 81,
+      "kind": "function",
+      "name": "translationLookup",
+      "id": "s6",
+      "hash": "616a563485c94e41",
+      "title": "Finds the translation for a quote",
+      "what": "For a set of projects, loads the researcher translations once and returns a lookup function. For each quote, the lookup prefers a researcher translation, then a stored agent translation, then flags the quote as not translated if its language is foreign. Returns nothing for blank quotes.",
+      "why": "Likely reason: loading everything once avoids a database call for every quote.",
+      "watch_out": "A missing translation shows the not-translated flag, which looks like a gap in the workbook rather than an error."
+    },
+    {
+      "start": 82,
+      "end": 89,
+      "kind": "function",
+      "name": "translationColumns",
+      "id": "s7",
+      "hash": "17f956e781af3313",
+      "title": "Workbook columns for one quote",
+      "what": "Turns a translation result into the three workbook columns: the quote's language, the English text or a marker, and the basis sentence.",
+      "why": "Likely reason: the workbook needs a fixed set of columns so each quote shows its translation status.",
+      "watch_out": "A quote with no translation result gets blank cells, so a missing lookup is easy to overlook."
+    }
+  ],
+  "explained_at": "2026-11-12T05:10:33+00:00",
+  "explained_by": "haiku",
+  "summary": "Gives each source quote an English translation for the downloadable workbooks, showing where the translation came from, without changing the quote or any check.",
+  "purpose": "Lets readers of the spreadsheets understand foreign-language quotes while keeping the original text as published.",
+  "why": "The header comment states the quote is always shown as published, and translations never feed any check.",
+  "how": "Loads the researcher-supplied translations for the projects once, from the database. For each quote, it looks for a researcher translation, then a stored agent translation, then guesses the language and flags it as not translated. Turns the result into three workbook columns.",
+  "inputs": "A list of project identifiers, and then individual quote texts to translate.",
+  "outputs": "For each quote: its language, its English text or a marker, and a sentence saying where the translation came from. Nothing for blank quotes.",
+  "risks": "Agent translations are unreviewed, and the language guess uses small word lists that can mislabel short quotes. A quote with no record shows blank cells rather than a warning.",
+  "debug": "Check the translation basis text in the workbook first. If a quote shows the wrong language, look at the word lists and the minimum counts in the language guess. If a translation is missing, confirm the quote's stored translation field and that its fingerprint matches exactly.",
+  "summary_hash": "sha256:2e32bbac055e899224c7f5ce3f0915325a23b1dc438cf3c9ee9169e50d681132"
+}

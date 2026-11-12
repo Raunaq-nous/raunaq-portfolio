@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/solarReport/import.ts",
+  "language": "TypeScript",
+  "lines": 231,
+  "hash": "sha256:d883653017d2eb35485d9c12dfaf9b43c02482d22d2181d664b8ead66a8479a7",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only two of the nine sections were in the packet, so the save logic and the handling of held rows could not be reviewed.",
+      "No tests are visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Plan row",
+      "meaning": "The planned outcome for one project, shown before any change is saved."
+    },
+    {
+      "term": "Enrich",
+      "meaning": "Add missing information to an existing project without replacing its existing data."
+    },
+    {
+      "term": "Held",
+      "meaning": "A project that is blocked from saving until an issue is resolved."
+    },
+    {
+      "term": "Fingerprint (hash)",
+      "meaning": "A short code calculated from content, used to detect whether the source has changed."
+    }
+  ],
+  "depends_on": [
+    "../../db",
+    "@workspace/db",
+    "../../storage",
+    "../../lib/canonicalize",
+    "./manifest"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup, hash, normalize, Tx",
+      "id": "s1",
+      "hash": "abf660db664f4354",
+      "title": "Imports, fingerprint and name matching",
+      "what": "Brings in the database tables, storage, the canonicalizer and helpers from the manifest file. It defines a fingerprint helper, a name normalizer that strips punctuation and case, and the transaction type.",
+      "why": "Name normalizing lets a solar project match an existing record even when the punctuation differs.",
+      "watch_out": "Names that differ only by punctuation or capitals will be treated as the same name."
+    },
+    {
+      "start": 12,
+      "end": 20,
+      "kind": "type",
+      "name": "PlanRow",
+      "id": "s2",
+      "hash": "02fdf1751780c5e5",
+      "title": "Shape of one planned row",
+      "what": "Describes one planned project row: its key and name, what action is planned, any blocker, the stored project if there is one, the proposed changes, evidence, milestones, participants, additions, and any facts held back.",
+      "why": "Gives the plan a single consistent shape so each project can be reviewed before any write happens.",
+      "watch_out": "A row marked held carries a blocker message, so the held status must be checked before any write."
+    },
+    {
+      "start": 21,
+      "end": 35,
+      "kind": "function",
+      "name": "resolveIdentity, evidenceKey",
+      "id": "s3",
+      "hash": "784ecf5355d20c6c",
+      "title": "Matching a report project to a database record",
+      "what": "Finds which existing solar project a reviewed report entry refers to, using country, name, aliases, a stored key, or a fixed ID. It stops with an error if more than one record matches, if a reviewed match has changed, or if the match is the Offshore Gemini project, which the code never changes. It also builds a fingerprint from a quote's field, web address and text, so the same quote is not stored twice.",
+      "why": "Likely reason: a report must never attach its facts to the wrong project, so matching is strict and fails loudly rather than guessing.",
+      "watch_out": "The Offshore Gemini exclusion is a hard rule here; loosening the matching could let that protected project be edited."
+    },
+    {
+      "start": 36,
+      "end": 43,
+      "kind": "value",
+      "name": "heldFacts, idFor",
+      "id": "s4",
+      "hash": "ef1db246567ca320",
+      "title": "Standing limits and record ID scheme",
+      "what": "Holds the list of limits that is attached to every planned row, such as no delays or risk ratings being imported, dates staying as milestones without exact date fields, and no currency conversion. It also builds a fixed ID for each project from its key, so a re-run finds the same record.",
+      "why": "The list states what the import deliberately leaves out. The fixed ID is likely there so re-runs update the same row instead of creating a new one.",
+      "watch_out": "These limit notes are copied into every plan row, so editing them changes what reviewers see on every project."
+    },
+    {
+      "start": 44,
+      "end": 55,
+      "kind": "function",
+      "name": "sourceEvidenceValues",
+      "id": "s5",
+      "hash": "00715630dd84497f",
+      "title": "Building the evidence record for a quote",
+      "what": "Turns one quote from the report into a record to store. It sets the source link, the publisher wording and the verification label. A quote from a live-checked page is labelled as checked against the fetched page. All other quotes are labelled as coming from an uploaded report and not checked live.",
+      "why": "The labels stop report-only quotes from being mistaken for quotes checked against the original publisher.",
+      "watch_out": "Any new kind of quote that this function does not name falls into the report-only wording, so a live-checked quote with a new kind would be under-labelled."
+    },
+    {
+      "start": 56,
+      "end": 108,
+      "kind": "function",
+      "name": "makePlan (part 1)",
+      "id": "s6",
+      "hash": "95ab8820a3b0ced1",
+      "title": "Planning each project's changes, part one",
+      "what": "For each reviewed project, works out whether it will be created new, updated (enriched), held, or left unchanged. It collects the list of changes it would make and any blocking errors from the shared checks. A project with a blocking error is held and nothing is written for it.",
+      "why": "Planning before writing lets a reviewer see a dry run. Holding a project with errors keeps incomplete data out of the database.",
+      "watch_out": "A warning that is not an error stops the whole run with an error, so one unexpected warning blocks every project."
+    },
+    {
+      "start": 109,
+      "end": 131,
+      "kind": "method",
+      "name": "makePlan: for",
+      "id": "s7",
+      "hash": "7c8911e7e281f33c",
+      "title": "Checking companies, sources and links",
+      "what": "For each project, counts how many participating companies, source links and company links are new, without writing anything. It matches company names strictly, the same way the write step does, and stops with an error if a company name matches more than one record.",
+      "why": "Counting first lets the plan show exactly what would be added before anything is saved.",
+      "watch_out": "The company lookup uses its own SQL matching rule, so it must stay the same as the rule used at write time, or the plan will count wrongly."
+    },
+    {
+      "start": 132,
+      "end": 191,
+      "kind": "function",
+      "name": "runSolarImport (part 1)",
+      "id": "s8",
+      "hash": "929ae77d6a4fbb18",
+      "title": "Starting the locked import and building the plan",
+      "what": "Runs the whole import inside one database transaction with time limits. In commit mode it locks the affected tables, rebuilds the plan, and computes a digest of the plan. It refuses to write unless the reviewer's approved digest matches. It also builds a summary of counts for inserts, updates, unchanged rows, held rows, and additions.",
+      "why": "The digest check makes sure the write matches the exact plan a reviewer approved. The locks stop other changes from landing between review and write.",
+      "watch_out": "Any database change between the dry run and the commit changes the digest and blocks the run. That is intended, but it means a reviewer must re-run the dry run after any other edit."
+    },
+    {
+      "start": 192,
+      "end": 231,
+      "kind": "function",
+      "name": "runSolarImport (part 2)",
+      "id": "s9",
+      "hash": "9db35ce92407d10d",
+      "title": "Writing changes and checking the results",
+      "what": "In commit mode, writes new projects and updates to existing ones, and records each change in the change log together with the report fingerprint. It then adds missing evidence quotes, milestones, company links and source links, skipping any that already exist. After writing, it checks that protected projects and existing scalar fields did not change, and throws an error if they did. The returned result shows the plan, the mode, and a fixed reconciliation note.",
+      "why": "The after-write checks are a safety net in case an earlier step changed something it should not have. The change log lets a person trace each change back to the report.",
+      "watch_out": "The reconciliation note in the result is fixed text, not calculated from the data, so it can go out of date without anyone noticing."
+    }
+  ],
+  "explained_at": "2026-11-12T03:38:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Plans and applies the import of solar projects from the solar report, deciding for each project whether to insert it, enrich it, leave it unchanged, or hold it back.",
+  "purpose": "Keeps solar project data tied to report evidence, and prevents projects with unresolved issues from being saved.",
+  "why": "Reason not stated in the code for most of the design. The structure suggests the planning step is kept separate so the plan can be reviewed before writing.",
+  "how": "Only the first two of nine sections are visible. These set up the imports, a fingerprint helper, a name normalizer, a transaction type, and the shape of one planned row for a project.",
+  "inputs": "Not visible in the packet beyond the imports and shared helpers from the manifest file.",
+  "outputs": "A plan row per project, with an action of insert, enrich, no change, or held.",
+  "risks": "Not assessable from the visible sections. A held row carries a blocker message, and a project marked held must not be saved.",
+  "debug": "Look at the plan rows first. A held action comes with a blocker message that explains why. Compare the fingerprint of the report with the expected value if the import looks stale.",
+  "summary_hash": "sha256:d883653017d2eb35485d9c12dfaf9b43c02482d22d2181d664b8ead66a8479a7"
+}

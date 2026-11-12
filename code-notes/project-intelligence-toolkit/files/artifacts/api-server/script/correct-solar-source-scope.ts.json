@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/correct-solar-source-scope.ts",
+  "language": "TypeScript",
+  "lines": 34,
+  "hash": "sha256:784689e7659d89fcb178157eec79da40c1afcbb986da0c6982cb210c4d069e3d",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "One-off script with the sentences typed in by hand",
+      "No test is visible for this script",
+      "Failures stop the run through clear assertions, which is good"
+    ]
+  },
+  "terms": [
+    {
+      "term": "Transaction",
+      "meaning": "a group of database changes that either all happen or none happen"
+    },
+    {
+      "term": "Advisory lock",
+      "meaning": "a named lock that stops two scripts from changing the same data at the same time"
+    },
+    {
+      "term": "Idempotent",
+      "meaning": "safe to run again: a second run makes no further change"
+    },
+    {
+      "term": "Fingerprint (hash)",
+      "meaning": "a short code computed from the report text, used to confirm it is the same report"
+    }
+  ],
+  "depends_on": [
+    "@workspace/db",
+    "drizzle-orm",
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/ingest/solarReport/manifest"
+  ],
+  "used_by": [
+    "Not visible in the code"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 34,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "14eef0f293a47184",
+      "title": "Re-linking one Agua Caliente cost quote",
+      "what": "Finds the one wrong cost quote attached to the Agua Caliente solar project, changes its text to the correct Agua Caliente cost sentence, and logs the change. If the wrong quote is not present, it does nothing.",
+      "why": "The code states that the shared S11 register row covers two projects, so only this excerpt should stay linked to Agua Caliente.",
+      "watch_out": "Matching uses exact text, so any edit to the report wording means the correction silently finds nothing."
+    }
+  ],
+  "explained_at": "2026-11-12T03:01:24+00:00",
+  "explained_by": "haiku",
+  "summary": "A one-time script that fixes one cost quote from the solar report, which was attached to the Agua Caliente project but names the Topaz project, by replacing it with the correct Agua Caliente cost sentence.",
+  "purpose": "Correct a single mistaken link in the database so the Agua Caliente budget quote is right, without touching any other row.",
+  "why": "The code's own reason text says the shared S11 register row covers two projects, so only the Agua Caliente cost excerpt should stay linked to Agua Caliente.",
+  "how": "First the script checks that the correct sentence exists in the report text. Then it opens a database transaction with a lock so no other import runs at the same time. It searches for the one wrong quote for that project and report fingerprint. If none is found, it stops with zero changes. If found, it checks the row's field path, rewrites the field path, quote and line number, and writes a change log entry. Finally it saves a result file if none exists and prints the count.",
+  "inputs": "The solar report text, its fingerprint and line helpers from the manifest module, and the database. The wrong and correct sentences are typed into the code.",
+  "outputs": "One corrected quote row and one change log row when the wrong quote exists. A source-scope-correction.json file in the solar-report data folder, written only if it does not already exist. A console line with the count.",
+  "risks": "The match uses exact wording, so any edit to the report text makes the fix find nothing. It writes to the live database. The lock and transaction limit damage if something fails midway.",
+  "debug": "If the count is zero on a later run, that is expected because the fix was already applied. If an assertion fails, check the stored field path of the quote for Agua Caliente and confirm the report text still contains the correct sentence.",
+  "summary_hash": "sha256:784689e7659d89fcb178157eec79da40c1afcbb986da0c6982cb210c4d069e3d"
+}

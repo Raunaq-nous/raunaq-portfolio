@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/lib/curlFetch.ts",
+  "language": "TypeScript",
+  "lines": 184,
+  "hash": "sha256:4239531e29f3770c8905d0cdc98b23c45ad89f664cf652bdb2de25246e003d51",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this file.",
+      "Blocking calls can freeze the whole server while a download runs.",
+      "The HTML variant has no retry, which differs from the document variant."
+    ]
+  },
+  "terms": [
+    {
+      "term": "curl",
+      "meaning": "a command-line tool that downloads web content"
+    },
+    {
+      "term": "User-Agent",
+      "meaning": "the name a program gives a website to say what kind of client it is"
+    },
+    {
+      "term": "TLS",
+      "meaning": "the encryption layer used by secure web addresses; faults here can be temporary"
+    },
+    {
+      "term": "DNS",
+      "meaning": "the service that turns a host name into a network address"
+    },
+    {
+      "term": "exit code",
+      "meaning": "a number a program returns to say how it finished; zero means success"
+    },
+    {
+      "term": "environment variable",
+      "meaning": "a named setting supplied to the program from outside, such as in a config file or secret store"
+    }
+  ],
+  "depends_on": [
+    "curl (system tool)",
+    "Node.js built-in modules child_process, fs, os, path and crypto"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/lib/sourceSnapshot.ts (as stated in the header)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 34,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "0ca9a4a2a1cdee1d",
+      "title": "Header notes and contact setting",
+      "what": "Explains where the code came from and how it is used. Reads the contact address from the environment and sets a fixed tool name for the SEC User-Agent.",
+      "why": "The contact address is not hard-coded because a made-up address would be worse than none, as the comment explains.",
+      "watch_out": "The contact value is read once at startup, so changing it needs a server restart."
+    },
+    {
+      "start": 35,
+      "end": 40,
+      "kind": "type",
+      "name": "UaRule",
+      "id": "s2",
+      "hash": "316f5d19ba953501",
+      "title": "Shape of a User-Agent rule",
+      "what": "Defines what each site-specific User-Agent rule holds: a test for the host name, a function that gives the header or nothing, and a note of what is needed.",
+      "why": "Lets special-case sites be added without changing the main fetch code.",
+      "watch_out": "A rule that returns nothing is treated as unmet, so the fetch will not be attempted with a fallback identity."
+    },
+    {
+      "start": 41,
+      "end": 49,
+      "kind": "value",
+      "name": "UA_RULES",
+      "id": "s3",
+      "hash": "cb6c67188d8fd478",
+      "title": "The SEC User-Agent rule",
+      "what": "Sets one rule for the SEC domain and its subdomains. The header is the tool name plus the contact address, and if no contact address is set, the rule is unmet.",
+      "why": "The SEC requires a declared identity with a contact address, and gives forbidden answers otherwise.",
+      "watch_out": "Without the contact setting, every SEC request is sent with no valid identity and will be refused."
+    },
+    {
+      "start": 50,
+      "end": 57,
+      "kind": "function",
+      "name": "hostOf",
+      "id": "s4",
+      "hash": "fa01410b49e5bb02",
+      "title": "Reading the host from an address",
+      "what": "Returns the host name of a web address, or an empty text if the address cannot be read.",
+      "why": "Site rules match on the host name rather than the full address.",
+      "watch_out": "An unreadable address gives an empty host, so no rule matches it."
+    },
+    {
+      "start": 58,
+      "end": 65,
+      "kind": "function",
+      "name": "uaPolicyGap",
+      "id": "s5",
+      "hash": "301ae71096b8d500",
+      "title": "Checking whether a URL can be fetched",
+      "what": "Returns the reason a site's identity rule cannot be met, or nothing if it can be.",
+      "why": "Lets the caller skip a site and explain why, instead of getting an unclear refusal.",
+      "watch_out": "Only the SEC rule is checked, so any future rule needs to be added to this check too."
+    },
+    {
+      "start": 66,
+      "end": 72,
+      "kind": "function",
+      "name": "userAgentFor",
+      "id": "s6",
+      "hash": "52816cc08e7654ae",
+      "title": "Choosing the User-Agent for a URL",
+      "what": "Returns the site-specific User-Agent if one applies and is available, otherwise the standard browser one.",
+      "why": "Most sites get a browser identity, while sites like the SEC get the one they require.",
+      "watch_out": "If a site rule returns nothing, the browser identity is used instead, which the SEC rejects."
+    },
+    {
+      "start": 73,
+      "end": 82,
+      "kind": "function",
+      "name": "CURL_ARGS",
+      "id": "s7",
+      "hash": "febc1e2cf42aa4a4",
+      "title": "Standard curl options",
+      "what": "Builds the list of options passed to curl: follow redirects, a 20 second time limit, the User-Agent, an English language header, any extra options, and the address.",
+      "why": "Keeps every download using the same settings, so behaviour is consistent.",
+      "watch_out": "The address is passed as an argument rather than a shell string, which prevents shell injection."
+    },
+    {
+      "start": 83,
+      "end": 90,
+      "kind": "value",
+      "name": "RETRYABLE_CURL_CODES, RETRY_BACKOFF_MS",
+      "id": "s8",
+      "hash": "af82cab3723a4b5a",
+      "title": "Which failures get a retry",
+      "what": "Lists the curl exit codes treated as temporary faults worth retrying. Name lookup failures are excluded because they are treated as dead addresses.",
+      "why": "Retrying a missing host would only waste time, so the list is chosen with care.",
+      "watch_out": "The list is fixed, so a new kind of temporary fault will not be retried until it is added."
+    },
+    {
+      "start": 91,
+      "end": 94,
+      "kind": "function",
+      "name": "sleepSync",
+      "id": "s9",
+      "hash": "40be694285bc84f3",
+      "title": "Pausing between retries",
+      "what": "Pauses the whole process for a number of milliseconds. The retry delays are 400 and then 1,200 milliseconds.",
+      "why": "Gives a temporary network fault a little time to clear before the next try.",
+      "watch_out": "This pause blocks the entire server, not just this request."
+    },
+    {
+      "start": 95,
+      "end": 111,
+      "kind": "function",
+      "name": "curlFetchHtml",
+      "id": "s10",
+      "hash": "b6cd8fa657f088a1",
+      "title": "Fetching raw HTML",
+      "what": "Downloads a page through curl and returns its status and body as text, or nothing if curl fails. The file's header says it is a last resort for sites that block the normal browser route.",
+      "why": "Some sites accept curl but block the browser, so this gives a fallback.",
+      "watch_out": "The body is read as text, which corrupts binary files such as PDFs, and the buffer limit is 15 MB."
+    },
+    {
+      "start": 112,
+      "end": 120,
+      "kind": "type",
+      "name": "CurlDocument",
+      "id": "s11",
+      "hash": "73af5dcd4c6a17cf",
+      "title": "Shape of a downloaded document",
+      "what": "Defines what a downloaded document carries: status, content type, byte size, time taken and the raw body as bytes.",
+      "why": "Provenance records need these details, and keeping raw bytes keeps PDFs intact.",
+      "watch_out": "The raw body can be large, so keeping many documents in memory at once can use a lot of memory."
+    },
+    {
+      "start": 121,
+      "end": 133,
+      "kind": "function",
+      "name": "curlFetchDocument",
+      "id": "s12",
+      "hash": "6221d7049ef875bf",
+      "title": "Downloading a document",
+      "what": "Returns a downloaded document or nothing, using up to three attempts by default. It is a simple wrapper over the detailed version.",
+      "why": "Most callers only need the document, not the attempt details.",
+      "watch_out": "A failed download and an empty result both come back as nothing, so the caller cannot tell the cause without the detailed version."
+    },
+    {
+      "start": 134,
+      "end": 141,
+      "kind": "type",
+      "name": "CurlAttemptResult",
+      "id": "s13",
+      "hash": "5f2092f52d5b07aa",
+      "title": "Shape of a fetch attempt report",
+      "what": "Defines the detailed result: the document or nothing, the final curl exit code, the attempts made and whether a retry happened.",
+      "why": "Helps diagnose sites that fail, by showing whether retries were tried.",
+      "watch_out": "The exit code describes only the last failed attempt, not the whole history."
+    },
+    {
+      "start": 142,
+      "end": 184,
+      "kind": "function",
+      "name": "curlFetchDocumentVerbose",
+      "id": "s14",
+      "hash": "d111bc5215b4da40",
+      "title": "Downloading with retries and details",
+      "what": "Tries the download up to the allowed number of attempts. Each attempt writes to a new temporary file, reads its status and content details and the body, then deletes the file. A failed attempt is retried only when its exit code is a temporary fault, with pauses between tries.",
+      "why": "Makes downloads more reliable against brief network problems while keeping dead addresses from being retried.",
+      "watch_out": "Each attempt blocks the server while curl runs and while pauses happen, so the whole process can stall for tens of seconds on a slow site."
+    }
+  ],
+  "explained_at": "2026-11-12T03:55:16+00:00",
+  "explained_by": "haiku",
+  "summary": "Downloads web pages and documents by running the system curl tool, with a browser-like or declared identity per site, and retries short network faults.",
+  "purpose": "Gets source documents from the web in cases where the normal browser route is blocked or the file is a binary such as a PDF.",
+  "why": "Likely reason: some sites block browser-based requests but accept plain requests from curl, and the header notes say the SEC needs a declared identity rather than a browser one.",
+  "how": "For each address it picks a User-Agent, either a fixed browser one or a declared one for specific sites. It runs curl with a time limit and standard headers. It saves the body to a temporary file, reads the status and content details, and deletes the file. Network faults such as connection failures and timeouts are retried after short pauses. Name lookup failures are not retried.",
+  "inputs": "A web address, and an optional number of attempts. The contact setting comes from the environment variable SOURCE_FETCH_CONTACT.",
+  "outputs": "Either the document with its status, content type, size, time taken and raw bytes, or nothing on failure. The detailed version also gives the curl exit code, attempts made and whether a retry happened.",
+  "risks": "Every call blocks the server while curl runs, so slow sites can freeze other requests for up to 25 seconds per attempt, plus pauses. The SEC rule is unmet and will return forbidden answers unless the contact setting is filled in. The HTML version does not retry at all.",
+  "debug": "Start with the detailed version's exit code. Exit codes for connection or timeout problems are retried, and name lookup failures are not. If SEC pages fail, check the SOURCE_FETCH_CONTACT setting and restart the server, because it is read once at startup.",
+  "summary_hash": "sha256:4239531e29f3770c8905d0cdc98b23c45ad89f664cf652bdb2de25246e003d51"
+}

@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/reality-scan/deckExport.ts",
+  "language": "TypeScript",
+  "lines": 75,
+  "hash": "sha256:9dd12606c3eb410afb910f63a0aeb24dab4bd5657cbc024b097dbe54af214f69",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Bad picture names are refused with an error.",
+      "No test is visible.",
+      "Picture paths depend on the working folder, which is fragile when the server starts from another folder."
+    ]
+  },
+  "terms": [
+    {
+      "term": "PPTX",
+      "meaning": "the file format used by PowerPoint."
+    },
+    {
+      "term": "Scene",
+      "meaning": "the list of positioned shapes that make up one slide, shared with the browser."
+    },
+    {
+      "term": "Speaker notes",
+      "meaning": "hidden text attached to a slide, visible to the presenter."
+    },
+    {
+      "term": "Buffer",
+      "meaning": "a block of raw file bytes held in memory."
+    }
+  ],
+  "depends_on": [
+    "pptxgenjs",
+    "node:path",
+    "node:module",
+    "../../../../../lib/api-client-react/src/scan-deck",
+    "../../../../../lib/api-client-react/src/scan-template"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/reality-scan/deckRoutes.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup, require, color",
+      "id": "s1",
+      "hash": "10bade1949ffd7f1",
+      "title": "Loading the PowerPoint library",
+      "what": "Loads the PowerPoint writer library and a colour and alignment helper from the shared template code. Defines a helper that converts a colour value into a hex code.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The shared template is reached through a long relative path, so moving files breaks this import."
+    },
+    {
+      "start": 10,
+      "end": 35,
+      "kind": "function",
+      "name": "exportDeck, ExportEl",
+      "id": "s2",
+      "hash": "33544f86e3a8eae6",
+      "title": "Writing the deck and its notes",
+      "what": "Builds the whole presentation, one slide per saved slide, and adds notes to each. The notes list the caveat, run and revision, schedule assumptions for approximate projects, citations, the count of unsupported claims, the coordinates of every chart point, and applied edits. Returns the file as bytes.",
+      "why": "Likely reason: a PowerPoint shape cannot hold footnotes, so the disclosure is placed in the notes.",
+      "watch_out": "Notes are built from the saved deck. Missing fields show as plain text rather than failing, and large cohorts produce long notes."
+    },
+    {
+      "start": 36,
+      "end": 39,
+      "kind": "function",
+      "name": "claimRefs",
+      "id": "s3",
+      "hash": "a6d59db079c04166",
+      "title": "Choosing which sources a shape cites",
+      "what": "Returns the list of sources for a shape: the multi-source list when present, otherwise the older single source, otherwise an empty list.",
+      "why": "The code comment says claim-level sources take priority over the older single project source.",
+      "watch_out": "A shape that holds both forms uses only the list."
+    },
+    {
+      "start": 40,
+      "end": 44,
+      "kind": "function",
+      "name": "primaryUrl",
+      "id": "s4",
+      "hash": "53756117191de9dd",
+      "title": "Picking one link for a text box",
+      "what": "Returns the first citation with a web address starting with http or https, which becomes the clickable link on that text. Returns nothing if there is none.",
+      "why": "Likely reason: a text box carries one link, and only web addresses are accepted so local or invalid addresses are not linked.",
+      "watch_out": "Only the first valid link is used, so text with several citations links to just one."
+    },
+    {
+      "start": 45,
+      "end": 75,
+      "kind": "function",
+      "name": "addSceneSlide",
+      "id": "s5",
+      "hash": "003281a97dc600cf",
+      "title": "Drawing one slide's shapes",
+      "what": "Draws each element of a saved slide at the right size: text boxes with font, colour, alignment and optional link; pictures from the template folder; and circles, lines and rectangles with fill, outline and dashes. Shapes without a fill become transparent. The same drawing code is used by the older Benchmark Scan export.",
+      "why": "The comment says this drawing code is shared so both exports produce matching slides.",
+      "watch_out": "A picture whose file name fails the pattern stops the whole export with an error. Pictures are read from the server's working folder."
+    }
+  ],
+  "explained_at": "2026-11-12T05:00:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns a saved deck into an editable PowerPoint file, with shapes placed as on screen and with source links and notes included.",
+  "purpose": "Provides the deck download as a PPTX file.",
+  "why": "The comment says the export uses the same scene the browser shows, so the two match. Speaker notes carry the caveats, citations and applied edits. Likely reason: a PowerPoint shape cannot hold a full footnote.",
+  "how": "1. Create a wide-layout presentation with title and subject details. 2. For each saved slide, draw its elements at the right size. 3. Add speaker notes with the caveat, run and revision, schedule assumptions for approximate projects, citations, the count of unsupported claims, chart points, and applied edits. 4. Return the file as a binary buffer.",
+  "inputs": "A saved deck and the tool name used in the file metadata.",
+  "outputs": "A binary PowerPoint file in memory.",
+  "risks": "Picture files are read from a relative assets folder, so the export depends on the server's working folder. Citation quotes in the notes are cut to 200 characters. Picture file names are checked, and an unexpected name stops the whole export.",
+  "debug": "If pictures are missing, check the server's working folder and the template assets. If the export fails with an invalid template asset error, check the picture name on that element. If notes look wrong, check the source records attached to each element.",
+  "summary_hash": "sha256:9dd12606c3eb410afb910f63a0aeb24dab4bd5657cbc024b097dbe54af214f69"
+}

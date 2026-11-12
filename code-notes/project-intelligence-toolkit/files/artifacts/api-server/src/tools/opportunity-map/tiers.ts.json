@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/tiers.ts",
+  "language": "TypeScript",
+  "lines": 56,
+  "hash": "sha256:2a0d41fc12102ef57a1c5bb70c06da9c1f00648796788e5a219ba1c7e865720f",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Simple and deterministic, which makes it easy to reason about.",
+      "No test in the packet checks the tier outcomes.",
+      "The relationship rule is intentionally unexplained, which can leave a user unsure why a signal is not Tier 1."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Tier",
+      "meaning": "a priority level where 1 is the most urgent"
+    },
+    {
+      "term": "Evidence grade",
+      "meaning": "a rating of how strongly a source supports a claim, from C1 (strongest) to C4 (weakest lead)"
+    },
+    {
+      "term": "Severity",
+      "meaning": "how serious the issue is, on a 1 to 5 scale"
+    },
+    {
+      "term": "Ability to act",
+      "meaning": "how able the team is to act on the signal, on a 1 to 5 scale"
+    },
+    {
+      "term": "Focus",
+      "meaning": "whether the team's codebook asks for a signal's tags to be prioritised or deprioritised"
+    },
+    {
+      "term": "Access",
+      "meaning": "a server-only score for how well the team knows the account; it is never shown to users"
+    }
+  ],
+  "depends_on": [],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/store.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "type",
+      "name": "EvidenceTier",
+      "id": "s1",
+      "hash": "93973d29aac58ebd",
+      "title": "The four evidence grades",
+      "what": "Defines the four evidence grades used for signals, C1 to C4, from strongest to weakest lead. These grades decide which tier a signal can reach.",
+      "why": "The code comment says tiers are a rule set over the research mapping, so the grade is the key input.",
+      "watch_out": "Grades are fixed text, so any new grade must be added here and in the rules together."
+    },
+    {
+      "start": 7,
+      "end": 16,
+      "kind": "type",
+      "name": "TierRules",
+      "id": "s2",
+      "hash": "e2ff0d4b90cdc990",
+      "title": "The shape of the tier settings",
+      "what": "Lists the settings that decide tiers: how recent a source must be, what Tier 1 requires, what Tier 2 requires, which grades count as weak leads, and whether codebook focus caps or lifts a signal.",
+      "why": "The code comment says the defaults can be tuned by teams in the codebook.",
+      "watch_out": "Changing these values changes the tiers of all signals at once on the next read."
+    },
+    {
+      "start": 17,
+      "end": 24,
+      "kind": "value",
+      "name": "DEFAULT_TIER_RULES",
+      "id": "s3",
+      "hash": "e8d95dfa965b95c2",
+      "title": "Default tier settings",
+      "what": "Sets the defaults: sources within 180 days, Tier 1 needs C1 or C2 evidence with value at risk, a decision window, severity of at least 4, ability to act of at least 3 and a relationship. Tier 2 needs C1 or C2 evidence and a score of at least 55. C4 is a weak lead. Focus capping and lifting are both on.",
+      "why": "The code comment says the defaults reproduce the original rules.",
+      "watch_out": "A codebook can override these defaults, so the defaults are not always what users see."
+    },
+    {
+      "start": 25,
+      "end": 31,
+      "kind": "type",
+      "name": "TierInputs",
+      "id": "s4",
+      "hash": "77c7dd7b6909cc86",
+      "title": "What a tier calculation needs",
+      "what": "Lists the inputs: evidence grade, value at risk, decision window, severity, ability to act, total score, access level, publication dates and codebook focus.",
+      "why": "Reason not stated in the code beyond the names of the inputs.",
+      "watch_out": "Focus is optional and defaults to zero, so forgetting to pass it silently removes codebook effects."
+    },
+    {
+      "start": 32,
+      "end": 56,
+      "kind": "function",
+      "name": "computeTier",
+      "id": "s5",
+      "hash": "55c66f48eaf6ed5a",
+      "title": "Decides the priority tier of a signal",
+      "what": "Gives Tier 1 when every strict rule is met, including the relationship rule. Otherwise gives Tier 2 when the signal is recent, has C1 or C2 evidence and reaches the score threshold, and Tier 3 for the rest. Weak leads are Tier 4 at once. Codebook focus then caps deprioritised signals at Tier 3 and lifts prioritised Tier 3 signals to Tier 2 when they qualify. Returns the tier with plain reasons.",
+      "why": "The code comment says the relationship rule is hidden because access is a server-only value.",
+      "watch_out": "The relationship rule can cause a Tier 1 miss that the listed reasons do not mention, so a reader may see a reason that is not the real cause."
+    }
+  ],
+  "explained_at": "2026-11-12T04:57:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Decides each signal's priority tier, from 1 (most actionable) to 4 (weak lead), using fixed rules the team can adjust.",
+  "purpose": "Sorts signals so the strongest, most actionable ones are seen first.",
+  "why": "The header comment says the rules are deterministic, the defaults reproduce the original rules, and tiers are recomputed on every read so a rule change applies at once.",
+  "how": "1. A weakest-grade evidence result returns Tier 4 immediately. 2. Checks the Tier 1 rules and lists any that are missing. 3. Applies a relationship rule that is not explained to users. 4. Falls to Tier 2 when the signal is recent, has strong enough evidence, and reaches the score threshold. 5. Otherwise Tier 3. 6. Adjusts for codebook focus: a deprioritised signal is capped at Tier 3, and a prioritised Tier 3 is lifted to Tier 2 when it qualifies. 7. Returns the tier and plain reasons.",
+  "inputs": "A signal's evidence grade, value at risk, decision window, severity, ability to act, total score, access level, publication dates, codebook focus, and optionally a set of rules.",
+  "outputs": "A tier number and a list of plain-English reasons explaining it.",
+  "risks": "The relationship rule is applied without its reason being shown, so a user may not understand why a signal is not Tier 1. Publication dates in the future are ignored. A missing focus value means no codebook effect. The Tier 1 check only tests whether value at risk is present, not whether it is good.",
+  "debug": "Read the reasons list first, since it explains each decision. If a signal is unexpectedly Tier 3, check its publication dates (recent means within 180 days by default) and its evidence grade. If a Tier 1 result is missing, the relationship rule is a likely cause. If a cap or lift seems wrong, check the codebook focus.",
+  "summary_hash": "sha256:2a0d41fc12102ef57a1c5bb70c06da9c1f00648796788e5a219ba1c7e865720f"
+}

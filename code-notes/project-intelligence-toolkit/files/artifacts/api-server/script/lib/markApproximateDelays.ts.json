@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/lib/markApproximateDelays.ts",
+  "language": "TypeScript",
+  "lines": 166,
+  "hash": "sha256:6043351cccdef6499956dd212d82f6679d0cb485126a4c3a8994b10abedf2641",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "Partial writes are possible if a later entry fails.",
+      "Depends on database modules not shown here.",
+      "The entries themselves are not shown, so the content cannot be judged."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Transaction",
+      "meaning": "A group of database changes that either all succeed or all fail together."
+    },
+    {
+      "term": "Dry run",
+      "meaning": "A run that prints what would happen and writes nothing."
+    },
+    {
+      "term": "Change log",
+      "meaning": "A stored record of who changed what, and when, with source links."
+    },
+    {
+      "term": "Evidence",
+      "meaning": "A stored quote and its web address that support a value in the app."
+    },
+    {
+      "term": "Drizzle",
+      "meaning": "The library the code uses to talk to the database."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "@workspace/db",
+    "../../src/db"
+  ],
+  "used_by": [
+    "No caller is visible here. Likely called by a separate script that supplies the entries."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 4,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3bc6fc91bdec60df",
+      "title": "Imports",
+      "what": "Brings in the database helper functions, the project, change log and evidence tables, and the database connection.",
+      "why": "Needed to read and write the database.",
+      "watch_out": ""
+    },
+    {
+      "start": 5,
+      "end": 15,
+      "kind": "type",
+      "name": "ApproximateDelayEntry",
+      "id": "s2",
+      "hash": "acc850a1529e553f",
+      "title": "Shape of one entry",
+      "what": "Describes the fields every entry must contain.",
+      "why": "Keeps each entry's details consistent.",
+      "watch_out": ""
+    },
+    {
+      "start": 16,
+      "end": 31,
+      "kind": "function",
+      "name": "toSourceMetadata",
+      "id": "s3",
+      "hash": "27d1f4baca9d7e25",
+      "title": "Source domain summary",
+      "what": "Turns a list of web addresses into unique addresses and their site names, dropping anything after a hash mark.",
+      "why": "Stores where the evidence came from in the change log.",
+      "watch_out": "An address that cannot be read is silently dropped, so a bad link can vanish from the record."
+    },
+    {
+      "start": 32,
+      "end": 84,
+      "kind": "function",
+      "name": "markApproximateDelays (part 1)",
+      "id": "s4",
+      "hash": "b537415bf5ac6e80",
+      "title": "Checks for each entry",
+      "what": "Finds exactly one matching project, confirms its name and delay months still match, confirms the note is not blank and evidence exists, and skips entries already flagged.",
+      "why": "Stops changes to projects that have changed since the list was prepared.",
+      "watch_out": "A failed check stops the run, and entries processed earlier stay written because each commits on its own."
+    },
+    {
+      "start": 85,
+      "end": 119,
+      "kind": "method",
+      "name": "markApproximateDelays: if",
+      "id": "s5",
+      "hash": "057cfde23eb2e4ee",
+      "title": "Refusing to replace a different note",
+      "what": "If a project already has a different approximation note, stops with an error. Otherwise prepares the flag and note updates and the change log rows.",
+      "why": "Likely reason: protects a note someone already wrote.",
+      "watch_out": "Changing an existing note needs someone to clear it by hand first."
+    },
+    {
+      "start": 120,
+      "end": 154,
+      "kind": "method",
+      "name": "markApproximateDelays: if",
+      "id": "s6",
+      "hash": "820087c5efe9afe8",
+      "title": "Writing the flag",
+      "what": "In execute mode, saves the flag, note and change log rows in one transaction. In dry run mode, only prints the planned line.",
+      "why": "The transaction keeps the flag and its log together.",
+      "watch_out": "The write only applies if the delay months still equal the expected number at that moment."
+    },
+    {
+      "start": 155,
+      "end": 166,
+      "kind": "function",
+      "name": "assertNoDelayValues",
+      "id": "s7",
+      "hash": "a7a1ac40e0e44aba",
+      "title": "Industry check for delay values",
+      "what": "Lists projects in an industry that still have delay months and throws an error if any exist.",
+      "why": "Lets someone prove an industry has no delay values before saying so.",
+      "watch_out": "It only checks whether a value exists, not whether the value is correct."
+    }
+  ],
+  "explained_at": "2026-11-12T03:05:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Marks chosen projects as having an approximate delay by saving a note and a flag, with links to evidence, and refuses any change that does not match what was expected.",
+  "purpose": "Lets the owner record that a project's delay figure is an estimate, with a written reason and evidence, without changing the delay number itself.",
+  "why": "Likely reason: some delay figures are estimates, and the flag keeps readers from taking them as exact.",
+  "how": "For each entry, finds exactly one matching project and checks its name, industry and current delay months. Checks the note is not blank and that active evidence exists at the given field paths. Skips projects already flagged with the same note. Otherwise prepares the flag and note updates and matching change log rows. With the execute flag set, it writes them in one transaction. A separate check confirms an industry has no delay values.",
+  "inputs": "A list of entries, each with industry, project id, name, expected delay months, note and evidence field paths. An execute flag on the command line.",
+  "outputs": "Console lines showing would flag, flagged or already current. When executed, updates to project rows and new change log rows.",
+  "risks": "Without the execute flag nothing is written. With it, the flag and note are written. A different existing note is never overwritten. Earlier entries stay written if a later entry fails, because each entry is committed on its own.",
+  "debug": "Read the console message. Expected one project means the id or industry is wrong. Expected delay months differs means the project changed since the list was made. No active evidence means the evidence field paths do not match stored evidence.",
+  "summary_hash": "sha256:6043351cccdef6499956dd212d82f6679d0cb485126a4c3a8994b10abedf2641"
+}

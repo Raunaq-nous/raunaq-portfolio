@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/reality-scan/deckResearch.ts",
+  "language": "TypeScript",
+  "lines": 94,
+  "hash": "sha256:6ca69f9599826b3930a9cf4802f442e2baa05c39fde026b0e3e8f376ead0b973",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Failures are reported as notices, which is a clear approach.",
+      "No test is visible.",
+      "The project name check uses loose word matching that can keep or reject the wrong pages."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Crossref",
+      "meaning": "a free public index of academic papers."
+    },
+    {
+      "term": "Excerpt",
+      "meaning": "a short passage taken from a page."
+    },
+    {
+      "term": "Search only",
+      "meaning": "a search result that was not confirmed by reading a relevant passage."
+    },
+    {
+      "term": "JSDOM",
+      "meaning": "a tool that reads web page markup into a document, as a browser does."
+    }
+  ],
+  "depends_on": [
+    "../../lib/safeFetch",
+    "../../search/createRouter",
+    "../../lib/researchSources",
+    "../../../../../lib/api-client-react/src/scan-deck",
+    "jsdom"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/reality-scan/deckAssistant.ts",
+    "artifacts/api-server/src/tools/reality-scan/entryRoutes.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "10b958c9b788f3f9",
+      "title": "Imports and the page reader",
+      "what": "Loads the safe fetch helper, the search helper, the source registry, and the page reader, which is loaded at runtime so it stays out of the server bundle.",
+      "why": "The code comment says the page reader needs companion files at runtime, so it is not bundled.",
+      "watch_out": "The server must have the page reader installed at runtime."
+    },
+    {
+      "start": 9,
+      "end": 18,
+      "kind": "function",
+      "name": "cleanResearchText, validUrl",
+      "id": "s2",
+      "hash": "590f286870bf035d",
+      "title": "Turning page markup into plain text",
+      "what": "Converts page markup into plain text. When markup is present it removes script, style, navigation and footer parts, then collapses spacing. It also checks that a web address starts with http or https.",
+      "why": "Likely reason: the assistant should read words, not code or menus.",
+      "watch_out": "Only some tags are removed, so menus or banners in other tags can stay in the excerpt."
+    },
+    {
+      "start": 19,
+      "end": 21,
+      "kind": "function",
+      "name": "isUsableResearchText",
+      "id": "s3",
+      "hash": "956e88908a08effa",
+      "title": "Spotting pages that block access",
+      "what": "Accepts a page only if it has at least 150 characters and its opening 1200 characters contain no common block message, such as access denied or a human check.",
+      "why": "Likely reason: a block page is not evidence, so it is rejected.",
+      "watch_out": "The list of block phrases is fixed, so a new block wording would pass as usable."
+    },
+    {
+      "start": 22,
+      "end": 81,
+      "kind": "function",
+      "name": "researchSlide (part 1)",
+      "id": "s4",
+      "hash": "2cc36ec97023fe36",
+      "title": "Finding and checking candidate pages",
+      "what": "Gathers candidate pages from a re-check, or from web search and, for literature requests, Crossref. Opens up to five. A page is unreachable if the request fails or it is blocked, and search only if it does not mention the chosen project. Search failures are recorded as notices, not errors.",
+      "why": "Likely reason: a search hit is not proof, so each page must show the project name and real text before it counts.",
+      "watch_out": "The project check uses word pieces of four or more letters, so a common word in a project name can let an unrelated page through."
+    },
+    {
+      "start": 82,
+      "end": 94,
+      "kind": "function",
+      "name": "researchSlide (part 2)",
+      "id": "s5",
+      "hash": "243f25a89d688ad1",
+      "title": "Saving passages and returning results",
+      "what": "For each accepted page, takes a passage of about 5500 characters, starting shortly before the selected text when it can be found. Saves the passage to the research registry and marks the source fetched. Pages that fail on the way are marked unreachable. Returns the query, sources, notices and a statement that search matches are not proof and that no records or slide text changed.",
+      "why": "The code comment says the excerpt is centred on the selected detail rather than an unrelated page header.",
+      "watch_out": "The passage is a fixed window, so the real claim may lie outside it. The assistant is told that excerpts are not full pages."
+    }
+  ],
+  "explained_at": "2026-11-12T05:00:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Searches the web and academic index for a slide's topic, opens the results, and keeps only pages that mention the selected project and contain readable text.",
+  "purpose": "Supplies fresh sources to the deck assistant for research and re-check requests.",
+  "why": "Likely reason: the assistant must not claim something without a readable source, so pages are checked for access blocks and for the project name.",
+  "how": "1. Pick the project from the selected element or the message text. 2. Build a search query from the project name and topic words. 3. For a re-check, take up to four already-cited addresses. Otherwise run the web search and, for literature requests, the Crossref index. 4. Open up to five candidates. Reject pages that are unreachable, blocked, or do not mention the project. 5. For accepted pages, save an excerpt of about 5500 characters near the selected text. 6. Return the query, sources, notices and a limitation statement.",
+  "inputs": "The deck, the slide, an optional element id, the user message, and a flag for re-check.",
+  "outputs": "The search query, a list of sources each with a status of fetched, unreachable or search only, notices, and a limitation statement.",
+  "risks": "The project name check is loose, since any four-letter word piece can match. Pages come from search results and are fetched from the web. Search and Crossref failures are shown as notices, not errors.",
+  "debug": "If no sources appear, read the notices, which say whether web search or Crossref failed or returned nothing. A search only status means the page did not name the project. Many unreachable results suggest access blocks.",
+  "summary_hash": "sha256:6ca69f9599826b3930a9cf4802f442e2baa05c39fde026b0e3e8f376ead0b973"
+}

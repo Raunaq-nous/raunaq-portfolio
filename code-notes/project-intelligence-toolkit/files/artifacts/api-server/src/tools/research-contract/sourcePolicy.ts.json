@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/sourcePolicy.ts",
+  "language": "TypeScript",
+  "lines": 67,
+  "hash": "sha256:aa02c16c5623ec0637611bc6fcf6b09b5e893b73ce0e5f50c5e5b4513f6240f6",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Tier lists are hand-maintained and can fall out of date.",
+      "The official-path rule is broad and is not covered by a visible test.",
+      "Some date patterns promised in the comments are not implemented.",
+      "Partial tests exist for tier-4 skipping and date reading in scanInputs.test.ts."
+    ]
+  },
+  "terms": [
+    {
+      "term": "tier",
+      "meaning": "a trust level for a source, where 1 is the strongest and 4 is excluded"
+    },
+    {
+      "term": "predatory journal",
+      "meaning": "a publication that charges authors and gives little or no real peer review"
+    },
+    {
+      "term": "regular expression",
+      "meaning": "a compact text pattern used to match names and dates"
+    },
+    {
+      "term": "dateline",
+      "meaning": "a short line at the top of an article saying when it was published"
+    }
+  ],
+  "depends_on": [
+    "the built-in URL parser"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/research-contract/verifyFacts.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "function",
+      "name": "host",
+      "id": "s1",
+      "hash": "48e73a3e5bb0dfaa",
+      "title": "Site name reader",
+      "what": "Takes a web address and returns the site name in lowercase, without the www prefix. Returns an empty name if the address is not valid.",
+      "why": "Shared helper so every rule compares the same clean site name.",
+      "watch_out": "An invalid address gives an empty name that matches no site rule, so it falls to tier 3 by default."
+    },
+    {
+      "start": 19,
+      "end": 21,
+      "kind": "value",
+      "name": "BANNED_HOSTS",
+      "id": "s2",
+      "hash": "138e62f36000a0ba",
+      "title": "Blocked sites list",
+      "what": "Patterns for sites never used as evidence: Wikipedia and its copies, forums, blogs, essay and study-help sites, and academic sharing sites.",
+      "why": "Stated in the header: encyclopedias, wikis and user-generated content are excluded.",
+      "watch_out": "Sites are matched by name, so a new copy of a blocked site passes until someone adds it."
+    },
+    {
+      "start": 22,
+      "end": 29,
+      "kind": "value",
+      "name": "LOW_TIER_JOURNALS",
+      "id": "s3",
+      "hash": "16ff475ae3ff60f8",
+      "title": "Blocked publisher names",
+      "what": "Name patterns for publishers and journals known for low-quality or predatory publishing. They are matched against the publisher name, not the web address.",
+      "why": "Likely reason: some poor-quality journals look legitimate by their web address, so the publisher name is checked too.",
+      "watch_out": "Broad patterns could catch unrelated publisher names, so they need to stay specific."
+    },
+    {
+      "start": 30,
+      "end": 32,
+      "kind": "value",
+      "name": "OFFICIAL",
+      "id": "s4",
+      "hash": "cae13acc5eaf88fc",
+      "title": "Official site list",
+      "what": "Patterns for government, regulator, international body and stock exchange sites, which are trusted as tier 1.",
+      "why": "Stated in the header: official sources form tier 1.",
+      "watch_out": "Country-level government endings are trusted without checking who runs the site."
+    },
+    {
+      "start": 33,
+      "end": 39,
+      "kind": "value",
+      "name": "ESTABLISHED, SourceVerdict",
+      "id": "s5",
+      "hash": "9d74a3b88387803c",
+      "title": "Established publisher list and result shape",
+      "what": "Lists reputable publishers, news agencies, consultancies and research institutes trusted as tier 2. Also defines the result shape: a tier and an optional exclusion reason.",
+      "why": "Stated in the header: established sources form tier 2.",
+      "watch_out": "A publisher on this list is trusted by its name, and its individual pages are not checked."
+    },
+    {
+      "start": 40,
+      "end": 48,
+      "kind": "function",
+      "name": "classifySource",
+      "id": "s6",
+      "hash": "9d9862c23c9d63a1",
+      "title": "Classifying one source",
+      "what": "Checks a source in order: blocked site, blocked publisher, official site or investor and press release page, established publisher, and otherwise tier 3. Returns the tier and a reason if excluded.",
+      "why": "Stated in the header and the order of checks.",
+      "watch_out": "Any address containing investors or press-releases is trusted as official, even on an unrelated site."
+    },
+    {
+      "start": 49,
+      "end": 56,
+      "kind": "function",
+      "name": "classifyProjectSource",
+      "id": "s7",
+      "hash": "177bebf55b918047",
+      "title": "Project source check with dates",
+      "what": "Runs the normal source check, then also excludes a non-official source with no publication date, because a project fact must be placed in time.",
+      "why": "Stated in the comment above it.",
+      "watch_out": "A good source with no readable date is dropped, so date reading matters as much as the tier."
+    },
+    {
+      "start": 57,
+      "end": 67,
+      "kind": "function",
+      "name": "publicationDateFrom",
+      "id": "s8",
+      "hash": "1bf316568763ec1a",
+      "title": "Finding a page's publication date",
+      "what": "Looks for a publication date in the page markup, first from a published-time tag, then from a time element, then from a dateline near the top. Returns the date in standard form or nothing.",
+      "why": "Stated in the comment: publication metadata is in raw markup that text cleaning removes.",
+      "watch_out": "The comment promises year-only or year-month results, but the code returns only full dates, so partial dates are missed."
+    }
+  ],
+  "explained_at": "2026-11-12T05:13:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Sorts each web source into a trust tier from 1 (official) to 4 (excluded), blocks wikis, forums and predatory journals, and excludes undated non-official sources for project facts.",
+  "purpose": "Keeps weak sources out of research, so only official, established or other web sources can feed facts.",
+  "why": "Stated in the header comment, which defines the tiers and the dating rule.",
+  "how": "First, read the site name from the address. Second, block banned sites and banned publisher names. Third, mark official sites or investor and press release pages as tier 1. Fourth, mark established publishers as tier 2. Fifth, everything else is tier 3. For project facts, exclude a non-official source that has no publication date. Dates come from page markup first, then from a dateline.",
+  "inputs": "A web address, an optional publisher name, and an optional publication date.",
+  "outputs": "A tier number and an exclusion reason when the source is excluded. A publication date string, or nothing, from page text.",
+  "risks": "Any address containing a word like investors or press-releases is treated as official, even on an unrelated site. Site and publisher lists are hand-written, so new sites default to tier 3. Date reading only recognises certain formats.",
+  "debug": "Read the exclusion reason text. It names the rule that fired. If a source is wrongly excluded as undated, check the page for a publication date in the expected format. The lists are the first place to look for surprising tiers.",
+  "summary_hash": "sha256:aa02c16c5623ec0637611bc6fcf6b09b5e893b73ce0e5f50c5e5b4513f6240f6"
+}

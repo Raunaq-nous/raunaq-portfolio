@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/buildRecipeFromScope.ts",
+  "language": "TypeScript",
+  "lines": 382,
+  "hash": "sha256:26fab42a4008a6ed5495d23d89a1b50e2d5738918ad26c14f8e07b99b1c3b1b4",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible for this file.",
+      "The early-stage branch in classifyOutcome returns the same label as the default, so it does nothing.",
+      "isRelevantToProject is defined but never called in this file.",
+      "Cost overrun is calculated in two places, which could drift apart.",
+      "Several totals and method flags are fixed values rather than measured ones.",
+      "Errors are thrown on purpose, so callers must catch them."
+    ]
+  },
+  "terms": [
+    {
+      "term": "pillar",
+      "meaning": "a theme that the evidence supports, found from the data rather than a fixed list"
+    },
+    {
+      "term": "sub-driver",
+      "meaning": "a more specific cause or practice inside a pillar"
+    },
+    {
+      "term": "verified fact",
+      "meaning": "a quote that has passed the checks and is allowed to shape the themes"
+    },
+    {
+      "term": "enrich mode",
+      "meaning": "the scope type that uses Yard project data, which the preview requires"
+    },
+    {
+      "term": "schema",
+      "meaning": "a rule book that describes the exact fields and types a result must have"
+    }
+  ],
+  "depends_on": [
+    "lib/fx (yardCostDeviation)",
+    "db",
+    "@workspace/db",
+    "reality-scan/scope",
+    "lessons-learnt/framework",
+    "lessons-learnt/recipeResult",
+    "lessons-learnt/buildReferenceSlides",
+    "research-contract/verifyFacts",
+    "lessons-learnt/runner (MAX_PROJECTS_PER_RUN)"
+  ],
+  "used_by": [
+    "POST /preview route (named in the file's header comment; the route file is not in this packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 28,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "9512275c8ca0f4d4",
+      "title": "Imports and dependencies",
+      "what": "Brings in the database, shared data types, scope resolution, theme logic, deck builder, fact verification, and the per-run project cap.",
+      "why": "Reason not stated in the code beyond the header comment about matching the runner path.",
+      "watch_out": "Changes to the runner path can change the preview silently, because this file must follow it."
+    },
+    {
+      "start": 29,
+      "end": 53,
+      "kind": "function",
+      "name": "matchProjectIdsByNames",
+      "id": "s2",
+      "hash": "e65c41c4ae96da19",
+      "title": "Matching projects by name",
+      "what": "Finds projects whose names match the names a user typed. Exact matches are used first, and partial matches are used only when no exact match exists.",
+      "why": "Lets a user name projects without knowing their IDs, while avoiding loose matches when an exact one exists.",
+      "watch_out": "Partial matching works in both directions, so a short name could match many projects."
+    },
+    {
+      "start": 54,
+      "end": 59,
+      "kind": "function",
+      "name": "num",
+      "id": "s3",
+      "hash": "3e947a7a4d37e954",
+      "title": "Safe number reading",
+      "what": "Turns a stored value into a number. Blank values become missing, and commas are removed before reading.",
+      "why": "Stored budgets may arrive as text with commas in them.",
+      "watch_out": "Zero is kept as zero and blank stays missing, so do not change one into the other."
+    },
+    {
+      "start": 60,
+      "end": 92,
+      "kind": "function",
+      "name": "classifyOutcome",
+      "id": "s4",
+      "hash": "1c14f7588fae42bd",
+      "title": "Outcome label for each project",
+      "what": "Labels each project as Cautionary, Overran, Delivered or In progress, using its status, cost overrun and delay. Cancelled, paused and similar statuses win first, then cost overruns above 25 percent or delays above 24 months.",
+      "why": "These labels drive the strength and risk counts that appear in the results.",
+      "watch_out": "The early-stage check does not change the result, so the status wording must still match the keyword lists."
+    },
+    {
+      "start": 93,
+      "end": 97,
+      "kind": "function",
+      "name": "honestyForQuote",
+      "id": "s5",
+      "hash": "b8e642f5c7ced42c",
+      "title": "Quote honesty label",
+      "what": "Marks a quote as unsourced when it has no web link, and as partial otherwise.",
+      "why": "Likely reason: stops quotes from counting as fully verified before a later check confirms them.",
+      "watch_out": "No quote is marked verified here, so verification depends entirely on the separate check."
+    },
+    {
+      "start": 98,
+      "end": 109,
+      "kind": "function",
+      "name": "isRelevantToProject",
+      "id": "s6",
+      "hash": "ea43ae30296db816",
+      "title": "Check whether a text is about a project",
+      "what": "Decides whether a passage is probably about a project. It must be at least 20 characters and either mention a meaningful word from the project name or be at least 40 characters long.",
+      "why": "Reason not stated in the code. In this file the check is defined but never called.",
+      "watch_out": "Any passage of 40 or more characters passes, so the check is loose if it is ever used."
+    },
+    {
+      "start": 110,
+      "end": 150,
+      "kind": "function",
+      "name": "buildRecipeFromScope (part 1)",
+      "id": "s7",
+      "hash": "e43f9d0e2a222015",
+      "title": "Loading the scope and quotes",
+      "what": "Resolves the scope, optionally keeps only the named projects, caps the count at the per-run limit, then loads project rows and their active quotes. It stops with an error if the scope is not enrich mode or nothing matches.",
+      "why": "The preview needs Yard project data, so other scope types are refused.",
+      "watch_out": "Projects beyond the cap are dropped, and only the coverage record shows it, so the caller must display that truncated flag."
+    },
+    {
+      "start": 151,
+      "end": 209,
+      "kind": "method",
+      "name": "buildRecipeFromScope: for",
+      "id": "s8",
+      "hash": "79b8efb94c5b7a22",
+      "title": "Turning quotes into facts and labelling projects",
+      "what": "Turns each quote into a fact record, runs the verification step on them, then labels every project with its outcome, cost overrun, delay, budgets and technology.",
+      "why": "Likely reason: builds one common fact list that the later steps and the deck all read.",
+      "watch_out": "Cost overrun is calculated here and again inside classifyOutcome, so the two could disagree if one changes."
+    },
+    {
+      "start": 210,
+      "end": 247,
+      "kind": "function",
+      "name": "buildRecipeFromScope (part 3)",
+      "id": "s9",
+      "hash": "bd9d8d878d828c22",
+      "title": "Building themes and attaching facts",
+      "what": "Derives the themes from verified facts and stops with an error if none can be supported. Then it sorts each verified fact into one theme and, where it fits, one sub-driver.",
+      "why": "Themes come from the evidence, not a fixed list, so a run with no matching evidence produces no deck.",
+      "watch_out": "Only facts marked verified are routed, so if verification marks nothing, the run fails with the insufficient evidence error."
+    },
+    {
+      "start": 248,
+      "end": 295,
+      "kind": "method",
+      "name": "buildRecipeFromScope: for",
+      "id": "s10",
+      "hash": "f16cde84de4d289a",
+      "title": "Counting strengths and risks per theme",
+      "what": "For each theme, counts the distinct projects that were delivered (strengths) and those that overran or are cautionary (risks). It does the same count for each sub-driver.",
+      "why": "These counts feed the patterns and recommendations later on.",
+      "watch_out": "Theme counts are per project, but sub-driver counts are per fact, so the two numbers cannot be compared directly."
+    },
+    {
+      "start": 296,
+      "end": 350,
+      "kind": "method",
+      "name": "buildRecipeFromScope: if",
+      "id": "s11",
+      "hash": "ba6c9125a299ab05",
+      "title": "Writing patterns, recommendations and totals",
+      "what": "Records a failure pattern when a theme has at least two risky projects and two facts, and a success pattern when it has at least two delivered projects. Then it writes one recommendation per theme from its top sub-driver, and fills in the totals and method notes.",
+      "why": "Requiring two projects stops a single case from being presented as a pattern.",
+      "watch_out": "The thresholds are fixed numbers in the code, so changing them changes which patterns appear."
+    },
+    {
+      "start": 351,
+      "end": 382,
+      "kind": "function",
+      "name": "buildRecipeFromScope (part 6)",
+      "id": "s12",
+      "hash": "1b83d14e51221023",
+      "title": "Building slides and returning the result",
+      "what": "Builds the deck slides from the results, then checks the whole result against the stored schema and returns it with a timestamp.",
+      "why": "The schema check makes sure the stored result has the expected shape before anything uses it.",
+      "watch_out": "If any earlier step changes a field shape, this check throws and the whole preview fails."
+    }
+  ],
+  "explained_at": "2026-11-12T04:27:39+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the full preview result for a lessons-learnt scope: it finds the projects, sorts their evidence into themes, counts strengths and risks, and returns the result with its deck slides.",
+  "purpose": "Gives the Beacon preview the same result that the downloaded PowerPoint is built from, so the two match.",
+  "why": "The header comment says it follows the same path as the lessons-learnt runner, which keeps the preview and the download consistent.",
+  "how": "In order: resolve the scope and check it is in enrich mode; optionally keep only the named projects; cap the number of projects; load project rows and active quotes; turn quotes into facts and verify them; label each project's outcome; derive themes from verified facts; attach facts to themes and sub-drivers; count strength and risk projects; write patterns and one recommendation per theme; add totals; build the slides; check the final result against a schema and return it.",
+  "inputs": "A lessons-learnt scope, and optionally a list of project names to narrow the scope.",
+  "outputs": "A RecipeResult object with projects, facts, themes, patterns, recommendations, slides, totals and method notes.",
+  "risks": "The function throws an error when the scope is the wrong type, nothing matches, or no theme can be evidenced, so callers must handle those errors. The methodology flag is always set to true, and the unconfirmed count is always zero, whatever the real data says.",
+  "debug": "Start with the error message, which says which check failed. If the preview shows zero themes, look at how many facts are marked verified, since only verified facts are routed. If a project's outcome looks wrong, check classifyOutcome against the project's status, cost and delay. If the final check fails, a field shape has changed in one of the steps.",
+  "summary_hash": "sha256:26fab42a4008a6ed5495d23d89a1b50e2d5738918ad26c14f8e07b99b1c3b1b4"
+}

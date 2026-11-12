@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/runner.ts",
+  "language": "TypeScript",
+  "lines": 216,
+  "hash": "sha256:fa8ca2e9ae678b5e9f84997a50b1e7a5d09120d0f06f0689c44470a1c8ea3602",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are caught and written to the run status, and cancellation is checked between stages.",
+      "No test file was shown for the lock, resume or cancellation behaviour.",
+      "If the server stops mid-run, the run can stay marked running, and this file shows no automatic reset."
+    ]
+  },
+  "terms": [
+    {
+      "term": "advisory lock",
+      "meaning": "a database lock agreed by name, which stops two workers from running the same job."
+    },
+    {
+      "term": "connection pool",
+      "meaning": "a set of reusable connections to the database, so they do not have to be opened each time."
+    },
+    {
+      "term": "stage",
+      "meaning": "one step of the analysis, such as checking sources or building the deck model."
+    },
+    {
+      "term": "checkpoint",
+      "meaning": "a saved snapshot of progress that lets an interrupted stage be resumed or inspected."
+    },
+    {
+      "term": "trace",
+      "meaning": "a running list of what a stage did, with the time of each step."
+    },
+    {
+      "term": "insufficient evidence",
+      "meaning": "a result where the run does not have enough sources to reach a conclusion."
+    },
+    {
+      "term": "pipeline",
+      "meaning": "the module that performs the actual analysis steps."
+    }
+  ],
+  "depends_on": [
+    "pg (library)",
+    "drizzle-orm",
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/lib/portkeyOpenAI",
+    "@workspace/db",
+    "artifacts/api-server/src/tools/research-contract/stage",
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/pipeline",
+    "artifacts/api-server/src/evidence/runEvents",
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/types"
+  ],
+  "used_by": [
+    "None visible in this packet. The start function kickRun is the entry point other code is expected to call."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "93d2f4230fc59114",
+      "title": "Imports and stage list link",
+      "what": "Brings in the database tools, the run tables, the stage contract, the analysis pipeline and the usage meter, and sets the list of stage names from the pipeline.",
+      "why": "The header says lifecycle code lives here and stage work lives in the pipeline.",
+      "watch_out": "The stage list comes from the pipeline, so adding a stage there changes the order this file runs."
+    },
+    {
+      "start": 17,
+      "end": 21,
+      "kind": "type",
+      "name": "StageKey",
+      "id": "s2",
+      "hash": "fb862e511d52cde2",
+      "title": "Stage name type and project cap",
+      "what": "Defines the valid stage names as a type, and keeps a project cap that no longer limits anything.",
+      "why": "The comment says the cap is kept for legacy callers, because version three covers every project in scope.",
+      "watch_out": "The cap is set to the largest safe whole number, so any code that relies on it as a real limit will get no limit."
+    },
+    {
+      "start": 22,
+      "end": 30,
+      "kind": "class",
+      "name": "InsufficientEvidenceError",
+      "id": "s3",
+      "hash": "696127663d8e63ea",
+      "title": "Insufficient evidence error",
+      "what": "A specific error type for a run that lacks enough evidence to finish. It lets the run end with its own status instead of a generic failure.",
+      "why": "Likely reason: a clear status tells the user the problem is missing evidence rather than a bug.",
+      "watch_out": "Only this error type sets the insufficient status. Any other error in the same stage is recorded as failed."
+    },
+    {
+      "start": 31,
+      "end": 36,
+      "kind": "value",
+      "name": "lockPool, lockPool error handler",
+      "id": "s4",
+      "hash": "a8d5944a3341e96f",
+      "title": "Lock connection pool",
+      "what": "Sets up a small pool of up to four database connections used only for holding run locks, and logs idle connection errors instead of crashing.",
+      "why": "Likely reason: keeps lock connections apart from the main database pool.",
+      "watch_out": "A lock is tied to the connection that took it, so that connection must be released when the run ends."
+    },
+    {
+      "start": 37,
+      "end": 41,
+      "kind": "function",
+      "name": "lockKey",
+      "id": "s5",
+      "hash": "ee971c1e1162c460",
+      "title": "Lock name for a run",
+      "what": "Builds the lock name for a run from its ID, so each run has its own lock.",
+      "why": "Likely reason: one lock per run stops two workers from running the same run at once.",
+      "watch_out": "Changing this name prefix while runs are active lets a second worker start a run that is already running, because the old lock name would not match."
+    },
+    {
+      "start": 42,
+      "end": 45,
+      "kind": "function",
+      "name": "logLine",
+      "id": "s6",
+      "hash": "6e9ba65355a19a8d",
+      "title": "Timestamped log line",
+      "what": "Adds the current time to a message so each line in a stage log shows when it happened.",
+      "why": "Likely reason: logs are easier to follow when each step has a time.",
+      "watch_out": "The time is taken from the server, so logs from different servers may not line up exactly."
+    },
+    {
+      "start": 46,
+      "end": 50,
+      "kind": "function",
+      "name": "getRun",
+      "id": "s7",
+      "hash": "404fc657139753bd",
+      "title": "Run lookup",
+      "what": "Reads one run's row from the database by its ID.",
+      "why": "Likely reason: the run's status is read again before each step so a cancellation is noticed.",
+      "watch_out": "Returns nothing when no run matches, so callers must check for that."
+    },
+    {
+      "start": 51,
+      "end": 56,
+      "kind": "function",
+      "name": "getStageRow",
+      "id": "s8",
+      "hash": "1381d6ba782cc387",
+      "title": "Stage row lookup",
+      "what": "Reads the record for one stage of one run.",
+      "why": "Likely reason: each stage keeps its own progress and result record.",
+      "watch_out": "Stage rows are unique per run and stage name, so this returns at most one record."
+    },
+    {
+      "start": 57,
+      "end": 62,
+      "kind": "function",
+      "name": "requireStageSummary",
+      "id": "s9",
+      "hash": "05ca534a1a65998e",
+      "title": "Prerequisite summary check",
+      "what": "Gets the saved summary of an earlier stage, and stops with an error if that stage did not succeed or has no summary.",
+      "why": "Likely reason: later stages depend on earlier results, so they must not run on missing data.",
+      "watch_out": "The error is the only signal, so the calling stage fails instead of skipping the missing part."
+    },
+    {
+      "start": 63,
+      "end": 66,
+      "kind": "type",
+      "name": "KickResult",
+      "id": "s10",
+      "hash": "d97c0854e1cc2310",
+      "title": "Start request result",
+      "what": "Describes the possible answers to a request to start or resume a run: success with a flag for whether it resumed, or one of a fixed list of reasons it could not start.",
+      "why": "Likely reason: callers get a clear reason rather than a vague error.",
+      "watch_out": "Any caller must handle each listed code, so a new code added here needs matching handling elsewhere."
+    },
+    {
+      "start": 67,
+      "end": 125,
+      "kind": "function",
+      "name": "kickRun (part 1)",
+      "id": "s11",
+      "hash": "954a12c89dd00fc7",
+      "title": "Start a run: checks and lock",
+      "what": "Checks the run exists and is not cancelled or finished, refuses runs from older engines, refuses runs marked insufficient evidence, takes the run's lock, and marks the run as running.",
+      "why": "The comment says earlier engines stored different stage results under some of the same names, so they cannot be resumed safely.",
+      "watch_out": "The lock is released in several separate places, so any new early return must also release the lock and connection."
+    },
+    {
+      "start": 126,
+      "end": 128,
+      "kind": "function",
+      "name": "kickRun (part 2)",
+      "id": "s12",
+      "hash": "1b3789184a69fdd2",
+      "title": "Start a run: background work",
+      "what": "Returns success straight away while the stages run in the background, and releases the lock and connection when that background work ends.",
+      "why": "Likely reason: a full analysis can take a long time, so the request should not wait for it.",
+      "watch_out": "Background errors reach only the logs and the run status, so the caller is not told when a failure happens."
+    },
+    {
+      "start": 129,
+      "end": 177,
+      "kind": "function",
+      "name": "executeStages (part 1)",
+      "id": "s13",
+      "hash": "d4ee3d27ef59cd2f",
+      "title": "Stage loop setup and progress saving",
+      "what": "Goes through the stages in order, skipping finished ones. For each stage it marks the run's current stage, saves a running record with progress and a trace, and sets up throttled progress saving.",
+      "why": "Likely reason: saving progress lets an interrupted run show what it had done.",
+      "watch_out": "A retried stage starts with an empty trace, so earlier trace lines are not carried over, although the stage log keeps a note of the restart."
+    },
+    {
+      "start": 178,
+      "end": 216,
+      "kind": "function",
+      "name": "executeStages (part 2)",
+      "id": "s14",
+      "hash": "b40d183bf92a6daa",
+      "title": "Stage run, success and failure",
+      "what": "Runs one stage, records its model usage, and saves either success with its summary and log, or failure with the reason. Insufficient evidence ends the run with that status. Any other failure marks the run failed and stops. When every stage succeeds, the run is marked succeeded.",
+      "why": "Likely reason: each outcome has its own status so a user can tell a failure from missing evidence.",
+      "watch_out": "If the run is cancelled during a stage, the code returns without saving that stage's result, so the work is discarded."
+    }
+  ],
+  "explained_at": "2026-11-12T04:46:42+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs a Lessons Learnt analysis stage by stage, saves progress, locks each run so only one worker runs it, and records whether it succeeded, failed or lacked enough evidence.",
+  "purpose": "Controls the life of a run: starting or resuming it, running each stage in order, and recording the outcome so the run can be viewed or restarted.",
+  "why": "The header says lifecycle, locks and stage records live here, while the stage work itself lives in the recipe pipeline. It also says runs from earlier engines stay viewable but cannot be resumed.",
+  "how": "The start function checks that the run exists and is not finished or cancelled, checks it was made by this engine, takes a database lock named for the run, marks the run as running, and starts the stage loop in the background. The stage loop skips stages already finished, saves a running record with progress and a trace, runs the stage, and records success, failure or insufficient evidence.",
+  "inputs": "A run ID. Reads the run and stage rows from the database, and uses the model usage meter.",
+  "outputs": "A result saying whether the run started or resumed, or giving a reason it could not start, such as not_found, already_running, cancelled, incompatible_version or insufficient_evidence. Writes stage and run status rows, a progress trace and a log.",
+  "risks": "Stage work continues in the background, so the caller only learns of errors from logs and the database. If the server stops mid-run, the run can stay marked running. Progress is saved about every 1.5 seconds, so the last few trace lines can be lost on a crash. The trace is capped at 600 lines.",
+  "debug": "If a run stays running, check its status in the database and whether its lock is still held, then read console lines beginning with lessons-learnt. If a restart returns incompatible_version, the run came from an older engine. If a stage keeps restarting, read its log and error in its stage row. Prerequisite errors come from requireStageSummary.",
+  "summary_hash": "sha256:fa8ca2e9ae678b5e9f84997a50b1e7a5d09120d0f06f0689c44470a1c8ea3602"
+}

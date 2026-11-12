@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "path": "scripts/local/dev.mjs",
+  "language": "JavaScript",
+  "lines": 46,
+  "hash": "sha256:10b41cc1dcee7c067365f9ccc1d574e16eedcd710ef277a4946c8def75cc2786",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Failures to start a service are not handled explicitly.",
+      "No test is visible in this file.",
+      "Shutdown is handled carefully, with a guard against running it twice."
+    ]
+  },
+  "terms": [
+    {
+      "term": "spawn",
+      "meaning": "Starts another program from inside this script."
+    },
+    {
+      "term": "pnpm",
+      "meaning": "The package manager used to run the project's commands."
+    },
+    {
+      "term": "proxy",
+      "meaning": "A forwarder that passes the web app's API requests to the API server."
+    },
+    {
+      "term": "terminate signal",
+      "meaning": "A stop message sent by Ctrl+C or by a process manager asking a program to stop."
+    },
+    {
+      "term": "environment variable",
+      "meaning": "A named setting passed to a program by the operating system."
+    },
+    {
+      "term": "filter",
+      "meaning": "A pnpm option that limits which package a command runs in."
+    }
+  ],
+  "depends_on": [
+    "Node.js",
+    "pnpm",
+    "@workspace/api-server",
+    "@workspace/capital-projects",
+    "scripts/local/with-env.mjs (this script is normally run through it)."
+  ],
+  "used_by": [
+    "Root package.json dev command, which runs it through scripts/local/with-env.mjs."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup, procs",
+      "id": "s1",
+      "hash": "c809f99de7a74f9e",
+      "title": "Setup and port choices",
+      "what": "Finds the repo root and reads the two port settings, with defaults.",
+      "why": "Lets developers change ports without editing code.",
+      "watch_out": "Ports are passed on as text. A bad value only shows up later as a failed connection."
+    },
+    {
+      "start": 13,
+      "end": 30,
+      "kind": "function",
+      "name": "start",
+      "id": "s2",
+      "hash": "9dcff2030a297436",
+      "title": "Starting one service",
+      "what": "Starts a service with pnpm in the repo root, with extra settings. Each line of its output is labelled with the service name. If the service exits, the script reports the exit code and stops everything.",
+      "why": "Keeps both services' logs readable in a single window.",
+      "watch_out": "A service that stops without an exit code is reported as failing with code 1."
+    },
+    {
+      "start": 31,
+      "end": 37,
+      "kind": "function",
+      "name": "shutdown, process SIGINT handler",
+      "id": "s3",
+      "hash": "084e3e610d5108b9",
+      "title": "Stopping both services cleanly",
+      "what": "When either service ends, or the developer presses Ctrl+C, asks both to stop politely. It makes sure this happens only once and then exits.",
+      "why": "Prevents servers from being left running in the background.",
+      "watch_out": "The script exits after half a second whether or not the services have finished stopping."
+    },
+    {
+      "start": 38,
+      "end": 46,
+      "kind": "event handler",
+      "name": "process SIGTERM handler",
+      "id": "s4",
+      "hash": "0c07041785a044b4",
+      "title": "Handling terminate, then starting both servers",
+      "what": "Stops both services when a terminate signal arrives from another tool. It then starts the API server and the web app with their settings, and prints both addresses.",
+      "why": "Other tools and hosts often stop programs with a terminate signal rather than Ctrl+C.",
+      "watch_out": "The web app receives the API address through its proxy setting, so the API port must match the one used for the API server."
+    }
+  ],
+  "explained_at": "2026-11-12T06:58:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Starts the API server and the web app together for local development, and stops both when either one stops or the developer presses Ctrl+C.",
+  "purpose": "Lets a developer run the whole app with one command.",
+  "why": "Likely reason: running two servers in separate terminals is easy to get wrong, and the shutdown logic keeps the pair in step. The header states what the two ports are for.",
+  "how": "Reads the two port settings from the environment, with defaults of 8080 for the API and 5173 for the web app. It starts each service with pnpm and its own settings, labels and forwards their output, and stops everything if either one exits. On Ctrl+C or a terminate signal it stops both and exits after half a second. It then prints the two local addresses.",
+  "inputs": "The environment settings API_PORT and WEB_PORT, and the repo layout.",
+  "outputs": "Labelled console output from both servers, the two local addresses, and an exit code.",
+  "risks": "If one service crashes, the other is stopped too. Changing the package names in the pnpm arguments will break startup. Spawn errors are not handled explicitly. The fixed half second delay can cut off a slow shutdown.",
+  "debug": "If nothing starts, check that pnpm is installed and that the package names exist. If a port is busy, set API_PORT or WEB_PORT. If the web app cannot reach the API, check that the proxy target uses the same port. Use the bracketed label on each line to see which service failed.",
+  "summary_hash": "sha256:10b41cc1dcee7c067365f9ccc1d574e16eedcd710ef277a4946c8def75cc2786"
+}

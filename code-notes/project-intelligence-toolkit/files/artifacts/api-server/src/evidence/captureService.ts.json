@@ -1,0 +1,538 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/evidence/captureService.ts",
+  "language": "TypeScript",
+  "lines": 626,
+  "hash": "sha256:790bcf5caf1853d134df73994025f00d53561cf2fb5c369d7063ed362a5eec89",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are handled and classified clearly, which is a strength.",
+      "No test file or example output is visible, so behaviour is not shown to be correct.",
+      "Depends on external tools (curl, pdftotext, pdftoppm) and a fixed browser path, which can differ between machines.",
+      "The cache rule means a good result is never refreshed unless forced."
+    ]
+  },
+  "terms": [
+    {
+      "term": "verbatim",
+      "meaning": "word for word, as in the exact quote the source must contain."
+    },
+    {
+      "term": "headless browser",
+      "meaning": "a web browser that runs with no window, controlled by a program."
+    },
+    {
+      "term": "user agent",
+      "meaning": "the name a browser sends to a website to say what kind of browser it is."
+    },
+    {
+      "term": "DNS failure",
+      "meaning": "the site's name could not be turned into an address, often because the domain is gone."
+    },
+    {
+      "term": "TLS error",
+      "meaning": "a problem with the secure (HTTPS) connection, such as an invalid certificate."
+    },
+    {
+      "term": "SSRF guard",
+      "meaning": "a safety check that refuses links pointing at private or internal network addresses."
+    },
+    {
+      "term": "content-addressed",
+      "meaning": "named by a fingerprint of the content, so identical files share one name."
+    },
+    {
+      "term": "text layer",
+      "meaning": "the searchable text stored inside a PDF, separate from how the page looks."
+    }
+  ],
+  "depends_on": [
+    "playwright",
+    "drizzle-orm",
+    "@workspace/db",
+    "../db",
+    "../lib/curlFetch",
+    "../lib/safeFetch",
+    "./captureStorage",
+    "./identity",
+    "./browserScripts",
+    "child_process (execFile)",
+    "external programs: curl, pdftotext, pdftoppm, chromium"
+  ],
+  "used_by": [
+    "Not visible in the file. Its exported functions are called by other code not shown."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 42,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d93ac53abf2aef40",
+      "title": "Setup, settings and pattern lists",
+      "what": "Sets the service's purpose in a header comment, then defines the environment name, time limits (30 seconds to load a page, 150 seconds per source), the seven-day failure expiry, a fallback user agent, and the patterns that spot bot checks, login walls and cookie buttons.",
+      "why": "The header explains the fallback order and the one-result-per-attempt rule. The time limits and patterns are not explained further in the code.",
+      "watch_out": "Changing the failure expiry changes how often failed sources are retried, which changes run time and load on the sites."
+    },
+    {
+      "start": 43,
+      "end": 47,
+      "kind": "type",
+      "name": "CaptureStatus",
+      "id": "s2",
+      "hash": "3103c539764301df",
+      "title": "Possible result labels",
+      "what": "Lists every status a capture can end with, such as verbatim found, close match, not visible, bot check, login wall, DNS failure, timeout, and any HTTP error code.",
+      "why": "Reason not stated in the code. Fixed labels let the database and screens filter results consistently.",
+      "watch_out": "A new label must also be handled wherever results are read, or it will appear as an unknown status."
+    },
+    {
+      "start": 48,
+      "end": 68,
+      "kind": "type",
+      "name": "CaptureOutcome",
+      "id": "s3",
+      "hash": "8aaa75445cc3472c",
+      "title": "Shape of one capture result",
+      "what": "Defines everything one attempt can report: the final status, the layer used, addresses, HTTP status, matched and closest text, anchor counts, page number, highlight box, image, page text, note, and the list of attempts.",
+      "why": "Reason not stated in the code. A single shape lets web and PDF paths return the same kind of result.",
+      "watch_out": "The image is held in memory only until it is saved, and it is kept only when the result is genuine."
+    },
+    {
+      "start": 69,
+      "end": 72,
+      "kind": "function",
+      "name": "normChars",
+      "id": "s4",
+      "hash": "ce52b83d0de79fed",
+      "title": "Normalising text for comparison",
+      "what": "Converts curly quotes and dash variants to plain ones and lowercases the text, so the server compares text the same way the browser script does.",
+      "why": "The comment says this is the same normalisation as the in-page script, so the two must agree.",
+      "watch_out": "If this differs from the browser copy, quotes found in the browser may not match on the server, or the reverse."
+    },
+    {
+      "start": 73,
+      "end": 75,
+      "kind": "function",
+      "name": "letters",
+      "id": "s5",
+      "hash": "832d4fc8a7f0a78a",
+      "title": "Keeping only letters and digits",
+      "what": "Normalises text and then removes everything except letters and digits, so comparisons ignore spacing and punctuation.",
+      "why": "Likely reason: small formatting differences in a quote should not stop a match.",
+      "watch_out": "Two phrases that differ only in punctuation will compare as equal, which is intended but can hide a real edit."
+    },
+    {
+      "start": 76,
+      "end": 88,
+      "kind": "function",
+      "name": "closestPhrase, wordCount",
+      "id": "s6",
+      "hash": "ed09ac0945bc6f7a",
+      "title": "Finding the closest partial match",
+      "what": "Finds the longest run of the quote's words, at least half of them, that appears on the page, and returns that run. Also counts words in a text.",
+      "why": "Likely reason: when the full quote is missing, the closest run shows the reviewer what the page actually says.",
+      "watch_out": "The search starts with the longest runs and stops at the first match, so a common phrase can be reported as the closest match even when it is only loosely related."
+    },
+    {
+      "start": 89,
+      "end": 91,
+      "kind": "function",
+      "name": "closestScore",
+      "id": "s7",
+      "hash": "0097285363c36e63",
+      "title": "Scoring the closest match",
+      "what": "Turns the closest partial phrase into a fraction of the quote's word count, rounded to two decimal places. Returns nothing if there is no partial phrase.",
+      "why": "Gives reviewers a single number for how close a near-miss is.",
+      "watch_out": "The score counts words, not meaning, so a close score does not prove the wording is similar in substance."
+    },
+    {
+      "start": 92,
+      "end": 95,
+      "kind": "class",
+      "name": "BrowserGone",
+      "id": "s8",
+      "hash": "589f20deefdeb054",
+      "title": "Marking the browser as gone",
+      "what": "Defines a special error for a browser that has crashed or closed. Such failures are not recorded as the source's result.",
+      "why": "The header and comment say a dead browser is not a property of the source, so it must not be saved as a result.",
+      "watch_out": "The message patterns must match the browser's error wording. A new wording would be saved as a source failure."
+    },
+    {
+      "start": 96,
+      "end": 103,
+      "kind": "function",
+      "name": "classifyError",
+      "id": "s9",
+      "hash": "e170928883f55715",
+      "title": "Turning error text into a status",
+      "what": "Reads a raw error message and returns one status with a plain explanation: DNS failure, blocked connection, certificate problem, timeout, or a generic load failure. Browser-gone errors are thrown instead.",
+      "why": "Gives reviewers a plain reason in place of technical error text.",
+      "watch_out": "The checks run in order, so an error matching several patterns gets the first status. The generic fallback keeps only part of the message."
+    },
+    {
+      "start": 104,
+      "end": 111,
+      "kind": "function",
+      "name": "httpOutcome",
+      "id": "s10",
+      "hash": "f8d5baf296c3f7c9",
+      "title": "Turning HTTP codes into a status",
+      "what": "For error codes, returns a status and a plain note: not found or removed, access refused, server error, or other error. Success and redirect codes return nothing.",
+      "why": "Lets a bad HTTP response be recorded in the same way as other failures.",
+      "watch_out": "Redirect and success codes return nothing, so callers must not treat a missing result as success on their own."
+    },
+    {
+      "start": 112,
+      "end": 119,
+      "kind": "function",
+      "name": "blank",
+      "id": "s11",
+      "hash": "8ca86a8ac848c588",
+      "title": "Empty starting result",
+      "what": "Creates a blank result for a single attempt, starting with status not visible and no data.",
+      "why": "Gives each attempt a full result to fill in, so no field is left undefined.",
+      "watch_out": "If a path fails to set a status, the result will look like the quote was not on the page, which is misleading."
+    },
+    {
+      "start": 120,
+      "end": 124,
+      "kind": "function",
+      "name": "chromiumPath",
+      "id": "s12",
+      "hash": "62e7aa02cb834307",
+      "title": "Choosing the browser program",
+      "what": "Uses the browser path set in the environment, or a fixed path used on the hosting platform, if either exists. Otherwise lets the browser library choose its own.",
+      "why": "Likely reason: the hosting platform keeps a browser in a known location, and the fallback keeps the code working elsewhere.",
+      "watch_out": "The fixed path belongs to one environment. On other machines the fallback applies, and the launch fails if no browser is installed."
+    },
+    {
+      "start": 125,
+      "end": 134,
+      "kind": "function",
+      "name": "launchCaptureBrowser",
+      "id": "s13",
+      "hash": "91e775a36814c4f4",
+      "title": "Starting the capture browser",
+      "what": "Launches the headless browser with settings that keep the number of processes low and disable the sandbox and some isolation features.",
+      "why": "The comment says per-site isolation gave each ad frame its own process, which used up the container's process limit and killed the browser mid-run.",
+      "watch_out": "Removing the process limit or isolation changes can crash long runs again. Disabling the sandbox is a security trade-off the code accepts."
+    },
+    {
+      "start": 135,
+      "end": 139,
+      "kind": "function",
+      "name": "settle",
+      "id": "s14",
+      "hash": "922b584243a7297a",
+      "title": "Waiting for a page to settle",
+      "what": "Waits for network activity to quiet down, scrolls the page to trigger lazy content, then pauses briefly.",
+      "why": "Pages often load text only after scrolling or after the network is quiet, so this gives the quote time to appear.",
+      "watch_out": "Each wait has a time cap, so slow pages may still be partly loaded when checked."
+    },
+    {
+      "start": 140,
+      "end": 147,
+      "kind": "function",
+      "name": "dismissCookies",
+      "id": "s15",
+      "hash": "d563a985daaa05eb",
+      "title": "Clicking away cookie banners",
+      "what": "Looks in every frame for one button whose label matches a cookie-consent phrase, clicks the first one found, and stops.",
+      "why": "Cookie banners can cover the quote and hide it from the screenshot.",
+      "watch_out": "The phrase list includes reject and close, so the click may pick a reject option. Only one button is ever clicked."
+    },
+    {
+      "start": 148,
+      "end": 153,
+      "kind": "function",
+      "name": "within",
+      "id": "s16",
+      "hash": "6d11e85eef78b747",
+      "title": "Time limit for one step",
+      "what": "Runs a task but gives up after a set number of milliseconds, returning a fallback value instead.",
+      "why": "Frozen ad or login frames can hang a step, so each one gets a short limit.",
+      "watch_out": "The timed-out task keeps running in the background, which can use resources until it ends."
+    },
+    {
+      "start": 154,
+      "end": 160,
+      "kind": "function",
+      "name": "findInFrames",
+      "id": "s17",
+      "hash": "fcc2002810a7bac2",
+      "title": "Searching the page and its frames",
+      "what": "Looks for a phrase in the main page first, then in up to eight web frames, and stops at the first frame that finds it.",
+      "why": "Quotes are often inside embedded frames, so searching only the main page would miss them.",
+      "watch_out": "The time limit is longer for the main page than for each frame, so a slow frame is skipped rather than waited for."
+    },
+    {
+      "start": 161,
+      "end": 168,
+      "kind": "function",
+      "name": "pageText",
+      "id": "s18",
+      "hash": "c722629f14314345",
+      "title": "Collecting visible text from the page",
+      "what": "Reads the visible text of the main page and up to eight web frames and joins it into one text.",
+      "why": "Used both for bot-check and login-wall detection and for the closest partial match.",
+      "watch_out": "Frame text is added to the main text, so an ad frame with a bot-check phrase could trigger a false bot-check result."
+    },
+    {
+      "start": 169,
+      "end": 171,
+      "kind": "type",
+      "name": "Box",
+      "id": "s19",
+      "hash": "fa5192f3d14f6a19",
+      "title": "Rectangle shape for PDF areas",
+      "what": "Defines a rectangle with four edges, used to describe where text sits on a PDF page.",
+      "why": "Gives the PDF path one shape for highlighted areas.",
+      "watch_out": "The units are PDF points, not screen pixels, so converting them incorrectly moves the highlight."
+    },
+    {
+      "start": 172,
+      "end": 190,
+      "kind": "function",
+      "name": "searchPdf",
+      "id": "s20",
+      "hash": "1fcff25c736e2470",
+      "title": "Searching a PDF's text",
+      "what": "Reads all the text of a PDF with pdftotext, finds the first page that contains the quote, counts how many anchor phrases appear, and if the quote is missing, finds the closest phrase on each page.",
+      "why": "Gives the PDF path the page number it needs for the rendered image and for the closest match.",
+      "watch_out": "Scanned PDFs have no text layer, so they will read as not found. The whole text is held in memory."
+    },
+    {
+      "start": 191,
+      "end": 216,
+      "kind": "function",
+      "name": "pdfBoxes",
+      "id": "s21",
+      "hash": "5f8ee482f6c1fe93",
+      "title": "Finding the quote's position on a PDF page",
+      "what": "Reads word positions for one PDF page, finds the quote, and merges the words on each line into one rectangle per line.",
+      "why": "The rectangles are drawn on the rendered page to point at the quote.",
+      "watch_out": "Only the first occurrence on the page is located, so a repeated quote is boxed at its first appearance."
+    },
+    {
+      "start": 217,
+      "end": 249,
+      "kind": "function",
+      "name": "renderPdfPage",
+      "id": "s22",
+      "hash": "69cbeacf58a02b8f",
+      "title": "Rendering a boxed PDF page",
+      "what": "Converts one PDF page to an image, draws the highlight rectangles and a banner over it, and crops the image around the first highlight. Returns a JPEG.",
+      "why": "Gives reviewers a readable image of the quote in context.",
+      "watch_out": "Relies on pdftoppm and temporary files. The crop height is capped at 900 pixels, so long passages may be cut off."
+    },
+    {
+      "start": 250,
+      "end": 253,
+      "kind": "function",
+      "name": "pdfCacheKey",
+      "id": "s23",
+      "hash": "f4960524a062c0a7",
+      "title": "Name for a cached PDF",
+      "what": "Builds a storage name for a PDF from a fingerprint of its address.",
+      "why": "Lets the same address always map to the same stored copy.",
+      "watch_out": "The name depends only on the address, so if the file at that address changes, the old copy is still returned."
+    },
+    {
+      "start": 254,
+      "end": 263,
+      "kind": "function",
+      "name": "cachedPdf",
+      "id": "s24",
+      "hash": "6db37e34b5ecd208",
+      "title": "Reading a cached PDF",
+      "what": "Returns a PDF stored earlier in App Storage for the same address, or nothing if there is none or the read fails.",
+      "why": "Avoids downloading the same PDF on every re-run.",
+      "watch_out": "Any read error is hidden and treated as no cache, so a broken cache only causes a fresh download."
+    },
+    {
+      "start": 264,
+      "end": 268,
+      "kind": "function",
+      "name": "curlGet",
+      "id": "s25",
+      "hash": "4fc353bc16837b33",
+      "title": "Downloading a URL with curl",
+      "what": "Fetches a URL with curl and returns the status, content type and body. If the first attempt fails with a stream error, retries once over an older protocol version.",
+      "why": "Likely reason: some sites reset newer protocol connections, and the older one often works.",
+      "watch_out": "The retry runs only for specific error codes, so other failures are returned as they are."
+    },
+    {
+      "start": 269,
+      "end": 283,
+      "kind": "function",
+      "name": "curlOnce",
+      "id": "s26",
+      "hash": "62d8873551885a5c",
+      "title": "One curl download",
+      "what": "Runs curl once for a URL with a time limit and a chosen user agent, writes the body to a temporary file, reads it back, and deletes the file.",
+      "why": "Lets the download return binary data safely, such as a PDF.",
+      "watch_out": "The one-megabyte limit applies to the printed output only, not to the saved body, and the temporary file is always removed."
+    },
+    {
+      "start": 284,
+      "end": 315,
+      "kind": "function",
+      "name": "getPdfBytes",
+      "id": "s27",
+      "hash": "3a6213cde2316eab",
+      "title": "Getting PDF bytes from the best source",
+      "what": "Tries the stored cache first, then a direct download, then a download through the browser. Returns the first valid PDF, or the most useful error if none works.",
+      "why": "Several routes are tried because some sites accept only one of them.",
+      "watch_out": "A download counts as a PDF only if its first bytes are the PDF signature, so a page that looks like a PDF but is HTML will be refused."
+    },
+    {
+      "start": 316,
+      "end": 355,
+      "kind": "function",
+      "name": "capturePdf",
+      "id": "s28",
+      "hash": "91866ffd89c16a58",
+      "title": "Capturing a PDF source",
+      "what": "Gets the PDF bytes, saves them to the cache, writes a temporary copy, searches the text, and either renders the matching page with the quote boxed or records a close match or not visible. The temporary file is always deleted.",
+      "why": "Gives PDF sources the same kind of recorded result as web pages.",
+      "watch_out": "If the text is unreadable, the status becomes PDF unreadable and no image is kept."
+    },
+    {
+      "start": 356,
+      "end": 404,
+      "kind": "function",
+      "name": "inspectPage (part 1)",
+      "id": "s29",
+      "hash": "1f8238ee6e22cc47",
+      "title": "Checking a loaded web page",
+      "what": "Dismisses cookie banners, reads the title and text, and returns bot check if a challenge page is detected. Otherwise searches for the quote and anchors, then sets status to login wall, close match or not visible when the quote is missing.",
+      "why": "Stops challenge and login pages from being mistaken for the source page.",
+      "watch_out": "Bot-check detection reads only the title and first 800 characters, so a challenge phrase lower on the page is missed."
+    },
+    {
+      "start": 405,
+      "end": 427,
+      "kind": "method",
+      "name": "inspectPage: if",
+      "id": "s30",
+      "hash": "7ac7a2c51288297d",
+      "title": "Taking the screenshot of the quote",
+      "what": "Scrolls the quote into the centre of view and checks that nothing covers it. Hides up to six fixed or sticky overlays if needed, then adds a banner and takes the screenshot. If the quote is not visible, no image is kept.",
+      "why": "The comment says the image must show the highlighted quote, so the screenshot is taken only once the quote is confirmed on screen.",
+      "watch_out": "Hiding overlays changes what the screenshot shows. The number hidden is written into the image label so reviewers can see it."
+    },
+    {
+      "start": 428,
+      "end": 482,
+      "kind": "function",
+      "name": "captureWeb (part 1)",
+      "id": "s31",
+      "hash": "fd190b0fedd0b718",
+      "title": "Opening the page in a browser",
+      "what": "Opens the page with up to three user agents. Handles PDF links, records HTTP errors, retries with another user agent on bot or access refusals, and retries once without the www prefix when the domain does not resolve. Each attempt is logged.",
+      "why": "Many sites refuse one browser identity but accept another, so trying several gives a better chance of a real capture.",
+      "watch_out": "The www retry happens only once, and transport failures are not retried with a different user agent."
+    },
+    {
+      "start": 483,
+      "end": 519,
+      "kind": "function",
+      "name": "captureWeb (part 2)",
+      "id": "s32",
+      "hash": "81198f9598e885d3",
+      "title": "Fetching the page directly as a fallback",
+      "what": "If the browser attempts did not succeed, downloads the page with curl and renders the saved HTML in a script-free browser. If rendering fails, checks the fetched text for the quote with no screenshot.",
+      "why": "Some sites block the browser but not a plain download, so the saved HTML is rendered or checked as text.",
+      "watch_out": "A text-only match is marked verbatim found but is not genuine, because it has no image, so it is not stored as proof."
+    },
+    {
+      "start": 520,
+      "end": 527,
+      "kind": "function",
+      "name": "blockedDomain",
+      "id": "s33",
+      "hash": "d7b6a934aa4ae33d",
+      "title": "Checking the blocked-domain list",
+      "what": "Looks up the page's domain in the list of domains skipped in this environment. Matches the domain itself or any subdomain of it.",
+      "why": "Lets known-blocked sites be skipped without sending a request.",
+      "watch_out": "A domain must be listed exactly as the matching rule expects, or it will be requested anyway."
+    },
+    {
+      "start": 528,
+      "end": 532,
+      "kind": "function",
+      "name": "withDeadline",
+      "id": "s34",
+      "hash": "bafe73e3e3e3d1b8",
+      "title": "Time limit for a whole source",
+      "what": "Runs a task and, if it takes too long, returns a fallback value instead of waiting.",
+      "why": "Keeps one slow source from holding up a whole run.",
+      "watch_out": "The slow task is not cancelled, so it may keep using the browser after the limit has passed."
+    },
+    {
+      "start": 533,
+      "end": 562,
+      "kind": "function",
+      "name": "captureOutcome, CaptureRunResult",
+      "id": "s35",
+      "hash": "a04b5dff2aa70432",
+      "title": "Capturing one source with its checks",
+      "what": "Checks that the link is a valid public web address, that it is not blocked, then runs the PDF or web capture within the time limit. Defines the summary type returned by the run.",
+      "why": "The address check is the safety boundary that keeps the service away from private network addresses.",
+      "watch_out": "Removing or weakening the address check would let the service request internal addresses, which is a security risk."
+    },
+    {
+      "start": 563,
+      "end": 602,
+      "kind": "function",
+      "name": "captureSource",
+      "id": "s36",
+      "hash": "35cca4c182e196d8",
+      "title": "Capturing and recording one source",
+      "what": "Loads the source, reuses a fresh earlier result unless a re-run is forced, otherwise captures it, saves any genuine image, and writes one result row. If the browser disconnects mid-run, throws an error and writes nothing.",
+      "why": "The header requires exactly one result row per attempt. Reusing results saves repeat work.",
+      "watch_out": "A found result is reused indefinitely, while failures are reused only for seven days, so a fixed page keeps its old result until a forced run."
+    },
+    {
+      "start": 603,
+      "end": 610,
+      "kind": "function",
+      "name": "alternativesOf",
+      "id": "s37",
+      "hash": "f79e76c86c6801d5",
+      "title": "Finding alternative sources",
+      "what": "Returns the IDs of registered alternative sources for a source, leaving out any that have been retired.",
+      "why": "Lets a source that cannot be verified fall back to another copy of the same material.",
+      "watch_out": "Retired alternatives are dropped without any message."
+    },
+    {
+      "start": 611,
+      "end": 626,
+      "kind": "function",
+      "name": "captureWithAlternatives",
+      "id": "s38",
+      "hash": "eb4f2408a0869c3d",
+      "title": "Trying alternatives when needed",
+      "what": "Captures a source and, if it is not verified, captures each registered alternative in turn until one is verified. Reports which alternative, if any, verified the quote.",
+      "why": "Gives a second chance to sources with a known backup copy.",
+      "watch_out": "A source that was retired is not given alternatives, but a source blocked by the domain list is, so the behaviour differs between the two cases."
+    }
+  ],
+  "explained_at": "2026-11-12T03:27:36+00:00",
+  "explained_by": "haiku",
+  "summary": "For each evidence source, opens the cited page or PDF, looks for the verbatim quote, and saves one result row with a screenshot when the quote is genuinely found.",
+  "purpose": "Gives every source a recorded, honest capture result: verbatim found with proof, or a clear reason it could not be captured.",
+  "why": "The header says every attempt ends in exactly one result row, and that images are kept only for genuine finds, never for error, bot-check, login or not-found pages. Fallbacks exist because many sites block automated browsers.",
+  "how": "For one source: check the link is a valid public web address and not a blocked domain, then run either the PDF path or the web path within a time limit. The web path opens the page with up to three user agents, and falls back to a direct download rendered in the browser or a plain text check. The PDF path downloads or reads a cached copy, searches its text, and renders the matching page with a red box. A genuine image is stored in App Storage, then one row is written. A fresh earlier result is reused unless a re-run is forced.",
+  "inputs": "A source record from the database (link, quote, anchors, kind), an open browser, and optional flags for forcing a re-run, a run identifier, a tool name, and whether to try alternatives.",
+  "outputs": "A source_capture row with status, layer, HTTP status, matched text, closest match, page number, highlight box, image key, text fingerprint and a note listing what was tried. Callers get a summary of each run.",
+  "risks": "The private-address check protects against requests to internal addresses and must not be removed. Browser crashes are handled separately so they are not recorded as source failures. Found results never expire from the cache, while failures expire after seven days. Several fallback paths depend on external programs.",
+  "debug": "Start with the status and note on the latest source_capture row. Check the attempts list in the note for each step tried. If every run fails, check the browser launch, the CAPTURE_ENVIRONMENT setting, the blocked-domain list and the object storage settings. For PDFs, check that pdftotext and pdftoppm are installed. If a result looks stale, check the capture time and whether force was used.",
+  "summary_hash": "sha256:790bcf5caf1853d134df73994025f00d53561cf2fb5c369d7063ed362a5eec89"
+}

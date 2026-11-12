@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/audit-yard-sanity.ts",
+  "language": "TypeScript",
+  "lines": 176,
+  "hash": "sha256:cdfc522af04371a178bbfc9b0d8a3c2be46b089a05bf5dc1987bc57460e5f64a",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated tests are visible for this audit.",
+      "The raw dollar check is labeled for values below a bound but tests values above a different bound.",
+      "Missing dates default to a far-future year, which skews the since 2005 count."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Reality Scan bubble",
+      "meaning": "one project shown in the scan with both cost and schedule values that passed the checks"
+    },
+    {
+      "term": "lifecycle stage",
+      "meaning": "the stored status of a project, such as operating, under construction or cancelled"
+    },
+    {
+      "term": "templated quote",
+      "meaning": "a quote that looks like a form label, such as Budget followed by a colon, instead of real source text"
+    },
+    {
+      "term": "pool",
+      "meaning": "a group of reusable database connections"
+    },
+    {
+      "term": "fact row",
+      "meaning": "one sourced fact stored under a fact field path"
+    },
+    {
+      "term": "stale forecast",
+      "meaning": "a forecast completion date that is more than six months in the past"
+    }
+  ],
+  "depends_on": [
+    "pg",
+    "artifacts/api-server/src/tools/research-contract/fieldSemantics",
+    "artifacts/api-server/src/tools/research-contract/yardHeld",
+    "artifacts/api-server/src/scan/budgetUnits",
+    "artifacts/api-server/src/mappers/toProjectDetailDTO"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 24,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f00ad9c67b66ba54",
+      "title": "Report description and options",
+      "what": "Describes what the audit measures and reads the options for one industry and for JSON output.",
+      "why": "The header sets out the scope so a reader knows which tools and checks are covered.",
+      "watch_out": ""
+    },
+    {
+      "start": 25,
+      "end": 40,
+      "kind": "value",
+      "name": "pool, LEGACY_BUDGET_PATHS, today, monthsAgo, iso, sourced, UNFINISHED_PATH, COLUMN",
+      "id": "s2",
+      "hash": "d91642b65e97bea5",
+      "title": "Connection, stage groups and date helpers",
+      "what": "Opens the database connection and defines the stage groups for finished, post-investment and cancelled projects. Also defines the patterns for templated quotes, legacy budget fields, the column names and the date helpers.",
+      "why": "Stage groups decide which projects are judged as finished or post-investment for the scan inputs.",
+      "watch_out": "Stage names are matched by pattern, so a new stage name falls into no group. Date cutoffs use the server clock and month arithmetic, which can shift by a day."
+    },
+    {
+      "start": 41,
+      "end": 65,
+      "kind": "function",
+      "name": "rsSide",
+      "id": "s3",
+      "hash": "90f80f77b14528e3",
+      "title": "Scan input check for one side",
+      "what": "For one project and one scan value, decides whether a value is held, whether it passes the scan's role and value check, and gives the reason.",
+      "why": "Mirrors how the Reality Scan decides whether a bubble input is usable, so the audit matches the scan.",
+      "watch_out": "It relies on shared check modules. A change in those modules changes the results here without an edit in this file."
+    },
+    {
+      "start": 66,
+      "end": 122,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s4",
+      "hash": "57f2e04ebfd05e17",
+      "title": "Scan inputs per industry",
+      "what": "For each industry, loads projects, cited evidence and company links. For finished or post-investment projects, checks the four scan inputs and counts how many are held and how many pass, with reasons for failures.",
+      "why": "Measures how many projects can produce a complete scan bubble.",
+      "watch_out": "A missing start year defaults to a far-future value, so projects with no date are counted in the since 2005 total."
+    },
+    {
+      "start": 123,
+      "end": 176,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s5",
+      "hash": "29f4bf2ed6f4bfb7",
+      "title": "Development, links and quality checks",
+      "what": "Counts projects with dated developments, company links and owners. Runs quality checks on evidence and columns, including templated quotes, missing URLs, Wikipedia citations, implausible cost ratios, completion before start, operating projects with future completion, stale forecasts and unusual stages. Prints a per-industry text summary.",
+      "why": "Flags data problems that could mislead the tools, so someone can fix them at the source.",
+      "watch_out": "The check that is named for raw dollar budgets below a bound actually counts values above a different bound, so read its label with care. Part of the final printed line is cut off in the packet, so what it prints there is unclear."
+    }
+  ],
+  "explained_at": "2026-11-12T02:50:12+00:00",
+  "explained_by": "haiku",
+  "summary": "Read-only audit that checks each industry's project records for missing values, bad formats, date and cost errors, and whether the analysis tools have enough usable data.",
+  "purpose": "Shows which projects can feed complete Reality Scan bubbles and lists data problems that could mislead the tools.",
+  "why": "The header describes it as a per-industry data sanity and tool-readiness audit. Likely reason: to find data problems before tools use them.",
+  "how": "Connects to the database and, for each industry, loads its projects, cited evidence and company links. For finished or post-investment projects, checks each scan input with the same rules the tools use and counts which pass. Counts Lessons Learnt facts and Opportunity Map developments. Then runs sanity checks such as templated quotes, missing URLs, Wikipedia citations, undated evidence, implausible cost ratios, completion before start, stale forecasts and unusual stage names. Prints a text summary, or JSON if requested.",
+  "inputs": "The projects, evidence_quotes and company_project_links tables, the command options, and the shared rules in the research-contract and mapper modules.",
+  "outputs": "A text or JSON summary printed to the console. It writes nothing to the database.",
+  "risks": "Results depend on shared rule modules, so a change there changes this audit without any edit here. Dates use the server clock. One check's name does not match its test. Part of the printed output is cut off in the packet.",
+  "debug": "Run with the industry option and the JSON option to see the full detail. If an industry shows zero everywhere, check that the industry slug matches. For scan failures, read the fail reasons line.",
+  "summary_hash": "sha256:cdfc522af04371a178bbfc9b0d8a3c2be46b089a05bf5dc1987bc57460e5f64a"
+}

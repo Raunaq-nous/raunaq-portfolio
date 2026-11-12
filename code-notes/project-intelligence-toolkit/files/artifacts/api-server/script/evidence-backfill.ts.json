@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/evidence-backfill.ts",
+  "language": "TypeScript",
+  "lines": 134,
+  "hash": "sha256:15afb58ff73036d41b7ac7b65d64871569a393a47a7268847f40356ff48d8ca6",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test or sample run results are visible in the code.",
+      "Most logic depends on helper modules that are not part of this file.",
+      "Duplicate prevention relies on import keys and conflict-ignore settings that are set elsewhere."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Dry run",
+      "meaning": "A rehearsal that does all the work and then undoes it, so nothing is saved."
+    },
+    {
+      "term": "Transaction",
+      "meaning": "A group of database changes that either all succeed or all get undone together."
+    },
+    {
+      "term": "Idempotent",
+      "meaning": "Safe to run again: the second run adds nothing that the first run did not already add."
+    },
+    {
+      "term": "Snapshot",
+      "meaning": "A saved picture of a web page, kept as evidence that a quote was on it."
+    },
+    {
+      "term": "Hash (SHA-256)",
+      "meaning": "A fingerprint of a file's contents, used to tell whether a file has changed."
+    }
+  ],
+  "depends_on": [
+    "@workspace/db",
+    "drizzle-orm",
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/evidence/store",
+    "artifacts/api-server/src/evidence/identity",
+    "artifacts/api-server/src/evidence/captureStorage"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 28,
+      "kind": "setup",
+      "name": "File setup, onlyProject, DryRun",
+      "id": "s1",
+      "hash": "fa4734c13335b758",
+      "title": "Setup and run options",
+      "what": "Loads the database and evidence helpers, reads the --commit and --project options, and defines the signal used to undo a dry run.",
+      "why": "The header explains that a dry run is the default and that writes happen only with --commit.",
+      "watch_out": "The --project option only narrows the project step; the snapshot and research steps still process every row."
+    },
+    {
+      "start": 29,
+      "end": 36,
+      "kind": "value",
+      "name": "CORPORATE_BLOCKED",
+      "id": "s2",
+      "hash": "05de85dc2e41b880",
+      "title": "Blocked website list",
+      "what": "A fixed list of websites that failed when checked from the corporate network, each with the reason it failed.",
+      "why": "Likely reason: these failures were recorded during an earlier review, referenced in the note as Brief 7.4.",
+      "watch_out": "The list is typed in by hand and will not update itself when access changes."
+    },
+    {
+      "start": 37,
+      "end": 47,
+      "kind": "value",
+      "name": "SNAP_STATUS",
+      "id": "s3",
+      "hash": "1e51f73cbd7a3ab2",
+      "title": "Snapshot status mapping",
+      "what": "Translates the older snapshot status codes into the newer status names and records whether each one counts as a genuine match.",
+      "why": "Likely reason: older snapshot labels need to fit the newer capture status names.",
+      "watch_out": "Any code not in this mapping is treated as an error with no genuine match."
+    },
+    {
+      "start": 48,
+      "end": 100,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s4",
+      "hash": "f09309ae3a5b16c8",
+      "title": "Copy projects and snapshots into the database",
+      "what": "Inside one transaction, links each project's figures to their quotes, then turns each saved snapshot into a source capture record and collects the websites that refused capture.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Quotes with no text are skipped without a message. Image downloads happen only on commit, so a dry run understates image counts."
+    },
+    {
+      "start": 101,
+      "end": 134,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s5",
+      "hash": "9478d9fe831c801b",
+      "title": "Copy research sources and record blocked sites",
+      "what": "Copies each scanned research source that has a quote into the evidence source table, then saves the blocked-website list, including hosts that refused this server's snapshot capture. Commits or rolls back based on the flag.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The corporate blocked list is written on every run. Duplicates are avoided by the conflict-ignore setting, so that setting must stay in place."
+    }
+  ],
+  "explained_at": "2026-11-12T03:03:37+00:00",
+  "explained_by": "haiku",
+  "summary": "A one-time migration script that copies older evidence records (project figures, saved page snapshots, scanned research sources, and a list of websites that refused capture) into the newer evidence tables.",
+  "purpose": "Move evidence from the old system into the new evidence layer so each project figure links to its supporting quotes and sources.",
+  "why": "The header calls this 'Stage 1' of an evidence migration. The code is written to be safe to run twice. The exact reason for the migration is not stated in the code.",
+  "how": "Reads the --commit and --project options. Opens one database transaction. Turns each project's benchmark fields into value points linked to their quotes. Converts each saved snapshot into a source capture row, downloading its image only when committing. Copies research sources. Adds the blocked-website list. If not committing, it throws a DryRun signal so the transaction is rolled back. Prints totals and elapsed time.",
+  "inputs": "Database tables for projects, evidence quotes, and research sources. Stored snapshot images in object storage. Command line options --commit and --project.",
+  "outputs": "New or updated rows in value points, sources, source captures, and blocked domains. A JSON summary of counts printed to the console.",
+  "risks": "With --commit it writes to the live database. Image hashes are only computed on commit, so dry-run image counts read zero. Snapshot status codes not in the mapping are recorded as errors. The --project option limits only the project step, not the snapshot or research steps.",
+  "debug": "Run without --commit first and read the totals. A warning names any quote whose snapshot image is missing. If the run stops, the error is printed and the database pool is closed. Check the status mapping when snapshots show as errors.",
+  "summary_hash": "sha256:15afb58ff73036d41b7ac7b65d64871569a393a47a7268847f40356ff48d8ca6"
+}

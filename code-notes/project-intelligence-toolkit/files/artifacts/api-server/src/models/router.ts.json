@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/models/router.ts",
+  "language": "TypeScript",
+  "lines": 128,
+  "hash": "sha256:c39d9869437579543e93ced8d1bfc1f02b7c63ce589e88a0f31309b5afafbbf2",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Uses any available provider when the model prefix does not match.",
+      "The fallback does nothing when all slots name the same model.",
+      "No test is visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "router",
+      "meaning": "code that decides where each request should go"
+    },
+    {
+      "term": "provider",
+      "meaning": "a service that supplies AI models"
+    },
+    {
+      "term": "fallback",
+      "meaning": "a backup option tried after the first attempt fails"
+    },
+    {
+      "term": "singleton",
+      "meaning": "one shared copy of an object that the whole app reuses"
+    },
+    {
+      "term": "environment variable",
+      "meaning": "a named setting stored outside the code"
+    }
+  ],
+  "depends_on": [
+    "./interfaces",
+    "./openai",
+    "./openrouter",
+    "../lib/modelConfig"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/models/llmExtractor.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d7e4f0f8e710dae2",
+      "title": "Imports for the model router",
+      "what": "Brings in the shared types, both provider adapters and the model config lookup.",
+      "why": "Reason not stated in the code beyond gathering the pieces the router uses.",
+      "watch_out": ""
+    },
+    {
+      "start": 6,
+      "end": 64,
+      "kind": "class",
+      "name": "ModelRouter (part 1)",
+      "id": "s2",
+      "hash": "9110a7ffc6bf6afc",
+      "title": "Setup, key refresh and name matching",
+      "what": "Creates the two provider adapters and sets the three model slots from the extraction role. It rechecks the key settings and rebuilds the adapters when they change, logs the available providers at startup, and matches providers to a model by name prefix.",
+      "why": "Likely reason: keys can change after startup, so the router checks them again.",
+      "watch_out": "The code comments say the EXTRACTION_MODEL settings are no longer read, so changing them has no effect."
+    },
+    {
+      "start": 65,
+      "end": 122,
+      "kind": "method",
+      "name": "ModelRouter: for",
+      "id": "s3",
+      "hash": "6fa46e2656937946",
+      "title": "Calls models with fallback",
+      "what": "Lists the available providers, reports whether any is available, and sends a chat request to the chosen provider. If that fails, it tries the fallback model when it differs from the requested one. It also offers helpers for the primary and cheap model slots.",
+      "why": "Lets one call site work with any provider and recover from a single failure.",
+      "watch_out": "Because all three slots normally name one model, a failed call is not retried on a different model."
+    },
+    {
+      "start": 123,
+      "end": 128,
+      "kind": "function",
+      "name": "getModelRouter",
+      "id": "s4",
+      "hash": "2e0d20acd6f6e9bd",
+      "title": "Single shared router",
+      "what": "Returns the one router object for the whole app, creating it on first use.",
+      "why": "Avoids rebuilding the providers and repeating startup logs on every call.",
+      "watch_out": "Key changes are only noticed on the next call, not immediately when they happen."
+    }
+  ],
+  "explained_at": "2026-11-12T04:03:38+00:00",
+  "explained_by": "haiku",
+  "summary": "Chooses which AI provider and model handle each request, and tries a fallback if the first attempt fails.",
+  "purpose": "Acts as the single entry point the rest of the app uses to call AI models.",
+  "why": "Likely reason: one place to choose providers and settings. Not otherwise stated.",
+  "how": "1. On first use, creates one shared router. 2. Builds the OpenAI and OpenRouter adapters. 3. Reads the extraction model name from the model config. 4. Rebuilds the adapters if the key settings change. 5. For a request, picks the provider whose name matches the model prefix, or else the first available provider. 6. If that call fails and the model differs from the fallback, tries the fallback. 7. Offers helper calls for the primary and cheap slots.",
+  "inputs": "A model name, chat messages and optional settings, plus the API keys in the environment and the model config.",
+  "outputs": "A model reply, or an error when no provider is available or all attempts fail.",
+  "risks": "If no provider matches the prefix, the first available provider is used anyway, so a request can reach a service it was not meant for. All three model slots normally name the same model, so there is no real fallback.",
+  "debug": "Check the router's startup log lines, which list the available providers and the three model names. If you see 'No provider available', no key is set in the environment. Confirm the model config names the model you expect.",
+  "summary_hash": "sha256:c39d9869437579543e93ced8d1bfc1f02b7c63ce589e88a0f31309b5afafbbf2"
+}

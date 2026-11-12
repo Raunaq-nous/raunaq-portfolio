@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/yardResearch/populationImport.ts",
+  "language": "TypeScript",
+  "lines": 544,
+  "hash": "sha256:85980bbb65f67d64b3bdfa4cf3a379651d0d412154dda32909caac8dffab4e94",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in the packet, so behaviour is checked only by reading the code.",
+      "The main function is very long and mixes loading, decisions, writes and reporting, which makes changes risky.",
+      "Safety checks (dry run, rollback, baseline comparison) are clear, which is good evidence of care."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Transaction",
+      "meaning": "A group of database changes that all save together or none save. Here an error undoes everything."
+    },
+    {
+      "term": "Dry run",
+      "meaning": "A full practice run that does all the work and then undoes it, so the owner can review the result first."
+    },
+    {
+      "term": "Digest",
+      "meaning": "A short fingerprint code made from content. If the content changes, the code changes, so two plans can be compared."
+    },
+    {
+      "term": "Baseline",
+      "meaning": "A saved snapshot of the database taken before the run, used later to check that nothing unrelated changed."
+    },
+    {
+      "term": "Producer",
+      "meaning": "The AI system (for example ChatGPT or Claude) that wrote one research reply."
+    },
+    {
+      "term": "Manifest",
+      "meaning": "A configuration file listing the projects of one population and their details."
+    },
+    {
+      "term": "Live quote check",
+      "meaning": "A step that confirms a quoted sentence really appears on the source web page."
+    },
+    {
+      "term": "Lifecycle stage",
+      "meaning": "Where a project is in its life, such as planned, under construction or completed."
+    },
+    {
+      "term": "Evidence row",
+      "meaning": "A stored record of a quote, its web address and its publisher, linked to the value it supports."
+    },
+    {
+      "term": "Compass finding",
+      "meaning": "A stored written judgement about a project, shown with a label that says an AI researcher wrote it."
+    }
+  ],
+  "depends_on": [
+    "populationReplies.ts",
+    "populationConfig.ts",
+    "plan.ts",
+    "companies.ts",
+    "quoteChecks.ts",
+    "canonicalize (shared library)",
+    "pg (database client package)"
+  ],
+  "used_by": [
+    "script/import-population.ts",
+    "script/replay-yard-research.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 34,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1755ff76798b3811",
+      "title": "File header and imports",
+      "what": "Explains what the importer does, the commands to run it, and the rules it follows. Also loads the helper pieces it needs.",
+      "why": "Puts the owner's standing rules in one place so anyone reading the code can see the intended behaviour.",
+      "watch_out": "The header is the written contract; if the code changes, update the header too or it will mislead."
+    },
+    {
+      "start": 35,
+      "end": 46,
+      "kind": "type",
+      "name": "PopulationImportOptions",
+      "id": "s2",
+      "hash": "f7a149d48a1fe778",
+      "title": "Import settings",
+      "what": "Defines the settings for one run: the reply files, whether to commit, the approval fingerprint needed for commit, an optional report name and an optional shared database connection.",
+      "why": "Keeps every run setting in one object, so the command-line script and other callers pass the same things.",
+      "watch_out": "The approval fingerprint must match the reviewed dry run exactly, or the commit is refused."
+    },
+    {
+      "start": 47,
+      "end": 99,
+      "kind": "function",
+      "name": "runPopulationImport (part 1)",
+      "id": "s3",
+      "hash": "b3628c32c85a6927",
+      "title": "Loading reply files and checking project keys",
+      "what": "Reads every reply file, checks that each project belongs to the batch it was sent in, and stops on a project that one producer supplied twice. Also works out the run name and report name.",
+      "why": "Rejects mismatched or duplicated input before any database work starts.",
+      "watch_out": "A project key missing from the manifest stops the whole run, not only that project."
+    },
+    {
+      "start": 100,
+      "end": 148,
+      "kind": "function",
+      "name": "runPopulationImport (part 2)",
+      "id": "s4",
+      "hash": "4ef748488ea339b4",
+      "title": "Setup: decisions, connection and baseline",
+      "what": "Loads the owner's saved decisions about conflicting values, opens the database connection, prepares the summary object and records a baseline snapshot of the database.",
+      "why": "Likely reason: the baseline lets the run prove later that no unrelated rows changed.",
+      "watch_out": "A saved decision whose batch is not part of this run is ignored without any warning."
+    },
+    {
+      "start": 149,
+      "end": 189,
+      "kind": "method",
+      "name": "runPopulationImport: for",
+      "id": "s5",
+      "hash": "21b7f2873a5ba3e2",
+      "title": "Per-project checks and quote gate",
+      "what": "For each project, finds its existing row, refuses a row that belongs to a different identity, and gathers each producer's eligibility verdict. Keeps only quotes whose live check says they were found on the page; the rest are listed and counted.",
+      "why": "Only facts that can be seen on a real source page are allowed into the database.",
+      "watch_out": "A quote with no live check result stops the run, so the quote checker must be run first."
+    },
+    {
+      "start": 190,
+      "end": 249,
+      "kind": "function",
+      "name": "runPopulationImport (part 4)",
+      "id": "s6",
+      "hash": "3397282fee97f9e8",
+      "title": "Choosing column values and lifecycle stage",
+      "what": "Decides which column values to fill, using the producers' checked values, and works out the lifecycle stage. Applies the owner's decisions where they exist, such as picking one producer or adding a caveat.",
+      "why": "Producers often disagree, so the rules pick, hold or label values rather than guessing one.",
+      "watch_out": "Several decision types throw an error if the column outcome does not fit, so an out-of-date decisions file can stop the run."
+    },
+    {
+      "start": 250,
+      "end": 302,
+      "kind": "function",
+      "name": "runPopulationImport (part 5)",
+      "id": "s7",
+      "hash": "301a8d8d7357349a",
+      "title": "Applying remaining decisions and holds",
+      "what": "Finishes the owner's decisions: merges technology wordings, withholds partial figures, shows notes only, and marks values as same or kept existing. Holds a budget currency when its budget text is held. Records the per-project decisions and the not-found list.",
+      "why": "Existing data is never overwritten, so each decided value is compared with what is already in the row.",
+      "watch_out": "A budget currency is held whenever its budget text is held, so a budget can look partly empty on purpose."
+    },
+    {
+      "start": 303,
+      "end": 353,
+      "kind": "function",
+      "name": "runPopulationImport (part 6)",
+      "id": "s8",
+      "hash": "fe55ef876c8ae8d8",
+      "title": "Holding new projects and building attributes",
+      "what": "For a new project, holds the row if it is not confirmed eligible (unless the owner overrides), has no lifecycle stage, or looks like a duplicate by name, country and site. Also builds the attached report details, such as provenance notes and extra fields.",
+      "why": "Stops unqualified or duplicate projects from entering the Yard.",
+      "watch_out": "The duplicate check compares name words and site text loosely, so it can hold a real new project or miss a near duplicate."
+    },
+    {
+      "start": 354,
+      "end": 413,
+      "kind": "function",
+      "name": "runPopulationImport (part 7)",
+      "id": "s9",
+      "hash": "1d045f957bd5a404",
+      "title": "Inserting or updating the project row",
+      "what": "For a new project, writes a full row from the filled values. For an existing project, fills only empty columns, logs each change, and adds batch records without rewriting earlier ones. Otherwise records that nothing changed.",
+      "why": "Keeps a full change history and never rewrites what was already recorded.",
+      "watch_out": "Conflicting attribute values are listed as held rather than replaced, so a re-run can look unchanged while a value is still waiting."
+    },
+    {
+      "start": 414,
+      "end": 462,
+      "kind": "function",
+      "name": "runPopulationImport (part 8)",
+      "id": "s10",
+      "hash": "e8b0bfd867c6a116",
+      "title": "Saving evidence, milestones and companies",
+      "what": "Stores each checked quote as an evidence row, saves milestone dates, and links companies. Known short company names are changed to their full legal names first.",
+      "why": "Every stored value needs a traceable source, and one company should have one name.",
+      "watch_out": "Evidence rows are identified by the web address and quote text, so a changed quote creates a new row rather than updating the old one."
+    },
+    {
+      "start": 463,
+      "end": 511,
+      "kind": "function",
+      "name": "runPopulationImport (part 9)",
+      "id": "s11",
+      "hash": "55f11bc34e50a81d",
+      "title": "Saving researcher assessments as findings",
+      "what": "Turns each researcher's written judgement into a stored finding, labelled as an AI-researcher judgement. A judgement is saved only if every fact it cites was found on its page; otherwise it is skipped and listed.",
+      "why": "Keeps unsupported AI opinions out of the findings while still recording what was skipped.",
+      "watch_out": "Skipped judgements are reported but not stored, so check the skipped list in the report when a finding is missing."
+    },
+    {
+      "start": 512,
+      "end": 544,
+      "kind": "method",
+      "name": "runPopulationImport: if",
+      "id": "s12",
+      "hash": "e439993faca4a4dd",
+      "title": "Dry run or commit, then reports",
+      "what": "On commit, checks that the approval fingerprint matches the reviewed dry run and that the baseline has not changed. Then commits, or rolls back on a dry run. Writes the JSON and Markdown reports and closes the connection.",
+      "why": "Stops any change from being kept unless the owner reviewed the same plan.",
+      "watch_out": "Any error rolls back every change in the run, so a failure leaves nothing written."
+    }
+  ],
+  "explained_at": "2026-11-12T03:47:54+00:00",
+  "explained_by": "haiku",
+  "summary": "Loads research reply files for new or existing projects, checks each fact against its live source page, and writes approved values into the Yard database, first as a dry run and then as a commit.",
+  "purpose": "Turns AI-researcher replies about a group of power or industry projects into database rows, while protecting existing data and keeping a full audit trail.",
+  "why": "Research replies can be wrong, duplicated or conflicting. The importer only writes what it can verify, leaves existing values alone, and requires the owner to approve the exact plan before any write is kept.",
+  "how": "1. Reads the reply files and checks each project key belongs to the right batch. 2. Checks each quote against the saved live-page check results and drops quotes not found. 3. Confirms eligibility and decides each column, applying the owner's saved decisions. 4. For new projects, holds the row if eligibility, lifecycle stage or duplicate checks fail. 5. Writes new rows or fills empty columns, logging every change. 6. Saves evidence, milestones, companies and findings. 7. Checks that unrelated rows did not change. 8. On commit, compares the approval fingerprint with the reviewed dry run and commits, otherwise rolls back. 9. Writes JSON and Markdown reports.",
+  "inputs": "Reply files for one or more worklists, the industry configuration, the saved quote checks, the owner's value decisions file, an optional approval fingerprint for commit, and a database connection.",
+  "outputs": "A summary object with counts, a plan fingerprint and a review fingerprint. Database rows for projects, evidence, milestones, companies and findings when committed. Dry-run or commit JSON and Markdown reports under the data/yard-research folder.",
+  "risks": "A wrong write would change live Yard data, so the dry-run and approval gate matter. Existing values are never overwritten, but a bad fill on an empty column is still a real change. Errors roll back the whole transaction, so a failed run leaves nothing written.",
+  "debug": "Start with the dry-run report in data/yard-research/<population>/. Look at the blockers for held rows, the quotes not on the page and the skipped assessments. If a run throws 'No live quote check', run the quote checker first. If commit is refused, the plan or baseline changed since the dry run; run the dry run again. If a decision throws an error, check the decisions file for the right batch and column.",
+  "summary_hash": "sha256:85980bbb65f67d64b3bdfa4cf3a379651d0d412154dda32909caac8dffab4e94"
+}

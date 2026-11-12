@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/yardHeld.ts",
+  "language": "TypeScript",
+  "lines": 216,
+  "hash": "sha256:aa81d40daf1e62bb6d2d92f7ddcb7b723501f528e830b29a56b80d36b59913d2",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the header, imports and evidence shape are visible.",
+      "Most function bodies are not in this packet, so their behaviour cannot be described."
+    ]
+  },
+  "terms": [
+    {
+      "term": "held field",
+      "meaning": "a project value already stored with an active, linked source"
+    },
+    {
+      "term": "cited disclosure",
+      "meaning": "a fact imported from an external research file along with its citation"
+    },
+    {
+      "term": "field path",
+      "meaning": "the name that identifies which field an evidence row is about"
+    },
+    {
+      "term": "Yard",
+      "meaning": "the name this code uses for the app's own stored project records"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/tools/research-contract/collection",
+    "artifacts/api-server/src/tools/research-contract/roleWords",
+    "artifacts/api-server/src/tools/research-contract/scanInputs"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/research-contract/yardHeld.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup, CollectionField",
+      "id": "s1",
+      "hash": "4767ac6a0be0c08f",
+      "title": "Purpose notes and imports",
+      "what": "The header explains that the Yard's existing values count as known and that scans should not repeat research for them. It then imports helpers from the modules listed.",
+      "why": "Stated in the header comment.",
+      "watch_out": "A value that fails a live check is a Yard gap, not a reason to research again inside a scan, so this rule must be kept when changing the file."
+    },
+    {
+      "start": 19,
+      "end": 29,
+      "kind": "type",
+      "name": "HeldEvidence",
+      "id": "s2",
+      "hash": "7a4ddcd6732d0fa3",
+      "title": "Shape of one held evidence row",
+      "what": "Describes one piece of Yard evidence: its identifier, field path, web address, verbatim quote, publisher, date, whether it is active, and optional source keys.",
+      "why": "Likely reason: a fixed shape lets held evidence be checked consistently.",
+      "watch_out": "The date is typed as required text, so missing dates in real data must be stored as empty text, not left out."
+    },
+    {
+      "start": 30,
+      "end": 47,
+      "kind": "type",
+      "name": "HeldProject",
+      "id": "s3",
+      "hash": "190ba8475ad2d77a",
+      "title": "Shape of a project record",
+      "what": "Lists the project details this module reads, such as location, technology, capacity, planned and actual budget, completion dates, delay, stage, and free-form attributes. Most fields are optional, so a project may have only some of them.",
+      "why": "Likely reason: projects often lack some details, so most fields are marked optional.",
+      "watch_out": "Field names are only checked when the code is compiled, so a renamed field must also be renamed wherever projects are built."
+    },
+    {
+      "start": 48,
+      "end": 56,
+      "kind": "value",
+      "name": "YARD_REPORTED_PATHS, ReportedKey",
+      "id": "s4",
+      "hash": "4f36fc85890088a1",
+      "title": "Where reported budgets and dates are found",
+      "what": "Maps four reported keys, planned budget, actual budget, planned completion date, and actual completion date, to the research disclosure paths they come from.",
+      "why": "Reason not stated in the code, though the path names match the research disclosures.",
+      "watch_out": "If a path here does not match what the research step writes, the Yard never finds that value."
+    },
+    {
+      "start": 57,
+      "end": 66,
+      "kind": "value",
+      "name": "YARD_FORECAST_PATHS, ForecastKey",
+      "id": "s5",
+      "hash": "82ff0d5f45bf6d93",
+      "title": "Where latest forecasts are found",
+      "what": "Maps the latest cost estimate and the latest forecast completion date to their own research paths. These are kept apart from final figures.",
+      "why": "The file comment says forecasts are compared with the plan only as forecasts, and never treated as a final outcome.",
+      "watch_out": "Adding a forecast path to the reported list would let an estimate count as a final result."
+    },
+    {
+      "start": 67,
+      "end": 79,
+      "kind": "type",
+      "name": "YardReportedCandidate, YardReported, isObj, sourced, has",
+      "id": "s6",
+      "hash": "86d9f84266dcd56a",
+      "title": "Result shapes and small checks",
+      "what": "Defines the shape of a candidate value with its source, and the result that is either a list of values or a reason for failure. It also has small checks: an object test, a source check that needs an active row, a web address and a quote of at least 20 characters, and a presence test.",
+      "why": "The source check is the rule that a value must carry a cited web address and a real quote.",
+      "watch_out": "The 20 character minimum is a fixed rule, so a short but genuine quote is rejected."
+    },
+    {
+      "start": 80,
+      "end": 92,
+      "kind": "function",
+      "name": "reportedValueOf",
+      "id": "s7",
+      "hash": "784892225bf6ec6d",
+      "title": "Reading the recorded value from a row",
+      "what": "Takes the text recorded at import, such as an amount followed by a basis, and pulls out the value, the date precision in brackets, and any price basis year.",
+      "why": "The file comment says budget and date values are recorded with separators, so the module splits them to get the value.",
+      "watch_out": "The split happens on semicolons and dashes, so a value that contains one of those is cut short."
+    },
+    {
+      "start": 93,
+      "end": 136,
+      "kind": "function",
+      "name": "yardReportedValue",
+      "id": "s8",
+      "hash": "7ec660ed5921dcd0",
+      "title": "Choosing one reported value safely",
+      "what": "Gathers the cited rows for one reported key. It returns a reason if there are none or if the rows disagree, and otherwise returns every row that states the same value, with its currency and source.",
+      "why": "The file comment says rows that disagree are a conflict and nothing is chosen by guessing.",
+      "watch_out": "Values are compared after lowercasing and tidying spaces, so 2.4bn and 2.4 billion count as different and cause a conflict."
+    },
+    {
+      "start": 137,
+      "end": 141,
+      "kind": "value",
+      "name": "REPORTED_FIELD",
+      "id": "s9",
+      "hash": "d2a92d9167fb8016",
+      "title": "Linking reported keys to collection fields",
+      "what": "Connects each of the four reported keys to the collection field it fills, such as planned capital cost or actual completion date.",
+      "why": "Reason not stated in the code. The two names differ, so a link is needed.",
+      "watch_out": "The type requires every reported key to appear here, so a new key cannot be added without also linking it."
+    },
+    {
+      "start": 142,
+      "end": 169,
+      "kind": "function",
+      "name": "yardHeldFields",
+      "id": "s10",
+      "hash": "2a8f74c116318c6a",
+      "title": "Working out which fields are already held",
+      "what": "Goes through each collection rule and marks a field as held when a cited row matches and any required project value is present. It then adds the four reported fields and marks derived fields, such as cost overrun and delay, as held when their inputs are held. It also marks forecasts as superseded when a final figure is held.",
+      "why": "The file comment says scans do not research held fields, so only the remaining fields are gaps.",
+      "watch_out": "A wrongly held field is skipped entirely, so a real gap would never be filled."
+    },
+    {
+      "start": 170,
+      "end": 196,
+      "kind": "function",
+      "name": "reportedRoleSupport",
+      "id": "s11",
+      "hash": "dda10bf9e316bb43",
+      "title": "Checking a reported budget or date quote",
+      "what": "Checks that a quote states the amount or year and the right role: an original budget, a final cost, an original schedule, or a realised completion that is not in the future. The word patterns it uses are defined outside this section.",
+      "why": "The file comment says the check mirrors how scans treat each field.",
+      "watch_out": "Word pattern checks reject a correct quote with unusual wording and can accept a quote that uses the right words with a different meaning."
+    },
+    {
+      "start": 197,
+      "end": 216,
+      "kind": "function",
+      "name": "forecastRoleSupport",
+      "id": "s12",
+      "hash": "b85175a9124223ba",
+      "title": "Checking a forecast quote",
+      "what": "For a budget, checks that the quote gives the amount and uses estimate or forecast wording. For a completion date, checks that the quote gives the year and uses words such as expected, scheduled, or target.",
+      "why": "The function comment says the quote must present the figure as the current estimate or expected date, not the original plan.",
+      "watch_out": "Some listed words, such as by and now, are common, so the check is weaker than it looks."
+    }
+  ],
+  "explained_at": "2026-11-12T05:16:06+00:00",
+  "explained_by": "haiku",
+  "summary": "Works out which project fields the Yard already holds with a usable, linked source, so research scans spend effort only on the gaps.",
+  "purpose": "Avoids repeat research by reading existing Yard evidence first.",
+  "why": "Stated in the header: scans should spend research only on gaps. A held value that fails a live check is reported as a gap to re-source, not re-researched inside a scan.",
+  "how": "Only the header and the evidence shape are visible here. From the header, a Yard evidence row counts as held when it is active and has a web address. Cited disclosures from external research files keep their own currency and precision and never fill a project column. The steps of the other functions are not visible in this packet.",
+  "inputs": "Evidence rows with an identifier, field path, web address, verbatim quote, publisher, date, active flag and optional source keys.",
+  "outputs": "Not fully visible in this packet. The functions named include yardHeldFields, yardReportedValue, and the role support functions.",
+  "risks": "Held values may be out of date, and a live check can still fail them, which is reported as a gap.",
+  "debug": "Check that the evidence row has an active flag and a web address, since those are the stated conditions. If a field is re-researched unexpectedly, check that the field path matches the expected name.",
+  "summary_hash": "sha256:aa81d40daf1e62bb6d2d92f7ddcb7b723501f528e830b29a56b80d36b59913d2"
+}

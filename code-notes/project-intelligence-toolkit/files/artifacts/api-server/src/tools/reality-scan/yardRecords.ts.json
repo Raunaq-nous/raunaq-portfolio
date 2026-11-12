@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/reality-scan/yardRecords.ts",
+  "language": "TypeScript",
+  "lines": 140,
+  "hash": "sha256:253bebfc3d4ddc57c7b2175b26de958cee4e66379b0badb40be7486382ae7c72",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors are handled only for a missing run, which throws.",
+      "No test for the writer is visible, only the naming test.",
+      "The output depends on earlier stages having saved summaries."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Transaction",
+      "meaning": "A group of database changes that either all happen or none do."
+    },
+    {
+      "term": "Idempotent",
+      "meaning": "Running the same action twice leaves the same result as running it once."
+    },
+    {
+      "term": "Backfill",
+      "meaning": "Filling in records for older runs that were produced before this writer existed."
+    },
+    {
+      "term": "Verbatim",
+      "meaning": "The exact original wording copied from a source."
+    },
+    {
+      "term": "Run record",
+      "meaning": "One saved row describing a fact, value, check or calculation from one scan run."
+    },
+    {
+      "term": "Drizzle ORM",
+      "meaning": "A library the code uses to read and write the database in a structured way."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "../../db",
+    "@workspace/db",
+    "../research-contract/semanticPolicy",
+    "../lessons-learnt/recipeResult"
+  ],
+  "used_by": [
+    "Not visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 22,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1eefa7273a1a1187",
+      "title": "Module purpose and imports",
+      "what": "A header comment lists what is saved per run: the run itself, research candidates, rejected and gap records, used values, calculations and reason signals. It also loads the database and shared types.",
+      "why": "Reason stated in the header: the writer is repeatable and must not change project fields.",
+      "watch_out": "Because nothing here changes project fields, a bad record can only be fixed by running the writer again for that run."
+    },
+    {
+      "start": 23,
+      "end": 25,
+      "kind": "type",
+      "name": "Row",
+      "id": "s2",
+      "hash": "f9156fadd9cde266",
+      "title": "Row type and tool name",
+      "what": "Sets the shape of one record to write and the fixed tool name stored with every record.",
+      "why": "Likely reason: a fixed tool name keeps these records apart from other tools' records.",
+      "watch_out": ""
+    },
+    {
+      "start": 26,
+      "end": 36,
+      "kind": "value",
+      "name": "CANONICAL, canonicalField, CALCULATED, str",
+      "id": "s3",
+      "hash": "f01cb06db87b4b90",
+      "title": "Shared field names",
+      "what": "Maps the scan's field names to shared names used by research. Any name not in the map is converted to snake case. Also marks which two fields are calculated and turns any value into text.",
+      "why": "Reason stated in the code: scan and research fields must group together under one name.",
+      "watch_out": "A new scan field not in the map is converted by rule and may not group with its research counterpart."
+    },
+    {
+      "start": 37,
+      "end": 45,
+      "kind": "type",
+      "name": "FieldValue, LedgerProject",
+      "id": "s4",
+      "hash": "5a6b10edd6a80b0f",
+      "title": "Shape of stored values and ledgers",
+      "what": "Describes the shape of a stored value and of a project's research ledger, so the code reads them safely.",
+      "why": "Reason not stated in the code beyond typing; these describe data read from saved summaries.",
+      "watch_out": "These are descriptions only, so data saved by earlier stages is not checked against them here."
+    },
+    {
+      "start": 46,
+      "end": 96,
+      "kind": "function",
+      "name": "buildScanRunRecords (part 1)",
+      "id": "s5",
+      "hash": "75fa906f00615071",
+      "title": "Gathering run data and research candidates",
+      "what": "Loads the run and its successful stage summaries. Writes the run row, then one row for each research candidate with its statement and passage. It also loads the full source quotes for every value used.",
+      "why": "Reason stated in the code: the writer reads only saved stage summaries, so it can be repeated later.",
+      "watch_out": "Only stages marked succeeded are read, so a failed stage contributes no rows at all."
+    },
+    {
+      "start": 97,
+      "end": 122,
+      "kind": "method",
+      "name": "buildScanRunRecords: for",
+      "id": "s6",
+      "hash": "7afc8cab8255b556",
+      "title": "Writing value, calculation and reason rows",
+      "what": "Writes one row for each project value or calculation, using the full quote where one exists, then one row for each overrun-reason passage. Finally it removes duplicate rows.",
+      "why": "Likely reason: a calculated result is recorded separately from a stored value, so each can be found and read on its own.",
+      "watch_out": "Duplicates are judged by record kind and item ID, so two different items with the same ID would lose one."
+    },
+    {
+      "start": 123,
+      "end": 132,
+      "kind": "function",
+      "name": "recordScanRunInYard",
+      "id": "s7",
+      "hash": "c78840e00a47387c",
+      "title": "Replacing one run's records",
+      "what": "Deletes all saved records for one run and inserts a fresh set in a single all-or-nothing step. Returns how many records of each kind were written.",
+      "why": "Reason stated in the code: one transaction means a half-written run cannot be left behind.",
+      "watch_out": "Rerunning removes the old rows for that run first, so any hand edits to them are lost."
+    },
+    {
+      "start": 133,
+      "end": 140,
+      "kind": "function",
+      "name": "projectRunRecords",
+      "id": "s8",
+      "hash": "f6b5ee4d97d0ad0f",
+      "title": "Reading one project's run history",
+      "what": "Returns every run record for one project, newest run first and grouped by field, together with the run rows those records belong to.",
+      "why": "Likely reason: the newest run first lets a reader see the latest result before older ones.",
+      "watch_out": "Run rows come from a second query, so a run with no run row still shows its records but without a run header."
+    }
+  ],
+  "explained_at": "2026-11-12T05:04:07+00:00",
+  "explained_by": "haiku",
+  "summary": "Saves everything one Reality Scan run produced into the Yard's run-record table, so each project keeps a traceable history of what was found, checked and calculated.",
+  "purpose": "Attach each candidate, used value, check result and calculation from a run to the project it belongs to, with its source quote, and never change the project's own fields.",
+  "why": "The header says the writer reads only saved stage summaries, so it is safe to repeat and can backfill earlier runs.",
+  "how": "Loads the run and its successful stage summaries. Builds a run summary row. Adds every research candidate, with rejected and gap records. Adds each project's values and calculations with their full quotes. Adds overrun-reason passages. Removes duplicates. Then deletes the old rows for that run and inserts the new ones in one transaction.",
+  "inputs": "A run ID, the saved stage summaries for fetch, calculate, finalize and synthesis, and the stored evidence quotes.",
+  "outputs": "A list of rows for the yard_run_records table. recordScanRunInYard returns a count per record kind. projectRunRecords returns one project's records and run rows, newest first.",
+  "risks": "Replacing a run deletes its old rows first, so manual edits to them are lost. Unknown field names are converted by a rule, which may stop them grouping with their research twin.",
+  "debug": "If counts are zero, check that the stage status is succeeded. A missing summary produces no rows. Check canonicalField output for odd field names. Check evidence quote lookups if quotes are blank.",
+  "summary_hash": "sha256:253bebfc3d4ddc57c7b2175b26de958cee4e66379b0badb40be7486382ae7c72"
+}

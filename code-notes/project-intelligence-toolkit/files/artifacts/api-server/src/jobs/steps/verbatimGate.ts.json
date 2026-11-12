@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/jobs/steps/verbatimGate.ts",
+  "language": "TypeScript",
+  "lines": 292,
+  "hash": "sha256:3ed037438c7207e4399f6183bf61389da07d80e78dd54a2528a3ec0172efc53c",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test or sample run is visible in this file.",
+      "The dropped count includes first-pass rejects that the retry later recovered, which conflicts with the comment that dropped means never stored.",
+      "Retry failures are caught and only logged, so they are easy to miss."
+    ]
+  },
+  "terms": [
+    {
+      "term": "verbatim",
+      "meaning": "an exact copy of a sentence from the source, with the same wording and punctuation"
+    },
+    {
+      "term": "canonical URL",
+      "meaning": "a standard form of a web address used so that two spellings of the same page match"
+    },
+    {
+      "term": "match level",
+      "meaning": "how closely a quote matches the document text, as decided by the matching helper"
+    },
+    {
+      "term": "retry",
+      "meaning": "a second request to the model, here asking it to find the exact sentence for each failed field"
+    },
+    {
+      "term": "evidence",
+      "meaning": "a quote with the address of the page it came from, used to support a stored value"
+    },
+    {
+      "term": "provenance",
+      "meaning": "a record of where a fact came from"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/lib/spanAnchor",
+    "artifacts/api-server/src/jobs/interfaces"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 27,
+      "kind": "setup",
+      "name": "File setup, RejectReason",
+      "id": "s1",
+      "hash": "64fb8d4282b2f683",
+      "title": "Purpose and reject reasons",
+      "what": "States in its header why the gate exists and how it fits between extraction and storage. Defines the four reasons a quote can be refused: no address, no document, too short, or not present in the document.",
+      "why": "Explains the reason for the check to anyone changing the extraction flow, and gives a fixed list of refusal reasons.",
+      "watch_out": "The gate must run before evidence is written to the database, or unchecked quotes will be stored."
+    },
+    {
+      "start": 28,
+      "end": 48,
+      "kind": "type",
+      "name": "GateStats",
+      "id": "s2",
+      "hash": "042aa4f24d7d353b",
+      "title": "Counters for each gate run",
+      "what": "Defines the statistics recorded for one run: attempts, accepted, first-pass rejects, retry details, dropped items, removed field values, counts by match level and reason, and a sample of refusals.",
+      "why": "Gives the run record a clear account of how much evidence survived, which helps judge the model's accuracy over time.",
+      "watch_out": "Several of these counters overlap, so a value cannot be read on its own without the others."
+    },
+    {
+      "start": 49,
+      "end": 62,
+      "kind": "value",
+      "name": "EMPTY_GATE_STATS",
+      "id": "s3",
+      "hash": "b334d38fb488165f",
+      "title": "Empty starting counters",
+      "what": "Gives the starting value of every counter as zero or empty.",
+      "why": "Lets each run start from a clean set of numbers, so results do not carry over between runs.",
+      "watch_out": "Shared arrays or objects in a starting value can leak between runs if copied carelessly, so callers should copy this value before use."
+    },
+    {
+      "start": 63,
+      "end": 76,
+      "kind": "type",
+      "name": "GateInput, EvidenceItem",
+      "id": "s4",
+      "hash": "55b9e6a0137bb0db",
+      "title": "Inputs to the gate",
+      "what": "Defines what the gate needs: the project name, the extraction result, the documents the model was shown, an optional extractor for retries, the original context and a switch to turn retries off.",
+      "why": "The gate must check quotes against exactly what the model saw, so the shown documents are passed in explicitly.",
+      "watch_out": "If the shown documents differ from what the model actually saw, valid quotes will be refused for missing text."
+    },
+    {
+      "start": 77,
+      "end": 82,
+      "kind": "type",
+      "name": "Verdict",
+      "id": "s5",
+      "hash": "a86a1be6978eeceb",
+      "title": "Pass or fail result",
+      "what": "Defines the result of checking one quote: pass with its match level, or fail with a reason.",
+      "why": "Gives one simple shape for each check, which the caller can count.",
+      "watch_out": "The level and reason fields are optional, so code reading them must check that they exist."
+    },
+    {
+      "start": 83,
+      "end": 94,
+      "kind": "function",
+      "name": "buildDocIndex",
+      "id": "s6",
+      "hash": "56cd9caa9a5150b6",
+      "title": "Index of shown documents",
+      "what": "Builds a lookup from canonical address to document text, using the extracted text or plain text of each shown document. Empty documents are skipped, and the first document for an address wins.",
+      "why": "Quotes name a web address, so the code needs a fast way to find the text behind that address.",
+      "watch_out": "If two shown documents share an address, the second one is silently ignored."
+    },
+    {
+      "start": 95,
+      "end": 104,
+      "kind": "function",
+      "name": "judge",
+      "id": "s7",
+      "hash": "b96619ac260cda89",
+      "title": "Checking one quote",
+      "what": "Judges one quote. It fails if the quote has no address, is shorter than eight characters, names a document that was not shown, or does not appear in that document. Otherwise it passes with the match level.",
+      "why": "This is the core rule that decides whether evidence is trusted.",
+      "watch_out": "The eight character minimum is the only guard against very short quotes that match by chance."
+    },
+    {
+      "start": 105,
+      "end": 108,
+      "kind": "function",
+      "name": "bump",
+      "id": "s8",
+      "hash": "2d79030a3838c860",
+      "title": "Simple counter helper",
+      "what": "Adds one to a named count in a record, starting from zero if the name is new.",
+      "why": "Keeps the counting code short and consistent across the stats.",
+      "watch_out": "None."
+    },
+    {
+      "start": 109,
+      "end": 150,
+      "kind": "function",
+      "name": "buildFeedback (part 1)",
+      "id": "s9",
+      "hash": "663acdb142e5bee4",
+      "title": "Feedback: why each quote failed",
+      "what": "Builds a numbered explanation for up to 25 rejected quotes. Each entry gives the field, the address to search, the value the model gave, the quote that failed and a plain reason.",
+      "why": "Likely reason: the text says that vague criticism did not change the model's behaviour, so the feedback names each failure and the exact text involved.",
+      "watch_out": "Quotes beyond the first 25 rejects are not explained to the model in the retry."
+    },
+    {
+      "start": 151,
+      "end": 169,
+      "kind": "function",
+      "name": "buildFeedback (part 2)",
+      "id": "s10",
+      "hash": "ab95715ba17974a3",
+      "title": "Feedback: instructions for retry",
+      "what": "Puts the explanations together with clear instructions. The model must find the single sentence in each named document and copy it exactly, and may only omit a field if no sentence states it. Only up to 12 allowed addresses are listed.",
+      "why": "The comment explains that an earlier version let the model give up too easily, so the request was reframed as finding a location rather than re-deciding the answer.",
+      "watch_out": "Only the first 12 addresses are listed, so a field whose correct document is further down the list cannot be matched by address in the retry."
+    },
+    {
+      "start": 170,
+      "end": 208,
+      "kind": "function",
+      "name": "runVerbatimGate (part 1)",
+      "id": "s11",
+      "hash": "241217227a96efa8",
+      "title": "First pass: check every quote",
+      "what": "Runs the quote check on every proposed evidence item. Passed items are kept and marked with their match level. Failed items are set aside with their reasons, and the first-pass reject count is recorded. If there are no items, the run ends early.",
+      "why": "Separates trusted quotes from doubtful ones before anything else happens.",
+      "watch_out": "An empty evidence list returns the starting counters straight away, so no later step runs."
+    },
+    {
+      "start": 209,
+      "end": 267,
+      "kind": "method",
+      "name": "runVerbatimGate: if",
+      "id": "s12",
+      "hash": "f0fd5e382422e3de",
+      "title": "One retry for rejected quotes",
+      "what": "If anything failed, the retry is allowed, and an extractor and original context are present, asks the model once more with the explanations. Only retried items for fields that failed are considered. Those that now pass are kept, duplicates are ignored, and the retry's field value and source replace the original. Any error is logged and the run continues.",
+      "why": "Gives the model one chance to find the real sentence before giving up on the value.",
+      "watch_out": "The retry's field value replaces the original one, so a poor retry answer can change a stored value."
+    },
+    {
+      "start": 268,
+      "end": 292,
+      "kind": "method",
+      "name": "runVerbatimGate: for",
+      "id": "s13",
+      "hash": "7acbb07d8a97bae5",
+      "title": "Dropping unsupported values and reporting",
+      "what": "Removes every field whose only quotes were refused, along with its sources, and sorts the list of removed field names. It then sets the evidence list to the kept items, records the accepted count and logs a one-line summary.",
+      "why": "A value with no surviving quote is an unsupported claim, so it is removed rather than stored.",
+      "watch_out": "The dropped count is taken from all first-pass rejects, including those the retry recovered, so it does not match the number of quotes actually refused."
+    }
+  ],
+  "explained_at": "2026-11-12T03:55:16+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that every quote the model gives as evidence really appears in the document it names, retries once for the failed ones, and removes any field values that no surviving quote supports.",
+  "purpose": "Stops invented quotes from being stored as evidence. The file header says that 442 of 1,039 audited quotes, about 42.5 percent, failed this test, which is why the check exists.",
+  "why": "Likely reason: the model sometimes writes sentences that sound like the source but are not in it, so the app cannot take its word for it.",
+  "how": "It indexes each shown document by its canonical address. Each proposed quote is then judged for having an address, being long enough, belonging to a shown document and appearing in that text. Failed quotes are explained back to the model in a retry, which must copy exact sentences. Quotes that pass in the retry are kept and their field values are taken from the retry. Any field that has no surviving quote is removed, along with its sources, and the evidence list is replaced with the kept items.",
+  "inputs": "A gate input with the project name, the extraction result to check, the exact documents the model was shown, optionally the extractor and the original context, and an optional switch to turn off the retry.",
+  "outputs": "Gate statistics: how many were tried, accepted, rejected, recovered and dropped, which fields were removed, counts by match level and reason, and a small sample of refused quotes. The extraction result is changed in place.",
+  "risks": "The extraction object is modified directly, so callers must not reuse it expecting the original. The dropped count includes quotes that the retry later recovered, so it may read higher than the number actually refused. Retry errors are only logged, so a failed retry looks like a normal rejection.",
+  "debug": "Look at the sample of dropped quotes in the statistics first: they show the field, the address and the reason. If too many quotes fail with not_present, check that the documents given to the gate are the same text the model saw. If retries never recover anything, check the feedback text and the retry log line.",
+  "summary_hash": "sha256:3ed037438c7207e4399f6183bf61389da07d80e78dd54a2528a3ec0172efc53c"
+}

@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/realEstateReport.ts",
+  "language": "TypeScript",
+  "lines": 115,
+  "hash": "sha256:b1171b66e9170c317c3336ec50faa5a16c73daca322b89f4295cc355959987b2",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The clean helper pattern appears to delete all text as shown in the packet, which would break the output. Check the original file.",
+      "Dates and scope notes are typed in by hand and are not checked against the source.",
+      "Part of one identity description is cut off in the packet, so that text could not be fully reviewed.",
+      "No tests are visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Manifest",
+      "meaning": "A single structured summary of everything the import will use, built before anything is saved."
+    },
+    {
+      "term": "Citation token",
+      "meaning": "A marker from the research tool, such as a turn number and search label, that points to a source the report used."
+    },
+    {
+      "term": "Fingerprint (hash)",
+      "meaning": "A short code calculated from the text of the report, used to tell whether the report has changed."
+    },
+    {
+      "term": "Excerpt",
+      "meaning": "A short quotation from a source document that the report uses as evidence."
+    },
+    {
+      "term": "Dossier",
+      "meaning": "The written profile for one project in the report, including its table of facts."
+    }
+  ],
+  "depends_on": [
+    "node:fs",
+    "node:crypto",
+    "../lib/spanAnchor",
+    "attached_assets report file",
+    "reports/real-estate-import output folder"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup, hash, clean, tokens",
+      "id": "s1",
+      "hash": "98910cbc2e344feb",
+      "title": "Setup, fingerprint and cleaning helpers",
+      "what": "Sets the batch name, file locations and the report link. It also provides small helpers that create a fingerprint of text, clean up formatting marks, and find citation markers.",
+      "why": "Likely reason: keeping file locations and names in one place makes them easy to change for future batches.",
+      "watch_out": "As shown in the packet, the removal pattern in the clean helper would delete all text, so this helper should be checked against the original file."
+    },
+    {
+      "start": 13,
+      "end": 25,
+      "kind": "value",
+      "name": "identities",
+      "id": "s2",
+      "hash": "2ab350a7421c091e",
+      "title": "Hand-checked project identities",
+      "what": "A fixed table of the nine real estate projects, with each project's short key, name, country, type, lifecycle label, and a note about its dates and status. It also lists other names each project is known by.",
+      "why": "The comment says these are explicit decisions, not fuzzy matching, so the import never merges projects by guessing.",
+      "watch_out": "The short keys must match the dossier headings exactly, and the lifecycle labels must be ones the rest of the app recognizes. One row in the packet is cut off, so its full note could not be reviewed."
+    },
+    {
+      "start": 26,
+      "end": 32,
+      "kind": "type",
+      "name": "DocumentRecord, ReportRow",
+      "id": "s3",
+      "hash": "53eef92038d3f033",
+      "title": "Document and table row shapes",
+      "what": "Defines the shape of a source document record, with title, publisher, link, excerpt, dates and verification status, and the shape of one row from a project's dossier table.",
+      "why": "Fixed shapes make sure every document and table row has the same fields for the rest of the import.",
+      "watch_out": "A new field added here must also be filled in the build step, or it will be missing from the output."
+    },
+    {
+      "start": 33,
+      "end": 40,
+      "kind": "function",
+      "name": "group",
+      "id": "s4",
+      "hash": "c3d78cb80aa7e926",
+      "title": "Sorting table rows into categories",
+      "what": "Places each dossier table row into one of five groups, such as financial, physical scope, participant roles, reported milestones, or project overview, based on keywords in the row's label.",
+      "why": "The groups decide which part of the project record each row feeds into.",
+      "watch_out": "The first matching group wins, so a label that mentions both cost and schedule goes to the financial group."
+    },
+    {
+      "start": 41,
+      "end": 92,
+      "kind": "function",
+      "name": "buildManifest (part 1)",
+      "id": "s5",
+      "hash": "89bec821e7255cb0",
+      "title": "Building the document list and project details",
+      "what": "Reads the report and fetch results, creates the eighteen source document records with dates and verification notes, and builds each of the nine projects with its rows and its budget comparison. A document excerpt that does not match the retrieved text is kept but marked as not independently verified.",
+      "why": "Likely reason: some publication dates are not in the report, so they are typed in by hand and given a stated basis.",
+      "watch_out": "The import stops if the document count is not eighteen or the dossier headings are not found, and the hard-coded dates must be updated by hand when the report changes."
+    },
+    {
+      "start": 93,
+      "end": 115,
+      "kind": "method",
+      "name": "buildManifest: for",
+      "id": "s6",
+      "hash": "12a3cf3b54a34b70",
+      "title": "Filling each project's text fields",
+      "what": "Fills each project's text fields from its sorted table rows, sets its location, attaches the first two document excerpts as the spend and additional disclosure, and adds a hand-written scope warning. It also lists citation tokens that have no matching document.",
+      "why": "Reason not stated in the code for the hand-written scope notes. They appear to warn readers that the cost figures are not directly comparable.",
+      "watch_out": "Each project must have at least two documents, or this step fails, and the scope notes are typed in and not checked against the source."
+    }
+  ],
+  "explained_at": "2026-11-12T03:35:36+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the import plan for the real estate batch by reading one research report, its fetch results and its source text, then producing nine projects and eighteen source documents.",
+  "purpose": "Keeps the real estate import repeatable. The report is the single input, and the output lists each project, its document records and what is still unresolved.",
+  "why": "Likely reason: the source report contains loose wording, unclear dates and citation markers, so the import uses fixed rules and hand-entered decisions rather than guessing.",
+  "how": "First the file reads the report and fetch results. Then it checks each document excerpt against the saved source text, builds the nine projects from their dossier tables, fills in their attributes and notes, and collects any citation tokens it cannot match to a document. It stops with an error if the counts are not as expected.",
+  "inputs": "The research report markdown file, the fetch results JSON file, and the saved source text files for each document.",
+  "outputs": "A manifest object with the batch name, a fingerprint of the report, the eighteen documents, the nine projects, and the exclusions and policy text.",
+  "risks": "Hard-coded publication dates and scope notes will be wrong if the report changes. The clean helper appears to remove all text as shown in the packet, so the output could be empty. The import is designed to stop on unexpected counts.",
+  "debug": "Start with the error messages that name the expected document count or dossier count. Check that the report still has the nine dossier headings and the budget table. If text fields look empty, check the clean helper first.",
+  "summary_hash": "sha256:b1171b66e9170c317c3336ec50faa5a16c73daca322b89f4295cc355959987b2"
+}

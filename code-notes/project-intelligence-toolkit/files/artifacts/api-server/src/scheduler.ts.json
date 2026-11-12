@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/scheduler.ts",
+  "language": "TypeScript",
+  "lines": 176,
+  "hash": "sha256:30070677b7f48f880c3966345fea75e75239e4d9e72dc958c73066f3db5dd5c6",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The time zone argument is accepted but never used, so scheduled hours are treated as UTC.",
+      "The database lock is session-based and released through a query that may run on another connection. This is unverified and should be checked.",
+      "No tests are visible.",
+      "Each poll is wrapped in error handling and the lock is released in a finally step, which is good."
+    ]
+  },
+  "terms": [
+    {
+      "term": "scheduler",
+      "meaning": "the part of the program that starts work at set times."
+    },
+    {
+      "term": "recurrence rule",
+      "meaning": "a standard text format describing repeating dates, such as every Monday."
+    },
+    {
+      "term": "advisory lock",
+      "meaning": "a named lock in the database that only one process can hold at a time."
+    },
+    {
+      "term": "connection pool",
+      "meaning": "a set of shared database connections that the program reuses."
+    },
+    {
+      "term": "time zone",
+      "meaning": "the region whose local clock sets what hour something happens."
+    },
+    {
+      "term": "catch-up",
+      "meaning": "running work that was missed while the server was down."
+    },
+    {
+      "term": "jitter",
+      "meaning": "a small random delay so many servers do not start work at the same instant."
+    },
+    {
+      "term": "graceful shutdown",
+      "meaning": "stopping cleanly when the program is asked to quit."
+    }
+  ],
+  "depends_on": [
+    "./db",
+    "./storage",
+    "./jobs/runner",
+    "drizzle-orm",
+    "rrule"
+  ],
+  "used_by": [
+    "Server startup code (path not shown in the packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "8c86318657088f05",
+      "title": "Setup and timing rules",
+      "what": "Loads the database, storage, job runner, and recurrence library. Sets the 60-second poll interval, the seven-day catch-up limit, and the five-second maximum jitter, and holds the timer and shutdown flag.",
+      "why": "Likely reason: named constants make the timing rules easy to find and change.",
+      "watch_out": "A shorter poll interval notices new schedules sooner but takes the lock more often."
+    },
+    {
+      "start": 15,
+      "end": 21,
+      "kind": "function",
+      "name": "tryAcquireLeaderLock",
+      "id": "s2",
+      "hash": "d5226d39f779e51b",
+      "title": "Taking the scheduler lock",
+      "what": "Asks the database for a named lock that only one scheduler may hold, and reports whether this process got it.",
+      "why": "Likely reason: if several server copies run, only one should start jobs at a time.",
+      "watch_out": ""
+    },
+    {
+      "start": 22,
+      "end": 25,
+      "kind": "function",
+      "name": "releaseLeaderLock",
+      "id": "s3",
+      "hash": "9fcf2f3e169b57cb",
+      "title": "Giving back the scheduler lock",
+      "what": "Releases the named lock after a poll finishes.",
+      "why": "Likely reason: a lock left held would stop the other server copies from ever running schedules.",
+      "watch_out": "The release may run on a different connection than the lock was taken on, which is unverified."
+    },
+    {
+      "start": 26,
+      "end": 39,
+      "kind": "function",
+      "name": "computeNextRun",
+      "id": "s4",
+      "hash": "202d37dc365a4e04",
+      "title": "Working out the next run time",
+      "what": "Finds the next occurrence from the recurrence text, sets the preferred hour and minute, and returns it. Returns nothing if the text cannot be read.",
+      "why": "Likely reason: the stored rule gives dates only, so the hour and minute are added afterwards.",
+      "watch_out": "The time zone argument is ignored, so the hour is set in UTC."
+    },
+    {
+      "start": 40,
+      "end": 99,
+      "kind": "function",
+      "name": "pollSchedules (part 1)",
+      "id": "s5",
+      "hash": "0d46fa7d1cb9816c",
+      "title": "Checking schedules, part 1",
+      "what": "Takes the lock and loads due schedules. A schedule that missed its run by more than seven days is moved to its next time without starting a job. For others, it checks for an active job and, if none, waits a random short delay, creates a scheduled research job, and starts it in the background.",
+      "why": "Likely reason: skipping very old misses avoids a burst of stale runs after an outage, and the random delay spreads load between servers.",
+      "watch_out": "The random delay runs while the lock is still held, so long delays slow the whole poll."
+    },
+    {
+      "start": 100,
+      "end": 105,
+      "kind": "function",
+      "name": "pollSchedules (part 2)",
+      "id": "s6",
+      "hash": "2cdee1dd6cb3a852",
+      "title": "Checking schedules, part 2",
+      "what": "Returns how many jobs were created, and always releases the lock afterwards, even if something failed.",
+      "why": "Likely reason: the final step makes sure a crash in the middle of a poll does not leave the lock stuck.",
+      "watch_out": ""
+    },
+    {
+      "start": 106,
+      "end": 119,
+      "kind": "function",
+      "name": "recoverStaleDiscoveryJobs",
+      "id": "s7",
+      "hash": "bd3cb666eb018b4f",
+      "title": "Clearing stuck discovery jobs",
+      "what": "Finds discovery jobs that have been running for more than 15 minutes and marks them failed with a note that they were stale.",
+      "why": "Likely reason: a crashed run would otherwise look busy forever.",
+      "watch_out": "A discovery job that legitimately runs past 15 minutes is also marked failed, even if it is still working."
+    },
+    {
+      "start": 120,
+      "end": 152,
+      "kind": "function",
+      "name": "startScheduler",
+      "id": "s8",
+      "hash": "b6d7f44a9d0e0dfc",
+      "title": "Starting the scheduler",
+      "what": "Recovers stuck research jobs, drains the queue, runs one schedule check straight away, starts the stale-job check, and sets a 60-second timer that repeats the checks.",
+      "why": "Likely reason: an immediate check avoids waiting a full minute after a restart.",
+      "watch_out": "Errors in the first run are not caught in this function, so a failure there stops the start."
+    },
+    {
+      "start": 153,
+      "end": 164,
+      "kind": "function",
+      "name": "stopScheduler",
+      "id": "s9",
+      "hash": "30cee8deae032211",
+      "title": "Stopping the scheduler",
+      "what": "Marks the scheduler as shutting down, clears the timer, and stops the stale-job check.",
+      "why": "Likely reason: stops new work from starting while the server is closing.",
+      "watch_out": "Jobs already running are not waited for here."
+    },
+    {
+      "start": 165,
+      "end": 176,
+      "kind": "function",
+      "name": "setupGracefulShutdown",
+      "id": "s10",
+      "hash": "0433cd4596294aa7",
+      "title": "Handling shutdown signals",
+      "what": "Listens for the operating system's stop and interrupt signals, stops the scheduler, and forces the process to exit after 30 seconds.",
+      "why": "Likely reason: gives running work a short window to finish before the process ends.",
+      "watch_out": "The handlers are registered as soon as this file is loaded, so importing the file has that side effect."
+    }
+  ],
+  "explained_at": "2026-11-12T04:12:18+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs a background timer that checks each project's recurring research schedule every minute and starts a research job when one is due.",
+  "purpose": "Makes research runs happen automatically on each project's chosen schedule, and clears research or discovery jobs left stuck after a crash.",
+  "why": "Only one server copy should start jobs at a time, so the code takes a database lock. Reason for the seven-day catch-up limit is not stated in the code.",
+  "how": "On start, it marks stuck jobs as failed, drains the queue, runs one schedule check, then starts a timer every 60 seconds. Each check takes a database lock, loads due schedules, skips missed runs older than seven days by moving them forward, starts a job for any project that has no active job after a short random delay, moves the next run time forward, and releases the lock. Shutdown signals stop the timer and force exit after 30 seconds.",
+  "inputs": "The database through the storage module, the job runner, each project's stored recurrence rule, time zone, preferred hour and minute, and process shutdown signals.",
+  "outputs": "New research jobs started in the background, updated next-run and last-run times, discovery jobs marked failed when stale, and log lines.",
+  "risks": "The time zone is passed in but never used, so hours are read as UTC. The lock is taken and released through separate queries that may use different database connections. Missed runs older than seven days are skipped, not run.",
+  "debug": "If a scheduled run never starts, check the scheduler log lines, confirm the project's next-run time has passed, and check whether a job is already active for that project. If two runs start together, check the lock. If runs happen at the wrong hour, remember that the time zone is ignored.",
+  "summary_hash": "sha256:30070677b7f48f880c3966345fea75e75239e4d9e72dc958c73066f3db5dd5c6"
+}

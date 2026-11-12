@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/search.ts",
+  "language": "TypeScript",
+  "lines": 65,
+  "hash": "sha256:0de559c17ea0bde6965e073562fc6bf1dfbb2e33823c7805c095fa51d3d13622",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Good limits: citations to missing results are dropped, and the answer is restricted to captured signals.",
+      "The 25-result cap is requested from the model but not enforced in code.",
+      "No test file for this module is in the packet.",
+      "The cache is per server process, so answers can differ between server instances."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Catalogue",
+      "meaning": "the short list of signal cards the model is allowed to choose from"
+    },
+    {
+      "term": "Relevance",
+      "meaning": "a score from 0 to 100 for how well a result fits the query"
+    },
+    {
+      "term": "Cache",
+      "meaning": "a stored copy of an earlier answer, reused for a set time so the model is not asked again"
+    },
+    {
+      "term": "Schema",
+      "meaning": "a written rule for the exact shape and limits of data"
+    },
+    {
+      "term": "Signal",
+      "meaning": "a captured, sourced observation about a project or market"
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "artifacts/api-server/src/lib/portkeyOpenAI.ts",
+    "artifacts/api-server/src/lib/modelConfig.ts",
+    "artifacts/api-server/src/tools/opportunity-map/catalog.ts",
+    "artifacts/api-server/src/tools/opportunity-map/store.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f2c213451ced82b6",
+      "title": "Imports for the search feature",
+      "what": "Loads the tools the search needs: validation, the AI model connection, the company and solution lists, and a hashing helper.",
+      "why": "Reason not stated in the code beyond the imports themselves.",
+      "watch_out": ""
+    },
+    {
+      "start": 7,
+      "end": 19,
+      "kind": "value",
+      "name": "answerSchema, SignalLike, cache",
+      "id": "s2",
+      "hash": "21e6e1d82f0b47f4",
+      "title": "Rules for the model answer and the cache",
+      "what": "Defines the exact shape the model's answer must take: an interpretation, an answer and a list of results with relevance and reason. It also sets up a short-lived in-memory cache.",
+      "why": "The header comment says search is an agent over captured signals only, and that anything outside the catalogue is dropped.",
+      "watch_out": "The cache is held in memory, so it resets on every server restart and is not shared between server instances."
+    },
+    {
+      "start": 20,
+      "end": 36,
+      "kind": "function",
+      "name": "card",
+      "id": "s3",
+      "hash": "36cd4aa3ecba7fd4",
+      "title": "Summarises one signal for the model",
+      "what": "Turns one signal into a short text card with its number, title, summary, industry, kind, status, solution, trigger, stage, tier, evidence grade, companies, locations, capital cost, strength and publishers. The model reads these cards to choose matches.",
+      "why": "Gives the model compact facts it can cite by number.",
+      "watch_out": "The summary is cut to 260 characters, so detail beyond that is invisible to the model."
+    },
+    {
+      "start": 37,
+      "end": 65,
+      "kind": "function",
+      "name": "semanticSearch",
+      "id": "s4",
+      "hash": "c5b86e514a53f427",
+      "title": "Runs the AI search over captured signals",
+      "what": "Takes a query, ranks signals by priority, keeps the top 220, and sends their cards to the model. It keeps matches with relevance of at least 35, removes duplicates, and removes citation numbers that were not returned. The answer is cached for 30 minutes. It stops with an error when the model is not configured.",
+      "why": "Likely reason: the cache avoids repeat model calls for the same query over the same signals.",
+      "watch_out": "The cache key uses last-seen times, so any new signal changes the key, and signals outside the top 220 are never considered."
+    }
+  ],
+  "explained_at": "2026-11-12T04:57:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Answers a plain-language question by letting an AI model pick matching signals from a catalogue of already captured signals.",
+  "purpose": "Powers the search feature so users can ask questions about signals without the system adding new facts.",
+  "why": "The file header states the rule: the model sees a catalogue and returns numbers only, and cannot add facts. Likely reason: this keeps every answer traceable to stored records.",
+  "how": "1. Refuses to run if the AI model is not configured. 2. Checks a 30-minute cache for the same query and signal set. 3. Ranks signals by priority and keeps up to 220. 4. Turns each signal into a short text card. 5. Sends the query and the cards to the model. 6. Validates the reply. 7. Keeps matches with relevance of at least 35, removes repeats, and removes citation numbers that were not returned. 8. Stores the answer in the cache and returns it.",
+  "inputs": "A text query and a list of signal records.",
+  "outputs": "An object with the query, a one-sentence interpretation, a short answer, ranked results with relevance and reason, the number searched, whether the list was cut short, whether it came from cache, and a fixed note about its limits.",
+  "risks": "The cache lives in memory and is only cleared when it holds more than 200 entries. The code itself does not cap results at 25; it relies on the model to respect that limit. Signals beyond the top 220 by priority are never searched. Citation cleaning only checks numbers, not the wording of the answer.",
+  "debug": "If results are empty, read the answer text and the relevance values. If the search fails with a model-unavailable error, check the AI model configuration. If answers look out of date, remember the cache lasts 30 minutes and is cleared by a server restart. When expected signals are missing, check the truncated flag, which shows whether the catalogue was cut.",
+  "summary_hash": "sha256:0de559c17ea0bde6965e073562fc6bf1dfbb2e33823c7805c095fa51d3d13622"
+}

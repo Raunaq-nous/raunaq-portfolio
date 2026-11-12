@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/yardSync.ts",
+  "language": "TypeScript",
+  "lines": 198,
+  "hash": "sha256:7fba6acd319367242780c7026acf99cd4dbe9b5ea440c38386abd711ec3253fe",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Careful no-guessing rules, with a reason recorded for each outcome.",
+      "Tests in yardSync.test.ts cover only part of the rules.",
+      "Only 7 of the 12 sections in this file were in the packet, so the database writing steps could not be reviewed here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Yard",
+      "meaning": "the project system this sync writes records into"
+    },
+    {
+      "term": "Basis hash",
+      "meaning": "a short fingerprint of a signal's inputs, used to decide whether it has changed"
+    },
+    {
+      "term": "Stage",
+      "meaning": "where a project is in its life, such as planning, pre-construction or under construction"
+    },
+    {
+      "term": "Curator note",
+      "meaning": "an extra bracketed remark added to a project name by a team member"
+    },
+    {
+      "term": "Fold",
+      "meaning": "turning text into a plain comparable form by removing accents, capitals and punctuation"
+    },
+    {
+      "term": "Verbatim",
+      "meaning": "word for word, exactly as written in the source"
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "artifacts/api-server/src/db.ts",
+    "artifacts/capital-projects/src/shared/industries.ts",
+    "artifacts/api-server/src/tools/opportunity-map/store.ts"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/worker.ts",
+    "artifacts/api-server/src/tools/opportunity-map/yardSync.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 24,
+      "kind": "setup",
+      "name": "File setup, YardStatus",
+      "id": "s1",
+      "hash": "9ac20b00d9eb2114",
+      "title": "Header notes and the status values",
+      "what": "The header comment explains the sync rules: signals link to existing Yard projects, new projects are created only when every required field is sourced, and anything else is held with a reason. It also defines the status values linked, matched, created, held and not_applicable.",
+      "why": "The comment says nothing is guessed, so a held signal is preferred to a wrong record.",
+      "watch_out": "The fingerprint decides whether a signal is re-synced, so a change to a field that is not part of it will not be picked up."
+    },
+    {
+      "start": 25,
+      "end": 41,
+      "kind": "type",
+      "name": "YardLink, STAGE, fold, countryName, yardProjectId, Src, Loc",
+      "id": "s2",
+      "hash": "fcfaa13e4c964277",
+      "title": "Stage mapping and name cleaning helpers",
+      "what": "Maps announcement words to Yard stages: announced and planned become planning, approved becomes pre-construction, and launched has no stage. Also holds the name-cleaning helper that makes names comparable, a helper that turns a country code into an English name, and a helper that builds the Yard id from the signal id.",
+      "why": "Likely reason: lets names match even when they are written differently.",
+      "watch_out": "The Yard id uses only the first 24 characters of the signal id, so two signals sharing that prefix would collide."
+    },
+    {
+      "start": 42,
+      "end": 46,
+      "kind": "function",
+      "name": "basisOf",
+      "id": "s3",
+      "hash": "f4a8edea612c44ef",
+      "title": "Fingerprint of a signal's inputs",
+      "what": "Builds a short fingerprint from a signal's project ids, announcement, kind, project name, stage, industry, locations and source addresses. A change in any of these changes the fingerprint and triggers a re-sync.",
+      "why": "The header comment says a fingerprint skips signals whose inputs have not changed.",
+      "watch_out": "Source quotes are not included, only addresses, so a change in wording alone does not trigger a re-sync."
+    },
+    {
+      "start": 47,
+      "end": 68,
+      "kind": "function",
+      "name": "sourcedCountry",
+      "id": "s4",
+      "hash": "9d6cb9b84c64b76b",
+      "title": "Confirms a signal's single country from its quotes",
+      "what": "Finds the one country among a signal's researched locations and accepts it only if a location quote or stored passage names that country word for word. Otherwise returns a reason: several countries are involved, or no passage names the country.",
+      "why": "The code comment says one project needs one country, and a country must be named in the evidence.",
+      "watch_out": "Name matching works on cleaned whole words, so a country named in another language would not be accepted."
+    },
+    {
+      "start": 69,
+      "end": 71,
+      "kind": "function",
+      "name": "bare",
+      "id": "s5",
+      "hash": "754ca7952c76479c",
+      "title": "Removes bracketed notes from a name",
+      "what": "Strips bracketed curator notes from a project name, so a name with a note attached is compared on its plain name.",
+      "why": "Likely reason: Yard names often carry notes that the source material does not contain.",
+      "watch_out": "Any square-bracket text is removed, including brackets that are part of a real name."
+    },
+    {
+      "start": 72,
+      "end": 82,
+      "kind": "value",
+      "name": "PROBLEM_STAGE",
+      "id": "s6",
+      "hash": "c8fe59dc8f7fee9c",
+      "title": "Stage cue phrases for problem signals",
+      "what": "For each research stage, lists the phrase that must appear in the signal's own evidence before that stage is accepted: for pre-investment-decision, the decision phrase; for post-investment, construction-start wording; and for commissioning and operations, their matching words. Without a matching phrase, the project is held.",
+      "why": "The header comment says a stage is accepted only when a passage in the signal's own evidence states it.",
+      "watch_out": "A broad word such as operating may match a sentence about a different plant, which could accept the wrong stage."
+    },
+    {
+      "start": 83,
+      "end": 86,
+      "kind": "type",
+      "name": "Subject",
+      "id": "s7",
+      "hash": "af11a3eaaec3fab9",
+      "title": "The possible outcomes of a sync check",
+      "what": "Defines the three outcomes a signal can receive: skipped with a reason, held with a reason, or named with a stage, label, stage quote and a reason.",
+      "why": "Reason not stated in the code beyond the outcome names.",
+      "watch_out": "Code that reads these results must check which form it has, because a held result has no name field."
+    },
+    {
+      "start": 87,
+      "end": 108,
+      "kind": "function",
+      "name": "subjectOf, srcFor, dateOf",
+      "id": "s8",
+      "hash": "6e482f8a533dcbfe",
+      "title": "Choosing the one project a signal is about",
+      "what": "Decides which single project a research signal refers to and which Yard lifecycle stage it is at. A new-project announcement uses the project name and stage it states. A problem signal is used only if it names one specific project, and its stage comes from the fixed rule table in `PROBLEM_STAGE` plus a matching passage in its sources. Anything else returns either a skip reason or a hold reason. The helper `srcFor` finds the source whose web address matches, or the first source. The helper `dateOf` turns a publish or check date into a plain date text, or nothing.",
+      "why": "Likely reason: the Yard only accepts a stage that can be traced to a source, so the stage must be found before anything is written.",
+      "watch_out": "A problem signal's stage comes from the fixed rule table, so changing that table changes which signals can create Yard projects."
+    },
+    {
+      "start": 109,
+      "end": 124,
+      "kind": "function",
+      "name": "postUpdates",
+      "id": "s9",
+      "hash": "157d7f814f13f93f",
+      "title": "Adding source quotes as project updates",
+      "what": "For each linked Yard project, adds the signal's quoted source passages to that project's update history. A passage already stored for the same project, web address and exact text is skipped, so repeated syncs do not duplicate entries. It returns how many new updates were written.",
+      "why": "Likely reason: keeps a visible trail from each project change back to the source text that supports it.",
+      "watch_out": "The duplicate check compares the exact quote text, so a small wording change in the source creates a second update."
+    },
+    {
+      "start": 125,
+      "end": 131,
+      "kind": "function",
+      "name": "evidence",
+      "id": "s10",
+      "hash": "2429061b5682cf28",
+      "title": "Recording the quote behind a field",
+      "what": "Writes one evidence record that ties a project field, such as its lifecycle stage or country, to the exact quoted passage and its web address. The record is labelled as an excerpt from fetched text when the source status is fetched, and as a recorded citation otherwise.",
+      "why": "Likely reason: Yard values should carry proof that a reviewer can check.",
+      "watch_out": "The label that says the excerpt is in fetched text is set from the fetch status alone; the code does not re-check the quote against the page."
+    },
+    {
+      "start": 132,
+      "end": 191,
+      "kind": "function",
+      "name": "syncSignal",
+      "id": "s11",
+      "hash": "289b1329ed8327d3",
+      "title": "Deciding how a signal links to the Yard",
+      "what": "The main sync step for one signal. It first uses any Yard project ids the research already linked. Otherwise it looks for a single exact name match in the Yard. If there is no match, it creates a new Yard project only when every check passes: the name is a proper name, appears in the evidence, the industry is a known one, the stage has a source, and the country is clear. If a check fails, the signal is held with the reasons. The outcome is saved on the signal record and is reused unless its basis changes or a forced re-sync is requested.",
+      "why": "Likely reason: the Yard is relied on for accuracy, so a new project is created only when every fact can be checked, and anything doubtful waits for a person.",
+      "watch_out": "Creating a project writes to several tables (projects, evidence_quotes, change_log) one after another, and no database transaction is visible, so a failure partway could leave a partial record."
+    },
+    {
+      "start": 192,
+      "end": 198,
+      "kind": "function",
+      "name": "syncAllToYard",
+      "id": "s12",
+      "hash": "398533b18cc85c69",
+      "title": "Running sync across all signals",
+      "what": "Loads every stored signal that has at least one source and runs the sync on each, oldest first. It returns counts of how many ended as linked, matched, created, held or not applicable.",
+      "why": "Likely reason: a batch entry point for an operator or scheduled job. The callers are not visible in this file.",
+      "watch_out": "Signals are processed one at a time with no batching, so a large backlog can take a long time. With force set, every outcome is recalculated."
+    }
+  ],
+  "explained_at": "2026-11-12T05:00:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Copies sourced opportunity signals into the Yard project system by linking, creating or holding each one, and never guesses a missing fact.",
+  "purpose": "Keeps Yard in step with the Opportunity Map while protecting Yard from unsupported records.",
+  "why": "The header comment says the sync is deterministic, makes no model calls, holds a signal with a reason rather than guessing, and skips signals whose inputs have not changed.",
+  "how": "1. For each signal, checks linked projects and posts dated updates to them. 2. Otherwise matches the project name against Yard names. 3. Otherwise creates a new project only if the name, industry, stage and one country are all sourced. 4. Otherwise holds the signal with a reason. 5. Stores the outcome on the signal along with a fingerprint so unchanged signals are skipped.",
+  "inputs": "Signal rows with their payload, classification and locations, the evidence passages, and the Yard industry list.",
+  "outputs": "Updates to Yard project tables and a status record stored on each signal.",
+  "risks": "Name matching is strict, so spelling differences hold a signal rather than match it. The fingerprint leaves out source wording, so a wording-only edit does not re-sync. The Yard id uses only the first 24 characters of the signal id, so two signals sharing that prefix would collide.",
+  "debug": "Look at the status and reason stored on each signal: linked, matched, created, held or not_applicable. A held reason says what is missing. If sync fails, the console shows one generic message, so check database connectivity and the signal rows. For a missing country, check the location quote.",
+  "summary_hash": "sha256:7fba6acd319367242780c7026acf99cd4dbe9b5ea440c38386abd711ec3253fe"
+}

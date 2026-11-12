@@ -1,0 +1,278 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/jobs/steps/retrieval.ts",
+  "language": "TypeScript",
+  "lines": 400,
+  "hash": "sha256:a0046d476a8775009e7e78eb7fe76ae130436a15fc04b662921ff4008ea9237c",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only 8 of the 18 sections in this file are included in the packet, so the page fetching and run logic cannot be explained here.",
+      "The constants for snapshot limits are defined here, but their use is in parts not shown.",
+      "KNOWN_SOURCES and its helpers are not shown in use, so their role is unclear.",
+      "No tests are visible in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Search profile",
+      "meaning": "The set of search phrases, asset words, regulator domains and trusted sites that belong to one industry."
+    },
+    {
+      "term": "Site filter",
+      "meaning": "A search restricted to one website, written as site followed by the domain name."
+    },
+    {
+      "term": "Snapshot",
+      "meaning": "A saved copy of a step's output, kept for review."
+    },
+    {
+      "term": "Cap",
+      "meaning": "A fixed maximum size for text, so cost and prompt length stay bounded."
+    },
+    {
+      "term": "Authority tier",
+      "meaning": "A trust rank for a source, where a lower number means a more trusted source."
+    }
+  ],
+  "depends_on": [
+    "../interfaces",
+    "../../search/interfaces",
+    "../industrySearchProfiles"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/jobs/runner.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7a5ec4dbe4209702",
+      "title": "Imports",
+      "what": "Loads the shared retrieval types, the size limit for a snapshot, the search interface type and the industry search profile lookup.",
+      "why": "Reason not stated in the code beyond what the file needs.",
+      "watch_out": ""
+    },
+    {
+      "start": 6,
+      "end": 19,
+      "kind": "type",
+      "name": "RetrievalStepInput",
+      "id": "s2",
+      "hash": "721fd3d733fe82a9",
+      "title": "Inputs to the retrieval step",
+      "what": "Lists what a retrieval run needs: project name and id, industry, technology, country, and an optional list of trusted domains. Without an industry, the search uses a neutral name-only approach.",
+      "why": "Comment: an industry-free search should never borrow another industry's vocabulary.",
+      "watch_out": "Leaving out the industry changes the search from industry-specific to generic, which can sharply reduce relevant results."
+    },
+    {
+      "start": 20,
+      "end": 28,
+      "kind": "type",
+      "name": "RetrievalDocument",
+      "id": "s3",
+      "hash": "1be6163cbf21e94d",
+      "title": "A page kept at full length",
+      "what": "Describes a fetched page kept at its full extracted length. It is held in memory only for quote locating and is never sent to the model or saved in a snapshot.",
+      "why": "Comment: the full text is needed so quotes can be located anywhere on the page.",
+      "watch_out": "Keeping every full page in memory for a whole job can use a lot of memory for large documents."
+    },
+    {
+      "start": 29,
+      "end": 59,
+      "kind": "type",
+      "name": "RetrievalStepOutput",
+      "id": "s4",
+      "hash": "fa5d2a579ec3bda9",
+      "title": "Output of the retrieval step and text limits",
+      "what": "Describes the retrieval output: the capped results for the model, the full-length documents, the queries and the total size. It also sets the model text limits at 20,000 characters for PDFs and 15,000 for web pages, and the snapshot limits at 20,000 and 8,000.",
+      "why": "Comment: the model limits are cost controls. Tests showed many quote locations lie beyond 8,000 characters, so the stored document must not be capped that way.",
+      "watch_out": "Lowering the stored document cap would remove quote locations for long pages, and the comment's figures show how many that would be."
+    },
+    {
+      "start": 60,
+      "end": 90,
+      "kind": "value",
+      "name": "REGION_MAP",
+      "id": "s5",
+      "hash": "4b7e13676177e8a4",
+      "title": "Country to region mapping",
+      "what": "Maps about 30 country names to broad regions such as Europe, Asia or North America. Used to narrow trusted-domain lookups to sources in the project's region, or to global ones.",
+      "why": "Likely reason: regional sources are more relevant to projects in that region.",
+      "watch_out": "Only the names listed are mapped, so a country spelled differently, such as S. Korea versus South Korea, is matched only if it is listed."
+    },
+    {
+      "start": 91,
+      "end": 150,
+      "kind": "function",
+      "name": "buildQueries",
+      "id": "s6",
+      "hash": "f38708249290677d",
+      "title": "Building the search phrases",
+      "what": "Builds up to eight search phrases for the project. These include the industry's query templates, the project name with technology and country terms, the country's regulator site, up to three trusted domains, and a local-language phrase if one exists. Phrases beyond the first eight are dropped.",
+      "why": "Comment: every industry-specific term and site filter comes from the project's own profile, so nothing from another industry leaks in.",
+      "watch_out": "The first eight phrases are kept in order, so a late template may never run for a project with many templates."
+    },
+    {
+      "start": 151,
+      "end": 165,
+      "kind": "value",
+      "name": "KNOWN_SOURCES",
+      "id": "s7",
+      "hash": "c8963ea252f04bd2",
+      "title": "Unused list of known source addresses",
+      "what": "A fixed map of four trusted domains to known front-page addresses. It is defined here, but its use is not visible in the sections provided.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Nothing in the visible sections uses this list, so editing it may have no effect on the search."
+    },
+    {
+      "start": 166,
+      "end": 169,
+      "kind": "function",
+      "name": "isPdfContent",
+      "id": "s8",
+      "hash": "5de0462ff515bad6",
+      "title": "Detecting PDF files",
+      "what": "Returns true when a content type says the file is a PDF. The result tells later steps to read the file as a PDF rather than as web text.",
+      "why": "Likely reason: PDF files need different handling from web pages.",
+      "watch_out": "Only the standard PDF label is recognized, so a page served with a different label is treated as a web page."
+    },
+    {
+      "start": 170,
+      "end": 195,
+      "kind": "function",
+      "name": "extractTextContent",
+      "id": "s9",
+      "hash": "e6bc0d8ec6101a99",
+      "title": "Turning web pages into plain text",
+      "what": "Strips scripts, styles, navigation, headers, footers and HTML tags from a page, decodes a few common HTML codes, and collapses extra spaces. For PDFs it only collapses spaces. The result is the readable text the app works with.",
+      "why": "Likely reason: the language model and the quote checks need plain text, not markup. The optional limit lets callers ask for the whole page or a short prefix.",
+      "watch_out": "The ampersand code is decoded first, so text that contains an encoded ampersand followed by another code can be decoded twice and change meaning."
+    },
+    {
+      "start": 196,
+      "end": 200,
+      "kind": "function",
+      "name": "llmCapFor",
+      "id": "s10",
+      "hash": "1e8bc77c23bcc8f1",
+      "title": "Choosing the text size limit",
+      "what": "Returns the maximum amount of text that will be shown to the language model for a page. PDFs get a different limit from web pages.",
+      "why": "Likely reason: PDFs usually carry more useful text per page, so they are given a larger budget. The actual limit values are defined elsewhere and are not visible here.",
+      "watch_out": "The numbers come from constants defined outside this file, so changing those constants changes behaviour everywhere."
+    },
+    {
+      "start": 201,
+      "end": 215,
+      "kind": "function",
+      "name": "extractTitle",
+      "id": "s11",
+      "hash": "89289a7655c907c9",
+      "title": "Finding a page title",
+      "what": "Gets a title for a page. For PDFs it uses the first reasonably long line. For web pages it prefers the social-sharing title tag, then the normal page title tag. If neither exists, it returns an empty title.",
+      "why": "Titles are shown to people and stored with each source, so the code tries the most descriptive source first.",
+      "watch_out": "A PDF title is just its first long line, which is often a heading or a page number rather than the real document title."
+    },
+    {
+      "start": 216,
+      "end": 228,
+      "kind": "function",
+      "name": "extractSnippet",
+      "id": "s12",
+      "hash": "a6a90b017a9f2596",
+      "title": "Pulling a snippet around the keyword",
+      "what": "Finds the project name in a page and returns the text just before and after it. If the name is not found, it returns the opening part of the page.",
+      "why": "Gives a short, readable excerpt that shows why the page matched, so a reviewer can judge it quickly.",
+      "watch_out": "The search is case-insensitive but exact, so a page that writes the name with different spacing or punctuation will not match."
+    },
+    {
+      "start": 229,
+      "end": 235,
+      "kind": "function",
+      "name": "buildLocator",
+      "id": "s13",
+      "hash": "5dd6ea8958ab2451",
+      "title": "Building a page locator",
+      "what": "Creates a locator that points to where the evidence sits. For PDFs it stores the first part of the snippet with a PDF type. For web pages it stores the snippet as a text fragment. Empty snippets get no locator.",
+      "why": "Lets the app show or link to the part of the source that supports a value.",
+      "watch_out": "The PDF locator stores snippet text, not a page number, even though its type name suggests a page. Anyone reading the stored locator should not expect a page number."
+    },
+    {
+      "start": 236,
+      "end": 240,
+      "kind": "function",
+      "name": "getRegionForCountry",
+      "id": "s14",
+      "hash": "c7f3a3112c8016ab",
+      "title": "Looking up a region for a country",
+      "what": "Given a country code, returns the region name from a fixed table, or nothing if the code is missing or unknown.",
+      "why": "Lets the app group projects by region without the user typing one.",
+      "watch_out": "The lookup is case-sensitive and exact, so a lowercase code such as 'us' will return nothing."
+    },
+    {
+      "start": 241,
+      "end": 294,
+      "kind": "function",
+      "name": "runRetrieval (part 1)",
+      "id": "s15",
+      "hash": "0340bd6a4cfe4de6",
+      "title": "Searching for sources (first part)",
+      "what": "Builds the search queries for a project, then runs them through the search router if one is given. If that finds nothing, it tries the basic retriever. Results are collected without duplicate web addresses. The log shows how many queries were made.",
+      "why": "Likely reason: there are several search backends, and the code falls back from the most capable to the simplest so that a failing service does not leave the project with no sources.",
+      "watch_out": "If every search fails silently, the code moves on to the next fallback without telling the user why, so logs are the only clue."
+    },
+    {
+      "start": 295,
+      "end": 331,
+      "kind": "method",
+      "name": "runRetrieval: for",
+      "id": "s16",
+      "hash": "a5505534ce11ae4b",
+      "title": "Fetching fallback known sources",
+      "what": "If searching found nothing at all, fetches up to four pages from a fixed list of known sources in parallel. A page is kept only if its text contains the first word of the project name.",
+      "why": "Gives the app some source material even when search is down or returns nothing.",
+      "watch_out": "Matching only the first word of the project name can keep unrelated pages when that word is common, such as 'North' or 'New'."
+    },
+    {
+      "start": 332,
+      "end": 376,
+      "kind": "method",
+      "name": "runRetrieval: if",
+      "id": "s17",
+      "hash": "d449729549a9f618",
+      "title": "Fetching full text for top results",
+      "what": "For the first ten search results, downloads the page when the text already collected is short, then fills in title, snippet, text and content type. If a download fails, the original result is kept.",
+      "why": "Search results often carry only a short summary, so the page is fetched to get enough text to check later.",
+      "watch_out": "Only the first ten results are enriched, so lower-ranked results keep whatever short text they came with."
+    },
+    {
+      "start": 377,
+      "end": 400,
+      "kind": "method",
+      "name": "runRetrieval: for",
+      "id": "s18",
+      "hash": "73f1d50cfd53ccc5",
+      "title": "Trimming results to a size budget",
+      "what": "Cuts each page's text to a size limit (8,000 characters for web pages, 20,000 for PDFs) and keeps adding pages until a total byte budget is used up. It also returns a full-length copy of every enriched page, for later checking. The copies do not go to the model or the saved snapshot.",
+      "why": "Keeps the snapshot and model input a manageable size, while the full copies let later quote checks point to exact positions in the whole page.",
+      "watch_out": "The loop stops at the first page that goes over the budget, so a smaller page after it is also left out even if it would have fit."
+    }
+  ],
+  "explained_at": "2026-11-12T03:55:16+00:00",
+  "explained_by": "haiku",
+  "summary": "Decides what to search for for one project and sets the size limits for page text, so that search covers the right industry and cost stays controlled.",
+  "purpose": "Builds the list of web searches for a project from its industry profile, and defines how much page text is kept for the model and for quote locating.",
+  "why": "The comments give the reasons: text limits are cost controls, not correctness controls, and capping the stored pages would silently remove about 43 percent of quote locations, according to the trial measurement in the comment.",
+  "how": "Looks up the industry's search profile. Builds up to eight search phrases from the profile's templates, the project name, technology, country, the country's regulator domains, up to three trusted domains, and a local-language phrase. Defines the text limits for the model and for snapshots. The page fetching and run logic are not visible in the sections provided.",
+  "inputs": "Project name, industry, technology, country and the list of trusted domains from the sources table.",
+  "outputs": "Up to eight search phrases, plus the text limits used elsewhere in this file.",
+  "risks": "A project with no industry gets generic phrases only. Phrases beyond the first eight are dropped without any warning. Site filters depend on the quality of the domain lists in the profile.",
+  "debug": "The step snapshot includes the list of queries run, so check it to see what was searched. If results are off target, check the project's industry field. If an industry gets only generic searches, check its search profile.",
+  "summary_hash": "sha256:a0046d476a8775009e7e78eb7fe76ae130436a15fc04b662921ff4008ea9237c"
+}

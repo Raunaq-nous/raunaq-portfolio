@@ -1,0 +1,237 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/import-yard-closure.ts",
+  "language": "TypeScript",
+  "lines": 360,
+  "hash": "sha256:766257b9f2188218d3b5c51ac5ca8b481c6147da3e687a65ec0da488a66702f9",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Very long functions make review hard.",
+      "No tests are visible.",
+      "Several rules depend on caveats and quote checks held in separate files."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Yard id",
+      "meaning": "The identifier the Yard uses for each project, used as the key for matching."
+    },
+    {
+      "term": "Enrich-only",
+      "meaning": "Only fills in or adds information to existing projects, and never creates new ones."
+    },
+    {
+      "term": "Quote gate",
+      "meaning": "The check that a quoted sentence actually appears on the source page before it is used."
+    },
+    {
+      "term": "Producer",
+      "meaning": "The research source, such as a particular AI model, that produced one reply."
+    },
+    {
+      "term": "Baseline digest",
+      "meaning": "A fingerprint of the current data, used to confirm nothing else has changed before a commit."
+    },
+    {
+      "term": "Advisory lock",
+      "meaning": "A marker that stops two imports from running at the same time."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/lib/canonicalize",
+    "artifacts/api-server/src/ingest/yardResearch/closureReplies",
+    "artifacts/api-server/src/ingest/yardResearch/quoteChecks",
+    "artifacts/api-server/src/ingest/yardResearch/plan",
+    "artifacts/api-server/src/ingest/yardResearch/companies",
+    "data/yard-research/closure/value-caveats.json",
+    "pg"
+  ],
+  "used_by": [
+    "artifacts/api-server/script/check-closure-quotes.ts (must run first, per the header)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 38,
+      "kind": "setup",
+      "name": "File setup, digest, uuid, quoteKey",
+      "id": "s1",
+      "hash": "e5c8324a372a683d",
+      "title": "Setup, fingerprints and quote keys",
+      "what": "Reads the options, defines helpers that make fingerprints and stable ids from text, and builds a key for each quote from its page address and wording.",
+      "why": "Fingerprints detect changes to the data, and stable ids let the script match a reply to its saved quote check.",
+      "watch_out": "Changing the quote key formula breaks matching with saved quote checks."
+    },
+    {
+      "start": 39,
+      "end": 44,
+      "kind": "value",
+      "name": "COL",
+      "id": "s2",
+      "hash": "069eaaa3ca6bb893",
+      "title": "Column name map",
+      "what": "Maps the field names used in reply files to the matching database column names.",
+      "why": "Likely reason: reply files use readable names while the database uses snake case.",
+      "watch_out": "A new field must be added here or it will never reach the database."
+    },
+    {
+      "start": 45,
+      "end": 49,
+      "kind": "value",
+      "name": "worklistIds, batchOf",
+      "id": "s3",
+      "hash": "61c454cb81e50f5c",
+      "title": "Worklist ids and batch labels",
+      "what": "Lists the worklists found in the reply files, builds a run name, and builds a batch label for each worklist. Checks that the report name is safe to use.",
+      "why": "Batch labels mark which rows came from which run, so later runs can be traced.",
+      "watch_out": "A report name that fails the pattern check stops the run before any work is done."
+    },
+    {
+      "start": 50,
+      "end": 55,
+      "kind": "value",
+      "name": "batches, worklistMembers",
+      "id": "s4",
+      "hash": "c9669ec71c09a8c2",
+      "title": "Worklist members",
+      "what": "Loads the worklists as they were handed to the producers, and records which projects each one contains.",
+      "why": "Used to confirm every reply row was actually in the worklist it came from.",
+      "watch_out": "The worklists are read from files, so a changed worklist will fail the membership check."
+    },
+    {
+      "start": 56,
+      "end": 63,
+      "kind": "value",
+      "name": "worklistScope",
+      "id": "s5",
+      "hash": "b8fbdc311750fd60",
+      "title": "Industry scope per worklist",
+      "what": "Records, for each worklist, the industry and optional segment it was built for.",
+      "why": "Used to stop a reply from writing to a project outside the worklist's industry or segment.",
+      "watch_out": "Every project in a worklist must match this scope or the run stops."
+    },
+    {
+      "start": 64,
+      "end": 74,
+      "kind": "function",
+      "name": "dateStr, caveatFor, label, DATE_KEY, Rec",
+      "id": "s6",
+      "hash": "bb71f6491d4f86d4",
+      "title": "Date helpers and caveats",
+      "what": "Defines how dates are formatted, looks up caveats for a given project and column, labels each producer, maps date fields to database columns, and reads the user-approved caveats file.",
+      "why": "The header explains three caveat modes: combining conflicts, picking one producer's date, and replacing an existing value.",
+      "watch_out": "Caveats override the usual fill rules, so the caveats file must be kept accurate and approved."
+    },
+    {
+      "start": 75,
+      "end": 82,
+      "kind": "value",
+      "name": "records",
+      "id": "s7",
+      "hash": "b58d0a53bbf02ab3",
+      "title": "Load and check records",
+      "what": "Turns each producer's reply entry into a record, checks that its project is in the worklist, and rejects any producer who sent the same project twice.",
+      "why": "The header requires one consolidated reply per producer and worklist, so duplicates are refused.",
+      "watch_out": "Any mismatch throws an error and stops the whole run, not only the one bad record."
+    },
+    {
+      "start": 83,
+      "end": 87,
+      "kind": "value",
+      "name": "byProject, pool",
+      "id": "s8",
+      "hash": "2cd20070809d0657",
+      "title": "Group by project and open the database pool",
+      "what": "Groups the records by project and opens a database connection pool using the DATABASE_URL setting.",
+      "why": "Reason not stated in the code beyond grouping records per project.",
+      "watch_out": "A missing DATABASE_URL setting causes the connection to fail."
+    },
+    {
+      "start": 88,
+      "end": 93,
+      "kind": "value",
+      "name": "out",
+      "id": "s9",
+      "hash": "9d397a203134fbe0",
+      "title": "Output report structure",
+      "what": "Creates the report object that will hold counts for projects, fills, conflicts, quotes, and notes, plus the list of files used.",
+      "why": "The report is written to files so a person can review it before commit.",
+      "watch_out": "Each count must be increased in the matching code path, or the report will be wrong."
+    },
+    {
+      "start": 94,
+      "end": 141,
+      "kind": "function",
+      "name": "log (part 1)",
+      "id": "s10",
+      "hash": "40e4162a2f8dcf72",
+      "title": "Transaction start and per-project checks",
+      "what": "Opens a transaction with a time limit, takes a lock, records baseline fingerprints for projects and evidence, then for each project checks its industry and scope, extracts claims, and drops any quote not confirmed on its live page or not readable. Dropped items are listed in the report.",
+      "why": "Baselines let the commit confirm that nothing else changed. Dropping unconfirmed quotes is the quote gate.",
+      "watch_out": "A missing quote check stops the run and tells the user to run the quote check first."
+    },
+    {
+      "start": 142,
+      "end": 201,
+      "kind": "function",
+      "name": "log (part 2)",
+      "id": "s11",
+      "hash": "54caab8ea6849cc9",
+      "title": "Deciding each column and applying caveats",
+      "what": "For each project and each column, such as planned budget, technology or lifecycle stage, decides whether the research fills it, keeps the existing value, flags a conflict or holds it back. It also applies the caveat rules the owner approved, such as showing both producers' wording or taking one producer's date.",
+      "why": "Likely reason: every change is gated behind a checked quote and an approved plan, so a weak source cannot reach the database unnoticed.",
+      "watch_out": "Several caveat rules stop the whole batch with an error if they cannot be applied, rather than skipping only the one project."
+    },
+    {
+      "start": 202,
+      "end": 253,
+      "kind": "function",
+      "name": "log (part 3)",
+      "id": "s12",
+      "hash": "ec49106e0207d1f5",
+      "title": "Budget currency checks and batch closure record",
+      "what": "Holds back a budget currency when the budget text is not filled or when figures use more than one currency. Then lists quotes not found on their pages and writes a closure record for the batch into the project's attributes, covering sources, caveats, agreements and conflicts.",
+      "why": "Likely reason: a currency code means nothing without its amount, and the closure record keeps the import traceable for later review.",
+      "watch_out": "The closure record is stored as nested data per batch, so changing its layout could break anything that reads it."
+    },
+    {
+      "start": 254,
+      "end": 308,
+      "kind": "method",
+      "name": "log: for",
+      "id": "s13",
+      "hash": "68437bd1ad93f58f",
+      "title": "Writing fills, change log and source keys",
+      "what": "Writes the accepted values and lifecycle status into each project row, logs every change in the change log with its source links, and saves the batch list in the source keys. Unchanged values are skipped so a rerun does not repeat writes.",
+      "why": "Each change is logged so a reviewer can see the old value, the new value and where it came from.",
+      "watch_out": "The update statement is built from a column name map called COL, so a new research column must be added there or it will be silently ignored."
+    },
+    {
+      "start": 309,
+      "end": 360,
+      "kind": "function",
+      "name": "log (part 5)",
+      "id": "s14",
+      "hash": "e0769538d738deb0",
+      "title": "Evidence rows, milestones, companies and reports",
+      "what": "Saves each checked quote as an evidence row, adds milestones and company links, runs the final safety checks, then writes the dry run or commit report as JSON and Markdown. Commit only goes ahead if the approval digest matches the reviewed dry run.",
+      "why": "Likely reason: the approval digest stops an unreviewed plan from being committed.",
+      "watch_out": "Any edit to the data or the plan between the dry run and the commit makes the commit refuse, so the dry run must be repeated."
+    }
+  ],
+  "explained_at": "2026-11-12T03:05:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Imports closure-mode research replies for existing Yard projects. It only enriches existing projects, keeps only quotes confirmed on their live pages, and writes only after a dry run has been reviewed and approved.",
+  "purpose": "Add checked research values, evidence, and notes to existing Yard projects without creating new projects.",
+  "why": "The header describes the rules: enrich only, quotes must be found on their live page, and unreadable pages are dropped. It also records a user decision for offshore wind.",
+  "how": "Loads the reply files and their worklists. Loads live quote checks and any user-approved caveats. Builds a record for each producer reply, checking that every project is in its worklist and appears only once per producer. In one database transaction it locks the projects, records baseline fingerprints, checks each project's industry, extracts claims, keeps only quotes confirmed on the live page, merges the producers' views, writes changes to the change log, and produces a report. A dry run rolls back.",
+  "inputs": "Reply files, worklist snapshots, the quote check cache, the value caveats file, and the projects and evidence tables.",
+  "outputs": "Changes to projects and the change log when committed, plus report files and a console JSON summary.",
+  "risks": "A commit changes live projects. Caveats marked replaceExisting can overwrite values already filled in. The run stops if the quote check has not been run first. A changed baseline stops the commit.",
+  "debug": "Run the quote check first. Read the quotesNotOnPage and quotesUnreadable lists to see what was dropped. Error messages name the yard_id and the worklist when a project is outside its scope.",
+  "summary_hash": "sha256:766257b9f2188218d3b5c51ac5ca8b481c6147da3e687a65ec0da488a66702f9"
+}

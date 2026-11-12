@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/build.mjs",
+  "language": "JavaScript",
+  "lines": 129,
+  "hash": "sha256:f7940e3672740cbd68c2c76f68ba89ca4ec4ee8b3c6cb4ca9212d4214c182da8",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Build errors are caught and exit with a failure code, which is good.",
+      "No test or sample build output is visible in this file to show it runs successfully.",
+      "The external list is long and hand-maintained, so it can drift from the installed packages."
+    ]
+  },
+  "terms": [
+    {
+      "term": "esbuild",
+      "meaning": "a fast tool that combines many source files into fewer output files"
+    },
+    {
+      "term": "bundle",
+      "meaning": "one output file that contains the code of many files and packages together"
+    },
+    {
+      "term": "ESM",
+      "meaning": "the modern JavaScript module format that uses import and export statements"
+    },
+    {
+      "term": "CommonJS",
+      "meaning": "the older JavaScript module format that uses require"
+    },
+    {
+      "term": "external",
+      "meaning": "a package left out of the bundle so Node.js loads it from node_modules when the server runs"
+    },
+    {
+      "term": "source map",
+      "meaning": "a helper file that lets error messages point back to the original source lines"
+    },
+    {
+      "term": "plugin",
+      "meaning": "an add-on to esbuild that changes how it handles certain packages"
+    },
+    {
+      "term": "native module",
+      "meaning": "a package that includes compiled machine code, which often cannot be bundled"
+    }
+  ],
+  "depends_on": [
+    "esbuild",
+    "esbuild-plugin-pino",
+    "node:module",
+    "node:path",
+    "node:url",
+    "node:fs/promises",
+    "artifacts/api-server/src/index.ts"
+  ],
+  "used_by": [
+    "artifacts/api-server/package.json"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "199e8b82d84e66cc",
+      "title": "Setup and file location",
+      "what": "Loads the build tools and creates a require function for this module. Also works out the folder this file lives in, so paths resolve correctly no matter where the command runs from.",
+      "why": "Likely reason: the pino plugin needs require to find its dependencies, as the comment states.",
+      "watch_out": ""
+    },
+    {
+      "start": 13,
+      "end": 72,
+      "kind": "function",
+      "name": "buildAll (part 1)",
+      "id": "s2",
+      "hash": "a066c46434e97889",
+      "title": "Clearing output and bundling the server",
+      "what": "Removes the old dist folder, then starts the bundling of src/index.ts into ES module output. Lists the heavy, native and cloud packages that stay outside the bundle so Node.js loads them at runtime.",
+      "why": "The comments say these packages use native code or load files by path, so bundling them breaks them.",
+      "watch_out": "Every package on the external list must be installed in production, or the built server will fail to start."
+    },
+    {
+      "start": 73,
+      "end": 129,
+      "kind": "function",
+      "name": "buildAll (part 2)",
+      "id": "s3",
+      "hash": "c9472f0c3365f0f0",
+      "title": "Logging plugin, compatibility header and error exit",
+      "what": "Adds the pino logging plugin with pretty output and a header that restores require, __filename and __dirname for older packages. If anything fails, prints the error and exits with a failure code.",
+      "why": "The comments say pino uses worker threads, so the plugin handles it instead of leaving it external. The header is there for CommonJS packages such as express.",
+      "watch_out": "The pdf-parse entry must stay external because it loads a worker file by path; bundling it breaks PDF reading."
+    }
+  ],
+  "explained_at": "2026-11-12T02:50:12+00:00",
+  "explained_by": "haiku",
+  "summary": "Build script that packs the API server's TypeScript source into one runnable JavaScript file for Node.js.",
+  "purpose": "Turns the server's entry source file into dist/index.mjs, the file the server starts from, after clearing out the previous build.",
+  "why": "Bundling everything into one file lets the server start from a single output file. Likely reason: the comments explain that some packages cannot be bundled, so they are left outside the output and loaded at runtime.",
+  "how": "Deletes the old dist folder. Runs esbuild on src/index.ts, targeting Node.js with ES module output and bundling on. Leaves a long list of native, database, cloud and heavy packages outside the bundle. Adds the pino logging plugin. Adds a header so CommonJS-style packages still find require, __filename and __dirname. If the build throws, prints the error and exits with a failure code.",
+  "inputs": "The TypeScript entry file src/index.ts, the installed npm packages, and the esbuild and pino plugin settings in this file.",
+  "outputs": "dist/index.mjs with a linked source map, plus any other files esbuild writes into dist.",
+  "risks": "Adding a package to the external list without it being installed at runtime makes the server fail to start. Removing a package from the list can bundle code that loads files by path, which breaks it (the pdf-parse comment describes this). The header must stay or CommonJS packages break.",
+  "debug": "Run the build script and read the console output from esbuild. If start fails with a missing module, check whether that package is on the external list and installed in node_modules. If a bundled package fails at runtime, check the comments near the external list for known path problems.",
+  "summary_hash": "sha256:f7940e3672740cbd68c2c76f68ba89ca4ec4ee8b3c6cb4ca9212d4214c182da8"
+}

@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/recipe/framework.ts",
+  "language": "TypeScript",
+  "lines": 101,
+  "hash": "sha256:b47275a57eb7b16f025be31c1a6fc60f7becee6641a1fd47ccb7afa59b7a82d4",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Pillar-count and grounding checks exist, so bad results raise a clear error.",
+      "Depends on a language model reply in a set format, with no test shown.",
+      "Citation cleaning by pattern could change the wording of some text."
+    ]
+  },
+  "terms": [
+    {
+      "term": "methodology item",
+      "meaning": "a benchmark, framework or practice pulled from a captured source."
+    },
+    {
+      "term": "fact category",
+      "meaning": "a label that groups facts, such as cost or schedule."
+    },
+    {
+      "term": "routing",
+      "meaning": "deciding which pillar a fact belongs to."
+    },
+    {
+      "term": "grounding",
+      "meaning": "the requirement that each pillar cites at least one methodology source."
+    },
+    {
+      "term": "mutually exclusive and collectively exhaustive",
+      "meaning": "no overlap between pillars, and together they cover the whole topic. Often shortened to MECE."
+    },
+    {
+      "term": "JSON",
+      "meaning": "a structured text format used to exchange data between programs."
+    },
+    {
+      "term": "language model",
+      "meaning": "an AI model that writes text in reply to a prompt."
+    }
+  ],
+  "depends_on": [
+    "../../../lib/portkeyOpenAI",
+    "../../../lib/modelConfig",
+    "./text",
+    "./types"
+  ],
+  "used_by": [
+    "Not visible in the packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "043fd5c622d91a2c",
+      "title": "Purpose and citation-marker patterns",
+      "what": "Explains that the recipe skill writes pillars from the research and that validation enforces the routing rule. Defines the patterns that recognise citation codes and alias lists in the model's text.",
+      "why": "The comments say framework prose is shown without citation markers, because the sources are carried in the grounds field instead.",
+      "watch_out": "These patterns are used to strip text shown to readers, so a broad pattern can remove real words or letters."
+    },
+    {
+      "start": 19,
+      "end": 21,
+      "kind": "function",
+      "name": "stripMarkers",
+      "id": "s2",
+      "hash": "72af7a29128fd28d",
+      "title": "Removing citation codes from text",
+      "what": "Strips citation markers, grouped alias lists and bare alias tokens from a piece of text, then tidies the spaces and brackets left behind.",
+      "why": "Likely reason: the model writes source codes inline, and readers should see clean sentences.",
+      "watch_out": "The bare-token pattern matches any short capital letter and digit combination, so a real code-like word can be removed."
+    },
+    {
+      "start": 22,
+      "end": 27,
+      "kind": "function",
+      "name": "plain",
+      "id": "s3",
+      "hash": "735fd5a45782fcab",
+      "title": "Making text safe to display",
+      "what": "Converts any value to text, removes citation codes and tidies punctuation spacing, then trims the result.",
+      "why": "Likely reason: every name, principle and rubric line passes through this, so display text is always clean.",
+      "watch_out": "A missing value becomes an empty string, so an empty pillar name is shown as blank rather than flagged."
+    },
+    {
+      "start": 28,
+      "end": 87,
+      "kind": "function",
+      "name": "authorFramework (part 1)",
+      "id": "s4",
+      "hash": "92f9440967d44c46",
+      "title": "Asking the model for pillars and checking each one",
+      "what": "Summarises the fact categories and sample findings, sends them with the methodology to the reasoning model, and reads back the pillars. Assigns each category to one pillar only, keeps valid sub-drivers with text and keywords, and drops pillars with fewer than two sub-drivers.",
+      "why": "The request asks for mutually exclusive pillars and for each category to go to exactly one pillar, which these checks enforce.",
+      "watch_out": "Pillars are capped at seven and sub-drivers at six, so extra model output is silently discarded."
+    },
+    {
+      "start": 88,
+      "end": 101,
+      "kind": "function",
+      "name": "authorFramework (part 2)",
+      "id": "s5",
+      "hash": "41b70dca2725e774",
+      "title": "Renumbering and final checks",
+      "what": "Renumbers the pillars and their sub-drivers so the ids run in order after any drops, and moves category assignments to the new ids. Fails the run if fewer than three pillars remain or any pillar has no methodology grounding. Returns the framework with category assignments and unclaimed categories.",
+      "why": "Likely reason: the rest of the recipe expects contiguous ids, and a framework with fewer than three pillars or no source support would not be credible.",
+      "watch_out": "Renumbering must update both the category assignments and the sub-driver ids, or routing will point at the wrong pillar."
+    }
+  ],
+  "explained_at": "2026-11-12T04:38:54+00:00",
+  "explained_by": "haiku",
+  "summary": "Uses a language model to write the framework of driver pillars and sub-drivers for a run, then checks and cleans the result so each pillar is valid and cites methodology.",
+  "purpose": "Turn the research into three to seven mutually exclusive pillars, each with sub-drivers, a rubric and routing keywords, and make sure each fact category belongs to only one pillar.",
+  "why": "The file header says validation enforces a single-pillar routing rule and methodology grounding. The reason for the text cleaning is partly stated in the comments about citation markers.",
+  "how": "1. Count the fact categories and sample findings by stance. 2. Send the methodology items, categories and samples to the reasoning model and ask for a JSON reply describing pillars. 3. Keep up to seven pillars, assign each category to only the first pillar that claims it, and keep up to six sub-drivers per pillar. 4. Drop sub-drivers with no text or keywords, and drop pillars with fewer than two sub-drivers. 5. Renumber the pillar and sub-driver ids so they run in order. 6. Fail if fewer than three pillars remain or any pillar lacks methodology grounding. 7. Return the pillars, the category assignments and the unclaimed categories.",
+  "inputs": "An industry label, the methodology items, the facts and the findings.",
+  "outputs": "A framework with pillars, a category inventory showing which pillar claims each category, and a list of categories no pillar claimed.",
+  "risks": "Citation codes are removed with pattern matching, so an ordinary word that looks like a code could be removed too. An unreadable model reply stops the run. Unclaimed categories are routed only by keywords, so their results can be less reliable.",
+  "debug": "If the run fails saying fewer than three valid pillars were produced, look at the raw model reply and the filters that drop sub-drivers without text or keywords. If a pillar is rejected for grounding, check that its grounds ids match methodology item ids. If the framework text shows stray codes or broken brackets, check the citation patterns.",
+  "summary_hash": "sha256:b47275a57eb7b16f025be31c1a6fc60f7becee6641a1fd47ccb7afa59b7a82d4"
+}

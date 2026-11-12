@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/capture-aps-sources.ts",
+  "language": "TypeScript",
+  "lines": 127,
+  "hash": "sha256:568fb890d9470f2918c54c45ce500cac3988c75426cf66d110fc9d5a9e19e364",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "Writes to the database and launches a browser on a normal run.",
+      "Options are read by position, so a value must directly follow its flag.",
+      "Root folder path depends on the file's location and address format."
+    ]
+  },
+  "terms": [
+    {
+      "term": "APS register",
+      "meaning": "A list of codes in a data pack, each pointing to a web source and a quote."
+    },
+    {
+      "term": "Capture service",
+      "meaning": "The component that opens a web page in a browser, looks for a quote and takes a screenshot as proof."
+    },
+    {
+      "term": "Genuine screenshot",
+      "meaning": "A real image of the page showing the quote, as opposed to a placeholder."
+    },
+    {
+      "term": "Verbatim found",
+      "meaning": "The quote was located word for word on the page."
+    },
+    {
+      "term": "Headless browser",
+      "meaning": "A browser that runs without a visible window, used so pages can be captured automatically."
+    },
+    {
+      "term": "Retired source",
+      "meaning": "A source marked as no longer in use, so it is not captured."
+    },
+    {
+      "term": "Fingerprint",
+      "meaning": "A short code computed from a quote, used to recognize the same quote across records."
+    }
+  ],
+  "depends_on": [
+    "fs, path, crypto (Node standard modules)",
+    "drizzle-orm",
+    "@workspace/db",
+    "src/db",
+    "src/evidence/identity",
+    "src/evidence/captureService",
+    "playwright",
+    "local register file or docs/reality-scan-evidence/data/aps-benchmark.json"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e16836cd554c8cff",
+      "title": "Purpose, usage and imports",
+      "what": "The header explains the check, lists the command options and shows the expected results. The code brings in the database, capture and browser libraries, and sets the root folder used for every other path.",
+      "why": "The header records what each result means so a reader can interpret the report.",
+      "watch_out": "The root folder is worked out from the script's own address with a fixed number of parent steps, so moving the script to a different folder depth breaks every path."
+    },
+    {
+      "start": 24,
+      "end": 29,
+      "kind": "value",
+      "name": "REGISTER, arg, flag",
+      "id": "s2",
+      "hash": "78ea238814d2fb05",
+      "title": "Register location and command reader",
+      "what": "Names the expected location of the register file and reads command options. A value option is read as the word after its flag, and a switch option is read as present or absent.",
+      "why": "Small helpers keep option handling simple across the script.",
+      "watch_out": "Options are read by position, so a value must directly follow its flag or it is silently ignored."
+    },
+    {
+      "start": 30,
+      "end": 62,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s3",
+      "hash": "a1e9d878c7fa058c",
+      "title": "Loading register and matching to sources",
+      "what": "Loads the register from the local data pack, or from the benchmark file if the pack is missing. Matches each register code to a database source by code or by address and quote fingerprint, notes codes that share a source, skips retired sources, and applies the --only and --limit options. It prints the counts and any retired or missing codes.",
+      "why": "Codes that share a link and quote are captured only once, which saves work and keeps results consistent.",
+      "watch_out": "Codes not found in the database are listed in the console and report but never captured, so a missing source can go unnoticed unless the console line is read."
+    },
+    {
+      "start": 63,
+      "end": 109,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s4",
+      "hash": "cc7dec6049437f24",
+      "title": "Running captures in parallel",
+      "what": "Creates a run id from the date and a random code, starts one shared browser, and runs captures with a set number of workers. If the browser crashes, it is relaunched and an interrupted capture is retried. Each finished source prints one status line, and the browser is closed at the end. Then the latest result per source is read.",
+      "why": "One shared browser is cheaper than one per worker, and the header says an interrupted source is retried rather than recorded as failed.",
+      "watch_out": "Every worker shares one browser, so a crash affects all workers' current captures at once."
+    },
+    {
+      "start": 110,
+      "end": 127,
+      "kind": "method",
+      "name": "main: for",
+      "id": "s5",
+      "hash": "062bfc0f730ff107",
+      "title": "Summary by status and report file",
+      "what": "For each live source, takes the latest capture and gives it a status label. Counts sources with a genuine screenshot, collects failures with their address and note, prints the counts by status, and writes the JSON report.",
+      "why": "The report file keeps a durable record of the run that can be compared later.",
+      "watch_out": "A source shows not run when it has no capture at all, which can mean it was skipped by --limit or --only rather than failed. The report file is overwritten on each run."
+    }
+  ],
+  "explained_at": "2026-11-12T02:54:43+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the evidence capture service over every code in the APS register and reports, for each source, whether the quote was found on a page that could be captured as a genuine screenshot.",
+  "purpose": "Stage 2 check of the capture service. It confirms that each source either has its quote captured or has a clear reason for failure.",
+  "why": "The header says each source ends with one capture record: verbatim found with a genuine image, or a clean could-not-capture status with the reason.",
+  "how": "Reads the register from a local data pack, or from a benchmark file if the pack is missing. Matches each code to a source in the database by code or by address and quote fingerprint, notes codes that share a source, skips retired sources, and applies the command options. It starts one shared browser and runs captures in parallel workers, retrying interrupted captures. Finally it reads the latest capture per source, counts results by status, lists failures, and writes a JSON report.",
+  "inputs": "The register JSON file. Command options (--only, --force, --concurrency, --limit, --no-alternatives, --report-only). The evidence_source and source_capture tables. The environment setting CAPTURE_ENVIRONMENT.",
+  "outputs": "generated-artifacts/capture-aps-report.json, overwritten on each run. A console summary by status. New capture rows in the database unless --report-only is given.",
+  "risks": "A normal run writes capture rows to the database and launches a browser. --force reruns captures that already have results. The root folder is found from the script's own file address, which can resolve incorrectly on some operating systems.",
+  "debug": "Read the console lines for codes reported as not in the database or retired. Check the report's failure list for the status and note of each failed source. If many show not run, check whether --only or --limit was used. Check that the register file exists at the expected location.",
+  "summary_hash": "sha256:568fb890d9470f2918c54c45ce500cac3988c75426cf66d110fc9d5a9e19e364"
+}

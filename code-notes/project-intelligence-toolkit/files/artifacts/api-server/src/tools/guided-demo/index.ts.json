@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/guided-demo/index.ts",
+  "language": "TypeScript",
+  "lines": 119,
+  "hash": "sha256:0eab4dd7971eab364e619a5ecf57d83fa272e3d00dd2608eba727e53fc763f7e",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test was visible.",
+      "Relies on pinned data and on a model-based synthesis step.",
+      "Scan export failures are not logged, unlike prepared export failures."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Route",
+      "meaning": "One web address and the code that answers requests sent to it."
+    },
+    {
+      "term": "PowerPoint (pptx)",
+      "meaning": "A presentation file format."
+    },
+    {
+      "term": "Synthesis",
+      "meaning": "A written analysis that combines findings into slide text."
+    },
+    {
+      "term": "Amendment",
+      "meaning": "A proposed change to a slide that the user can review, accept or dismiss."
+    },
+    {
+      "term": "DeckError",
+      "meaning": "An error type that carries an HTTP status code for problems with a deck."
+    }
+  ],
+  "depends_on": [
+    "express",
+    "zod",
+    "drizzle-orm",
+    "@workspace/db",
+    "@workspace/api-zod",
+    "../../db",
+    "../../scan/scanData",
+    "../../scan/synthesis",
+    "../../shared/industries",
+    "./renderScanExport",
+    "./prepared",
+    "../reality-scan/deckExport",
+    "../reality-scan/deckStore"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4da7c352f208a53d",
+      "title": "Imports and router setup",
+      "what": "Loads the web framework, validation library, database, scan and deck helpers, then creates the router that holds this tool's routes.",
+      "why": "Likely reason: the file gathers the helpers needed for the demo routes in one place.",
+      "watch_out": "Imports reach into other folders with long relative paths, so moving files breaks them."
+    },
+    {
+      "start": 18,
+      "end": 21,
+      "kind": "value",
+      "name": "jsonQuery",
+      "id": "s2",
+      "hash": "801084c0b0df9a30",
+      "title": "Reading JSON text from an address",
+      "what": "Turns a text value from the web address into data, and rejects it when it is not valid JSON or is longer than the size limit.",
+      "why": "Lets query strings carry lists and settings as JSON text.",
+      "watch_out": "The size limit is 64000 characters, so very large edit lists are refused."
+    },
+    {
+      "start": 22,
+      "end": 29,
+      "kind": "value",
+      "name": "preparedQuery",
+      "id": "s3",
+      "hash": "e7bc60851dfa7202",
+      "title": "Validating prepared demo requests",
+      "what": "Defines the allowed prepared demo options: which tool, whether an amendment applies, a list of text edits and chart settings. Defaults to the scan tool and no amendment.",
+      "why": "Checks inputs before any work starts.",
+      "watch_out": "Up to 100 text edits are allowed, and each text is capped at 12000 characters."
+    },
+    {
+      "start": 30,
+      "end": 70,
+      "kind": "route",
+      "name": "get",
+      "id": "s4",
+      "hash": "00fde33aa1a80186",
+      "title": "Serving the prepared demo and its export",
+      "what": "Returns the prepared walkthrough as data. When the export address is used, it applies chart and text changes to a copy, adds the recorded amendment if asked, and sends a PowerPoint download.",
+      "why": "The walkthrough must be replayable without changing the saved run.",
+      "watch_out": "Chart changes are refused for the lessons tool, and a missing amendment target returns a conflict error."
+    },
+    {
+      "start": 71,
+      "end": 76,
+      "kind": "value",
+      "name": "ScanExportChartBody",
+      "id": "s5",
+      "hash": "cbe461884a73b6a5",
+      "title": "Chart settings for scan export",
+      "what": "Defines the chart settings the scan export accepts: the size basis (equal, capex or capacity), project ids and an optional note.",
+      "why": "Keeps chart input within known options.",
+      "watch_out": "Project ids are limited to 2000 per request."
+    },
+    {
+      "start": 77,
+      "end": 119,
+      "kind": "route",
+      "name": "post",
+      "id": "s6",
+      "hash": "3d495b02089eb61d",
+      "title": "Scan export from selected projects",
+      "what": "Validates the request, loads the selected projects and their active evidence quotes, builds scan data and synthesis, and returns a PowerPoint download. It returns a conflict error if synthesis is unavailable.",
+      "why": "A complete deck needs its written analysis, so export stops rather than producing a partial file.",
+      "watch_out": "Chart project ids are silently narrowed to the selected projects, so a chart can show fewer points than the user asked for."
+    }
+  ],
+  "explained_at": "2026-11-12T04:21:42+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the web addresses that deliver the guided demo walkthrough, a PowerPoint export of the pinned scan, and a scan export for projects a user selects.",
+  "purpose": "Serves the prepared demo data and a PowerPoint download for the demo, and builds a scan export from selected LNG projects.",
+  "why": "Reason not stated in the code. The comments say the replay reads only and applies edits to a copy.",
+  "how": "The prepared route checks request inputs, loads the prepared demo, applies optional chart settings, text edits and the recorded amendment to a copy, builds a PowerPoint file and returns it. The scan export route checks the selected projects, loads their evidence, builds synthesis and refuses to export if synthesis is not ok.",
+  "inputs": "For the prepared route: tool name, amended flag, text edits and chart settings in the address. For scan export: an industry, a list of project ids, and optional chart settings in the body.",
+  "outputs": "JSON for the prepared view, or a PowerPoint file download. Errors come back as JSON with a status code.",
+  "risks": "Edits and chart changes apply only on the export route, so the plain prepared route ignores them. Unexpected errors in scan export return no server log.",
+  "debug": "A 409 means pinned data no longer matches or synthesis failed; read the message. A 400 means input validation failed. For prepared export failures, check the console for the guided-demo prepared error log.",
+  "summary_hash": "sha256:0eab4dd7971eab364e619a5ecf57d83fa272e3d00dd2608eba727e53fc763f7e"
+}

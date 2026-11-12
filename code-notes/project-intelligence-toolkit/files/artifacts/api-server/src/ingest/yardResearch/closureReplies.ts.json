@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/yardResearch/closureReplies.ts",
+  "language": "TypeScript",
+  "lines": 94,
+  "hash": "sha256:36e4c62d5c9fed78bb35d856082ee256f6f4a73f49a09f2d928873ecacf0370e",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Error messages are clear and the loader refuses partial data, which is good.",
+      "No test is visible for this file.",
+      "The cleaning rules are pattern-based and may change text that is not a chat marker."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Fence",
+      "meaning": "The three-backtick markers that wrap code blocks in chat messages."
+    },
+    {
+      "term": "Worklist",
+      "meaning": "The list of project IDs that a research batch was asked to cover."
+    },
+    {
+      "term": "Producer",
+      "meaning": "The tool or person who produced a research reply, such as a particular chat model."
+    },
+    {
+      "term": "Yard ID",
+      "meaning": "The stored ID of an existing project that a reply record refers to."
+    },
+    {
+      "term": "Marker",
+      "meaning": "A citation tag that a chat tool inserts into its text, which is not part of the real content."
+    }
+  ],
+  "depends_on": [
+    "node:fs",
+    "node:path",
+    "node:crypto",
+    "data/yard-research/closure-worklists"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup, ClosureWorklist",
+      "id": "s1",
+      "hash": "bb3fd49a2c108e6d",
+      "title": "Setup and worklist shape",
+      "what": "Brings in the file and hashing helpers and defines what a worklist holds: its member IDs, industry and segment. Nothing is shown to users directly.",
+      "why": "The header says closure records are keyed by existing project IDs and never create projects.",
+      "watch_out": "The set of allowed project IDs is only as current as the snapshot folder."
+    },
+    {
+      "start": 20,
+      "end": 34,
+      "kind": "function",
+      "name": "loadClosureWorklists",
+      "id": "s2",
+      "hash": "830adced320d52e8",
+      "title": "Loading the worklist snapshots",
+      "what": "Reads every saved worklist snapshot and records the project IDs it covers, along with the industry and segment it was made for, keyed by worklist ID.",
+      "why": "Snapshots fix the list of projects each batch was asked about, so replies can be checked against it.",
+      "watch_out": "A worklist with no industry field is treated as renewables, so a mislabelled snapshot would be checked against the wrong industry."
+    },
+    {
+      "start": 35,
+      "end": 39,
+      "kind": "type",
+      "name": "ClosureBlock",
+      "id": "s3",
+      "hash": "27b4fd90243e949c",
+      "title": "Shape of one parsed reply block",
+      "what": "Defines what one parsed block holds: the source file, its fingerprint, the producer, the worklist ID, the notes, the remaining items and the project records.",
+      "why": "Gives every parsed block the same shape before it is imported.",
+      "watch_out": "Project records are loosely typed, so missing fields are found later, not here."
+    },
+    {
+      "start": 40,
+      "end": 53,
+      "kind": "function",
+      "name": "stripChatMarkers",
+      "id": "s4",
+      "hash": "28f6709730ec45bb",
+      "title": "Removing chat citation markers",
+      "what": "Removes the citation tags that chat tools insert into pasted text, including tags that break the JSON, and removes trailing commas left behind when a key is dropped.",
+      "why": "The comment says these are paste artifacts from ChatGPT, which would otherwise make the JSON unreadable.",
+      "watch_out": "The trailing comma rule also changes any comma directly before a closing bracket, even inside a quoted value."
+    },
+    {
+      "start": 54,
+      "end": 67,
+      "kind": "function",
+      "name": "topLevelObjects",
+      "id": "s5",
+      "hash": "45a27bfa3e0f6974",
+      "title": "Finding separate JSON objects in a reply",
+      "what": "Walks through the text and collects every complete top-level JSON object. It ignores braces inside quoted text, so replies with several code blocks are handled.",
+      "why": "The comment says replies may hold several code blocks or one combined object.",
+      "watch_out": "The splitter counts braces rather than applying full JSON rules, so a stray unmatched brace outside quotes will group the text wrongly."
+    },
+    {
+      "start": 68,
+      "end": 87,
+      "kind": "function",
+      "name": "parseClosureFile",
+      "id": "s6",
+      "hash": "3c4a80e2a63ca3e1",
+      "title": "Checking each reply block",
+      "what": "Parses each object and rejects any that is not a valid closure block with the right schema. It accepts several older header names from ChatGPT. It returns the valid blocks with a fingerprint of the file, and refuses the whole file if any object fails.",
+      "why": "The comment says it refuses anything it cannot parse, so it never guesses at partial data.",
+      "watch_out": "One bad object stops the whole file, so good blocks in the same reply are not imported."
+    },
+    {
+      "start": 88,
+      "end": 94,
+      "kind": "function",
+      "name": "plannerRecord",
+      "id": "s7",
+      "hash": "1f8bc1f918d79424",
+      "title": "Converting a reply record for the planner",
+      "what": "Turns a closure project record into the planner's shape. Its key becomes the stored project ID, company name and scope fields are renamed where producers used other names, and delivery facts are added to the general facts list.",
+      "why": "The comment says producers use different names for the same things, so this step maps them to one shape.",
+      "watch_out": "A record with no yard ID stops with an error that names the project, which helps find the bad record."
+    }
+  ],
+  "explained_at": "2026-11-12T03:38:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads the replies that chat tools return for a closure research batch, cleans common chat artifacts from the text, and turns each reply into project records keyed by an existing project ID.",
+  "purpose": "Imports research replies that fill in gaps for projects already in the database. It never creates new projects.",
+  "why": "The header comment says chat tools paste imperfect JSON, and the loader refuses to guess when a reply cannot be parsed.",
+  "how": "Loads worklist snapshots to learn which project IDs each batch covered. Removes citation markers that chat tools insert. Splits the reply into top-level JSON objects. Checks that each object is a closure block with the right schema, producer and worklist. Converts each project record into the planner's shape, renaming fields where producers used different names.",
+  "inputs": "The text of a reply file and the saved worklist snapshots under data/yard-research/closure-worklists.",
+  "outputs": "A list of parsed reply blocks, each with its fingerprint, producer, worklist and records. A planner record for each project. A map of worklists keyed by worklist ID.",
+  "risks": "The cleaning rules are broad and may also change ordinary text. A worklist with no industry field is treated as renewables. One bad object stops the whole reply file. The object splitter counts braces and does not follow the full JSON rules.",
+  "debug": "If the error says no JSON object found, the reply may be prose only. If it says not valid JSON after marker cleanup, check the object number given in the error. If it says it lacks producer or worklist ID, check the header fields. If a worklist is missing, check its snapshot file.",
+  "summary_hash": "sha256:36e4c62d5c9fed78bb35d856082ee256f6f4a73f49a09f2d928873ecacf0370e"
+}

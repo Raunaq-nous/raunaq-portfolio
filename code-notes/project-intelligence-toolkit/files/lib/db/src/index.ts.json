@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "path": "lib/db/src/index.ts",
+  "language": "TypeScript",
+  "lines": 23,
+  "hash": "sha256:923acb1f5d51d5713c7d7a289036bab1a47769741b07c83460b96ea5c7a46055",
+  "area": "lib-db",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Missing DATABASE_URL is checked and reported clearly.",
+      "Dropped idle connections are logged, so the process does not crash.",
+      "No test or other evidence of correct behaviour is visible in this file.",
+      "No connection pool size is set."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Connection pool",
+      "meaning": "A set of open database connections kept ready so the app can reuse them instead of opening a new one each time."
+    },
+    {
+      "term": "Environment variable",
+      "meaning": "A named setting stored outside the code, such as a database address, that the program reads when it starts."
+    },
+    {
+      "term": "Drizzle",
+      "meaning": "The library that turns table definitions into code the app can use to read and write rows."
+    },
+    {
+      "term": "Schema",
+      "meaning": "The written description of the database tables, their columns and their rules."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "pg",
+    "lib/db/src/schema/index.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup, pool",
+      "id": "s1",
+      "hash": "65da77ac7fcbf62b",
+      "title": "Sets up the database connection pool",
+      "what": "Checks for the database address, then creates the pool that holds open connections and the query client built on it. If the address is missing, the app stops at startup with a clear message.",
+      "why": "Likely reason: one shared pool avoids opening a new connection for every request.",
+      "watch_out": "Nothing in this section can run without DATABASE_URL, so a missing setting stops the whole app."
+    },
+    {
+      "start": 14,
+      "end": 23,
+      "kind": "event handler",
+      "name": "pool error handler",
+      "id": "s2",
+      "hash": "76e3762cea8c36bf",
+      "title": "Logs dropped idle database connections",
+      "what": "Catches errors on idle connections and logs them, so one dropped connection does not crash the whole API process. The pool then opens a fresh connection on the next query.",
+      "why": "The comment explains that without this handler the error would exit the process.",
+      "watch_out": "The handler only logs. If the database is down for a long time, queries will keep failing even though the process stays up."
+    }
+  ],
+  "explained_at": "2026-11-12T06:48:44+00:00",
+  "explained_by": "haiku",
+  "summary": "Creates the shared database connection pool and exports the query client and schema that the rest of the app uses.",
+  "purpose": "Gives the app one place to connect to the database and one handle for running queries.",
+  "why": "Likely reason: reusing a set of open connections is faster than opening a new one for every request. The comment above the error handler explains why idle connection errors are logged rather than allowed to crash the process.",
+  "how": "First, it checks that the DATABASE_URL setting exists and stops with a clear message if it does not. Second, it creates the connection pool from that setting. Third, it attaches an error handler that logs dropped idle connections. Fourth, it builds the query client from the pool and the schema. Finally, it re-exports the schema so other code can import tables from here.",
+  "inputs": "The DATABASE_URL environment variable, which holds the database address and login.",
+  "outputs": "Exports pool (the connection pool), db (the query client) and everything exported by the schema folder.",
+  "risks": "The app will not start if DATABASE_URL is missing. No pool size limit is set, so the number of connections depends on the library default. A database that drops connections often will fill the logs with idle client error messages.",
+  "debug": "If the app will not start, check that DATABASE_URL is set in the environment. If you see messages starting with db idle client error, the database dropped a connection and the pool should reconnect on its own. Repeated messages suggest the database is unstable or unreachable.",
+  "summary_hash": "sha256:923acb1f5d51d5713c7d7a289036bab1a47769741b07c83460b96ea5c7a46055"
+}

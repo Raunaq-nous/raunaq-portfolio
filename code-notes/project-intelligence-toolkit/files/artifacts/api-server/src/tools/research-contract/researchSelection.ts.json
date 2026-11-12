@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/researchSelection.ts",
+  "language": "TypeScript",
+  "lines": 70,
+  "hash": "sha256:53c59f4aca9f9575b109222b451c2761b337bb8f8ca8d7bbc9bb01779b3831c1",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Has tests in researchSelection.test.ts for name cleaning, ranking and windows.",
+      "Matching relies on simple word checks, so edge cases such as spelling variants are not covered."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Key words",
+      "meaning": "The distinctive words from a project name, used to decide whether a source is about it."
+    },
+    {
+      "term": "Search phrase",
+      "meaning": "The text sent to a search engine to find sources."
+    },
+    {
+      "term": "Slice",
+      "meaning": "A section of a longer document, saved with its start and end positions."
+    },
+    {
+      "term": "Search result",
+      "meaning": "One item returned by a web search, with its address, title and short summary."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/search/interfaces.ts"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/research-contract/researchSelection.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 2,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d421fd8e7a3ed200",
+      "title": "Imports for search results",
+      "what": "Brings in the shape of one search result from the shared search code so the rest of this file can refer to it. Nothing runs in this part.",
+      "why": "Likely reason: keeps this file typed against the shared search result shape instead of a local copy.",
+      "watch_out": ""
+    },
+    {
+      "start": 3,
+      "end": 12,
+      "kind": "function",
+      "name": "researchName",
+      "id": "s2",
+      "hash": "af1f62ba81514bd8",
+      "title": "Name as a source would print it",
+      "what": "Removes the bracketed curator note from a project name, so a name such as Mozambique LNG with a bracketed owner note becomes the name an article would use. Keeps train and unit qualifiers.",
+      "why": "The comment says curator notes appear in no article, so matching against them would never succeed.",
+      "watch_out": "Only square-bracket notes are removed, so a qualifier in round brackets stays in the name."
+    },
+    {
+      "start": 13,
+      "end": 18,
+      "kind": "function",
+      "name": "identifyingTerms",
+      "id": "s3",
+      "hash": "5e09dea322f7785c",
+      "title": "Key words from a project name",
+      "what": "Splits a name into lower-case words of three or more letters, leaving out generic words such as plant, project, unit and the.",
+      "why": "Likely reason: distinctive words let a source be recognised even when its wording differs from the project name.",
+      "watch_out": "A name made only of generic words gives no key words, so no results will match it."
+    },
+    {
+      "start": 19,
+      "end": 29,
+      "kind": "function",
+      "name": "rankProjectCandidates",
+      "id": "s4",
+      "hash": "5d3501949e7c0cd0",
+      "title": "Keeps and orders search results",
+      "what": "Keeps only search results that contain every key word of the project name, then puts results with lesson, delivery or readiness wording first. Does not judge the results as evidence; the later quote checks still apply.",
+      "why": "The comment says ranking is not an evidence gate, so a strong-looking source cannot stand in for a project match.",
+      "watch_out": "A result that misses any key word is dropped entirely, so a project known by a different name returns nothing."
+    },
+    {
+      "start": 30,
+      "end": 58,
+      "kind": "function",
+      "name": "projectSourceWindows",
+      "id": "s5",
+      "hash": "a905967e97498e8d",
+      "title": "Picks the parts of a document to read",
+      "what": "Finds each mention of the project's first key word in a long text, takes a slice around it, and prefers slices with the most lesson or readiness words. Keeps the total within a budget of 24,000 characters by default and records the exact start and end of each slice.",
+      "why": "Likely reason: the first page of a long document is often unrelated, so the reading should focus where the project is named.",
+      "watch_out": "Only the first key word is used to find mentions, so a mention written with a different word is missed."
+    },
+    {
+      "start": 59,
+      "end": 70,
+      "kind": "function",
+      "name": "projectResearchQueries",
+      "id": "s6",
+      "hash": "7d11400f0655bbb7",
+      "title": "Builds search phrases for a project",
+      "what": "Creates search phrases for a project in one of two focuses. A unit-style name becomes a quoted name plus quoted unit number. Qualitative focus gives five phrases; balanced focus gives three. Each phrase adds the industry name and a set of lesson or cost wording.",
+      "why": "Likely reason: quoted names narrow the search to the project, and the fixed wording steers results toward the kind of evidence wanted.",
+      "watch_out": "Quoted names must match exactly, so a spelling difference in the project name can return no results."
+    }
+  ],
+  "explained_at": "2026-11-12T05:13:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Helps the research step choose which search results and which parts of each document are about a given project, and writes the search phrases used to find them.",
+  "purpose": "Narrows a large search into the few sources and passages that name the project, so later checks have relevant text to read.",
+  "why": "Likely reason: search results and long documents are often unrelated to the project, so the matching must happen before evidence is checked.",
+  "how": "Shortens the project name to the form a source would print. Picks out distinctive key words. Keeps only search results that contain every key word, ranks them, then cuts the document into slices around each project mention within a size budget. Builds five phrases for qualitative searches or three for balanced ones.",
+  "inputs": "A project name, a list of search results, the full text of a document, an industry name, and a focus setting.",
+  "outputs": "Ranked search results, slices of text with exact positions, and search phrases.",
+  "risks": "A result that lacks any key word is dropped completely. Only the first key word is used to find mentions in documents, so a mention written differently is missed.",
+  "debug": "If a project gets no sources, check the key words it produces and whether results contain all of them. If the wrong passage appears, check the slice scoring words. If searches return nothing, check the quoted names in the phrases.",
+  "summary_hash": "sha256:53c59f4aca9f9575b109222b451c2761b337bb8f8ca8d7bbc9bb01779b3831c1"
+}

@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/evidence/identity.ts",
+  "language": "TypeScript",
+  "lines": 69,
+  "hash": "sha256:315515070b1237858bfee0fbba359692f96d768670bd32694a9486d2d4a42d8e",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test in this file checks the address or quote tidying.",
+      "The rule that drops the fragment and lower-cases quotes is a deliberate choice that is not tested."
+    ]
+  },
+  "terms": [
+    {
+      "term": "hash",
+      "meaning": "a short fixed fingerprint computed from text, so equal text gives equal fingerprints"
+    },
+    {
+      "term": "NFKC",
+      "meaning": "a standard way of making visually similar Unicode characters into one form"
+    },
+    {
+      "term": "tracking parameter",
+      "meaning": "an extra part of a web address added by marketing tools that does not change the page"
+    }
+  ],
+  "depends_on": [
+    "Node crypto module"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/evidence/store.ts",
+    "artifacts/api-server/src/evidence/runEvents.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "5db05daf74e5df0f",
+      "title": "Purpose and setup of identity rules",
+      "what": "Explains that a source is one page plus one exact quote, and lists the tracking parameter names to strip from web addresses.",
+      "why": "Likely reason: the identity rule is the foundation of the source store, so it is described once at the top.",
+      "watch_out": "Adding a parameter to the list changes which sources merge, so keep it in step with what the source store expects."
+    },
+    {
+      "start": 9,
+      "end": 34,
+      "kind": "function",
+      "name": "normUrl",
+      "id": "s2",
+      "hash": "3b7f913702f4b9b1",
+      "title": "Tidying a web address",
+      "what": "Turns a web address into one standard form for comparison, so that small differences such as www, case, trailing slashes and tracking tags do not create a second source. Text that is not a web address is only lower-cased.",
+      "why": "Likely reason: the same page is often copied with different tracking tags, and each copy would otherwise look new.",
+      "watch_out": "Removing the fragment means links that point to different parts of one page are one source, which is intended but easy to miss."
+    },
+    {
+      "start": 35,
+      "end": 43,
+      "kind": "function",
+      "name": "urlHost",
+      "id": "s3",
+      "hash": "02c5f43dc95253aa",
+      "title": "Getting the short host name",
+      "what": "Returns just the host name of a web address, in lower case and without www, or an empty text if the address cannot be read.",
+      "why": "Likely reason: the host is shown as the publisher when no publisher name is given.",
+      "watch_out": "Returns empty text on a bad address rather than an error, so a blank host can mean a broken link."
+    },
+    {
+      "start": 44,
+      "end": 56,
+      "kind": "function",
+      "name": "normQuote",
+      "id": "s4",
+      "hash": "ec5683d4e728df87",
+      "title": "Tidying a quote",
+      "what": "Makes a quote comparable by normalising Unicode characters, straightening curly quotes and apostrophes, turning long dashes into plain hyphens, collapsing spaces and lower-casing the text.",
+      "why": "Likely reason: the same quote often arrives with different punctuation from different sources.",
+      "watch_out": "Lower-casing and punctuation folding mean a quote that differs only in those ways is treated as the same quote."
+    },
+    {
+      "start": 57,
+      "end": 60,
+      "kind": "function",
+      "name": "sha256",
+      "id": "s5",
+      "hash": "0784786092776ffe",
+      "title": "Computing a SHA-256 hash",
+      "what": "Produces a SHA-256 fingerprint of text or a file's bytes as a hexadecimal string.",
+      "why": "Likely reason: a fixed-length fingerprint is needed to compare and store quotes and page text.",
+      "watch_out": "The hash is computed on whatever string is passed, so passing an untidied string gives a different fingerprint."
+    },
+    {
+      "start": 61,
+      "end": 64,
+      "kind": "function",
+      "name": "quoteHash",
+      "id": "s6",
+      "hash": "134948b6bd0759b4",
+      "title": "Fingerprint of a tidied quote",
+      "what": "Combines the quote tidying and the hash, so the result can match a stored source by quote.",
+      "why": "Likely reason: matching needs one stable value per quote.",
+      "watch_out": "Changing the tidying rules changes every stored quote hash, so existing matches would stop working."
+    },
+    {
+      "start": 65,
+      "end": 69,
+      "kind": "function",
+      "name": "pageTextFingerprint",
+      "id": "s7",
+      "hash": "bed11fa3fb0fbac1",
+      "title": "Fingerprint of a page's text",
+      "what": "Fingerprints the visible text of a page after tidying, or returns nothing if the text is empty. It is kept apart from the screenshot fingerprint.",
+      "why": "Likely reason: a page can change its text without changing its look, and the two checks should be separate.",
+      "watch_out": "An empty page gives no fingerprint at all, so the comparison cannot be made."
+    }
+  ],
+  "explained_at": "2026-11-12T03:29:11+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the identity of a source from its web address and its exact quote, so the same page and quote are recognised as one source however they were imported.",
+  "purpose": "Stops duplicate sources from being created, so screenshots, reviews and vetting attach once and survive re-imports.",
+  "why": "Likely reason: different tools would otherwise store the same source several times and lose the review work attached to each copy.",
+  "how": "It tidies the web address by lowering case, removing the www prefix and tracking parameters, sorting the remaining parameters and dropping the trailing slash and the port number when it is standard. It tidies the quote by normalising Unicode, straightening quote marks, unifying dashes and spaces, and lowering case. It then hashes the tidy quote so it can be stored and compared.",
+  "inputs": "A web address and a quote, each possibly empty or missing.",
+  "outputs": "A tidied web address, a short host name, a tidied quote, a hash of the quote, and a fingerprint of a whole page's visible text.",
+  "risks": "Lower-casing a quote means a change of capital letters alone makes the same source. The fragment after the hash is dropped, so two pages that differ only by that fragment merge.",
+  "debug": "If two sources are not merging, compare the tidied web address and the quote hash of each. If unrelated sources merge, check the tracking parameter list and the quote tidy steps.",
+  "summary_hash": "sha256:315515070b1237858bfee0fbba359692f96d768670bd32694a9486d2d4a42d8e"
+}

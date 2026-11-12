@@ -1,0 +1,450 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/yardResearch/plan.ts",
+  "language": "TypeScript",
+  "lines": 420,
+  "hash": "sha256:6409c221cba9ad0671c6073e6efc8e0a4d55fa139b2f197ad6456b23af43e472",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in this file, so the rules are described but not shown to work.",
+      "Several spots assume data is present, for example a claim must exist for each record and a budget must have a claim, and an unexpected gap can raise an error.",
+      "The one deliberate error check (a missing industry) is clear, but other failures are not caught or reported."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Producer",
+      "meaning": "One research file or research run that supplied data about a project."
+    },
+    {
+      "term": "Yard",
+      "meaning": "The app's own project store that these plans are written into."
+    },
+    {
+      "term": "Source block",
+      "meaning": "A web link plus its publication details and the exact quote that backs a value."
+    },
+    {
+      "term": "Verbatim quote",
+      "meaning": "The exact wording copied from a source, so someone can check it."
+    },
+    {
+      "term": "Claim",
+      "meaning": "One sourced value tied to its quote, ready to be merged with other claims."
+    },
+    {
+      "term": "Column",
+      "meaning": "One named field in a project's database row."
+    },
+    {
+      "term": "Conflict",
+      "meaning": "Two sources disagree, so the planner writes nothing and records both."
+    },
+    {
+      "term": "Precision",
+      "meaning": "How exact a date or number is, for example a full day compared with a whole year."
+    },
+    {
+      "term": "Financial close",
+      "meaning": "The signing of a project's loan and contracts. The header says it is not the same as FID."
+    },
+    {
+      "term": "FID",
+      "meaning": "Final investment decision, the point when the owners commit to build."
+    },
+    {
+      "term": "Lifecycle stage",
+      "meaning": "Where a project is in its life, such as planning, under construction or operating."
+    },
+    {
+      "term": "Component",
+      "meaning": "A part of a project that has its own record."
+    },
+    {
+      "term": "USD",
+      "meaning": "US dollars."
+    },
+    {
+      "term": "FX",
+      "meaning": "Foreign exchange, the rate used to convert one currency into another."
+    },
+    {
+      "term": "Regular expression",
+      "meaning": "A text pattern used to search or check text."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/scan/budgetUnits",
+    "artifacts/api-server/src/lib/fx",
+    "artifacts/api-server/src/ingest/yardResearch/identities"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/ingest/yardResearch/populationConfig.ts",
+    "other callers not visible in this file"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1523f0d17ddd4b6b",
+      "title": "Header rules and imports",
+      "what": "Brings in the budget unit helper and the currency conversion helper, then sets out in a header comment the rules the rest of the file follows.",
+      "why": "The header comment says the rules come from the user's standing rules and import memory.",
+      "watch_out": "If a rule changes in the code, the header must change too, because it is the only written summary."
+    },
+    {
+      "start": 26,
+      "end": 32,
+      "kind": "type",
+      "name": "SourceBlock, ResearchRecord, ProducerRecord",
+      "id": "s2",
+      "hash": "ac955bb99acfbe41",
+      "title": "Source, record and producer shapes",
+      "what": "Defines a source block (a web link with its quote and publication details), a research record (one project's data as one producer wrote it), and a producer record (that research record plus the producer name, file, file hash and identity reference).",
+      "why": "Likely reason: a shared shape lets every function read the records in the same way.",
+      "watch_out": "The research record type accepts any field name, so a typo in a field name is not caught here."
+    },
+    {
+      "start": 33,
+      "end": 40,
+      "kind": "type",
+      "name": "Claim, STAGES, FORWARD",
+      "id": "s3",
+      "hash": "2e1ab3a1e4eb180d",
+      "title": "Claim shape and stage order",
+      "what": "Defines a claim as one sourced value with its label, display text, source block and producer. Also lists the project lifecycle stages in order, and the subset that can only move forward.",
+      "why": "Likely reason: the stage order is needed to decide whether a new status is an advance.",
+      "watch_out": "Reordering the forward list changes which status updates are accepted as moving a project ahead."
+    },
+    {
+      "start": 41,
+      "end": 44,
+      "kind": "value",
+      "name": "COUNTRY",
+      "id": "s4",
+      "hash": "50fb8437bbeb130d",
+      "title": "Country name standard table",
+      "what": "Maps a few informal country names, such as UK, USA and South Korea, to the standard names the database uses.",
+      "why": "Likely reason: researchers write country names in several ways, and the database needs one spelling.",
+      "watch_out": "Only the listed spellings are mapped, and other variants pass through unchanged."
+    },
+    {
+      "start": 45,
+      "end": 48,
+      "kind": "function",
+      "name": "normCountry",
+      "id": "s5",
+      "hash": "89b995ebf6d0881c",
+      "title": "Standardize a country name",
+      "what": "Trims a country name and swaps it for the standard form if one is listed. Otherwise it returns the trimmed text as written.",
+      "why": "Likely reason: country values from different producers must be comparable.",
+      "watch_out": "An unlisted spelling is not matched, so two spellings of one country can still cause a conflict."
+    },
+    {
+      "start": 49,
+      "end": 53,
+      "kind": "function",
+      "name": "foldStage",
+      "id": "s6",
+      "hash": "7d0c6108b4a24aec",
+      "title": "Standardize a lifecycle stage",
+      "what": "Cleans a status word by trimming spaces, uppercasing it, turning spaces and dashes into underscores, and changing OPERATIONAL to OPERATING.",
+      "why": "Likely reason: status words written in different ways must still match the stage list.",
+      "watch_out": "Only OPERATIONAL is renamed, so other synonyms will not match a stage."
+    },
+    {
+      "start": 54,
+      "end": 62,
+      "kind": "function",
+      "name": "sourced, decimals",
+      "id": "s7",
+      "hash": "bba6f36d051796aa",
+      "title": "Check sources and read numbers",
+      "what": "The sourced check confirms that a value has a web link starting with http or https and a non-empty quote. The decimals helper counts the digits after the decimal point in a number, which is used to judge precision.",
+      "why": "Likely reason: sourced enforces the rule that every stored value needs a source, and decimals gives the precision used when comparing figures.",
+      "watch_out": "Values that fail the sourced check are set aside rather than stored, so they are only visible in the unsourced list."
+    },
+    {
+      "start": 63,
+      "end": 76,
+      "kind": "function",
+      "name": "capacityMw, Period, pad, lastDay",
+      "id": "s8",
+      "hash": "3de812b37cb635be",
+      "title": "Capacity and date helper functions",
+      "what": "The capacity helper turns a figure in MW or GW into MW and records how precise it is. The small helpers pad and lastDay format date parts and find the last day of a month.",
+      "why": "Likely reason: capacity is stored in MW only, and the precision step decides when two capacity figures agree.",
+      "watch_out": "Only the MW, MWe, MWac and GW units are accepted, so any other unit makes the value drop out."
+    },
+    {
+      "start": 77,
+      "end": 87,
+      "kind": "function",
+      "name": "period",
+      "id": "s9",
+      "hash": "d28a19e8e6377fb5",
+      "title": "Read a date and its precision",
+      "what": "Turns date text into a start day, an end day and a precision level: full day, month, quarter, half-year or year. Text in any other form returns nothing.",
+      "why": "Likely reason: it lets dates of different exactness be compared fairly.",
+      "watch_out": "Only the full day level is stored in date columns, so the other levels are kept as cited text."
+    },
+    {
+      "start": 88,
+      "end": 93,
+      "kind": "function",
+      "name": "money",
+      "id": "s10",
+      "hash": "7f7094ccfd358b39",
+      "title": "Read a cost in millions",
+      "what": "Reads a cost figure and returns it in millions with its three-letter currency code, but only when the amount is a plain number and the unit says million or billion.",
+      "why": "Likely reason: budgets are stored in millions, so costs are converted to that unit here.",
+      "watch_out": "A cost with a missing or non-standard currency code, or an amount that is not a plain number, is dropped."
+    },
+    {
+      "start": 94,
+      "end": 107,
+      "kind": "function",
+      "name": "moneyText",
+      "id": "s11",
+      "hash": "4cea19c5b3b890a5",
+      "title": "Write a cost as readable text",
+      "what": "Builds a one-line description of a cost, including currency, amount, unit, basis, price date, as-of date and scope, for reports and for the budget text column.",
+      "why": "Likely reason: the figure is kept with its context, so readers see what it means and not just a number.",
+      "watch_out": "Missing parts are written as not-stated text, so gaps show in the report instead of being hidden."
+    },
+    {
+      "start": 108,
+      "end": 118,
+      "kind": "value",
+      "name": "DATE_FIELDS, COST_FIELDS, camel, isFinancialClose, isFid",
+      "id": "s12",
+      "hash": "d0b6fa64ad4664be",
+      "title": "Field lists and financial close test",
+      "what": "Lists the date fields (such as announcement, financial close and actual completion) and the cost fields (original budget, latest estimate and final cost) the planner reads. Also decides whether a note means financial close or final investment decision.",
+      "why": "The header says financial close is not FID, so the two are kept apart.",
+      "watch_out": "The FID test looks for words such as sanction in the note text, so an unrelated note with those words can be read as FID."
+    },
+    {
+      "start": 119,
+      "end": 165,
+      "kind": "function",
+      "name": "extractClaims",
+      "id": "s13",
+      "hash": "457a07ffd26eb103",
+      "title": "Pull sourced values from a record",
+      "what": "Goes through one producer's record and turns each value with a valid source into a claim with a label and display text. Values without a valid source are listed separately as unsourced and are not stored.",
+      "why": "Likely reason: every stored value must carry a source, so this is the place where sourced and unsourced values are separated.",
+      "watch_out": "A new field added to the research output does nothing until it is listed here."
+    },
+    {
+      "start": 166,
+      "end": 172,
+      "kind": "type",
+      "name": "ColumnDecision",
+      "id": "s14",
+      "hash": "01442f9d7e14cd7b",
+      "title": "Shape of a column decision",
+      "what": "Defines what the planner records for each database column: the value, the claims behind it, and an outcome such as fill, same, kept existing, conflict, no value or held. It can also hold a currency conversion note.",
+      "why": "Likely reason: the outcome label is what a reviewer reads to see why a column did or did not change.",
+      "watch_out": "Renaming an outcome may break any code or report that matches on the old name, and those callers are not visible in this file."
+    },
+    {
+      "start": 173,
+      "end": 177,
+      "kind": "value",
+      "name": "CONFLICT_FIELD",
+      "id": "s15",
+      "hash": "934a783dc7c67a58",
+      "title": "Map conflict fields to columns",
+      "what": "Links words in a research record's declared conflict field names, such as capacity, FID date or budget, to the database column each one blocks.",
+      "why": "Likely reason: a researcher can flag a conflict in a record, and this stops the matching column from being filled automatically.",
+      "watch_out": "Matching is by partial text, so any field name containing a listed word blocks that column even if the conflict is unrelated."
+    },
+    {
+      "start": 178,
+      "end": 187,
+      "kind": "function",
+      "name": "declaredConflictColumns, Candidate",
+      "id": "s16",
+      "hash": "d04815b067572843",
+      "title": "Find columns blocked by conflicts",
+      "what": "Reads every declared conflict in the records and returns the set of columns they block. A block on the planned budget also blocks the budget text column. The candidate type pairs a value with its claim for the merge steps.",
+      "why": "Likely reason: a researcher's own warning should stop a value from being written automatically.",
+      "watch_out": "Only the blocks named in the conflict list are checked, so a conflict in a field not on that list blocks nothing."
+    },
+    {
+      "start": 188,
+      "end": 198,
+      "kind": "function",
+      "name": "mergeText",
+      "id": "s17",
+      "hash": "2094a21651489eab",
+      "title": "Merge text from several producers",
+      "what": "Compares text values from several producers. Text that is the same once case, spaces and punctuation are removed counts as agreement. If one wording contains all the others, it is used. Otherwise the result is a conflict listing the wordings.",
+      "why": "The header says agreement fills a column and disagreement is recorded as a conflict.",
+      "watch_out": "Because punctuation is ignored, two wordings that differ only in punctuation count as agreement."
+    },
+    {
+      "start": 199,
+      "end": 204,
+      "kind": "value",
+      "name": "FOUNDATIONS",
+      "id": "s18",
+      "hash": "ab1d06df9be1a392",
+      "title": "Turbine foundation type patterns",
+      "what": "Lists the offshore wind foundation types, such as monopile, jacket, gravity base, floating and damping pool, with the text patterns that detect each one. Also holds a pattern for named turbine models.",
+      "why": "The comment says the rule is a user decision for the offshore-wind closure.",
+      "watch_out": "Detection is by text pattern, so a foundation name not in the list will not be detected."
+    },
+    {
+      "start": 205,
+      "end": 210,
+      "kind": "function",
+      "name": "techFeatures",
+      "id": "s19",
+      "hash": "ec8cd062f8a1c115",
+      "title": "Pull turbine models and foundations",
+      "what": "Scans a technology description for turbine model numbers and foundation types, and returns both as sets so two descriptions can be compared.",
+      "why": "Likely reason: it lets two different wordings of the same turbine and foundation count as agreement.",
+      "watch_out": "Any token containing a digit is treated as a model number, so unrelated numbers in the text can be counted as models."
+    },
+    {
+      "start": 211,
+      "end": 222,
+      "kind": "function",
+      "name": "mergeTechnology",
+      "id": "s20",
+      "hash": "9c966a8bde15f8ae",
+      "title": "Merge technology wordings",
+      "what": "First tries the normal text merge. If that gives a conflict, it checks whether the wordings name the same turbine models and the same foundation types. If they do, it treats them as agreement, uses the shortest wording, and notes the alternatives.",
+      "why": "The code comment says this is a user decision for the offshore-wind closure.",
+      "watch_out": "This softens a conflict only when the models and foundations match as the rule defines, so any change here changes which technology wordings are accepted."
+    },
+    {
+      "start": 223,
+      "end": 230,
+      "kind": "function",
+      "name": "mergeCapacity",
+      "id": "s21",
+      "hash": "bd768c3e1a28f88f",
+      "title": "Merge capacity within rounding",
+      "what": "Compares capacity figures in MW. Figures agree if they match exactly, or if they differ by no more than half the precision step of the figure being checked. The most precise figure is used when they agree, and a conflict lists the MW values otherwise.",
+      "why": "Likely reason: figures such as 1.1 GW and 1080 MW agree once rounding is allowed.",
+      "watch_out": "Figures with fewer decimal places have a bigger rounding step, so they are accepted more easily."
+    },
+    {
+      "start": 231,
+      "end": 239,
+      "kind": "function",
+      "name": "mergeDate",
+      "id": "s22",
+      "hash": "a5ab86afe17cb196",
+      "title": "Merge dates from several producers",
+      "what": "Picks the most precise date among producers. Dates agree if their periods match exactly, or if the more precise one falls inside the less precise one. Otherwise the result is a conflict.",
+      "why": "Likely reason: a year and a full date can agree when the full date falls within that year.",
+      "watch_out": "Comparison uses the text form of the dates, so dates must be in the standard form the period reader produces."
+    },
+    {
+      "start": 240,
+      "end": 248,
+      "kind": "function",
+      "name": "mergeMoney, ExistingRow",
+      "id": "s23",
+      "hash": "99c9f924168d4223",
+      "title": "Merge costs and existing row type",
+      "what": "Agrees cost figures only when currency and amount are the same and neither is a range. Otherwise the result is a conflict. Also defines the loose type used for an existing database row.",
+      "why": "Likely reason: a range is not an exact figure, so it cannot agree with a single figure.",
+      "watch_out": "A range never agrees, even with an identical range from another producer."
+    },
+    {
+      "start": 249,
+      "end": 255,
+      "kind": "value",
+      "name": "EXISTING, dateStr",
+      "id": "s24",
+      "hash": "8ff89d03d60186d7",
+      "title": "Map planner columns to database fields",
+      "what": "Maps each planner column name to the matching field name in the database, and provides a helper that turns a date into plain YYYY-MM-DD text.",
+      "why": "Likely reason: the planner uses its own column names, and the database uses different ones.",
+      "watch_out": "A wrong field name here makes the planner think the stored value is empty, so it may fill over an existing value."
+    },
+    {
+      "start": 256,
+      "end": 315,
+      "kind": "function",
+      "name": "decideColumns (part 1)",
+      "id": "s25",
+      "hash": "045d73aed5928788",
+      "title": "Decide simple columns and budgets",
+      "what": "For one direct identity, decides the country, technology, capacity, the four key dates, and the planned budget. Each becomes fill, same, kept existing, conflict, held or no value. Component records never reach this step.",
+      "why": "Stated in the comment that component records never reach this function. The budget unit is US dollars in millions, per the comment on the normalisation.",
+      "watch_out": "The function throws an error if no industry is given, so every caller must pass one."
+    },
+    {
+      "start": 316,
+      "end": 356,
+      "kind": "function",
+      "name": "decideColumns (part 2)",
+      "id": "s26",
+      "hash": "f87f1454617f8d61",
+      "title": "Convert budgets and decide operator",
+      "what": "Finishes the budget columns: converts non-US budgets using the year of the figure, then sets the budget text and currency columns. The year comes from the price basis, the as-of date, or a related milestone date. Then it decides the operator column from the named operator.",
+      "why": "The code comment says non-US figures are converted at the World Bank annual rate for the figure's own year.",
+      "watch_out": "When no date is held, the conversion uses the latest year available, which may not match the year the figure was reported."
+    },
+    {
+      "start": 357,
+      "end": 371,
+      "kind": "function",
+      "name": "columnOfClaim",
+      "id": "s27",
+      "hash": "3eb7499a36ba8df6",
+      "title": "Map a claim to its column",
+      "what": "Given one claim, returns the database column it belongs to, such as country, capacity or operator, or nothing if the claim has no column.",
+      "why": "Likely reason: it is used to find which claims support a conflict in a given column.",
+      "watch_out": "It checks a fixed list, so a claim type not on the list returns nothing and does not show in column conflicts."
+    },
+    {
+      "start": 372,
+      "end": 400,
+      "kind": "function",
+      "name": "decideLifecycle, cite, lines",
+      "id": "s28",
+      "hash": "a39dfc69cd8a66e8",
+      "title": "Decide the project stage",
+      "what": "Picks the lifecycle stage from the dated status reports, with the most recent dated report winning. An empty stage is filled. An existing stage is moved only if the new stage is a dated forward step, or a dated move to on hold or cancelled. Otherwise the existing stage is kept and the reason is written. Two same-date reports that disagree make a conflict.",
+      "why": "The code comment says status changes over time, so the latest dated observation wins.",
+      "watch_out": "An undated status can fill an empty stage but never changes an existing one."
+    },
+    {
+      "start": 401,
+      "end": 420,
+      "kind": "function",
+      "name": "reportAttributes",
+      "id": "s29",
+      "hash": "d8ade58690c6d88e",
+      "title": "Write the report text fields",
+      "what": "Builds the text blocks stored on the project row for reviewers: the identity summary with alternate names, capacity, cost, funding, schedule, participants, lifecycle basis and provenance. Blank blocks are dropped.",
+      "why": "The provenance text says quotes are not checked at import, that Reality Scan rechecks cost and schedule quotes, and that research self-check flags do not count as verification.",
+      "watch_out": "The provenance text tells reviewers that quotes are unverified, so import output should not be treated as checked."
+    }
+  ],
+  "explained_at": "2026-11-12T03:46:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns the research records from one or more producers into a reviewed plan of what to write to each project's database columns, and what to leave alone or flag as a conflict.",
+  "purpose": "Stops a single unchecked or disputed value from reaching the Yard database. Every stored value needs a web source and an exact quote, agreeing producers fill a column, disagreeing producers are recorded as conflicts, and existing values are kept unless a dated observation justifies a change.",
+  "why": "The header comment lists the user's standing rules and import memory that this planner follows. Any further reasons behind the design are not stated in the code.",
+  "how": "1) Read each producer's research record and pull out each value that has a valid web source and quote, listing the rest as unsourced. 2) Group the values by database column and merge the candidates from all producers: agreement fills the column, disagreement becomes a conflict, and declared conflicts block the column. 3) Convert non-US budgets to US dollars in millions where a conversion is possible, using the year of the figure. 4) Choose the lifecycle stage from the latest dated status, and only move an existing stage forward or to on hold or cancelled. 5) Produce the column decisions and the report text blocks for reviewers.",
+  "inputs": "One or more producer records for the same project, each with the producer name, file name, file hash, research record and identity reference. The existing Yard row for the project, or nothing for a new row. The industry name, which is required for the budget step. A batch ID for the report text.",
+  "outputs": "A list of column decisions, each naming the column, the value to write, the claims behind it, and an outcome (fill, same, kept existing, conflict, no value, or held). A lifecycle decision. A set of report text blocks keyed by name. A list of unsourced values for each record.",
+  "risks": "A wrong merge rule, or a value that passes the source check without a real quote, would be written to the database and read as fact. Several spots assume data is present, such as a claim for each record or a budget with a claim, and will raise an error on unexpected input. Date columns accept only day precision, so month, quarter and year figures are kept as text and a reader can miss them. The planner trusts the quotes supplied by researchers, which the report text itself says are not checked at import.",
+  "debug": "Start with the column decision list for the project. The outcome explains the result: conflict means producers disagreed (read the alternatives), kept existing means the database already held a different value (read the note), held means a research record declared a conflict, and no value means the value is not day precision or could not be converted. For a missing value, check whether extractClaims listed it as unsourced, which means the web link or quote failed the check. For a budget problem, read the usdConversion note to see which year was used. For a stage problem, read the note from decideLifecycle, which lists earlier observations.",
+  "summary_hash": "sha256:6409c221cba9ad0671c6073e6efc8e0a4d55fa139b2f197ad6456b23af43e472"
+}

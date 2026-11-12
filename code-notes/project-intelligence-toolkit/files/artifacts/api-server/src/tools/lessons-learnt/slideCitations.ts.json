@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/slideCitations.ts",
+  "language": "TypeScript",
+  "lines": 104,
+  "hash": "sha256:86635581d091bf771d134b13eb1b8bc331e18ad0ce5cb738982cf1b7af39b45c",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The test file covers the main citation cases.",
+      "Matching depends on exact text, so small wording changes silently create gaps.",
+      "Chart citations match projects to chart labels by position, which breaks if the project order changes."
+    ]
+  },
+  "terms": [
+    {
+      "term": "provenance",
+      "meaning": "the record of where a claim came from."
+    },
+    {
+      "term": "gap",
+      "meaning": "a claim with no linked source, shown openly rather than hidden."
+    },
+    {
+      "term": "calculation",
+      "meaning": "a figure worked out from saved inputs, such as a percentage from two budgets."
+    },
+    {
+      "term": "exact match",
+      "meaning": "two pieces of text that are identical character for character."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/tools/lessons-learnt/recipeResult.ts"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/lessons-learnt/slideCitations.test.ts",
+    "Per its own comment, saved runs, the walkthrough and exports. Those callers are not in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 2,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "fc24646572422cce",
+      "title": "Imports for citations",
+      "what": "Brings in the result and slide types that this file works with.",
+      "why": "Likely reason: keeps the citation code checked against the same shapes as the rest of the result.",
+      "watch_out": ""
+    },
+    {
+      "start": 3,
+      "end": 9,
+      "kind": "type",
+      "name": "SlideCitation",
+      "id": "s2",
+      "hash": "26366398babdf04e",
+      "title": "One citation record",
+      "what": "Defines what a citation holds: its kind (evidence, calculation, methodology or gap), its fact IDs, optional project IDs, an explanation, and an optional warning.",
+      "why": "Likely reason: every claim gets the same shape, so the export can read all of them the same way.",
+      "watch_out": "The warning is optional, so code that displays citations must not assume it is present."
+    },
+    {
+      "start": 10,
+      "end": 20,
+      "kind": "type",
+      "name": "SlideCitations, Parts, unique, editorial, gap",
+      "id": "s3",
+      "hash": "c287592e3a0bca01",
+      "title": "Citation groups and standard notes",
+      "what": "Defines the set of citations for one slide: title, subtitle, bullets, footnotes and chart. Also defines helpers for methodology notes and for gaps.",
+      "why": "The gap wording is fixed and states that a missing link is not proof that no sources exist.",
+      "watch_out": "The gap wording is deliberate, so changing it to say a claim is unsupported would overstate what the code knows."
+    },
+    {
+      "start": 21,
+      "end": 23,
+      "kind": "function",
+      "name": "evidence",
+      "id": "s4",
+      "hash": "8fec711671f277e3",
+      "title": "Evidence helper",
+      "what": "Builds an evidence citation from a list of fact IDs, or returns a gap when the list is empty.",
+      "why": "Likely reason: stops an empty list from looking like a sourced claim.",
+      "watch_out": "The default explanation says a link is not proof of verification, which keeps readers from over-trusting it."
+    },
+    {
+      "start": 24,
+      "end": 83,
+      "kind": "function",
+      "name": "withSlideCitations (part 1)",
+      "id": "s5",
+      "hash": "a99e589d1aead90e",
+      "title": "Building citations, first half",
+      "what": "Creates the lookup tables from known claim text to facts, and the rules for finding calculations and provenance for each bullet, footnote and chart.",
+      "why": "Likely reason: slides store plain sentences rather than links, so each sentence must be matched back to its facts.",
+      "watch_out": "Lookups match exact text, and if two items share the same wording, the later one overwrites the earlier."
+    },
+    {
+      "start": 84,
+      "end": 104,
+      "kind": "function",
+      "name": "withSlideCitations (part 2)",
+      "id": "s6",
+      "hash": "7dc930c2a662dac0",
+      "title": "Building citations, second half",
+      "what": "For each slide, builds the chart citations and the citation groups, adds them to the slide, and checks the saved cost-overrun percentage against the figure implied by the budgets.",
+      "why": "The explanation says the saved percentage is kept and not recalculated, and a mismatch is flagged so it stays visible.",
+      "watch_out": "Chart values are matched to projects by position in the list, so reordering projects can attach a figure to the wrong project."
+    }
+  ],
+  "explained_at": "2026-11-12T04:46:42+00:00",
+  "explained_by": "haiku",
+  "summary": "Attaches a source note to every bullet, footnote, title and chart value on each slide, so a reader can see what supports each claim.",
+  "purpose": "Makes slide claims traceable: each one points to the facts, projects or calculation behind it, or is shown as a gap when no source is linked.",
+  "why": "The doc comment says never to attach all nearby sources to an unknown sentence. The gap wording says a missing link is not proof that no public sources exist.",
+  "how": "First builds lookup tables from pillar, driver, pattern and recommendation text to the facts behind them. Then, for each slide, each bullet and footnote is matched against those tables, against individual fact lines, and against known line patterns such as portfolio counts and calculations. Anything still unmatched becomes a gap. Chart values get their own citations, and each slide is returned with a citations record added.",
+  "inputs": "The result parts (facts, pillars, patterns, recommendations, projects and methodology) and the list of slides.",
+  "outputs": "Copies of the slides, each with citation records in its meta data. Each record has a kind (evidence, calculation, methodology or gap), fact IDs, project IDs, an explanation and sometimes a warning.",
+  "risks": "Matching relies on exact text. A small change in slide wording makes the citation fall to a gap without any error. Chart citations are matched to projects by position, and cost checks flag mismatches without changing the saved value.",
+  "debug": "If a bullet shows a gap, compare its exact wording with the lookups at the top of this file and with the slide builder. If a chart shows an input mismatch warning, compare the saved overrun with the budgets. If a citation points to the wrong fact, look for duplicate pillar or driver wording.",
+  "summary_hash": "sha256:86635581d091bf771d134b13eb1b8bc331e18ad0ce5cb738982cf1b7af39b45c"
+}

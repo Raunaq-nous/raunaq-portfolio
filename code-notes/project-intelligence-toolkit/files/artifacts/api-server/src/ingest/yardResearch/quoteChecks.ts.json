@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/yardResearch/quoteChecks.ts",
+  "language": "TypeScript",
+  "lines": 46,
+  "hash": "sha256:2576ef04401bf4fcc527c57379c9efd7ba974f789933ef101596a30a59d0e427",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in the packet.",
+      "Only the checkers should write the file, but nothing in this file enforces that."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Quote check",
+      "meaning": "A test that fetches a web page and confirms a quoted sentence is really on it."
+    },
+    {
+      "term": "Fingerprint (hash)",
+      "meaning": "A short code made from content; the same input always gives the same code."
+    },
+    {
+      "term": "Cache",
+      "meaning": "A saved file of past results, so the same work is not repeated."
+    },
+    {
+      "term": "Slug",
+      "meaning": "A simple name made only of lowercase letters, digits and hyphens, safe to use in file paths."
+    }
+  ],
+  "depends_on": [
+    "Node file system, path and crypto modules"
+  ],
+  "used_by": [
+    "populationImport.ts",
+    "replayLedger.ts",
+    "script/check-population-quotes.ts",
+    "script/check-closure-quotes.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup, QuoteCheck, QuoteCache",
+      "id": "s1",
+      "hash": "9dd6c2e4864a97f6",
+      "title": "File header, types and paths",
+      "what": "Explains the cache design and defines the shape of one quote check and of a whole cache. Also sets the folder paths the rest of the file uses.",
+      "why": "One file per industry lets parallel tasks avoid editing the same file.",
+      "watch_out": "The cache shape is shared with the checkers, so changing it breaks them too."
+    },
+    {
+      "start": 18,
+      "end": 20,
+      "kind": "function",
+      "name": "quoteKey",
+      "id": "s2",
+      "hash": "2ea844e86b5f6e84",
+      "title": "Fingerprint for a quote",
+      "what": "Builds the short fingerprint from the web address and quote text that identifies a quote check.",
+      "why": "Gives every quote a stable lookup key.",
+      "watch_out": "The same formula is repeated in populationImport.ts, so the two must stay identical."
+    },
+    {
+      "start": 21,
+      "end": 25,
+      "kind": "function",
+      "name": "quoteCachePath",
+      "id": "s3",
+      "hash": "ef620dd490b6d265",
+      "title": "Finding a cache file",
+      "what": "Returns the cache file path for an industry and rejects names that are not simple slugs.",
+      "why": "Stops unsafe names from being turned into file paths.",
+      "watch_out": "Capital letters are rejected, so an industry written with them will fail here."
+    },
+    {
+      "start": 26,
+      "end": 32,
+      "kind": "function",
+      "name": "loadQuoteCache",
+      "id": "s4",
+      "hash": "d93d7b73dbfcaa34",
+      "title": "Reading one industry's cache",
+      "what": "Reads an industry's cache file, or returns an empty cache if the file does not exist.",
+      "why": "Lets a first run work without any setup.",
+      "watch_out": "A missing file is treated as having no checks, so every quote will later be reported as unchecked."
+    },
+    {
+      "start": 33,
+      "end": 40,
+      "kind": "function",
+      "name": "saveQuoteCache",
+      "id": "s5",
+      "hash": "3efaa93c6c95bc62",
+      "title": "Saving a cache",
+      "what": "Writes the cache to its file with keys sorted, so that two tasks adding different quotes produce small separate changes.",
+      "why": "Makes merges between parallel tasks easier to read and resolve.",
+      "watch_out": "The whole file is rewritten, so two writers at once can lose entries."
+    },
+    {
+      "start": 41,
+      "end": 46,
+      "kind": "function",
+      "name": "loadQuoteChecks",
+      "id": "s6",
+      "hash": "294d6e1b5561798d",
+      "title": "Merging caches for importers",
+      "what": "Reads the caches of one or more industries and combines them into a single lookup table.",
+      "why": "A population run may cover more than one folder, so the importer needs one table.",
+      "watch_out": "If two industries share a fingerprint, the one read later overwrites the earlier."
+    }
+  ],
+  "explained_at": "2026-11-12T03:47:54+00:00",
+  "explained_by": "haiku",
+  "summary": "Stores and reads the saved results of live quote checks, one cache file per industry.",
+  "purpose": "Keeps a record of which quotes were found on which web pages, so the importers can use only verified quotes without fetching pages again.",
+  "why": "The header says one file per industry avoids conflicts when parallel tasks work on different industries, and entries are never fetched twice.",
+  "how": "1. Builds a fingerprint from the web address and quote text. 2. Finds the cache file path for an industry and rejects unsafe names. 3. Reads one industry's cache, or an empty one if none exists. 4. Writes the cache with sorted keys to keep changes small. 5. Merges the caches of several industries into one lookup table for the importers.",
+  "inputs": "An industry name, and the web address and quote text for each check.",
+  "outputs": "Cache files at data/yard-research/<industry>/quote-checks.json, and a combined lookup table for the importers.",
+  "risks": "Writing replaces the whole file, so two writers at the same moment could lose entries. The fingerprint formula must match the one used in populationImport.ts or every quote will look unchecked.",
+  "debug": "If an importer says a quote has no live check, first confirm the checker has run and the cache file contains that fingerprint. If a cache seems to lose entries, check whether two processes wrote to it. If an industry name is rejected, check it uses lowercase letters, digits and hyphens.",
+  "summary_hash": "sha256:2576ef04401bf4fcc527c57379c9efd7ba974f789933ef101596a30a59d0e427"
+}

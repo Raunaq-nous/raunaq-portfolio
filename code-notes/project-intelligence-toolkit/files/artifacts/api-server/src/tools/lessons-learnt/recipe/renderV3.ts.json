@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/recipe/renderV3.ts",
+  "language": "TypeScript",
+  "lines": 366,
+  "hash": "sha256:e041c7a79f1769a2968e6997cb663b3b01377efb080a3eb6ad4942bd78fbfff4",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in this file.",
+      "Unknown slide kinds may be skipped silently in the visible code.",
+      "The output location depends on the working directory the process starts in.",
+      "Layout uses fixed positions and shrink-to-fit, which has not been checked here against real output."
+    ]
+  },
+  "terms": [
+    {
+      "term": "PPTX",
+      "meaning": "the PowerPoint file format"
+    },
+    {
+      "term": "pptxgenjs",
+      "meaning": "a library that writes PowerPoint files from code"
+    },
+    {
+      "term": "slide kind",
+      "meaning": "the label that decides how a slide is drawn"
+    },
+    {
+      "term": "citation marker",
+      "meaning": "a small bracketed number in the text that points to a register entry"
+    },
+    {
+      "term": "checksum",
+      "meaning": "a fingerprint of a file, used to confirm it has not changed"
+    },
+    {
+      "term": "shrink to fit",
+      "meaning": "reducing text size so it fits inside its box"
+    }
+  ],
+  "depends_on": [
+    "pptxgenjs",
+    "fs/promises",
+    "path",
+    "crypto",
+    "module",
+    "../deck/branding",
+    "./deckModel",
+    "./types"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/pipeline.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup, require, Pres",
+      "id": "s1",
+      "hash": "610375b21434f1f1",
+      "title": "Imports and the PowerPoint library",
+      "what": "Loads the file, path, crypto and module tools, the shared brand settings and the PowerPoint library, and sets up the type names used for presentations and slides.",
+      "why": "Likely reason: shared brand settings keep this deck consistent with other decks in the app.",
+      "watch_out": "The PowerPoint library is loaded through a module helper, so moving this file can break that loading."
+    },
+    {
+      "start": 18,
+      "end": 24,
+      "kind": "type",
+      "name": "Slide, SCORE_FILL, OUTCOME_FILL, STATUS_MARK",
+      "id": "s2",
+      "hash": "777582ceb35844ba",
+      "title": "Colours, outcome labels and status symbols",
+      "what": "Maps score types (strength, mixed, challenge, no evidence) to colours, outcome labels to colours, and verification statuses to symbols such as a tick, a half circle, an empty circle, a cross and a dash. Also sets the artifacts folder.",
+      "why": "Likely reason: the same colour and symbol always mean the same thing on every slide.",
+      "watch_out": "Keys must match the exact spelling used elsewhere, such as the label In progress with a space, or a new outcome shows the default colour."
+    },
+    {
+      "start": 25,
+      "end": 43,
+      "kind": "class",
+      "name": "Register",
+      "id": "s3",
+      "hash": "bf0ee7be53d6879f",
+      "title": "Numbered register of cited evidence",
+      "what": "Gives each cited fact, finding or methodology item a number in the order it is first cited, and builds the register lines with kind, project, text and source. Unknown identifiers appear as raw text.",
+      "why": "Stated in the header: each marker must resolve to the fact, finding or source it rests on.",
+      "watch_out": "Numbers follow first use across the whole deck, so inserting an earlier slide renumbers every later citation."
+    },
+    {
+      "start": 44,
+      "end": 57,
+      "kind": "function",
+      "name": "frame, pg",
+      "id": "s4",
+      "hash": "8c9d9241ba574587",
+      "title": "Standard slide frame and page labels",
+      "what": "Gives content slides the same top stripe, small section label, title and footer with a slide number. The page helper adds a page count to slides that run over more than one page.",
+      "why": "Likely reason: consistent framing makes the deck read as one document.",
+      "watch_out": "Titles are set to shrink to fit, so a long title becomes smaller rather than wrapping."
+    },
+    {
+      "start": 58,
+      "end": 64,
+      "kind": "function",
+      "name": "bullets, head",
+      "id": "s5",
+      "hash": "4de77aee138de8a7",
+      "title": "Bullet list and heading helpers",
+      "what": "Shared helpers that place bullet lists, with an optional bold lead-in for each item, and small bold section headings.",
+      "why": "Reuse: many slide kinds need the same list and heading style.",
+      "watch_out": "Long bullet lists shrink to fit, so they can become very small on the slide."
+    },
+    {
+      "start": 65,
+      "end": 70,
+      "kind": "function",
+      "name": "gapNote, cell, hcell",
+      "id": "s6",
+      "hash": "fb7624b57a1c6f64",
+      "title": "Evidence gap note and table cells",
+      "what": "Writes an italic evidence gap line near the foot of a slide when a gap is given, and builds normal and header table cells.",
+      "why": "Likely reason: gaps are shown on the slide so readers know where evidence is thin.",
+      "watch_out": "With no gap text, nothing is written, so a slide can show no warning even when evidence is missing."
+    },
+    {
+      "start": 71,
+      "end": 130,
+      "kind": "function",
+      "name": "renderSlide (part 1)",
+      "id": "s7",
+      "hash": "047426abd2d736b5",
+      "title": "Drawing cover, summary and overview slides",
+      "what": "Draws the cover, closing slide, section dividers and agenda, the executive summary with headline numbers and bullets, the framework overview with its pillars and sub-drivers, and the first part of the pillar deep-dive.",
+      "why": "Likely reason: each slide kind has its own layout, chosen by its kind.",
+      "watch_out": "The visible part of the slide switch has no catch-all branch, so a slide kind without a routine may be skipped without error."
+    },
+    {
+      "start": 131,
+      "end": 190,
+      "kind": "function",
+      "name": "renderSlide (part 2)",
+      "id": "s8",
+      "hash": "170d024730fcb274",
+      "title": "Drawing pillar detail, profile and rubric slides",
+      "what": "Finishes the pillar deep-dive with sub-drivers, balance counts, the discrimination note, methodology grounds, practices and implications. Also draws the sub-driver profile with good examples and cautionary tales, the scoring rubric table, the outcome grouping, and the start of the project-by-pillar matrix.",
+      "why": "Likely reason: these slides give the detail behind each pillar.",
+      "watch_out": "When the discrimination sample is too small, the slide says so in words, and readers may skip that caveat."
+    },
+    {
+      "start": 191,
+      "end": 250,
+      "kind": "function",
+      "name": "renderSlide (part 3)",
+      "id": "s9",
+      "hash": "28454352358994a0",
+      "title": "Drawing matrix, performance and case slides",
+      "what": "Finishes the project-by-pillar matrix, then draws the synthesis table by outcome, glossary tables, a cost-against-delay scatter chart with a matching table, and case summaries with identity fields, takeaways and paraphrased participant perspectives.",
+      "why": "Likely reason: the matrix is the main overview, and the chart and case slides show the evidence behind it.",
+      "watch_out": "The chart only plots projects with both a cost figure and a delay; excluded projects are listed on the slide, and perspectives are paraphrases, not direct quotes."
+    },
+    {
+      "start": 251,
+      "end": 306,
+      "kind": "function",
+      "name": "renderSlide (part 4)",
+      "id": "s10",
+      "hash": "9cf81e431f008204",
+      "title": "Remaining slide layouts and their table rows",
+      "what": "Draws the last group of slide types inside `renderSlide`. It shows facts grouped under pillars with a status mark, a programme table by country with strength, mixed and challenge counts, a lessons-capture slide, a method table of sources, a verification slide, and an abbreviations list.",
+      "why": "Each kind of slide in the deck needs its own layout, and these are the last layouts in `renderSlide`.",
+      "watch_out": "The method table uses very small fonts and a long URL column, so long titles or URLs can overflow the slide."
+    },
+    {
+      "start": 307,
+      "end": 319,
+      "kind": "function",
+      "name": "renderRegister",
+      "id": "s11",
+      "hash": "fa34e3e259e19a5a",
+      "title": "Evidence register appendix pages",
+      "what": "Builds the appendix pages that list every cited piece of evidence, fourteen per slide, with a number, type, project, the evidence text and its source. It returns how many pages it made so the slide total stays correct.",
+      "why": "Likely reason: the evidence list is too long for one slide, so it is split into pages of fourteen.",
+      "watch_out": "The page count here must match the count `build` uses earlier, or slide numbers will be wrong."
+    },
+    {
+      "start": 320,
+      "end": 339,
+      "kind": "function",
+      "name": "build",
+      "id": "s12",
+      "hash": "42fafc8bce77c805",
+      "title": "Assembling the whole deck in order",
+      "what": "Creates the presentation, sets its author and title, and runs a first pass to count how many citation pages the deck needs. It then draws the main slides, the citation register pages, and the closing slide last, so every page shows the right total.",
+      "why": "The first pass exists so each slide can show the correct total page count before the citation list is built.",
+      "watch_out": "The closing slide is found by its kind; if no slide has that kind, no closing slide is drawn at all."
+    },
+    {
+      "start": 340,
+      "end": 349,
+      "kind": "function",
+      "name": "renderV3Pptx",
+      "id": "s13",
+      "hash": "d4a48adf94d4b573",
+      "title": "Saving the deck as a PowerPoint file",
+      "what": "Builds the deck, writes it as a `.pptx` file named after the run ID in the artifact folder, and returns the relative path, full path, a SHA-256 fingerprint of the file, and the slide count.",
+      "why": "Likely reason: the fingerprint lets someone later check that the saved file has not changed.",
+      "watch_out": "The file name uses only the run ID, so a second save for the same run replaces the earlier file."
+    },
+    {
+      "start": 350,
+      "end": 361,
+      "kind": "function",
+      "name": "writeScenePptx",
+      "id": "s14",
+      "hash": "1c1c106efba2049d",
+      "title": "Saving the template-based deck",
+      "what": "Saves the lessons deck in the shared Reality Scan template format. It loads the shared exporter only when needed, writes the bytes to the artifact folder using the same naming pattern, and returns the same kind of details as the other saver.",
+      "why": "Likely reason: this deck reuses the Reality Scan exporter rather than having its own.",
+      "watch_out": "Its file name follows the same pattern as `renderV3Pptx`, so the two savers can overwrite each other for the same run ID."
+    },
+    {
+      "start": 362,
+      "end": 366,
+      "kind": "function",
+      "name": "renderV3PptxBuffer",
+      "id": "s15",
+      "hash": "f7d641ced57235f9",
+      "title": "Building the deck in memory",
+      "what": "Builds the same deck as `renderV3Pptx` but returns it as raw bytes in memory instead of saving a file. A caller can send or inspect the file without storing it on disk.",
+      "why": "Likely reason: some callers need the bytes directly.",
+      "watch_out": "Nothing is saved here, so the caller must keep or use the bytes, or they are lost."
+    }
+  ],
+  "explained_at": "2026-11-12T04:42:49+00:00",
+  "explained_by": "haiku",
+  "summary": "Draws the lessons-learnt deck as a PowerPoint file, using one drawing routine per slide kind, and adds a numbered register of the evidence the slides cite.",
+  "purpose": "Produces the downloadable PowerPoint version of the deck, with citation numbers that point to the evidence behind each claim.",
+  "why": "The header says it draws exactly the slides in the result, in the same order and with the same content as the in-app viewer, and adds the register so each marker resolves.",
+  "how": "1) Start a new presentation with the shared brand settings. 2) Draw each slide in the order of the deck model, choosing the drawing routine by slide kind. 3) As slides cite evidence, the register gives each item the next number in order of first use. 4) Append the numbered cited-evidence register. 5) Save the file in the artifacts folder for this lessons-learnt area and compute its checksum. The buffer variant appears to return the file bytes instead of saving them, going by its name.",
+  "inputs": "A recipe-v3 result with the ordered deck slides, projects, facts, findings, methodology sources and items. The scene variant takes a template deck instead.",
+  "outputs": "A PowerPoint file under the artifacts folder, returned with its relative path, checksum and slide count. The buffer variant returns the file contents.",
+  "risks": "Text is set to shrink to fit, so long text can become hard to read instead of being cut. Register numbers follow first use, so changing slide order renumbers every citation. The visible part of the slide switch has no catch-all branch, so a slide kind without a drawing routine may be skipped without an error; the rest of the switch is not in this packet. The artifacts folder is resolved from the current working directory, so the file can land in a different place. The PowerPoint and in-app viewer must be kept in sync by hand.",
+  "debug": "Open the saved file and check its slide count against the deck model's count in the run record. If a slide is missing, search the drawing routines for its slide kind. If a citation shows a raw identifier in the register, that item was not found in the run's data. If text is unreadably small, the slide has too much content. If the file is missing, check the working directory and the artifacts folder.",
+  "summary_hash": "sha256:e041c7a79f1769a2968e6997cb663b3b01377efb080a3eb6ad4942bd78fbfff4"
+}

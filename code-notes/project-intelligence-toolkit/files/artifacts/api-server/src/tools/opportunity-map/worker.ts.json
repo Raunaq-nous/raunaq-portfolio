@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/worker.ts",
+  "language": "TypeScript",
+  "lines": 141,
+  "hash": "sha256:1c1204be13050cc8801531cdf4d6597d2258f7d6f6b6b0b09fa4df0b208e1721",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Failures are handled and secret-bearing error text is kept out of storage.",
+      "No test in the packet covers the scheduling or the locking logic.",
+      "Depends on several modules that are not in the packet, so the full flow cannot be checked here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Worker",
+      "meaning": "a background program that does work without a user waiting for it"
+    },
+    {
+      "term": "Cycle or tick",
+      "meaning": "one run of the worker's repeated steps"
+    },
+    {
+      "term": "Advisory lock",
+      "meaning": "a lock held in the database that only one connection can hold at a time"
+    },
+    {
+      "term": "Transaction",
+      "meaning": "a group of database changes that either all save or none do"
+    },
+    {
+      "term": "Rollback",
+      "meaning": "undoing a transaction's changes after an error"
+    },
+    {
+      "term": "Fingerprint",
+      "meaning": "a value that changes whenever the data behind it changes"
+    },
+    {
+      "term": "Provider",
+      "meaning": "an outside service such as an AI or search company"
+    },
+    {
+      "term": "Yard",
+      "meaning": "the project system that results are synced into"
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "artifacts/api-server/src/db.ts",
+    "artifacts/api-server/src/tools/opportunity-map/store.ts",
+    "artifacts/api-server/src/tools/opportunity-map/research.ts",
+    "artifacts/api-server/src/tools/opportunity-map/catalog.ts",
+    "artifacts/api-server/src/tools/opportunity-map/locationWorker.ts",
+    "artifacts/api-server/src/tools/opportunity-map/classifyWorker.ts",
+    "artifacts/api-server/src/tools/opportunity-map/yardSync.ts",
+    "artifacts/api-server/src/evidence/runEvents.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "cf29543e92a66804",
+      "title": "Imports for the background worker",
+      "what": "Brings in the database connection, store helpers, research, the account list, location and classification workers, Yard sync and the run event log.",
+      "why": "Reason not stated in the code beyond the imports themselves.",
+      "watch_out": ""
+    },
+    {
+      "start": 11,
+      "end": 31,
+      "kind": "function",
+      "name": "queueDueAccounts",
+      "id": "s2",
+      "hash": "b644a24dff07ef4d",
+      "title": "Schedules account checks on a timer",
+      "what": "For each known account, queues a scheduled check when its last check is older than the set interval. Accounts with more internal active cases are queued first.",
+      "why": "The code comment says account coverage is independent of Yard coverage and has its own schedule.",
+      "watch_out": "The order uses internal active-case counts, which must never appear in public output."
+    },
+    {
+      "start": 32,
+      "end": 58,
+      "kind": "function",
+      "name": "queueChangedIndustries",
+      "id": "s3",
+      "hash": "8b2512fd5882edc2",
+      "title": "Queues research when an industry changes",
+      "what": "Compares each industry's current fingerprint with the saved one and queues research when it has changed, or on the scheduled sweep. Saves the new fingerprints only when the job is queued or already finished, and records when the sweep completed. The file also sets the limit of three accounts running at once.",
+      "why": "The code comment says fingerprints include refresh timestamps, so metadata-only refreshes also trigger research.",
+      "watch_out": "If a job for an industry is still queued or running, its fingerprint is not saved, so the sweep is treated as incomplete and retried later."
+    },
+    {
+      "start": 59,
+      "end": 95,
+      "kind": "function",
+      "name": "runResearchJob",
+      "id": "s4",
+      "hash": "8837c84bf97c3594",
+      "title": "Runs one research job and saves results",
+      "what": "Runs research for one account or industry, saves its signals in one transaction, and marks the job as succeeded or no evidence. On failure it rolls back, marks the job failed with a plain reason, and records a stopped-research note. Failed jobs save no unsupported opportunities.",
+      "why": "The code comment says provider errors can contain credentials, so raw error bodies are never saved or logged.",
+      "watch_out": "Error reasons are matched by text pattern, so a new error wording falls back to the generic message."
+    },
+    {
+      "start": 96,
+      "end": 133,
+      "kind": "function",
+      "name": "tickOpportunityMap",
+      "id": "s5",
+      "hash": "7430f56496ff06fd",
+      "title": "The timed cycle that runs research",
+      "what": "Each cycle takes one exclusive lock so only one worker runs. It resets jobs stuck in the running state, queues changed industries and due accounts, takes up to three queued jobs, runs them, and then syncs to Yard. Any failure is logged as one generic console line.",
+      "why": "The code comment says holding the exclusive lock proves no other live worker owns abandoned jobs.",
+      "watch_out": "Resetting abandoned jobs is only safe because of the lock, so a second worker running at the same time would break this guarantee."
+    },
+    {
+      "start": 134,
+      "end": 141,
+      "kind": "function",
+      "name": "startOpportunityMap",
+      "id": "s6",
+      "hash": "b1efb12eea307749",
+      "title": "Starts the timer that drives the worker",
+      "what": "Starts the location and classification workers, sets a timer that runs the cycle every 30 seconds, and runs one cycle straight away. Calling it again does nothing.",
+      "why": "Likely reason: keeps background work separate from web requests.",
+      "watch_out": "The timer is marked so it does not keep the program running, so it stops when the server stops."
+    }
+  ],
+  "explained_at": "2026-11-12T04:57:09+00:00",
+  "explained_by": "haiku",
+  "summary": "The background engine that queues research for changed industries and due accounts, runs up to three research jobs at once, saves results and syncs to Yard, on a timer every 30 seconds.",
+  "purpose": "Keeps the Opportunity Map current without anyone pressing a button.",
+  "why": "The code comments give reasons: account checks have their own schedule, an exclusive lock prevents two workers from fighting over abandoned jobs, and provider error text must never be stored.",
+  "how": "1. A timer starts a cycle every 30 seconds. 2. The cycle takes a single database lock so only one worker runs. 3. It resets jobs left in the running state. 4. It queues changed industries and due accounts. 5. It takes up to three queued jobs. 6. Each job runs research. 7. Results are saved together in one transaction. 8. The job's status is written. 9. Pages are marked as analysed. 10. Results are synced to Yard.",
+  "inputs": "Settings, industry fingerprints, the account list, queued job rows, and research results.",
+  "outputs": "New or updated signal rows, job status rows with counts and coverage notes, and Yard updates. Failures are logged as one generic console line.",
+  "risks": "The lock is essential: a second worker running at the same time would break the reset rule. A fingerprint that is not saved means the next cycle retries. Metadata-only refreshes trigger research. Error messages are matched by pattern and fall back to a generic message. Database failures are reduced to one console line, which hides detail.",
+  "debug": "Start with the job rows in the opportunity_jobs table: check status, error text and coverage notes. If nothing runs, check that the settings are enabled and whether another session holds the lock. If jobs stay in the running state, the next cycle resets them. For a generic monitor message in the console, check database connectivity and the migration.",
+  "summary_hash": "sha256:1c1204be13050cc8801531cdf4d6597d2258f7d6f6b6b0b09fa4df0b208e1721"
+}

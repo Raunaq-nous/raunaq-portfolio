@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/index.ts",
+  "language": "TypeScript",
+  "lines": 150,
+  "hash": "sha256:3266ffec21f46f267da835328333a4d39e9cff5db704007086735f56af460e5d",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible for startup.",
+      "A failed scheduler start is logged but the server keeps running, so the failure can go unnoticed."
+    ]
+  },
+  "terms": [
+    {
+      "term": "middleware",
+      "meaning": "a step every request passes through before it reaches its handler"
+    },
+    {
+      "term": "environment variable",
+      "meaning": "a setting kept outside the code and read when the program starts"
+    },
+    {
+      "term": "rate limit",
+      "meaning": "a cap on how many requests one caller may send in a time window"
+    },
+    {
+      "term": "scheduler",
+      "meaning": "a timer that runs tasks at set times or intervals"
+    }
+  ],
+  "depends_on": [
+    "express",
+    "compression",
+    "http",
+    "artifacts/api-server/src/lib/keyChain.ts",
+    "artifacts/api-server/src/routes/routes.ts",
+    "artifacts/api-server/src/routes/index.ts",
+    "artifacts/api-server/src/middleware/correlationId.ts",
+    "artifacts/api-server/src/middleware/rateLimit.ts",
+    "artifacts/api-server/src/middleware/auth.ts",
+    "artifacts/api-server/src/lib/redact.ts",
+    "artifacts/api-server/src/lib/logger.ts",
+    "artifacts/api-server/src/lib/envPreflight.ts",
+    "artifacts/api-server/src/scheduler",
+    "artifacts/api-server/src/tools/opportunity-map/worker",
+    "artifacts/api-server/src/tools/queuedRunPickup",
+    "artifacts/api-server/src/scan/synthesisCache"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 45,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "46e86b1dd98db969",
+      "title": "Startup checks and imports",
+      "what": "Imports the modules the server needs, then stops the program if neither secret is set, validates the auth setup, logs the environment summary, and reads the port.",
+      "why": "The header says a missing secret must fail fast, and environment settings must be seen on every start.",
+      "watch_out": "Both secret names are accepted, so a missing one may go unnoticed if the other is set."
+    },
+    {
+      "start": 46,
+      "end": 53,
+      "kind": "value",
+      "name": "httpServer",
+      "id": "s2",
+      "hash": "9db842dc7dd9965c",
+      "title": "Web server and raw body type",
+      "what": "Creates the HTTP server around the Express app and declares that incoming requests may carry a raw body.",
+      "why": "The raw body is kept so later code can check signatures or exact content.",
+      "watch_out": "The raw body is only kept for JSON requests that pass through the JSON parser."
+    },
+    {
+      "start": 54,
+      "end": 54,
+      "kind": "route",
+      "name": "use",
+      "id": "s3",
+      "hash": "90cf902708905712",
+      "title": "Correlation ID step",
+      "what": "Adds a request tracking ID to every request.",
+      "why": "Likely reason: it lets log lines for one request be linked together.",
+      "watch_out": ""
+    },
+    {
+      "start": 55,
+      "end": 56,
+      "kind": "route",
+      "name": "use",
+      "id": "s4",
+      "hash": "886076cae10f636b",
+      "title": "Compression step",
+      "what": "Compresses responses before they are sent.",
+      "why": "Likely reason: it makes responses smaller and faster to send.",
+      "watch_out": ""
+    },
+    {
+      "start": 57,
+      "end": 65,
+      "kind": "route",
+      "name": "use",
+      "id": "s5",
+      "hash": "ed5bf053b8c6e560",
+      "title": "JSON body parsing",
+      "what": "Reads JSON request bodies up to 1 MB and keeps the raw bytes.",
+      "why": "Reason not stated in the code beyond the size limit and raw copy.",
+      "watch_out": "Requests above 1 MB are refused, so large uploads must go another way."
+    },
+    {
+      "start": 66,
+      "end": 66,
+      "kind": "route",
+      "name": "use",
+      "id": "s6",
+      "hash": "468550b39da199d6",
+      "title": "Form body parsing",
+      "what": "Reads form-encoded request bodies without extended nesting.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 67,
+      "end": 68,
+      "kind": "route",
+      "name": "use",
+      "id": "s7",
+      "hash": "19f0a9899cdababa",
+      "title": "Rate limit for API paths",
+      "what": "Applies the global rate limit to everything under the API path.",
+      "why": "Likely reason: it stops one caller from overloading the API.",
+      "watch_out": "Routes outside the API path are not rate limited by this step."
+    },
+    {
+      "start": 69,
+      "end": 94,
+      "kind": "route",
+      "name": "use",
+      "id": "s8",
+      "hash": "ad2103133273829f",
+      "title": "Request logging with redaction",
+      "what": "Logs each finished API request with its method, path, status, and time. It also logs the response body, after removing sensitive values.",
+      "why": "Gives an audit trail for API calls, with sensitive values removed.",
+      "watch_out": "Redaction depends on the redact helper recognizing every sensitive field, so a new field name can leak."
+    },
+    {
+      "start": 95,
+      "end": 99,
+      "kind": "route",
+      "name": "use",
+      "id": "s9",
+      "hash": "23519b3973f85909",
+      "title": "API routes and route registration",
+      "what": "Mounts the base API router, then registers the rest of the routes on the server.",
+      "why": "The routes are attached after the steps above, so the steps apply to them.",
+      "watch_out": "Routes are registered inside an asynchronous start, so a failure there stops the start."
+    },
+    {
+      "start": 100,
+      "end": 150,
+      "kind": "route",
+      "name": "use",
+      "id": "s10",
+      "hash": "bbf8f58517a548f6",
+      "title": "Error handler and server start",
+      "what": "Adds a final error handler that logs the error and returns its status and message. Then starts listening on the port, and starts the cache cleanup and background jobs. A failed job start is logged.",
+      "why": "The error handler keeps errors from crashing requests. The background start follows the listen call so jobs start with the server.",
+      "watch_out": "If a background job fails to start, the server keeps running without it, and only a log line shows the problem."
+    }
+  ],
+  "explained_at": "2026-11-12T03:33:41+00:00",
+  "explained_by": "haiku",
+  "summary": "The web server's entry point: it checks required settings, sets up request handling and logging, registers the routes, and starts listening on the configured port.",
+  "purpose": "Starts the whole API server and its background jobs.",
+  "why": "The header comments say that a missing secret must stop the server at once, and that environment settings must be checked on every start because they do not survive platform moves.",
+  "how": "Checks the secrets and the port. Logs a preflight summary. Creates the Express app and adds the request steps in order: correlation ID, compression, JSON body parsing with a 1 MB limit, form parsing, a rate limit on API paths, request logging with redaction, the API routes, and an error handler. Then starts listening and launches background jobs.",
+  "inputs": "Environment settings such as PORT, JWT_SECRET or SESSION_SECRET, and search provider keys.",
+  "outputs": "A running HTTP server on the configured port, plus log lines.",
+  "risks": "A missing secret stops startup. Background job failures are logged but do not stop the server, so jobs can be quietly off while the API still answers. Logged API responses are redacted, but any new logging needs the same care.",
+  "debug": "If the process exits at start, read the FATAL line and check the named secrets. If it refuses to start, check PORT. If background jobs seem idle, search the logs for the scheduler failure message.",
+  "summary_hash": "sha256:3266ffec21f46f267da835328333a4d39e9cff5db704007086735f56af460e5d"
+}

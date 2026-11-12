@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/shared/classify/index.ts",
+  "language": "TypeScript",
+  "lines": 106,
+  "hash": "sha256:8729a37de851237755338852fe7e83072560fc000ac6b9206389cb361a80b136",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the imports and the rule type were supplied; the registry, default rule, and list checks are not visible.",
+      "Behaviour cannot be verified from the shown code."
+    ]
+  },
+  "terms": [
+    {
+      "term": "taxonomy",
+      "meaning": "a fixed, agreed list of categories."
+    },
+    {
+      "term": "sub-industry",
+      "meaning": "a finer category inside an industry, such as one kind of facility."
+    },
+    {
+      "term": "capacity",
+      "meaning": "a size figure for a project, such as its rated output."
+    }
+  ],
+  "depends_on": [
+    "../industries",
+    "../nuclearClassify"
+  ],
+  "used_by": [
+    "Not visible in the packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ca9954292c274637",
+      "title": "Imports",
+      "what": "Brings in the industry lookup and the nuclear sub-industry classifier.",
+      "why": "Likely reason: each industry gets its own rule, and nuclear has a dedicated one.",
+      "watch_out": ""
+    },
+    {
+      "start": 4,
+      "end": 14,
+      "kind": "type",
+      "name": "SubIndustryClassifier",
+      "id": "s2",
+      "hash": "5d8d1e8625f8951b",
+      "title": "Sub-industry rule shape",
+      "what": "Defines what every sub-industry rule must accept and return: validated attributes and an optional capacity number in, and a category name or nothing out.",
+      "why": "The comment says rules must stay inside the approved list and return nothing when unsure.",
+      "watch_out": "The type alone does not check the name against the approved list; that check must happen elsewhere."
+    },
+    {
+      "start": 15,
+      "end": 33,
+      "kind": "function",
+      "name": "collectNodeNames, LEAF_CACHE",
+      "id": "s3",
+      "hash": "97c445a843b7bce0",
+      "title": "Collecting valid node names per industry",
+      "what": "Walks an industry's taxonomy tree and gathers every node name at every depth into one set. Parent headings and deep children are both included.",
+      "why": "The comment says this is the shared version so that the ingestion code does not depend on server code, and that the server copy must be kept the same.",
+      "watch_out": "Any change here must also be made in the server copy in server/quality/dataQuality.ts, or the two will disagree about valid values."
+    },
+    {
+      "start": 34,
+      "end": 51,
+      "kind": "function",
+      "name": "getTaxonomyLeaves",
+      "id": "s4",
+      "hash": "1b75a3d71d791a2a",
+      "title": "Cached valid values for an industry",
+      "what": "Returns the set of accepted subIndustry values for one industry, built once and then reused. Any node name at any level counts as valid.",
+      "why": "The comment says this widens the old rules, so it can only accept more inputs, never fewer, which avoids breaking existing data.",
+      "watch_out": "The name says leaves but the set includes every level, not just the bottom ones. The cache is never cleared, so it will not notice if industry data changes while the app is running."
+    },
+    {
+      "start": 52,
+      "end": 62,
+      "kind": "value",
+      "name": "REGISTRY",
+      "id": "s5",
+      "hash": "d9691eefcbac075b",
+      "title": "Registry of industries with custom rules",
+      "what": "A lookup table that maps an industry slug to its special classification rule. Right now only nuclear has an entry, and that entry hands the work to the nuclear reactor classifier.",
+      "why": "The comment says the nuclear rules live in one shared file and are not copied here, so there is only one source of truth.",
+      "watch_out": "Adding a rule for a new industry means adding an entry here, and it must match the slug used in the industry data exactly."
+    },
+    {
+      "start": 63,
+      "end": 77,
+      "kind": "function",
+      "name": "makeDefaultClassifier",
+      "id": "s6",
+      "hash": "4c3e4ce1fc707abe",
+      "title": "Default rule for industries without one",
+      "what": "For industries with no custom rule, keeps an incoming subIndustry value only if it exactly matches a known node name for that industry, after trimming spaces. Otherwise it returns nothing, so no value is invented.",
+      "why": "The comment says the app should never invent a value, so unknown values are dropped rather than guessed.",
+      "watch_out": "This rule is strict about matching names, but the data-driven mode elsewhere in the file accepts values as given. How the two rules interact for non-strict industries is unclear from this file alone."
+    },
+    {
+      "start": 78,
+      "end": 82,
+      "kind": "function",
+      "name": "getClassifier",
+      "id": "s7",
+      "hash": "84faa59f48134d03",
+      "title": "Picking the rule for an industry",
+      "what": "Returns the custom rule for an industry if one exists, or the default rule otherwise. Other parts of the app call this to classify a record.",
+      "why": "Reason not stated in the code. It appears to be a single entry point so callers do not need to know which rule applies.",
+      "watch_out": ""
+    },
+    {
+      "start": 83,
+      "end": 87,
+      "kind": "function",
+      "name": "hasClassifier",
+      "id": "s8",
+      "hash": "fdf4153873d15562",
+      "title": "Checking for a custom rule",
+      "what": "Answers yes or no to whether an industry has its own dedicated rule, as opposed to using the default.",
+      "why": "The check looks only at the table's own entries, so names inherited from general object behavior are not counted as rules.",
+      "watch_out": ""
+    },
+    {
+      "start": 88,
+      "end": 99,
+      "kind": "value",
+      "name": "STRICT_TAXONOMY_SLUGS",
+      "id": "s9",
+      "hash": "1480fdf38df1ee35",
+      "title": "Industries with strict value checking",
+      "what": "A fixed list of industries that must use strict checking. Right now only nuclear is on this list. Strict industries must match a real taxonomy node or their custom rule, or the value is cleared.",
+      "why": "The comment says the drift checker in server/quality/dataQuality.ts imports this list, so validation and quality checks stay consistent.",
+      "watch_out": "Adding an industry here changes how every record for that industry is validated during ingestion."
+    },
+    {
+      "start": 100,
+      "end": 106,
+      "kind": "function",
+      "name": "isDataDrivenTaxonomy",
+      "id": "s10",
+      "hash": "5c0b19c0dad9bb06",
+      "title": "Deciding if values are taken as given",
+      "what": "Returns yes for every industry that is not on the strict list. For these industries the segment from the data is accepted as is and becomes part of the valid vocabulary.",
+      "why": "The comment says the controlled list should grow from the data instead of a fixed list written by hand.",
+      "watch_out": "Any slug that is not on the strict list is treated as data-driven, so a typo in a slug silently switches an industry to the looser rule."
+    }
+  ],
+  "explained_at": "2026-11-12T04:13:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Decides which sub-industry a project belongs to, based on its own details. Only the imports and one type definition were supplied, so most of its behaviour cannot be confirmed.",
+  "purpose": "Defines the shape of a sub-industry rule, so each industry can supply a rule that assigns projects to categories.",
+  "why": "The type comment says a rule must stay inside the approved category list and return nothing when unsure. Likely reason: avoids mislabelled projects.",
+  "how": "The shown code imports the industry lookup and the nuclear classifier, then defines the rule type: given validated attributes and an optional capacity number, return a category name or nothing. The rule registry, the default rule, and the approved list are in sections not supplied.",
+  "inputs": "Validated project attributes and an optional capacity number.",
+  "outputs": "A category name from the approved list, or nothing when the rule is unsure.",
+  "risks": "A rule that guesses would mislabel projects. The type alone does not stop a rule returning a name outside the approved list. The rest of the file was not supplied, so its risks cannot be confirmed.",
+  "debug": "Start with the rule for the matching industry and the approved list. A project returning nothing means the rule was unsure, which the type comment says is the intended result.",
+  "summary_hash": "sha256:8729a37de851237755338852fe7e83072560fc000ac6b9206389cb361a80b136"
+}

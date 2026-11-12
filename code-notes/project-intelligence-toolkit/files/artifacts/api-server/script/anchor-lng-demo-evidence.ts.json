@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/anchor-lng-demo-evidence.ts",
+  "language": "TypeScript",
+  "lines": 115,
+  "hash": "sha256:b7128925e04b839f9b63dbd316394f98ac3cf894555c804f39b47feaeacb961e",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Error cases are handled and logged per URL, and the top-level error stops the run with a failure code.",
+      "No automated test is visible for the matching or the snapshot code.",
+      "Results depend on live pages that can change or disappear."
+    ]
+  },
+  "terms": [
+    {
+      "term": "demo gate",
+      "meaning": "the set of rules a piece of evidence must pass before the app shows it in a demo"
+    },
+    {
+      "term": "exact quote",
+      "meaning": "a quote whose characters match the source page exactly"
+    },
+    {
+      "term": "snapshot",
+      "meaning": "a saved picture of the source page with the quote highlighted"
+    },
+    {
+      "term": "source document",
+      "meaning": "a stored copy of a web page's text used to check quotes"
+    },
+    {
+      "term": "span",
+      "meaning": "the start and end positions of a quote inside a stored document"
+    },
+    {
+      "term": "JSDOM",
+      "meaning": "a library that reads HTML inside Node.js so its text can be pulled out"
+    },
+    {
+      "term": "LNG",
+      "meaning": "liquefied natural gas, the industry these projects belong to"
+    }
+  ],
+  "depends_on": [
+    "pg",
+    "crypto",
+    "jsdom",
+    "artifacts/api-server/src/lib/curlFetch",
+    "artifacts/api-server/src/lib/spanAnchor",
+    "artifacts/api-server/src/lib/safeFetch",
+    "artifacts/api-server/src/lib/sourceSnapshot",
+    "artifacts/api-server/src/tools/guided-demo/validatedExample",
+    "artifacts/api-server/src/tools/guided-demo/demoPins"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 35,
+      "kind": "setup",
+      "name": "File setup, pool",
+      "id": "s1",
+      "hash": "e35d5b7c98897bcf",
+      "title": "Setup and connection",
+      "what": "States the script's purpose and rules, opens a database connection pool, and loads the helpers for fetching pages, matching quotes, and saving snapshots.",
+      "why": "The header says the demo pins need quotes that pass an unchanged gate, so the script must only add links and snapshots.",
+      "watch_out": "The script writes to the database that DATABASE_URL points to, so the wrong connection string changes the wrong data."
+    },
+    {
+      "start": 36,
+      "end": 43,
+      "kind": "function",
+      "name": "extractHtml",
+      "id": "s2",
+      "hash": "eaddf1008aa0315d",
+      "title": "Extracting page text",
+      "what": "Turns a fetched HTML page into plain text and a page title, removing script, style, noscript and template content first.",
+      "why": "Likely reason: quotes should match what a reader sees, not hidden code.",
+      "watch_out": "Pages with no visible text return nothing, and their quotes are skipped."
+    },
+    {
+      "start": 44,
+      "end": 56,
+      "kind": "function",
+      "name": "candidates",
+      "id": "s3",
+      "hash": "8cd54995f9981212",
+      "title": "Finding candidate quotes",
+      "what": "Reads active LNG quotes that have a web link, a field path, and a length between 30 and 3500 characters, for projects matching the demo name patterns.",
+      "why": "Limits the work to the demo projects named in the pins file.",
+      "watch_out": "Projects are matched by name pattern, so a renamed project silently drops out of the candidate list."
+    },
+    {
+      "start": 57,
+      "end": 61,
+      "kind": "function",
+      "name": "lngProjectIds",
+      "id": "s4",
+      "hash": "481d1745ba95a0cd",
+      "title": "LNG project IDs",
+      "what": "Lists the IDs of all LNG projects, which the gate check uses to decide which evidence to examine.",
+      "why": "The gate check needs the full set of LNG projects, not just the demo ones.",
+      "watch_out": ""
+    },
+    {
+      "start": 62,
+      "end": 102,
+      "kind": "function",
+      "name": "anchor",
+      "id": "s5",
+      "hash": "6eaf694648c425ef",
+      "title": "Matching and capturing snapshots",
+      "what": "For each source URL, confirms the fetch policy allows it, downloads the page, skips PDFs, extracts the text, and looks for exact matches of each quote. For each match, saves the document and span and captures a highlighted snapshot.",
+      "why": "Makes the demo evidence verifiable against its real source without a model deciding the match.",
+      "watch_out": "Only exact character matches are saved. A snapshot that highlights the wrong place would show a misleading source, so check snapshots after a run."
+    },
+    {
+      "start": 103,
+      "end": 115,
+      "kind": "function",
+      "name": "report",
+      "id": "s6",
+      "hash": "4a29c991a32d347d",
+      "title": "Gate report",
+      "what": "Lists the LNG evidence rows that pass the demo gate, prints each project, field and URL, and exits with success if at least one row passes.",
+      "why": "Gives a simple yes or no result for the demo requirement.",
+      "watch_out": "The exit result only shows that at least one row passes, not that every demo project is covered."
+    }
+  ],
+  "explained_at": "2026-11-12T02:50:12+00:00",
+  "explained_by": "haiku",
+  "summary": "Script that makes existing LNG demo quotes verifiable by finding each exact quote in its web source and saving a highlighted snapshot.",
+  "purpose": "Brings the demo evidence for the preferred LNG projects up to the standard the demo gate needs, without calling any language model.",
+  "why": "The header states that the demo pages need an active quote whose exact text can be found in a captured source, with a matching highlighted image.",
+  "how": "Finds candidate quotes for the preferred demo projects that have a web link. Groups them by source URL and checks each URL against the fetch policy. Downloads each page, skips PDFs, extracts visible text, and looks for exact matches of each quote. For matches, saves the document and span records and captures a highlighted snapshot. In report mode, lists the rows that pass the gate and exits with success if at least one passes.",
+  "inputs": "Active LNG evidence quotes with URLs, the demo project name patterns, the DATABASE_URL setting, and the live web pages.",
+  "outputs": "New or existing rows in source_document and source_span, updated source keys on evidence_quotes, snapshot records, and console output.",
+  "risks": "Writes to the database. Fetches live web pages, so results change over time. Only exact character matches count. A wrong match would produce a misleading highlight.",
+  "debug": "Run with the report option to see which rows pass. Run without it and read the per-URL messages for HTTP errors, PDFs, missing text, or no exact match. A row that passes once is skipped on later runs.",
+  "summary_hash": "sha256:b7128925e04b839f9b63dbd316394f98ac3cf894555c804f39b47feaeacb961e"
+}

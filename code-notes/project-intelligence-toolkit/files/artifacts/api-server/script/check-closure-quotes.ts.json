@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/check-closure-quotes.ts",
+  "language": "TypeScript",
+  "lines": 103,
+  "hash": "sha256:e9a30404773ad8f27f36ec8971cddcda1d2075e8742299146e0e2f5f58aca4b3",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only three of four sections are visible, so the main checking loop cannot be verified.",
+      "No tests are visible.",
+      "Depends on live websites, which change over time.",
+      "Hidden tool failures for PDFs are treated as missing text."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Closure reply",
+      "meaning": "A research answer returned for a closure worklist, containing sourced values."
+    },
+    {
+      "term": "Worklist snapshot",
+      "meaning": "The saved copy of a worklist that a reply must match."
+    },
+    {
+      "term": "SSRF guard",
+      "meaning": "A safety check that stops the tool from fetching addresses inside a private network."
+    },
+    {
+      "term": "curl",
+      "meaning": "A command line tool that downloads a web page."
+    },
+    {
+      "term": "JSDOM",
+      "meaning": "A library that reads the code of a web page so its visible text can be pulled out."
+    },
+    {
+      "term": "pdftotext",
+      "meaning": "A command line tool that extracts text from a PDF file."
+    },
+    {
+      "term": "Cache",
+      "meaning": "Saved results kept so the same quote is not checked again."
+    },
+    {
+      "term": "Matcher",
+      "meaning": "The shared rule that decides whether a quote appears in a page's text."
+    },
+    {
+      "term": "Bot wall",
+      "meaning": "A page that blocks automated downloads, for example with a verification prompt."
+    }
+  ],
+  "depends_on": [
+    "node:fs, node:os, node:path, node:crypto, node:child_process",
+    "jsdom",
+    "src/lib/curlFetch",
+    "src/lib/safeFetch",
+    "src/lib/spanAnchor",
+    "src/ingest/yardResearch/closureReplies",
+    "src/ingest/yardResearch/plan",
+    "src/ingest/yardResearch/quoteChecks",
+    "pdftotext and curl command line tools",
+    "data/yard-research cache folder"
+  ],
+  "used_by": [
+    "The importer, named in the header but not shown here"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 33,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "bfaaf409327952d1",
+      "title": "Purpose and bot-block detection",
+      "what": "The header describes what the script checks and the three possible results. The code loads the libraries and defines a pattern of phrases that usually appear on bot-block pages, such as verification prompts.",
+      "why": "Likely reason: a bot-block page contains no research text, so it should be recorded as page unavailable rather than as a quote that is not on the page. The visible code only defines the pattern; the lines that use it are not shown.",
+      "watch_out": "The phrase list is applied to page text, so a real page that happens to contain one of these phrases could be treated as unavailable."
+    },
+    {
+      "start": 34,
+      "end": 51,
+      "kind": "function",
+      "name": "pageText",
+      "id": "s2",
+      "hash": "c7ccb6764d2129a2",
+      "title": "Getting readable text from a page or PDF",
+      "what": "Turns a downloaded file into plain text. PDFs are saved briefly to a temporary file, read with the pdftotext tool, and then deleted. HTML is parsed with JSDOM, scripts and styles are removed, and the title, description and body text are joined. Returns nothing when there is no text or reading fails.",
+      "why": "Quotes are compared with visible text, so code and styling are stripped out first.",
+      "watch_out": "If pdftotext is missing, the failure is swallowed and the result looks like an unreadable page rather than a setup error."
+    },
+    {
+      "start": 52,
+      "end": 60,
+      "kind": "value",
+      "name": "industries, save",
+      "id": "s3",
+      "hash": "9457bf06b02aeea3",
+      "title": "Single-industry check and cache setup",
+      "what": "Reads each reply file and finds the worklist each reply belongs to, then the industry of that worklist. Stops if the files cover more than one industry. Loads that industry's saved results, sets up a save function, and prints the cache path.",
+      "why": "The cache is kept per industry, and one run checks one industry, as the header describes.",
+      "watch_out": "The run stops if a reply's worklist snapshot is missing, so each reply must be checked with the snapshot it was built from."
+    },
+    {
+      "start": 61,
+      "end": 103,
+      "kind": "value",
+      "name": "wanted",
+      "id": "s4",
+      "hash": "5a3af1a35268ff8c",
+      "title": "Checking quotes against live web pages",
+      "what": "Finds every cited web address whose quotes are not yet in the cache, opens each page once, and looks for each quoted sentence on it. It saves each result as it goes and ends by printing counts of found, not on page, and unavailable quotes.",
+      "why": "Likely reason: skipping cached quotes avoids repeat fetches, and saving after each page lets a long run restart safely. Reason not stated in the code beyond that.",
+      "watch_out": "A page that cannot be loaded is recorded as page unavailable rather than as a wrong quote, so a missing page does not prove a quote is false."
+    }
+  ],
+  "explained_at": "2026-11-12T02:57:01+00:00",
+  "explained_by": "haiku",
+  "summary": "Fetches each web page cited in closure research replies and checks whether each quoted passage appears on that page, saving the result per quote for the importer.",
+  "purpose": "Stops quotes that do not appear on their cited pages from entering the database as checked evidence.",
+  "why": "The header says the check makes no model calls and records one of three results per quote, so the importer can rely on the saved outcome rather than fetching pages itself.",
+  "how": "Reads the reply files and confirms that all of them belong to one industry. Loads that industry's saved quote results, then for each sourced quote fetches the page with a safe downloader, extracts its text from HTML or PDF, and looks for the quote with the shared matcher. It records found, not_on_page or page_unavailable, and saves the results after each URL. Only the first three of four sections are visible, so the saving and matching logic beyond these lines cannot be verified here.",
+  "inputs": "Reply files as command arguments. Closure worklist snapshots under data/yard-research/closure-worklists. The live web pages cited in the replies. The pdftotext command for PDFs.",
+  "outputs": "The quote-checks cache at data/yard-research/<industry>/quote-checks.json, and a console line giving its path.",
+  "risks": "Fetches live web pages from addresses supplied in research replies. A missing pdftotext command makes PDF text unreadable, and the failure is hidden rather than reported as an error. Live pages change, so results can differ between runs.",
+  "debug": "Open the quote-checks cache to see each result and its reason. If many results are page_unavailable, check for bot-block wording or failing addresses. If PDFs are unavailable, confirm that pdftotext is installed. If the run stops with a missing-snapshot error, check the closure worklist folder.",
+  "summary_hash": "sha256:e9a30404773ad8f27f36ec8971cddcda1d2075e8742299146e0e2f5f58aca4b3"
+}

@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/search/router.ts",
+  "language": "TypeScript",
+  "lines": 226,
+  "hash": "sha256:ce22d5bf048b413bf4ebeba1bfcf0a2e3a6ac8d89afb5e12242bf5253dfef8d2",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "Trust scores depend on approximate website-name matching.",
+      "The freshness score function is defined but not used in the shown code, which may be leftover."
+    ]
+  },
+  "terms": [
+    {
+      "term": "deduplication",
+      "meaning": "removing repeated entries so each item appears once."
+    },
+    {
+      "term": "standardised address",
+      "meaning": "a web address rewritten into one form so that variants of the same page match."
+    },
+    {
+      "term": "tier",
+      "meaning": "a numbered trust level for a source, where 1 is the most trusted."
+    },
+    {
+      "term": "domain",
+      "meaning": "the website name part of a web address."
+    },
+    {
+      "term": "allow list",
+      "meaning": "a list of the only items that are permitted."
+    }
+  ],
+  "depends_on": [
+    "./interfaces",
+    "@workspace/db (types only)"
+  ],
+  "used_by": [
+    "The search router creation in createRouter.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "82160b75d541a6a1",
+      "title": "Imports",
+      "what": "Brings in the shared search types and the source type.",
+      "why": "Likely reason: the router only needs the shapes, not the provider code.",
+      "watch_out": ""
+    },
+    {
+      "start": 4,
+      "end": 17,
+      "kind": "function",
+      "name": "normalizeUrl",
+      "id": "s2",
+      "hash": "98b7e57b9457b49b",
+      "title": "Standardising web addresses",
+      "what": "Rewrites an address into one form: removes the fragment, tracking tags such as campaign and click ids, trailing slashes, and a leading www. If the address cannot be parsed, it is returned unchanged.",
+      "why": "Likely reason: the same article often appears with different tracking tags, and this makes the copies match when merging.",
+      "watch_out": "The original address is kept in results; only the matching key is standardised."
+    },
+    {
+      "start": 18,
+      "end": 25,
+      "kind": "function",
+      "name": "extractDomain",
+      "id": "s3",
+      "hash": "be5a29ad8aa6abb0",
+      "title": "Getting a website name",
+      "what": "Pulls the website name from an address and removes a leading www. Returns empty text if the address is not valid.",
+      "why": "Likely reason: the website name groups results for the per-site cap and the trust lookup.",
+      "watch_out": ""
+    },
+    {
+      "start": 26,
+      "end": 30,
+      "kind": "function",
+      "name": "tierToScore",
+      "id": "s4",
+      "hash": "6c094655e7e2e1b8",
+      "title": "Tier to trust score",
+      "what": "Converts a source tier into a trust score: tier 1 gives 100, down to tier 5 giving 20. Any other value gives 30.",
+      "why": "Likely reason: one score scale lets results from different sources be ranked together.",
+      "watch_out": "The same table is repeated in rss.ts, so keep the two in step."
+    },
+    {
+      "start": 31,
+      "end": 38,
+      "kind": "function",
+      "name": "recencyScore",
+      "id": "s5",
+      "hash": "27b0ddeb791b65f8",
+      "title": "Freshness score",
+      "what": "Gives a score that drops by two points per day since publication, from 100 down to 0. Gives 30 when no date is known.",
+      "why": "Likely reason: favours recent results. Whether it is used is not visible in the shown code.",
+      "watch_out": "A date in an unexpected format gives an invalid score, and nothing here guards against that."
+    },
+    {
+      "start": 39,
+      "end": 90,
+      "kind": "class",
+      "name": "MultiSearchRouter (part 1)",
+      "id": "s6",
+      "hash": "9ad9b9df755078ff",
+      "title": "Router setup and trust lookup",
+      "what": "Stores the providers and reloads source trust data at most every five minutes, mapping each website name to its tier. Trust for a website is found by exact match first, then by partial name match, and falls back to 30. The search method then starts by refreshing trust data and choosing the providers to run.",
+      "why": "Likely reason: reloading on a timer avoids a database read on every search.",
+      "watch_out": "If reloading fails, a warning is logged and the next search tries again, using whatever trust data was last held."
+    },
+    {
+      "start": 91,
+      "end": 132,
+      "kind": "method",
+      "name": "MultiSearchRouter: if",
+      "id": "s7",
+      "hash": "2eb200ebc8dce1ab",
+      "title": "Running providers in parallel",
+      "what": "Runs all chosen providers at once and tags each result with its provider name. A provider that fails is logged and treated as having no results. Keeps only results whose address starts with http or https, and logs the counts and any drops.",
+      "why": "Likely reason: providers answer at different speeds, so running them together avoids waiting on each one in turn.",
+      "watch_out": "A failing provider is hidden from the caller; only the log shows it."
+    },
+    {
+      "start": 133,
+      "end": 185,
+      "kind": "method",
+      "name": "MultiSearchRouter: for",
+      "id": "s8",
+      "hash": "ccb0427c6b62f8c5",
+      "title": "Merging, ranking, and capping",
+      "what": "Groups results by standardised address and keeps the best copy of each, with a trust score taken from its website. Sorts by trust and keeps at most the per-site cap (default 2) from each website. A cap of zero turns the cap off. Logs the counts and a breakdown by tier.",
+      "why": "Likely reason: the per-site cap stops one website filling the list, and the default is set in code.",
+      "watch_out": "Sorting by trust before capping means a site's lower-trust pages are the first to be removed."
+    },
+    {
+      "start": 186,
+      "end": 226,
+      "kind": "method",
+      "name": "MultiSearchRouter: if",
+      "id": "s9",
+      "hash": "b0a3f67c9f2bb8b4",
+      "title": "Final scoring, sorting and trimming",
+      "what": "After results have been gathered, this part optionally keeps only results from the domains of the chosen sources, gives each result a combined score, sorts the results best first, and returns only the top ones. It also logs a short summary of the run.",
+      "why": "Reason not stated in the code. The scoring mixes source authority (60%) and recency (40%), which suggests the goal is to show the most trustworthy and newest matches first.",
+      "watch_out": "The domain filter also accepts a parent domain when a child domain is chosen (for example a result from example.com passes when news.example.com was selected), so results may be broader than the chosen sources."
+    }
+  ],
+  "explained_at": "2026-11-12T04:13:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Combines results from all active search providers, removes duplicates, limits how many come from one website, and ranks the rest by trust.",
+  "purpose": "The single point where search results from many providers become one clean ranked list.",
+  "why": "Likely reason: providers often return the same articles, and one website should not dominate the list. The per-site cap expresses that.",
+  "how": "Loads source trust data, chooses providers that are set up (and on the allow list, if given), runs them in parallel, drops results with unusable addresses, merges duplicates by a standardised address, gives each result a trust score from its website, caps results per website, and logs a breakdown by tier.",
+  "inputs": "Search text, the list of providers, optional settings such as result limit, per-site cap, provider allow list, and industry, and a loader for source trust data.",
+  "outputs": "A ranked list of search results with trust scores, plus log lines with counts, drops, and tiers.",
+  "risks": "Trust scores come from matching website names, and unmatched sites get 30. The per-site cap is applied after sorting by trust, so a site's lower-trust pages are the ones removed. Provider failures are logged and hidden from the caller.",
+  "debug": "Use the search-router log lines: they show each provider's result count, drops for bad addresses, the merge totals, the per-site cap, and tier counts. If a provider is missing, check whether it is set up and whether the allow list excludes it.",
+  "summary_hash": "sha256:ce22d5bf048b413bf4ebeba1bfcf0a2e3a6ac8d89afb5e12242bf5253dfef8d2"
+}

@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/test-opportunity-map.ts",
+  "language": "TypeScript",
+  "lines": 62,
+  "hash": "sha256:7e2866e98158bad252a23ad7bd484144d0961d09ba487e1c55304e0760506117",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Needs a live database.",
+      "Writes test rows inside a transaction, which is only safe if the rollback runs.",
+      "This review did not run the file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "grounding",
+      "meaning": "checking that a claim matches a real quote from a real source"
+    },
+    {
+      "term": "confidence",
+      "meaning": "how sure the app is about a finding"
+    },
+    {
+      "term": "queue",
+      "meaning": "the list of items waiting for review"
+    },
+    {
+      "term": "transaction",
+      "meaning": "a group of database steps that all succeed or all cancel"
+    },
+    {
+      "term": "rollback",
+      "meaning": "cancelling a transaction so nothing is saved"
+    }
+  ],
+  "depends_on": [
+    "../src/tools/opportunity-map/research",
+    "../src/tools/opportunity-map/types",
+    "../src/tools/opportunity-map/store",
+    "../src/tools/reality-scan/assistantEvidence",
+    "../src/tools/reality-scan/deckResearch",
+    "../src/db"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup, doc",
+      "id": "s1",
+      "hash": "d47d2c144e2ee200",
+      "title": "Sample source and fixed quote",
+      "what": "Imports the modules under test and builds a sample source document containing a fixed quote.",
+      "why": "Gives every later check the same known source text.",
+      "watch_out": "Changing the sample quote changes the results of many checks."
+    },
+    {
+      "start": 12,
+      "end": 28,
+      "kind": "value",
+      "name": "finding",
+      "id": "s2",
+      "hash": "0f7d18bd9f4e9ee9",
+      "title": "Grounding a sample finding",
+      "what": "Builds a sample finding and checks that it passes the schema and is grounded. Also checks that confidence drops to medium with one domain, and that invented or unfetched sources are rejected.",
+      "why": "Confirms the app will not show findings whose evidence is missing or fake.",
+      "watch_out": "A stricter matching rule could reject real findings that differ only in small wording details."
+    },
+    {
+      "start": 29,
+      "end": 62,
+      "kind": "value",
+      "name": "assistantPool",
+      "id": "s3",
+      "hash": "77ff32b30d1c9bae",
+      "title": "Citations, legacy scoring and database checks",
+      "what": "Checks assistant citations, rejects blocked-page text, checks that legacy scores match the card score and that private routing is not sent out. Then, inside a database transaction, checks that dismissed reviews survive updates and that only one research job is queued per industry, then rolls back.",
+      "why": "Likely reason: the review decisions are saved by people, so they must survive later updates. Otherwise not stated in the code.",
+      "watch_out": "The database steps write to the real database during the run, so a failed rollback leaves rows behind."
+    }
+  ],
+  "explained_at": "2026-11-12T03:15:28+00:00",
+  "explained_by": "haiku",
+  "summary": "Tests the opportunity map: quote grounding, source failure handling, confidence rules, assistant citations, queue deduplication, and saved review decisions in the database.",
+  "purpose": "Makes sure findings appear only when backed by real quotes from fetched sources, and that the review queue behaves correctly.",
+  "why": "Likely reason: the product must not show unsupported claims as facts.",
+  "how": "Checks a sample finding against a sample source: schema, grounding, medium confidence with one domain, rejection of invented or unfetched sources, and tolerance for extra spaces in quotes. Then checks assistant citations, rejects blocked-page text, checks the legacy score and that private routing is not sent out. Last, inside a database transaction, checks that a dismissed review survives an update and that only one job is queued per industry, then rolls back.",
+  "inputs": "Sample documents and findings in the file, the research, types, assistant evidence, deck research and store modules, and the database.",
+  "outputs": "A PASS line, or a failure. Database test rows are rolled back.",
+  "risks": "The database test writes rows during the run. If the rollback fails, test rows may remain. Fixed IDs are used.",
+  "debug": "If grounding checks fail, check groundFinding and the quote matching. If the job check fails, check the conflict rule on the opportunity_jobs insert.",
+  "summary_hash": "sha256:7e2866e98158bad252a23ad7bd484144d0961d09ba487e1c55304e0760506117"
+}

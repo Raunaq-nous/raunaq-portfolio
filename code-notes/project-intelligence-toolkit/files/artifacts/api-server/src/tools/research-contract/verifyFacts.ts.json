@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/verifyFacts.ts",
+  "language": "TypeScript",
+  "lines": 81,
+  "hash": "sha256:bf8b4daf0b98e0e57ee796d04afc8d1d2c6f61265b647300bcd7e1fcd21054ae",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No dedicated test for this file is visible in the packet.",
+      "Fetch errors are swallowed without a reason.",
+      "A changed stored text stops the whole replay."
+    ]
+  },
+  "terms": [
+    {
+      "term": "capture",
+      "meaning": "downloading a source page and keeping a copy of its text"
+    },
+    {
+      "term": "replay",
+      "meaning": "re-checking facts using copies saved in an earlier run, without fetching again"
+    },
+    {
+      "term": "budget",
+      "meaning": "a fixed limit on how many pages one run may fetch"
+    },
+    {
+      "term": "relevance",
+      "meaning": "whether the source text is about the project named in the fact"
+    },
+    {
+      "term": "safe fetch",
+      "meaning": "the app's protected way of downloading a web page"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/lib/safeFetch",
+    "artifacts/api-server/src/lib/spanAnchor",
+    "artifacts/api-server/src/tools/lessons-learnt/recipeResult",
+    "artifacts/api-server/src/tools/reality-scan/deckResearch",
+    "artifacts/api-server/src/tools/research-contract/evidence",
+    "artifacts/api-server/src/tools/research-contract/sourcePolicy",
+    "drizzle-orm",
+    "node:crypto"
+  ],
+  "used_by": [
+    "None visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup, Capture",
+      "id": "s1",
+      "hash": "b6c66613c9482144",
+      "title": "Imports and capture shape",
+      "what": "Brings in the safe fetch, text cleaning, assessment, database access and publication date helpers. Defines the shape a capture function must return.",
+      "why": "Likely reason: a single shape lets live and replayed captures be swapped.",
+      "watch_out": ""
+    },
+    {
+      "start": 12,
+      "end": 29,
+      "kind": "function",
+      "name": "captureSource",
+      "id": "s2",
+      "hash": "b15b45aea3b95e12",
+      "title": "Fetching and saving one page",
+      "what": "Fetches one page safely, cleans its text, and saves it as a stored document if it loaded and has usable text. Returns the text, a fingerprint, an accessible flag, the publication date, and a document identifier when saved.",
+      "why": "Stated in the code: publication metadata is in the raw markup, which cleaning removes, so the date is read from the original.",
+      "watch_out": "A fetch error returns a plain not-accessible result with no reason, so a network failure looks like an empty page."
+    },
+    {
+      "start": 30,
+      "end": 68,
+      "kind": "function",
+      "name": "verifyRecipeFacts",
+      "id": "s3",
+      "hash": "40363b80fc1b38ec",
+      "title": "Checking facts against their pages",
+      "what": "Captures each unique cited page, up to the budget and four at a time, then checks each fact against its page and sets its status and relevance. Facts whose pages were not captured stay partial.",
+      "why": "Stated in the header: uncaptured facts stay partial and never inherit a saved verified badge.",
+      "watch_out": "The budget can leave facts partial, and the reason text in the assessment is the only clue."
+    },
+    {
+      "start": 69,
+      "end": 81,
+      "kind": "function",
+      "name": "recordedCapture",
+      "id": "s4",
+      "hash": "4343f21a2dbea86c",
+      "title": "Replaying stored captures",
+      "what": "Builds a capture function that uses stored page text from an earlier run instead of fetching again. It first checks that the stored text still matches its recorded fingerprint.",
+      "why": "Stated in the header: replays reuse run captures without using the network or exceeding the budget.",
+      "watch_out": "If stored text no longer matches its fingerprint, the function throws and the whole replay stops."
+    }
+  ],
+  "explained_at": "2026-11-12T05:13:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Fetches each source page cited by a research fact, checks whether the fact really matches the page, and gives each fact a status showing how far it can be trusted.",
+  "purpose": "Turns unchecked candidate facts into facts with a verified or downgraded status, based on re-reading their sources.",
+  "why": "Stated in the comments: replays do not use the network, and an uncaptured fact stays partial rather than inheriting an old verified badge.",
+  "how": "First, collect the unique source addresses for facts, within the allowed list. Second, capture up to 40 pages, four at a time, saving each. Third, assess each fact against its page for source status and relevance. Fourth, a fact whose page was not captured is marked partial. Fifth, set the final status: held out, unsourced, partial, unreachable, verified or unconfirmed. For replays, a separate step reuses stored text after checking its fingerprint.",
+  "inputs": "Candidate research facts, an optional capture function, a page budget, a save callback, an allowed address set, and for replays the saved source records.",
+  "outputs": "Facts with relevance, status and assessment filled in. Captured page records with text, fingerprint, capture time, accessible flag, document identifier and publication date.",
+  "risks": "The 40 page budget can leave later facts partial, and the only clue is a reason in the assessment. A replay that finds changed stored text throws an error that stops the whole replay. Fetch errors are hidden, so a network failure looks like an unreachable page.",
+  "debug": "If many facts show partial, check the page budget and the reasons text for budget messages. If a replay fails, the error says the stored capture failed its integrity check, meaning the stored text changed. For unreachable results, check the safe fetch step and the saved document.",
+  "summary_hash": "sha256:bf8b4daf0b98e0e57ee796d04afc8d1d2c6f61265b647300bcd7e1fcd21054ae"
+}

@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/register-replay-batch.ts",
+  "language": "TypeScript",
+  "lines": 42,
+  "hash": "sha256:31b63d49052615c334b31968cbf8a39e8e7a0e1a5745e1823cd2ed2d6471288c",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test file is shown for this script.",
+      "The duplicate and input checks are clear and stop the run before any write.",
+      "There is no undo, so a wrong registration must be fixed by hand."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Ledger",
+      "meaning": "A running list file that records each approved batch in order."
+    },
+    {
+      "term": "Batch",
+      "meaning": "One approved group of research rows that is loaded as a single unit."
+    },
+    {
+      "term": "Importer",
+      "meaning": "The loader that knows how to read one kind of research batch."
+    },
+    {
+      "term": "Plan digest",
+      "meaning": "A fingerprint of the approved plan, used to spot a batch registered twice."
+    },
+    {
+      "term": "Manifest",
+      "meaning": "A file that describes a dataset, such as which projects and industry it covers."
+    }
+  ],
+  "depends_on": [
+    "src/ingest/yardResearch/quoteChecks",
+    "src/ingest/yardResearch/replayLedger",
+    "src/ingest/yardResearch/populationIndustries",
+    "node:fs",
+    "node:path"
+  ],
+  "used_by": [
+    "script/replay-yard-research.ts (loads the registered batches after the merge, per the header comment)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup, val",
+      "id": "s1",
+      "hash": "5043c19e28187f86",
+      "title": "Reading inputs and choosing importer",
+      "what": "Reads the command line options, checks that the commit report exists, and works out which importer and industry the batch belongs to.",
+      "why": "The header says closure reports sit in the closure folder, and population folders may record a different industry from their name.",
+      "watch_out": "The importer is guessed from the report path, so a report in an unexpected folder gets the wrong importer unless --importer is given."
+    },
+    {
+      "start": 24,
+      "end": 42,
+      "kind": "value",
+      "name": "flags",
+      "id": "s2",
+      "hash": "649e402443961527",
+      "title": "Adding the batch and saving",
+      "what": "Builds the new ledger entry after the last batch, rejects duplicates, confirms the input files are in the repo, then saves the ledger and prints a confirmation line.",
+      "why": "Likely reason: duplicate checks stop one approved run from being loaded twice, and the order number keeps batches in sequence.",
+      "watch_out": "The duplicate check only catches exact matches on batch name or plan digest, and the save has no undo."
+    }
+  ],
+  "explained_at": "2026-11-12T03:07:42+00:00",
+  "explained_by": "haiku",
+  "summary": "Adds one approved, committed research batch to an industry's replay ledger so that it loads into the main database after the merge.",
+  "purpose": "A replay ledger is a running list of approved batches. Registering a batch here puts it in the list in order, so the later replay script can load it.",
+  "why": "The header says to run this right after the commit. Keeping an ordered ledger means batches load in the same order they were approved.",
+  "how": "It reads the folder and commit report from the command line, checks the report exists, and picks the importer type and industry. It builds a new entry with the next order number, rejects a duplicate batch name or plan digest, checks the input files are in the repo, then appends the entry and saves the ledger.",
+  "inputs": "Command line arguments: the ledger folder, the commit report path, and optional --importer, --batch and --note values. It also reads the industry manifest and the existing replay ledger file.",
+  "outputs": "An updated replay-ledger.json file in the folder, and one confirmation line naming the batch, its order and its row count.",
+  "risks": "The script writes a ledger file in the repo, and it has no undo. A wrong importer or folder will place the batch in the wrong ledger.",
+  "debug": "Error messages name the problem: no such report means the path is wrong; already in the ledger means a duplicate name or digest; not in the repo means the input files must be committed first; a record industry mismatch means the ledger and manifest disagree.",
+  "summary_hash": "sha256:31b63d49052615c334b31968cbf8a39e8e7a0e1a5745e1823cd2ed2d6471288c"
+}

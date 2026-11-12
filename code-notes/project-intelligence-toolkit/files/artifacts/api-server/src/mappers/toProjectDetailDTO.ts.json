@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/mappers/toProjectDetailDTO.ts",
+  "language": "TypeScript",
+  "lines": 493,
+  "hash": "sha256:e79ff4b66a59437041295734f2457bc8d35e101c67209994c4a492ff35cc4b2b",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Batch names are hardcoded in the mapping logic.",
+      "The quote ids gathered for the success story are never read.",
+      "Only part of the file is explained here, so the rest is unknown.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "DTO (data transfer object)",
+      "meaning": "A fixed shape of data sent from the server to the app, separate from how the database stores it."
+    },
+    {
+      "term": "Interface",
+      "meaning": "A written description of the fields an object must have, used for checking shape."
+    },
+    {
+      "term": "Promise.all",
+      "meaning": "Runs several slow lookups at the same time and waits for all of them."
+    },
+    {
+      "term": "Storage",
+      "meaning": "The object passed in that provides functions to read projects and related records."
+    },
+    {
+      "term": "Evidence",
+      "meaning": "A stored quote from a source, with its web address, publisher, and date, used to back up a project fact."
+    },
+    {
+      "term": "Provenance",
+      "meaning": "A record of where a piece of data came from."
+    },
+    {
+      "term": "Locator",
+      "meaning": "A stored note of where in a source the quote sits."
+    },
+    {
+      "term": "Milestone",
+      "meaning": "A key project date, such as final investment decision or commercial operation."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/storage"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 2,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1e48a5b9e6860d13",
+      "title": "Storage import",
+      "what": "Brings in the storage type so the function knows what it can read from.",
+      "why": "Likely reason: only the type is needed here, so no storage code is loaded.",
+      "watch_out": "The function receives storage from its caller, so the caller must pass a real storage object."
+    },
+    {
+      "start": 3,
+      "end": 62,
+      "kind": "type",
+      "name": "ProjectDetailDTO, MILESTONE_ORDER (part 1)",
+      "id": "s2",
+      "hash": "3e6148fe2fa90935",
+      "title": "Project detail response shape",
+      "what": "Describes the fields of a project detail response: identity, budget, dates, parties, technology details, and location, plus the variances block.",
+      "why": "Reason not stated in the code. It is the agreed shape for the project page.",
+      "watch_out": "Renaming a field changes what the app receives, so the screens reading it must change too."
+    },
+    {
+      "start": 63,
+      "end": 122,
+      "kind": "type",
+      "name": "ProjectDetailDTO, MILESTONE_ORDER (part 2)",
+      "id": "s3",
+      "hash": "70d9b50df266deeb",
+      "title": "Milestone, issue, and update shapes",
+      "what": "Describes milestones, similar projects, issues, the scorecard pillars, the success story, updates, sku mappings, and evidence records. Each evidence record holds a quote, a source link, and a publisher.",
+      "why": "Reason not stated in the code. It fixes the shape of each block on the page.",
+      "watch_out": "Several fields such as the source link and excerpt can be empty, so readers must handle missing values."
+    },
+    {
+      "start": 123,
+      "end": 136,
+      "kind": "type",
+      "name": "ProjectDetailDTO, MILESTONE_ORDER (part 3)",
+      "id": "s4",
+      "hash": "5e618aac3e1fb31e",
+      "title": "Field-level evidence shape",
+      "what": "Describes evidence grouped by field name, with optional source details, provenance, and a locator.",
+      "why": "Likely reason: lets the screen show where each value came from.",
+      "watch_out": "The grouping keys are field names, so renaming a field stops its evidence from showing."
+    },
+    {
+      "start": 137,
+      "end": 142,
+      "kind": "function",
+      "name": "inferMilestoneStatus",
+      "id": "s5",
+      "hash": "9b7810025b8a35ee",
+      "title": "Deriving done or planned status",
+      "what": "Returns completed if the date is now or in the past, planned if it is in the future, and planned if there is no date.",
+      "why": "Reason not stated in the code. Likely reason: milestones carry no status in the source data, so it is worked out from the date.",
+      "watch_out": "It uses the server's clock and time zone, so the result can differ between environments."
+    },
+    {
+      "start": 143,
+      "end": 201,
+      "kind": "function",
+      "name": "buildMilestones (part 1)",
+      "id": "s6",
+      "hash": "edd9617c376eec8b",
+      "title": "Merging milestones with project dates",
+      "what": "Starts with the milestones saved in the database. Adds FID, construction start, and COD from the project dates unless a milestone with that name already exists. Sorts the list in a fixed order, then by date.",
+      "why": "Likely reason: project dates may exist even when no matching milestone row was saved.",
+      "watch_out": "Matching is by name, so a milestone labeled differently (such as a short code) is not treated as a duplicate."
+    },
+    {
+      "start": 202,
+      "end": 204,
+      "kind": "function",
+      "name": "buildMilestones (part 2)",
+      "id": "s7",
+      "hash": "709fb5ce17673f33",
+      "title": "Returning the milestone list",
+      "what": "Hands back the combined and sorted milestone list.",
+      "why": "Callers receive one list ready to show.",
+      "watch_out": "The sorting happens before this return, so changes to the sort must go above it."
+    },
+    {
+      "start": 205,
+      "end": 261,
+      "kind": "function",
+      "name": "toProjectDetailDTO (part 1)",
+      "id": "s8",
+      "hash": "28e95fcd95af86f7",
+      "title": "Loading project data for response",
+      "what": "Returns nothing if the project is missing. Otherwise loads all related lists together, and builds an evidence lookup that skips inactive rows, attaches source details only for two named batches, and reads a locator from each row.",
+      "why": "Likely reason: running the loads together saves waiting time.",
+      "watch_out": "The batch names are hardcoded, so a new batch gets no extra source detail."
+    },
+    {
+      "start": 262,
+      "end": 294,
+      "kind": "method",
+      "name": "toProjectDetailDTO: for",
+      "id": "s9",
+      "hash": "6ff3d505eb9f538c",
+      "title": "Collecting quote ids for success story",
+      "what": "Gathers the evidence ids referenced by scorecard pillars and issues into a set. Then builds the success story quotes from the first ten active evidence rows instead.",
+      "why": "Reason not stated in the code. The collected ids are not read anywhere in the visible code.",
+      "watch_out": "The success story quotes may not be the ones the scorecard or issues cite."
+    },
+    {
+      "start": 295,
+      "end": 354,
+      "kind": "function",
+      "name": "toProjectDetailDTO (part 3)",
+      "id": "s10",
+      "hash": "bb5db0e0399c8885",
+      "title": "Builds the full project detail record",
+      "what": "Assembles the complete project record that the detail endpoint returns. It combines core project facts with technology details, parties, supply chain, variances, milestones, similar projects, issues, scorecard, updates, SKU mappings, attributes and evidence.",
+      "why": "Reason not stated in the code, though the comments show it feeds the project detail screen and benchmark views.",
+      "watch_out": "Missing industry, capacity and location values silently fall back to nuclear or to empty, so a broken record can look valid."
+    },
+    {
+      "start": 355,
+      "end": 402,
+      "kind": "function",
+      "name": "toProjectDetailDTO (part 4)",
+      "id": "s11",
+      "hash": "0618c8d5af78d4f1",
+      "title": "Adds scorecard, updates and evidence",
+      "what": "Finishes the detail record with open issues, scorecard pillars, dated news updates, SKU mappings, raw attributes, and the evidence quotes grouped by field.",
+      "why": "Likely reason: the detail page needs these lists together in one response.",
+      "watch_out": "Update dates prefer the source publication date and fall back to the event date, so the shown date can differ from when the event happened."
+    },
+    {
+      "start": 403,
+      "end": 434,
+      "kind": "value",
+      "name": "FIELD_PATH_ALIASES",
+      "id": "s12",
+      "hash": "f25908e932d2b0e1",
+      "title": "Maps old and alternate field names",
+      "what": "Lookup table that translates older snake_case names, variance paths and Compass source column names into the standard names the app uses, so evidence attaches to the right tile.",
+      "why": "The comments say it lets legacy and source-named evidence appear under the keys the frontend uses, and that new entries are added by hand.",
+      "watch_out": "Only exact spellings are mapped, so any new source name must be added here or its evidence will not show."
+    },
+    {
+      "start": 435,
+      "end": 438,
+      "kind": "function",
+      "name": "normalizeFieldPath",
+      "id": "s13",
+      "hash": "73767e04c86e72b2",
+      "title": "Standardizes one field name",
+      "what": "Returns the standard name for a field path when an alias exists, and otherwise returns the path unchanged.",
+      "why": "Gives every evidence lookup one consistent way to name a field.",
+      "watch_out": "Matching is exact and case-sensitive, so a spelling difference in stored data causes a silent miss."
+    },
+    {
+      "start": 439,
+      "end": 449,
+      "kind": "type",
+      "name": "FieldEvidenceMap",
+      "id": "s14",
+      "hash": "97ebbe5618342da7",
+      "title": "Shape of the field evidence map",
+      "what": "Defines the evidence map: each field name maps to a list of supporting quotes. It also sets the 240-character limit used by the short list version of the quotes.",
+      "why": "Gives the list and detail responses one shared contract.",
+      "watch_out": "The limit must stay at least 200, because link generation cuts quotes at 200 characters, and changing this type changes both list and detail payloads."
+    },
+    {
+      "start": 450,
+      "end": 470,
+      "kind": "function",
+      "name": "buildFieldEvidenceLite",
+      "id": "s15",
+      "hash": "0fdef8295e3bea97",
+      "title": "Builds the short list-view evidence",
+      "what": "Creates the lighter evidence map used on list pages. It keeps only the first quote per field and cuts long quotes to 240 characters with an ellipsis. Full quotes stay on the detail endpoint.",
+      "why": "The comments say this keeps large list responses small as evidence grows.",
+      "watch_out": "Cutting by character count can split a word, so the shortened quote no longer matches the source text exactly."
+    },
+    {
+      "start": 471,
+      "end": 493,
+      "kind": "function",
+      "name": "buildFieldEvidence",
+      "id": "s16",
+      "hash": "8c05487cca432193",
+      "title": "Builds the full field evidence map",
+      "what": "Groups every active evidence row by its standard field name and keeps each quote with its link, publisher, date, locator and provenance details. Inactive rows and rows with no field name are skipped.",
+      "why": "Likely reason: the detail page needs to cite the sources for each field.",
+      "watch_out": "Extra source metadata is attached only for two hardcoded batch labels, so evidence from any other batch loses those details without warning."
+    }
+  ],
+  "explained_at": "2026-11-12T04:03:38+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns project data from the database into one detailed object that the app can show on a project page.",
+  "purpose": "Gives the project detail screen one clean response shape, with milestones, evidence, scorecards, and sources all in one place.",
+  "why": "Reason not stated in the code as a whole. The file is a mapper, so it translates stored data into the shape the app expects.",
+  "how": "1. `toProjectDetailDTO` loads the project. If missing, it returns nothing. 2. It loads related lists together: evidence, issues, scorecard, success story, milestones, updates, technology details, and sku mappings. 3. It builds an evidence lookup, skipping inactive rows. 4. It builds the success story from the first active evidence rows. 5. `buildMilestones` merges stored milestones with FID, construction start, and COD dates from the project. 6. Each milestone gets a done or planned status from its date. The rest of the file (later sections) builds field evidence, which is not explained here.",
+  "inputs": "A project id and a storage object that can read projects and their related lists.",
+  "outputs": "A `ProjectDetailDTO` object, or nothing if the project does not exist.",
+  "risks": "Batch names are hardcoded, so only two named batches get extra source detail. The success story quote ids are collected but never used. Milestone status depends on the server clock and time zone. If any one of the parallel loads fails, the whole response fails.",
+  "debug": "If a page shows wrong milestone status, check the server date and the date stored on the milestone. If success story quotes do not match the scorecard, look at the collected quote ids, which are not used. If source detail is missing for a new batch, check the batch name against the hardcoded names. If the whole response fails, check the storage calls, since one failure fails all.",
+  "summary_hash": "sha256:e79ff4b66a59437041295734f2457bc8d35e101c67209994c4a492ff35cc4b2b"
+}

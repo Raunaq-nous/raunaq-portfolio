@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/store.ts",
+  "language": "TypeScript",
+  "lines": 118,
+  "hash": "sha256:f2ca8985716a6cc3526617c1a4fbf4bcebaa5ad220c7be4f08c2d1f8c57eeb65",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Clear error for a missing migration, and a deliberate allowlist.",
+      "No test in the packet covers strength scoring or tier formatting.",
+      "The fingerprint query runs across all project rows and may be slow on large data."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Database",
+      "meaning": "where the app keeps its records"
+    },
+    {
+      "term": "Query",
+      "meaning": "a question asked of the database"
+    },
+    {
+      "term": "Fingerprint",
+      "meaning": "a short value that changes whenever the data behind it changes"
+    },
+    {
+      "term": "Hash",
+      "meaning": "a fixed-length fingerprint of text, produced by a standard formula"
+    },
+    {
+      "term": "Codebook",
+      "meaning": "the team's own list of tags for solutions, triggers, themes and industries, each marked prioritise or deprioritise"
+    },
+    {
+      "term": "Allowlist",
+      "meaning": "a fixed list of the only fields that may leave the server"
+    },
+    {
+      "term": "Migration",
+      "meaning": "a scripted change to the database structure that must run before the feature works"
+    }
+  ],
+  "depends_on": [
+    "node:crypto",
+    "drizzle-orm",
+    "artifacts/api-server/src/db.ts",
+    "artifacts/capital-projects/src/shared/industries.ts",
+    "artifacts/api-server/src/tools/opportunity-map/catalog.ts",
+    "artifacts/api-server/src/tools/opportunity-map/facts.ts",
+    "artifacts/api-server/src/tools/opportunity-map/mapping.ts",
+    "artifacts/api-server/src/tools/opportunity-map/tiers.ts"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/research.ts",
+    "artifacts/api-server/src/tools/opportunity-map/search.ts",
+    "artifacts/api-server/src/tools/opportunity-map/worker.ts",
+    "artifacts/api-server/src/tools/opportunity-map/yardSync.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup, hash, rows",
+      "id": "s1",
+      "hash": "25fcc7f47e332dba",
+      "title": "Imports and the basic helpers",
+      "what": "Brings in the database connection, the industry list and mapping tools. Defines a hashing helper that produces fixed fingerprints of text, and a query helper that runs a database command and returns its rows.",
+      "why": "Likely reason: other files share these two helpers so that database access looks the same everywhere.",
+      "watch_out": "The query helper returns rows without checking their shape, so callers must trust the column names they ask for."
+    },
+    {
+      "start": 12,
+      "end": 16,
+      "kind": "function",
+      "name": "settings",
+      "id": "s2",
+      "hash": "0604785440d81b4a",
+      "title": "Reads the Opportunity Map on and off settings",
+      "what": "Reads the single settings row, which holds whether the map is enabled, which industries it watches, how often it checks and when it last swept. Stops with an error if the database migration has not been applied.",
+      "why": "The error message states that the migration must be applied first.",
+      "watch_out": "Every feature that reads settings fails until the migration runs, so the migration must be in place before the feature starts."
+    },
+    {
+      "start": 17,
+      "end": 20,
+      "kind": "function",
+      "name": "industries",
+      "id": "s3",
+      "hash": "2373293e81de98ac",
+      "title": "Lists industries with project counts",
+      "what": "Counts projects in each industry and returns each with a display name and its count. If an industry code has no known name, the raw code is shown. The header of the file also exports a limit of three accounts running at once in the worker.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Names come from a fixed list, so a new industry code without an entry appears as its raw code."
+    },
+    {
+      "start": 21,
+      "end": 28,
+      "kind": "function",
+      "name": "industryFingerprints",
+      "id": "s4",
+      "hash": "6178b45e568c676b",
+      "title": "Creates a change fingerprint per industry",
+      "what": "Produces a fingerprint for each industry from its project rows and active evidence. When the fingerprint changes, fresh research is queued.",
+      "why": "The code comment says a change to this fingerprint queues research in the worker.",
+      "watch_out": "Refresh timestamps are part of the fingerprint, so a simple metadata refresh with no real change still triggers research."
+    },
+    {
+      "start": 29,
+      "end": 35,
+      "kind": "function",
+      "name": "enqueue",
+      "id": "s5",
+      "hash": "980b8a4c110c9248",
+      "title": "Adds a research job unless one is recent",
+      "what": "Adds a research job for an industry unless a job for that industry was created in the last five minutes or the same event already exists. Returns whether a job was added.",
+      "why": "Likely reason: prevents bursts of duplicate research for the same industry.",
+      "watch_out": "The five-minute rule covers all jobs for that industry, so a manual refresh made soon after another job may be quietly not queued."
+    },
+    {
+      "start": 36,
+      "end": 56,
+      "kind": "function",
+      "name": "signalStrength, iso, Element, DTOCodebook",
+      "id": "s6",
+      "hash": "c35eeff3896a372c",
+      "title": "Scores how well-evidenced a signal is",
+      "what": "Calculates a score from 0 to 100 from the evidence grade, the number of separate websites, whether an official company source is present, and how recent the newest publication is. It labels the result weak, moderate or strong and writes a plain-English basis line. It also defines the shape of the codebook and a helper that formats times.",
+      "why": "The code comment says the score measures how well-evidenced an observation is, not how attractive it is.",
+      "watch_out": "Recency is based on the newest publication date, so a signal with no dates loses all recency points."
+    },
+    {
+      "start": 57,
+      "end": 60,
+      "kind": "function",
+      "name": "weight",
+      "id": "s7",
+      "hash": "1dbba4a1459636ff",
+      "title": "Turns a codebook emphasis into a number",
+      "what": "Gives plus one for an element the codebook marks prioritise, minus one for deprioritise, and zero otherwise.",
+      "why": "Reason not stated in the code beyond its use in the focus total below.",
+      "watch_out": "Only an exact id match counts, so a codebook id that is renamed silently stops having an effect."
+    },
+    {
+      "start": 61,
+      "end": 66,
+      "kind": "function",
+      "name": "focusOf",
+      "id": "s8",
+      "hash": "1fd70e6b45cc6b48",
+      "title": "Adds up codebook focus for a signal",
+      "what": "Totals the prioritised and deprioritised tags across solution, trigger, signal type, industry and themes, then limits the total to between minus two and plus two.",
+      "why": "The code comment explains the total and its clamp; the tier rules use it.",
+      "watch_out": "The total is clamped to plus or minus two, so additional tags beyond that limit do not change the result."
+    },
+    {
+      "start": 67,
+      "end": 112,
+      "kind": "function",
+      "name": "signalDTO",
+      "id": "s9",
+      "hash": "0bfe6f14d3f6168b",
+      "title": "Builds the signal record shown to users",
+      "what": "Turns a stored signal into the record the screens and API use. It takes the codebook classification in preference to the research mapping when the classification is complete, recalculates tier and focus, computes strength, and keeps only the allowed fields.",
+      "why": "The code comment says the allowlist prevents confidential fields leaking through future additions.",
+      "watch_out": "A new field added to the stored signal stays hidden until someone adds it to this list."
+    },
+    {
+      "start": 113,
+      "end": 118,
+      "kind": "function",
+      "name": "runDTO",
+      "id": "s10",
+      "hash": "390b5fba4bf51c45",
+      "title": "Builds the job record for the screen",
+      "what": "Turns a research job row into a record with its target type (location, account or industry), target name, start and finish times, counts, coverage notes and error.",
+      "why": "Reason not stated in the code beyond the naming conventions it reads.",
+      "watch_out": "The target type is read from the prefix of the industry field, so renaming those prefixes breaks the labels."
+    }
+  ],
+  "explained_at": "2026-11-12T04:57:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds shared database helpers and the rules that read and shape Opportunity Map data for the screens, including change fingerprints and the job queue.",
+  "purpose": "Keeps database reads, the job queue, settings and signal formatting in one place so the screens, search and workers agree.",
+  "why": "The code comments say the strength score is deterministic so that the feed, search and prioritisation agree, and that the output allowlist prevents confidential fields leaking. Reasons for the other helpers are not stated in the code.",
+  "how": "1. Provides a hashing helper and a query helper. 2. Reads the settings row and the industry list. 3. Computes a fingerprint per industry. 4. Adds a job to the queue unless one for that industry was created in the last five minutes. 5. For each signal, scores strength, computes codebook focus and tier, and keeps only allowed fields. 6. Formats job records for the screen.",
+  "inputs": "Database rows for settings, projects, evidence, jobs and signals, plus the team's codebook (tags) and tier rules when available.",
+  "outputs": "Settings, industry lists, fingerprints, a true or false result from queueing, and formatted signal and job records.",
+  "risks": "Any new field stays hidden until it is added to the allowlist. The fingerprint query scans every project and its evidence, which can be heavy. Tiers are recalculated on every read, so changing a rule changes many signals at once. A codebook change marks classifications as stale.",
+  "debug": "If the feature will not run, check the settings row; the code throws when the migration has not been applied. If research never triggers, compare the stored fingerprints with current ones. If a job is not queued, look for another job for the same industry created in the last five minutes. If a signal's tier looks wrong, check its focus, codebook tags and the access value.",
+  "summary_hash": "sha256:f2ca8985716a6cc3526617c1a4fbf4bcebaa5ad220c7be4f08c2d1f8c57eeb65"
+}

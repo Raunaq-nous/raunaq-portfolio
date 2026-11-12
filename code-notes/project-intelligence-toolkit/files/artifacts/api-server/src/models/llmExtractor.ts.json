@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/models/llmExtractor.ts",
+  "language": "TypeScript",
+  "lines": 326,
+  "hash": "sha256:02c5f4798edddb64ddf381c9722f7b48a11ea71cf64e3bec7f6e69b43b973f30",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Failed model calls are logged and swallowed, which returns empty results.",
+      "The instructions are hardcoded for nuclear projects.",
+      "Replies are not validated against the schema or allowed values.",
+      "No test is visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "prompt",
+      "meaning": "the written instructions sent to the AI model"
+    },
+    {
+      "term": "JSON",
+      "meaning": "a structured text format used to exchange data"
+    },
+    {
+      "term": "confidence",
+      "meaning": "the extractor's 0 to 1 rating of how far its answer can be trusted"
+    },
+    {
+      "term": "stub",
+      "meaning": "a placeholder stand-in that returns fake or empty results"
+    },
+    {
+      "term": "parse",
+      "meaning": "to read text and turn it into structured data"
+    }
+  ],
+  "depends_on": [
+    "../jobs/interfaces",
+    "./router",
+    "./interfaces",
+    "../jobs/steps/extraction"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 49,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "9a554891a760ad78",
+      "title": "Instructions for project facts",
+      "what": "Holds the long instructions for pulling project facts out of documents, including the list of fields and the allowed example values such as status and delivery model.",
+      "why": "Gives the model a fixed structure so the reply can be read by code.",
+      "watch_out": "The allowed values are only suggestions to the model and the code does not check them, so editing this text changes what gets stored."
+    },
+    {
+      "start": 50,
+      "end": 95,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "d558915154d532cb",
+      "title": "Field rules and news instructions",
+      "what": "Adds the detailed rules for each field and the second set of instructions, which asks for up to ten dated news items with their source addresses.",
+      "why": "Reason not stated in the code, beyond guiding the model's answers.",
+      "watch_out": "The ten-item maximum is only requested in words; the code does not enforce it."
+    },
+    {
+      "start": 96,
+      "end": 129,
+      "kind": "function",
+      "name": "formatDocumentContext",
+      "id": "s3",
+      "hash": "504a110d51cca89c",
+      "title": "Packs documents into a size limit",
+      "what": "Turns the document list into labelled blocks and stops adding documents once the size limit is reached. If the input is not a list, it simply cuts the raw text to the limit.",
+      "why": "Likely reason: keeps the request within the model's input size.",
+      "watch_out": "Documents beyond the limit are dropped without any notice, so later sources may never reach the model."
+    },
+    {
+      "start": 130,
+      "end": 136,
+      "kind": "function",
+      "name": "safeJsonParse",
+      "id": "s4",
+      "hash": "8b35199fde090677",
+      "title": "Reads the model's JSON reply",
+      "what": "Removes a code-fence wrapper if the model added one, then reads the rest as JSON. It throws an error if the result is not valid JSON.",
+      "why": "Models often wrap JSON in markdown fences even when told not to.",
+      "watch_out": "Only one fence pattern is removed, so an unusual reply shape still fails and falls through to the repair step."
+    },
+    {
+      "start": 137,
+      "end": 166,
+      "kind": "function",
+      "name": "repairTruncatedJson",
+      "id": "s5",
+      "hash": "10b6031e00059c3b",
+      "title": "Tries to fix cut-off JSON",
+      "what": "When a reply is cut off partway, trims it back to the last closing square bracket, closes any open braces, and tries to read it. Returns nothing if that fails.",
+      "why": "Likely reason: long replies can be cut off at the length limit, and partial data is better than none.",
+      "watch_out": "This is a guess at the structure, so it can keep some fields and quietly drop others."
+    },
+    {
+      "start": 167,
+      "end": 224,
+      "kind": "class",
+      "name": "LLMPoweredExtractor (part 1)",
+      "id": "s6",
+      "hash": "f0a567cad242f10e",
+      "title": "Starts extraction and reads fields",
+      "what": "Checks that a model is available, builds the project-field request (adding feedback text on a retry), sends it to the primary model, and reads the reply. A failed read is logged and the repair step is tried.",
+      "why": "The feedback text lets the model see why its last answer was rejected.",
+      "watch_out": "Errors are caught here, so the caller receives a result even when the model call itself failed."
+    },
+    {
+      "start": 225,
+      "end": 280,
+      "kind": "class",
+      "name": "LLMPoweredExtractor (part 2)",
+      "id": "s7",
+      "hash": "7e3befe8c61f2271",
+      "title": "Keeps fields with values and sources",
+      "what": "Copies each field that has a value into the result together with its source addresses. It also adds sources from the evidence quotes and reads the confidence score.",
+      "why": "Lets each stored field point to where its information came from.",
+      "watch_out": "Source addresses are taken from the model as written, and nothing confirms they match the documents that were supplied."
+    },
+    {
+      "start": 281,
+      "end": 326,
+      "kind": "class",
+      "name": "LLMPoweredExtractor (part 3)",
+      "id": "s8",
+      "hash": "68f0edac97344ad1",
+      "title": "Requests dated news updates",
+      "what": "Sends a second, cheaper request for dated news, limits headlines and excerpts to their maximum lengths, and adds a placeholder update when nothing is found. Then it logs a summary and returns the result.",
+      "why": "Likely reason: the placeholder stops a scan with no news from looking like a missing scan.",
+      "watch_out": "The placeholder is labelled as coming from the research pipeline with no address, so it can look like a real news item."
+    }
+  ],
+  "explained_at": "2026-11-12T04:03:38+00:00",
+  "explained_by": "haiku",
+  "summary": "Asks an AI model to read project documents and return structured project facts, dated news items and the quotes that support them.",
+  "purpose": "Turns raw web documents into fields the database can store, each with its sources.",
+  "why": "Likely reason: reading many documents by hand is slow, and a model can do it in bulk. Not otherwise stated.",
+  "how": "1. Checks that an AI model is available, and uses a stub extractor if not. 2. Trims the documents to about 50,000 characters. 3. Sends the project-field instructions to the primary model. 4. Parses the reply, trying a repair if the JSON is cut off. 5. Keeps fields that have values, with their source addresses. 6. Sends a second, cheaper request for dated news. 7. Adds a placeholder update if no news was found. 8. Returns fields, sources, quotes, updates and a confidence score.",
+  "inputs": "The project name, the document text as a list of documents (each with an address, text and optional title), and optional feedback from a failed check.",
+  "outputs": "Field values, per-field source addresses, evidence quotes, news updates, and a confidence number from 0 to 1.",
+  "risks": "If the field request fails, the error is logged and the result is empty fields with the default confidence of 0.7, so callers may treat a failure as success. The instructions are written for nuclear projects only. The code does not check that source addresses are real or that values match the allowed lists, and it does not convert budget units itself.",
+  "debug": "Search the logs for the extractor's prefix. They show which model was used, how many fields came back and any parse failure. If fields are empty, look at the first 500 characters of the raw reply that get logged. If repair was used, some data may have been dropped. If no provider is found, check the router's startup log.",
+  "summary_hash": "sha256:02c5f4798edddb64ddf381c9722f7b48a11ea71cf64e3bec7f6e69b43b973f30"
+}

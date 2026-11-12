@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/db.ts",
+  "language": "TypeScript",
+  "lines": 16,
+  "hash": "sha256:e31303f1d78b2c46b7a2d845cef2fc94878b8ce582b5eca61f945a05540affb1",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The error handler for the pool, in lines 12 to 16, was not included, so error handling cannot be judged.",
+      "No tests or examples are visible.",
+      "The early check for the address fails clearly, which is good."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Environment variable",
+      "meaning": "a setting kept outside the code, such as the database address, that the program reads when it starts"
+    },
+    {
+      "term": "Connection pool",
+      "meaning": "a set of open database connections kept ready for reuse, so each request does not open a new one"
+    },
+    {
+      "term": "PostgreSQL",
+      "meaning": "a widely used database program that stores the app's data"
+    },
+    {
+      "term": "Drizzle",
+      "meaning": "a library that helps the code write and run database queries"
+    }
+  ],
+  "depends_on": [
+    "pg",
+    "drizzle-orm/node-postgres",
+    "@workspace/db"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/collation/model.ts",
+    "artifacts/api-server/src/collation/fragments.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d700de400b89068a",
+      "title": "Database setup and address check",
+      "what": "Loads the database driver and the shared table definitions, then stops the program with an error if no database address is set. A user never sees this part; its effect is that the server will not start without a database address.",
+      "why": "Likely reason: fail early and clearly, rather than fail later on the first database query. Reason not stated in the code.",
+      "watch_out": "The address comes from the DATABASE_URL environment variable, so a missing or misspelled variable stops the whole server, not just one feature."
+    },
+    {
+      "start": 9,
+      "end": 11,
+      "kind": "value",
+      "name": "pool",
+      "id": "s2",
+      "hash": "bef8629c5419afaf",
+      "title": "Shared connection pool",
+      "what": "Creates one shared pool of database connections using the address from DATABASE_URL. Other parts of the app borrow connections from this pool instead of opening a new one for every query.",
+      "why": "Likely reason: opening a new connection for every request is slow, so a pool keeps several open for reuse. Reason not stated in the code.",
+      "watch_out": "The pool is created with no size limit, so the library's default decides how many connections may open under heavy load."
+    },
+    {
+      "start": 12,
+      "end": 16,
+      "kind": "event handler",
+      "name": "pool error handler",
+      "id": "s3",
+      "hash": "cf72abc9e7468545",
+      "title": "Handling of dropped database connections",
+      "what": "Attaches a listener to the database connection pool. When an idle connection is lost, for example after a database restart, it logs a message that the pool will reconnect, instead of letting the server crash. It also exports the database handle used by the rest of the app.",
+      "why": "The comment states the reason: idle connections dropped by a database restart would otherwise crash the process.",
+      "watch_out": "This listener covers idle connections only; failures during an active query go to that query's caller and are not handled here."
+    }
+  ],
+  "explained_at": "2026-11-12T03:25:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Sets up the one shared connection to the PostgreSQL database that the API server uses.",
+  "purpose": "Gives the rest of the server one ready-made database connection, so other files do not each set up their own.",
+  "why": "Likely reason: one shared pool saves the cost of opening connections and keeps their number under control. Reason not stated in the code beyond that.",
+  "how": "First checks that the DATABASE_URL environment variable is set and stops if it is not. Then creates a connection pool using that address. The lines after the pool, which attach the table definitions and create the database handle, are not shown in this packet, so the exact final setup is unclear.",
+  "inputs": "The DATABASE_URL environment variable, which holds the database address.",
+  "outputs": "A shared database handle named db, which other files import to run queries.",
+  "risks": "If DATABASE_URL is missing, the whole server will not start. The pool has no size limit set in the visible code, and a wrong address only shows up at the first query.",
+  "debug": "If the server will not start, check that DATABASE_URL is set in the environment and has the correct form. If queries fail after startup, check that the database can be reached from the server and read the error from the first query. Lines 12 to 16 were not in the packet, so check them too.",
+  "summary_hash": "sha256:e31303f1d78b2c46b7a2d845cef2fc94878b8ce582b5eca61f945a05540affb1"
+}

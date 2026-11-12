@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/yardResearch/populationConfig.ts",
+  "language": "TypeScript",
+  "lines": 101,
+  "hash": "sha256:5ee1098b52c320a0df8c20c6f6b25429da506e8bcdeb484e2a431dab8d5f3f7a",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or checks are visible in this file, so correct behaviour depends on the importer that reads it.",
+      "An extra field whose key does not match the research record is skipped without any error."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Population",
+      "meaning": "One research list of projects, with its own settings, data folder and identity file."
+    },
+    {
+      "term": "Manifest",
+      "meaning": "The list file that names the fixed projects a research batch covers."
+    },
+    {
+      "term": "Plan digest",
+      "meaning": "A fingerprint of a plan, used to detect when it has changed."
+    },
+    {
+      "term": "Ledger",
+      "meaning": "A record of what has already been imported, so a repeat run is safe."
+    },
+    {
+      "term": "Namespace",
+      "meaning": "A prefix that keeps generated IDs from clashing across lists."
+    },
+    {
+      "term": "Batch",
+      "meaning": "One group of research work for a list."
+    },
+    {
+      "term": "UUID",
+      "meaning": "A standard long ID format. Here it is generated from fixed text, so the same input always gives the same ID."
+    },
+    {
+      "term": "Cited attribute",
+      "meaning": "A note on the project row that lists the sourced values for a field."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/ingest/yardResearch/plan.ts",
+    "artifacts/api-server/src/ingest/yardResearch/identities-<population>.ts (pattern for list files)"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/ingest/yardResearch/identities-gas-power.ts (uses the types here)",
+    "artifacts/api-server/src/ingest/yardResearch/identities-power-grid-europe.ts (uses the types here)",
+    "artifacts/api-server/src/ingest/yardResearch/populationImport.ts (named in comments, not shown)",
+    "artifacts/api-server/src/ingest/yardResearch/populationIndustries.ts (named in comments, not shown)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4099fc99ef06ee47",
+      "title": "Header note on population settings",
+      "what": "The header explains that each research list plugs into the shared importer through its own file, and that one industry can have several lists. It also says that changing a list's settings changes its plan digests. The file brings in the claim helpers from plan.ts that it reuses.",
+      "why": "The header documents the plug-in design, so every list follows the same pattern.",
+      "watch_out": "A project key may appear in only one list, and nothing in this file checks that."
+    },
+    {
+      "start": 15,
+      "end": 23,
+      "kind": "type",
+      "name": "PopulationIdentity",
+      "id": "s2",
+      "hash": "9a2d312b69e1f62b",
+      "title": "Shape of a list identity",
+      "what": "Defines what one project entry in a list holds: a key, name, country, site, segment and the first batch it was handed out in. Optional parts cover state, cohort, project type, benchmark role, and a list of existing rows confirmed as different projects.",
+      "why": "Likely reason: every list needs these basics to identify a project, and the optional parts cover extra facts some lists track.",
+      "watch_out": "The batch field records only the first batch, so a project researched again later still shows its first batch."
+    },
+    {
+      "start": 24,
+      "end": 36,
+      "kind": "type",
+      "name": "PopulationExtraField",
+      "id": "s3",
+      "hash": "5157d157b8925b59",
+      "title": "Shape of an extra cited field",
+      "what": "Defines a field a list asks researchers for beyond the shared ones, such as voltage. Each has a key in the research record, a claim label, the database attribute that lists its values, and an optional unit for bare numbers.",
+      "why": "The type comments say these fields are asked for beyond the shared ones, so the importer must know how to read them.",
+      "watch_out": "The key must match the name the research record uses, because a mismatch silently drops the field."
+    },
+    {
+      "start": 37,
+      "end": 85,
+      "kind": "type",
+      "name": "PopulationIndustryConfig",
+      "id": "s4",
+      "hash": "6e6cc45803a586cc",
+      "title": "Settings every list must provide",
+      "what": "Defines the full set of settings a list supplies to the importer: the industry name, population key, identities, ID namespace, batch prefix, storage keys, change-log name, parent batch rule, duplicate-name words, location text, cohort attribute, description text, company lookup, extra fields, and two optional switches for company and follow-up handling.",
+      "why": "The comments explain each setting. The ID namespace sets project IDs, and the two switches exist for parallel research tasks and follow-up work.",
+      "watch_out": "Several settings must not change once rows exist, including the population key and the namespace, and any change moves the plan digests."
+    },
+    {
+      "start": 86,
+      "end": 88,
+      "kind": "function",
+      "name": "populationKey",
+      "id": "s5",
+      "hash": "eb8d94ccbf160ea7",
+      "title": "Population key for a list",
+      "what": "Returns the name used for a list's files, data folder and command-line argument. It is the population key if one is set, otherwise the industry name.",
+      "why": "The type comment says a second list for the same industry needs its own key, so its files do not collide with the first.",
+      "watch_out": "Changing a list's population key after rows exist changes its file and folder names and cuts it off from its existing data."
+    },
+    {
+      "start": 89,
+      "end": 101,
+      "kind": "function",
+      "name": "populationClaims",
+      "id": "s6",
+      "hash": "0de7d86cad7afff5",
+      "title": "Collect claims with extra fields",
+      "what": "Gathers every sourced value from one research record: first the shared values, then any extra fields the list asks for. An extra field with no value is skipped. One with no valid source is listed as unsourced and not stored.",
+      "why": "Likely reason: lets a list add fields without copying the shared logic.",
+      "watch_out": "An extra field whose key does not match the research record is skipped silently, so the report simply lacks it."
+    }
+  ],
+  "explained_at": "2026-11-12T03:46:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Describes how the shared population importer should treat one research list of projects, and provides two helpers the importer uses.",
+  "purpose": "Gives each research list its own settings for names, batches, storage keys and extra cited fields, so one importer can handle gas power, European grid and other lists without new code.",
+  "why": "The header says each industry joins by adding its own identity file that exports this config, so the importer itself stays shared. The reasons for individual settings are given in their comments.",
+  "how": "1) Each list file exports its settings. 2) The importer reads those settings to find the population key, industry name, storage keys and batch prefixes. 3) For each research record, populationClaims gathers the shared claims from plan.ts and then any extra cited fields the list asks for. 4) Duplicate-name checks use the generic words listed in the settings.",
+  "inputs": "A list file that exports its settings: identities, batch prefix, ID namespace, storage keys and so on. For each research record, the record itself and the list's extra field definitions.",
+  "outputs": "A population key string used for file names, folders and the command-line argument. A set of claims and an unsourced list for each research record, including the extra fields.",
+  "risks": "Changing a setting in an existing list changes its plan digests. Changing the population key or namespace after rows exist can split or orphan data. The file has no checks of its own, so a typo in a setting name is not caught here, and a project key listed in two lists is not caught either.",
+  "debug": "If a list does not appear, check that its file exists and exports POPULATION_CONFIG under that exact name. If plan digests change unexpectedly, check whether a setting in the list file was edited. If an extra field is missing from a report, check that its key matches the research record and that it has a sourced value, since unsourced values go to the unsourced list. If data lands in the wrong folder, compare the population key with what populationKey returns.",
+  "summary_hash": "sha256:5ee1098b52c320a0df8c20c6f6b25429da506e8bcdeb484e2a431dab8d5f3f7a"
+}

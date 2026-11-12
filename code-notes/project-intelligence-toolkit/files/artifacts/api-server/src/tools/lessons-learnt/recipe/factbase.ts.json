@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/recipe/factbase.ts",
+  "language": "TypeScript",
+  "lines": 184,
+  "hash": "sha256:eb3c5c212e8981f8277e1dab2b414160083f148743164ef012f56531ab7e5524",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Missing values have clear fallbacks and the code avoids crashing on them.",
+      "No test file was shown for this module.",
+      "Outcome depends on keyword matching of status text, which can misjudge unusual wording.",
+      "Loading may create citation source records as a side effect of reading."
+    ]
+  },
+  "terms": [
+    {
+      "term": "outcome label",
+      "meaning": "a simple judgement of a project as Delivered, Overran, Cautionary or In progress, based on its status, cost and schedule."
+    },
+    {
+      "term": "verbatim",
+      "meaning": "copied word for word from the original source."
+    },
+    {
+      "term": "de-duplicate",
+      "meaning": "remove repeated copies of the same text so it is counted once."
+    },
+    {
+      "term": "FX",
+      "meaning": "foreign exchange rate, used to convert budgets into US dollars."
+    },
+    {
+      "term": "factbase",
+      "meaning": "the set of sourced facts about each project that the deck and recipe cite."
+    }
+  ],
+  "depends_on": [
+    "../../../db",
+    "@workspace/db",
+    "../../../scan/budgetUnits",
+    "../../../lib/fx",
+    "../../../lib/researchSources",
+    "./types",
+    "drizzle-orm"
+  ],
+  "used_by": [
+    "Not visible in the packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b5da2537877b0174",
+      "title": "Imports",
+      "what": "Brings in the database query tools, the project and evidence tables, the budget and currency helpers, the research source registration, and the shared types.",
+      "why": "Reason not stated in the code beyond supplying the functions the rest of the file uses.",
+      "watch_out": ""
+    },
+    {
+      "start": 10,
+      "end": 14,
+      "kind": "function",
+      "name": "num",
+      "id": "s2",
+      "hash": "3ff6a95c4b54a4ae",
+      "title": "Converting values to numbers",
+      "what": "Turns a stored value into a number, treating blanks as missing and removing commas from text numbers. Values that are not finite numbers become missing.",
+      "why": "Likely reason: stored values arrive as mixed text and numbers, so one helper makes them safe to compare.",
+      "watch_out": "Any text that cannot be read as a number silently becomes missing, so a typo in a stored figure disappears rather than raising an error."
+    },
+    {
+      "start": 15,
+      "end": 21,
+      "kind": "function",
+      "name": "clean, iso",
+      "id": "s3",
+      "hash": "b1abe0def35dd2f7",
+      "title": "Cleaning text and dates",
+      "what": "Trims text and turns placeholder words such as n/a, unknown or a dash into missing. Converts dates to the short year-month-day form.",
+      "why": "Likely reason: source records use placeholder words, and the deck should show Not recorded instead of them.",
+      "watch_out": "Only a fixed list of placeholder words is treated as missing, so an unlisted placeholder will be shown as if it were real text."
+    },
+    {
+      "start": 22,
+      "end": 44,
+      "kind": "function",
+      "name": "classifyOutcome",
+      "id": "s4",
+      "hash": "e22e444f46aa7d77",
+      "title": "Deciding each project's outcome",
+      "what": "Labels a project as Cautionary if its status suggests it was stopped or paused, Overran if its cost or schedule overrun passes a threshold, Delivered if its status says it is operating or complete, and In progress otherwise. It also returns the reasons for the label.",
+      "why": "The documentation says the label reads only status, cost and schedule, never the pillar evidence, which keeps outcome and drivers independent.",
+      "watch_out": "Labels are checked in order, so a project that is both cancelled and over budget is always labelled Cautionary."
+    },
+    {
+      "start": 45,
+      "end": 51,
+      "kind": "function",
+      "name": "deliveredBasis",
+      "id": "s5",
+      "hash": "360ff9221cdd9c8e",
+      "title": "Explaining a delivered project",
+      "what": "Builds the reasons shown for a Delivered label: the status text, the cost change against budget, and whether any delay was recorded.",
+      "why": "The comment says a status alone is not evidence of on-plan delivery, so cost and delay are listed too.",
+      "watch_out": "If cost or delay are missing, the text says not recorded, which readers may read as a good result."
+    },
+    {
+      "start": 52,
+      "end": 71,
+      "kind": "value",
+      "name": "FIELD_CATEGORY",
+      "id": "s6",
+      "hash": "ca0fe2e2835f0e74",
+      "title": "Mapping field names to fact categories",
+      "what": "Lists which stored field names count as delivery evidence and which category each belongs to, such as cost, schedule or contractors. Identity fields like name and location are left out on purpose.",
+      "why": "The header says identity fields are not delivery evidence, and the mapping lets any industry's data feed the lessons from the same sources the Yard shows.",
+      "watch_out": "A field name that is not in this list is ignored entirely, so a new field must be added here to reach the deck."
+    },
+    {
+      "start": 72,
+      "end": 75,
+      "kind": "function",
+      "name": "descriptiveCategory",
+      "id": "s7",
+      "hash": "9d5b0350d3984536",
+      "title": "Looking up a category for a field",
+      "what": "Finds the category for a stored field name by checking it against the mapping list, returning nothing if no pattern matches.",
+      "why": "Likely reason: keeps the mapping list in one place and gives the caller a single lookup.",
+      "watch_out": "The first matching pattern in the list wins, so the order of entries in the mapping matters."
+    },
+    {
+      "start": 76,
+      "end": 87,
+      "kind": "value",
+      "name": "FIELD_ALIAS, RESEARCH_IDENTITY, foldText, STANCE",
+      "id": "s8",
+      "hash": "dd362f8badb505a8",
+      "title": "Aliases, identity fields and text matching",
+      "what": "Translates research field names into the names used by the project record, lists the research fields that only identify a project, and provides a helper that folds text to lower case with single spaces. Also maps research stance words to the four stance types.",
+      "why": "Likely reason: research and project records use different field names, and identity-only research should not count as evidence.",
+      "watch_out": "The folding helper is used to detect duplicate facts, so changing it can make two copies look different and both get kept."
+    },
+    {
+      "start": 88,
+      "end": 126,
+      "kind": "function",
+      "name": "loadFactbase (part 1)",
+      "id": "s9",
+      "hash": "ebaf929d60eec471",
+      "title": "Loading evidence rows as facts",
+      "what": "Loads all the project's evidence rows and turns each usable row into a fact, with lesson facts placed first so they win when the same passage appears twice. Rows without a source address are marked unsourced.",
+      "why": "The comment says lesson facts are ordered first so they win the duplicate check against the same passage stored as a field quote.",
+      "watch_out": "Facts are dropped if they are under 25 characters or repeat an earlier fact for the same project, so short but important facts can disappear."
+    },
+    {
+      "start": 127,
+      "end": 179,
+      "kind": "method",
+      "name": "loadFactbase: for",
+      "id": "s10",
+      "hash": "bf9876ddbb769f97",
+      "title": "Adding research passages, findings and commentary",
+      "what": "Adds research passages as facts, creating a citation source where none exists, skipping identity-only fields. Then converts analyst findings and commentary into their shapes, dropping any with no text or no person.",
+      "why": "The comment says research passages need a citation the drawer can open, so each one gets a source id.",
+      "watch_out": "Creating a citation source during loading writes to storage, so simply reading the factbase can change data."
+    },
+    {
+      "start": 180,
+      "end": 184,
+      "kind": "function",
+      "name": "loadNameIndex",
+      "id": "s11",
+      "hash": "d50c4db31f788424",
+      "title": "Building project records and loading the name index",
+      "what": "Builds the project record for each project, converting budgets to US dollars millions, computing the cost change, and attaching the outcome and its reasons. The separate helper returns project names and operators for an industry list, for the foreign-name index.",
+      "why": "Likely reason: the rest of the recipe needs one consistent shape per project, and the name index needs project names across the whole database.",
+      "watch_out": "The cost change falls back to the stored variance figure when the currency conversion gives nothing, so a stale stored figure can still be used."
+    }
+  ],
+  "explained_at": "2026-11-12T04:38:54+00:00",
+  "explained_by": "haiku",
+  "summary": "Loads the evidence for a set of projects from the database and turns it into clean lists of facts, findings, commentary and project records that the Lessons Learnt recipe can use.",
+  "purpose": "Collect each project's record and sourced evidence, remove duplicates, judge each project's outcome, and convert money and dates into one consistent shape.",
+  "why": "The header of classifyOutcome says outcome is judged only from status, cost and schedule, so it cannot influence the pillar scores. Other reasons for the steps are not stated in the code.",
+  "how": "1. Load the projects, their evidence rows, research passages, findings and commentary for the given project ids. 2. Turn each evidence row into a fact, skipping blanks, very short text and duplicates, with lesson facts kept first. 3. Add research passages, creating a citation source where none exists. 4. Convert findings and commentary into a common shape. 5. Count facts and findings per project. 6. Build each project record: money in millions, cost change as a percentage, delay in months, and an outcome label with the reasons for it. A separate helper loads a list of project names for the foreign-name index.",
+  "inputs": "A list of project ids for loadFactbase, and a list of industry names for loadNameIndex.",
+  "outputs": "An object with projects, facts, findings and commentary. loadNameIndex returns rows of id, name and operator.",
+  "risks": "Outcome labels come from keyword matches on status text, so an unusual status word can produce a wrong label. Facts under 25 characters are silently dropped. Currency conversion errors would shift the cost change figure.",
+  "debug": "If a project has the wrong outcome, check its status, cost change and delay, and read its basis text, which records the reasons. If a fact is missing, check its field name against the category map and whether it has a verbatim quote and a source address. If a research fact has no citation id, check the registerResearchSource call.",
+  "summary_hash": "sha256:eb3c5c212e8981f8277e1dab2b414160083f148743164ef012f56531ab7e5524"
+}

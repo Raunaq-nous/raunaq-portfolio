@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/recipe/pipeline.ts",
+  "language": "TypeScript",
+  "lines": 462,
+  "hash": "sha256:f8b355f9d83ac1fe033637976dcdbb505bb3ff5582444dc4ffeb11350c61c736",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Errors that stop a run have clear messages for missing model configuration and missing evidence.",
+      "No test or other evidence that the stages behave correctly is visible in this file.",
+      "Some saved results are read with type casts and no checks, so an earlier change can break a later stage without a clear message.",
+      "Resume depends on stage names and memo keys staying exactly the same across versions."
+    ]
+  },
+  "terms": [
+    {
+      "term": "stage",
+      "meaning": "one named step of the analysis, run in a fixed order"
+    },
+    {
+      "term": "checkpoint",
+      "meaning": "a saved partial result so a stopped stage can continue instead of starting over"
+    },
+    {
+      "term": "factbase",
+      "meaning": "the collection of sourced facts, findings and commentary for the projects in scope"
+    },
+    {
+      "term": "Yard",
+      "meaning": "the name the app uses for its store of project evidence and records"
+    },
+    {
+      "term": "verbatim quote",
+      "meaning": "text copied word for word from a source page and used as proof"
+    },
+    {
+      "term": "PPTX",
+      "meaning": "the PowerPoint file format"
+    },
+    {
+      "term": "trace",
+      "meaning": "a running log of real work that the live view shows to the user"
+    },
+    {
+      "term": "discrimination",
+      "meaning": "a score showing how well a pillar separates good outcomes from troubled ones"
+    }
+  ],
+  "depends_on": [
+    "./factbase",
+    "./methodology",
+    "./framework",
+    "./relevance",
+    "./verify",
+    "./assess",
+    "./synthesis",
+    "./deckModel",
+    "./cases",
+    "./sceneDeck",
+    "./renderV3",
+    "./coverage",
+    "./text",
+    "./types",
+    "../../reality-scan/scope",
+    "../../../evidence/runEvents",
+    "../../../lib/portkeyOpenAI",
+    "../../research-contract/quoteTranslation",
+    "@workspace/db"
+  ],
+  "used_by": [
+    "Stage runner, path not shown in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 33,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "841bc8f8f316fb42",
+      "title": "Imports and file introduction",
+      "what": "Loads the tools, storage links, analysis steps and types this file needs, and its header explains the file's job. Nothing here appears on screen.",
+      "why": "The header says the runner owns status and locking, while this file owns the work inside each stage.",
+      "watch_out": "Renaming or moving any imported module breaks every stage at once."
+    },
+    {
+      "start": 34,
+      "end": 49,
+      "kind": "value",
+      "name": "V3_STAGE_KEYS",
+      "id": "s2",
+      "hash": "96b18f1763d5f32a",
+      "title": "The fourteen stage names in order",
+      "what": "Lists the fourteen stage names in the order the run performs them.",
+      "why": "Likely reason: the order decides which saved results count as already done when a run resumes.",
+      "watch_out": "Reordering or renaming a stage changes which saved results count as earlier, and can break resuming runs saved under the old names."
+    },
+    {
+      "start": 50,
+      "end": 54,
+      "kind": "type",
+      "name": "V3StageKey, InsufficientEvidence",
+      "id": "s3",
+      "hash": "3e655969105c53b5",
+      "title": "Stage name type and not-enough-evidence error",
+      "what": "Makes stage names a checked type and defines the error used when the data cannot support a useful deck. That error gives a readable reason instead of a technical failure.",
+      "why": "Likely reason: to tell a data gap apart from a real bug.",
+      "watch_out": "Code that catches errors must check for this error type, or a data gap will look like a technical failure."
+    },
+    {
+      "start": 55,
+      "end": 70,
+      "kind": "type",
+      "name": "StageCtx, label, StageOut",
+      "id": "s4",
+      "hash": "963c746739ccb1b9",
+      "title": "What each stage receives and returns",
+      "what": "Defines the toolkit passed to every stage: access to earlier saved results, the live trace, and checkpoint saving. It also has a helper that turns a slug into a readable label and the shape of a stage's output.",
+      "why": "Reason stated in comments: previous results and checkpoints let an interrupted stage resume.",
+      "watch_out": "Checkpoint writes are throttled by the caller, so a stage that saves too often can slow the run."
+    },
+    {
+      "start": 71,
+      "end": 102,
+      "kind": "function",
+      "name": "state",
+      "id": "s5",
+      "hash": "c2b664cc00a7cd3d",
+      "title": "Rebuilding working data from saved results",
+      "what": "Loads the saved output of each earlier stage and attaches it to projects, facts and findings, so later stages see the full picture. It only includes stages that finished before the one being run. Older runs have their outcome reasons rewritten from the stored record.",
+      "why": "The comment says it rebuilds working state from persisted stage outputs.",
+      "watch_out": "Changing outcome labels also changes how older saved runs are displayed, because they are restated on load."
+    },
+    {
+      "start": 103,
+      "end": 158,
+      "kind": "function",
+      "name": "executeV3Stage (part 1)",
+      "id": "s6",
+      "hash": "5ed0912559fd49bf",
+      "title": "Scope, factbase and outcome stages",
+      "what": "Finds the projects in scope and stops if there are none. Loads all sourced facts for them and stops if no facts exist. Labels each project Delivered, Overran, Cautionary or In progress, and writes the formula to the live feed.",
+      "why": "Likely reason: the outcome must rest on recorded figures, and the feed shows the rule so a reader can check it.",
+      "watch_out": "The outcome rule uses hard limits: a cost overrun over 25 percent or over US$500M, or a delay over 24 months. Changing these limits changes many labels at once."
+    },
+    {
+      "start": 159,
+      "end": 218,
+      "kind": "function",
+      "name": "executeV3Stage (part 2)",
+      "id": "s7",
+      "hash": "961c5fed5fe66f14",
+      "title": "Methodology, framework and relevance stages",
+      "what": "Collects quoted methodology from sources, which needs a configured language model and at least four quoted items. Builds the framework of pillars from those items and the facts. Then checks whether each fact is about its own project, using rules first and a language model for unclear cases in batches of 40.",
+      "why": "Likely reason: the framework needs the methodology items, and relevance needs the framework to be ready first.",
+      "watch_out": "Fewer than four quoted items stops the whole run. Model calls have timeouts and retries, so a slow model can make this stage take much longer."
+    },
+    {
+      "start": 219,
+      "end": 277,
+      "kind": "function",
+      "name": "executeV3Stage (part 3)",
+      "id": "s8",
+      "hash": "6caa892e07ad4107",
+      "title": "Source checking stage",
+      "what": "Opens each unique source page once, up to ten at a time, and checks each fact's quote against the page. Every fact gets a live card showing its source, quote, checks and decision. Results from an earlier attempt are reused.",
+      "why": "Likely reason: one card per fact makes each check visible to the reader.",
+      "watch_out": "Facts without a link are marked unsourced. Pages that cannot be opened keep their facts as unreachable rather than dropping them, so a site outage does not remove evidence but leaves it unchecked today."
+    },
+    {
+      "start": 278,
+      "end": 324,
+      "kind": "function",
+      "name": "executeV3Stage (part 4)",
+      "id": "s9",
+      "hash": "36e19591453c1cc7",
+      "title": "Routing and scoring stage",
+      "what": "Assigns each fact to one sub-driver and each finding to a pillar. Counts strength, mixed and challenge results per pillar, computes the discrimination score, and writes a metric card for each pillar. Stops if no admitted fact reaches a pillar.",
+      "why": "Routing is what turns separate facts into the pillar view a reader sees.",
+      "watch_out": "The discrimination score is not computed when samples are small. Even when computed, it only means much with at least three delivered and three troubled projects."
+    },
+    {
+      "start": 325,
+      "end": 382,
+      "kind": "function",
+      "name": "executeV3Stage (part 5)",
+      "id": "s10",
+      "hash": "3e7048bc86de804d",
+      "title": "Case grading, deck model and template deck",
+      "what": "Grades each case, counts recipe practices and failure modes, and builds the slide list and totals that the in-app viewer uses. Also builds the template deck used for the final PowerPoint.",
+      "why": "Likely reason: one deck model is shared so the viewer and the file show the same content.",
+      "watch_out": "The PowerPoint step prefers the template deck and falls back to the deck model only if the template is missing, so the two can differ."
+    },
+    {
+      "start": 383,
+      "end": 402,
+      "kind": "function",
+      "name": "executeV3Stage (part 6)",
+      "id": "s11",
+      "hash": "da983c140d0dfd79",
+      "title": "Coverage ledger and PowerPoint writing",
+      "what": "Records the coverage ledger, which counts how many items were used and shown. Then writes the PowerPoint file from the template deck when present, otherwise from the deck model, and saves its path and checksum on the run record.",
+      "why": "Likely reason: the ledger lets each project's Lessons Learnt tab show what the run used.",
+      "watch_out": "If the file is written but the run record update fails, the file exists with no link to it."
+    },
+    {
+      "start": 403,
+      "end": 415,
+      "kind": "function",
+      "name": "applyRouting",
+      "id": "s12",
+      "hash": "baa06e1bc08ef208",
+      "title": "Copying routing results onto facts",
+      "what": "Copies each fact's pillar, sub-driver and route reason from the routing results. Marks each fact as admitted or held, and writes a plain reason for every held fact: off project, no source, or quote not found on the page.",
+      "why": "Likely reason: earlier stages save routing separately, so this step joins it back to the facts before they are written.",
+      "watch_out": "Partly verified and unreachable facts are still admitted, so they feed the analysis. Only off-project, unsourced and unverified facts are held."
+    },
+    {
+      "start": 416,
+      "end": 440,
+      "kind": "function",
+      "name": "emitMethodologyCards",
+      "id": "s13",
+      "hash": "1d1d35f1d62fa92b",
+      "title": "Live cards for methodology sources",
+      "what": "Gives each methodology source a live card showing whether its page opened, whether its source type is allowed, which quotes were kept, and whether the source was used.",
+      "why": "Stated in the code: one card per source, with the items it yielded.",
+      "watch_out": "The comment above this function describes checking a single fact, which is a leftover from another function. Trust the code, not that comment."
+    },
+    {
+      "start": 441,
+      "end": 462,
+      "kind": "function",
+      "name": "emitFactChecks",
+      "id": "s14",
+      "hash": "bd83a22b3f33b4ad",
+      "title": "Live checks and decisions for facts",
+      "what": "For each fact, sends its checks (page opened, quote found on the live page, right project) and a decision: kept, not used, or held back, with a plain sentence explaining it. Facts whose page cannot be reopened are kept and noted as unchecked today.",
+      "why": "The notes state the rule: only facts shown to be absent or off project are dropped.",
+      "watch_out": "A partly found quote is recorded as accepted, so the reader must read the note to see how strong the match was."
+    }
+  ],
+  "explained_at": "2026-11-12T04:40:51+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the fourteen stages of the recipe-v3 lessons-learnt analysis in a fixed order, saves each stage's result so a stopped run can resume, and finishes by writing the PowerPoint file.",
+  "purpose": "Turns a set of projects into a lessons-learnt deck: which projects delivered, which overran, and which practices separate the two, with each claim tied to a checked source.",
+  "why": "Likely reason: the work is long and calls outside services, so each stage saves its result and checkpoints progress, letting an interrupted run continue instead of restarting. The file header says the runner owns locking and status, while this file owns what each stage does.",
+  "how": "1) Resolve the projects in scope. 2) Load the researched facts, findings and commentary for those projects. 3) Label each project's outcome from its cost and schedule figures. 4) Collect quoted methodology from published sources. 5) Build the framework of pillars and sub-drivers from that methodology. 6) Decide whether each fact is about its own project. 7) Re-open each source page and check every quote. 8) Route facts to sub-drivers and score each project against each pillar. 9) Write synthesis text with citations. 10) Grade the case studies. 11) Build the deck model and a template deck. 12) Record the coverage ledger. 13) Write the PowerPoint file and save its path and checksum on the run record. Each stage reads earlier results from the saved stage summaries.",
+  "inputs": "The run record with its scope, saved summaries of earlier stages, stored project records for projects, facts and findings, published web pages for sources, and a configured language model for the steps that write or judge text.",
+  "outputs": "Saved summaries for each stage, live feed cards and checks, a coverage ledger, a PowerPoint file in the artifacts folder with its checksum, and updated fields on the run record.",
+  "risks": "Several stages write to the database and to the live feed, so a partly finished run can leave some of each behind. A not-enough-evidence error is a normal outcome for thin data. The methodology stage stops the run if fewer than four quotes survive. Several stages read saved results with type casts and no checks, so a change to an earlier stage can fail a later one with an unclear message. The PowerPoint file is written before the run record is updated, so a database failure can leave an unlinked file.",
+  "debug": "Start with the run's stage list, which shows the stage that stopped and its message. If the message says not enough evidence, the data is thin rather than broken. If the methodology stage fails, check that the language model is configured and count the quoted items in its log lines. Use the trace lines to see counts at each step. For a resume that seems stuck, check the stored checkpoint progress. For a missing PowerPoint, check the artifact path on the run record and the working directory the process started in.",
+  "summary_hash": "sha256:f8b355f9d83ac1fe033637976dcdbb505bb3ff5582444dc4ffeb11350c61c736"
+}

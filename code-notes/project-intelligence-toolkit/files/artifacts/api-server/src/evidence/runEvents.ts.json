@@ -1,0 +1,367 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/evidence/runEvents.ts",
+  "language": "TypeScript",
+  "lines": 348,
+  "hash": "sha256:c488539aeda2e7ea8315183b3a9d67dbd99b64f56b0568e6f5f526fadc99dada",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Failures are handled: write errors are logged, a lost browser is restarted and a failed launch is retried after a pause.",
+      "No test in the packet covers the queue, the resume step or the card logic.",
+      "The queue state is held in memory, so behaviour across several server processes is not covered."
+    ]
+  },
+  "terms": [
+    {
+      "term": "run",
+      "meaning": "one execution of a review tool, with its own sequence of events"
+    },
+    {
+      "term": "headless browser",
+      "meaning": "a web browser run in the background without a window, used to take screenshots"
+    },
+    {
+      "term": "Playwright",
+      "meaning": "a library that controls a web browser from code"
+    },
+    {
+      "term": "capture",
+      "meaning": "a screenshot of a source page with the quoted passage outlined"
+    },
+    {
+      "term": "queue",
+      "meaning": "a waiting line that processes items in order, a few at a time"
+    },
+    {
+      "term": "concurrency",
+      "meaning": "how many items are processed at the same time"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/evidence/captureService.ts",
+    "artifacts/api-server/src/evidence/store.ts",
+    "artifacts/api-server/src/evidence/identity.ts",
+    "@workspace/db",
+    "playwright"
+  ],
+  "used_by": [
+    "the run stage code of the review tools (not listed in the packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup, RunTool",
+      "id": "s1",
+      "hash": "a1c6ce10c28a46ec",
+      "title": "Feed setup and run tools",
+      "what": "States what the feed records and the order its events come in, and names the three review tools that use it.",
+      "why": "Likely reason: the order is what lets a viewer rebuild each card, so it is described at the top.",
+      "watch_out": "Changing the event order breaks the way the viewer groups cards."
+    },
+    {
+      "start": 18,
+      "end": 21,
+      "kind": "type",
+      "name": "RunEventType",
+      "id": "s2",
+      "hash": "6ea2efd8739447d5",
+      "title": "Kinds of event",
+      "what": "Lists the kinds of event a run can record, from source opened through screenshot, capture result, value, check and decision, to metric and stage notes.",
+      "why": "Likely reason: the viewer shows each kind differently, so the list must stay complete.",
+      "watch_out": "A new kind must also be handled by the viewer or it may not show."
+    },
+    {
+      "start": 22,
+      "end": 33,
+      "kind": "type",
+      "name": "EmitInput, Row",
+      "id": "s3",
+      "hash": "3b92a031463a1bc8",
+      "title": "Input and stored row shapes",
+      "what": "Describes what a stage passes in to record an event, and the stored row that results.",
+      "why": "Likely reason: all stages share one way of writing events.",
+      "watch_out": "Messages are cut to 2,000 characters, so long text is silently shortened."
+    },
+    {
+      "start": 34,
+      "end": 72,
+      "kind": "class",
+      "name": "RunEventLog, logs",
+      "id": "s4",
+      "hash": "d43355e31e06a7c2",
+      "title": "Run event log",
+      "what": "Holds the next sequence number and a short buffer for one run, writes events to the database in batches of up to 200, and clears a stage's old events when it runs again.",
+      "why": "Likely reason: batching reduces database writes, and clearing old events stops a re-run from showing duplicate cards.",
+      "watch_out": "Events in the buffer are lost if the process stops before a flush. Writes that fail are only logged."
+    },
+    {
+      "start": 73,
+      "end": 87,
+      "kind": "function",
+      "name": "runEventLog",
+      "id": "s5",
+      "hash": "6fd41d0440625310",
+      "title": "Getting a run's event log",
+      "what": "Returns the one event log for a run in this process, creating it from the highest saved sequence number on first use. Keeps at most 200 logs in memory.",
+      "why": "Likely reason: the stage code and the capture queue must share one sequence so the order stays right.",
+      "watch_out": "Two processes would each create a log and could write duplicate sequence numbers."
+    },
+    {
+      "start": 88,
+      "end": 96,
+      "kind": "type",
+      "name": "CardSource",
+      "id": "s6",
+      "hash": "2c383b51c050de81",
+      "title": "Source details for a card",
+      "what": "Describes the source behind a card: its web address, quote, publisher, title and date.",
+      "why": "Likely reason: a card shows the source and its exact quote as evidence.",
+      "watch_out": "Missing fields are allowed, so a card can be shown with little source detail."
+    },
+    {
+      "start": 97,
+      "end": 107,
+      "kind": "function",
+      "name": "sourceIdFor, CaptureRow",
+      "id": "s7",
+      "hash": "5975eb3cf37b5b01",
+      "title": "Finding or creating a source",
+      "what": "Returns the id of the source for a web address and quote, creating it if it does not exist. Returns nothing when there is no web address or quote.",
+      "why": "Likely reason: every card needs a stored source so its screenshot and vetting can attach.",
+      "watch_out": "A failed creation returns nothing, which silently removes the screenshot path for that card."
+    },
+    {
+      "start": 108,
+      "end": 111,
+      "kind": "function",
+      "name": "captureCard",
+      "id": "s8",
+      "hash": "fa68d1c7b5629d15",
+      "title": "Shape of a screenshot card",
+      "what": "Builds the details the viewer needs to show a stored screenshot: its id, image address, label, page, layer, environment, capture time and matched text.",
+      "why": "Likely reason: the viewer loads images by id, so the card carries the address.",
+      "watch_out": "The image address is a fixed path, so changing the route breaks old cards."
+    },
+    {
+      "start": 112,
+      "end": 117,
+      "kind": "function",
+      "name": "failureCard",
+      "id": "s9",
+      "hash": "5a151dcb304bd63f",
+      "title": "Shape of a failure card",
+      "what": "Builds a readable failure reason from a stored capture result, such as the quote being found on the page but no image taken, or the status text.",
+      "why": "Likely reason: people need a plain reason for each failed capture.",
+      "watch_out": "The reason text is cut at the first part of the stored note, so any detail after that is not shown."
+    },
+    {
+      "start": 118,
+      "end": 127,
+      "kind": "function",
+      "name": "latestGenuine",
+      "id": "s10",
+      "hash": "d7cfed85bab24313",
+      "title": "Finding the newest good screenshot",
+      "what": "For a list of sources, returns the newest genuine stored screenshot for each one that has an image.",
+      "why": "Likely reason: a source with a good screenshot should reuse it instead of capturing again.",
+      "watch_out": "Only results marked genuine are used, so a genuine but unmarked image is ignored."
+    },
+    {
+      "start": 128,
+      "end": 136,
+      "kind": "function",
+      "name": "freshServiceResult",
+      "id": "s11",
+      "hash": "3be0bf393d0f95f1",
+      "title": "Recent capture service result",
+      "what": "Returns the latest capture result for this environment if it is still valid: a found result is always valid, a failure is valid for a set number of days.",
+      "why": "Likely reason: failed captures are not retried every time, to save time and load on websites.",
+      "watch_out": "The retry window is set by a constant, so changing it changes how often failed pages are tried again."
+    },
+    {
+      "start": 137,
+      "end": 176,
+      "kind": "function",
+      "name": "emitScreenshotState, waiting",
+      "id": "s12",
+      "hash": "2ce085ffb6991041",
+      "title": "Showing a screenshot state for a source",
+      "what": "After a card opens, shows what the screenshot is: a stored image, an alternative source's image, a recent failure, or a new capture queued. A source with no web address gets a message saying so.",
+      "why": "Likely reason: the viewer needs one clear screenshot state for each card as soon as it opens.",
+      "watch_out": "When a capture is queued, the card waits for the queue, so a stopped queue leaves cards stuck on queued."
+    },
+    {
+      "start": 177,
+      "end": 184,
+      "kind": "value",
+      "name": "order, captureQueueState",
+      "id": "s13",
+      "hash": "8c7e6449172820b3",
+      "title": "Queue settings and state",
+      "what": "Holds the process-wide waiting order, the number of running captures, the browser, and the time before which a failed browser launch is not retried. Concurrency comes from an environment variable and defaults to two.",
+      "why": "Likely reason: one browser per process is shared by all runs, so these must live at process level.",
+      "watch_out": "The concurrency setting is read once at start, so changing it needs a restart."
+    },
+    {
+      "start": 185,
+      "end": 190,
+      "kind": "function",
+      "name": "queuedForRun",
+      "id": "s14",
+      "hash": "7d0c584d2b5cd36b",
+      "title": "Captures waiting for a run",
+      "what": "Counts how many captures are still waiting for one run.",
+      "why": "Likely reason: the viewer shows how many screenshots are still to come.",
+      "watch_out": "Counts sources that are waiting, not cards, so one source shared by several cards is counted once."
+    },
+    {
+      "start": 191,
+      "end": 196,
+      "kind": "value",
+      "name": "resumed",
+      "id": "s15",
+      "hash": "2f5909c7d1d19a2b",
+      "title": "Resume flag",
+      "what": "Records which runs have already had their waiting captures resumed in this process.",
+      "why": "Likely reason: resuming should happen once per run after a restart, not on every read.",
+      "watch_out": "The flag lives in memory and resets on restart, which is when it is needed."
+    },
+    {
+      "start": 197,
+      "end": 213,
+      "kind": "function",
+      "name": "resumeQueuedCaptures",
+      "id": "s16",
+      "hash": "0656c7902f37199f",
+      "title": "Resuming captures after a restart",
+      "what": "After a server restart, re-queues every capture a run was still waiting on, using the events saved in the database. Does nothing if the run already has captures waiting.",
+      "why": "Likely reason: the queue is in memory, so without this, queued screenshots would never finish.",
+      "watch_out": "Only the first feed read after restart triggers this, so runs nobody views are not resumed."
+    },
+    {
+      "start": 214,
+      "end": 221,
+      "kind": "function",
+      "name": "queueCapture",
+      "id": "s17",
+      "hash": "804d73e0fe8c678f",
+      "title": "Adding a source to the queue",
+      "what": "Adds a source to the waiting list. If it is already waiting, the run is added to its list of waiting runs instead, so one capture serves all of them.",
+      "why": "Likely reason: the same source often appears in several runs, and one capture is enough.",
+      "watch_out": "The list of waiting runs is checked by identity, so two log objects for one run would both be served."
+    },
+    {
+      "start": 222,
+      "end": 230,
+      "kind": "function",
+      "name": "getBrowser",
+      "id": "s18",
+      "hash": "2eb52b813c8f5bd3",
+      "title": "Getting the shared browser",
+      "what": "Returns the shared browser, starting it if needed. After a failed start it refuses for five minutes instead of retrying each time.",
+      "why": "Likely reason: starting a browser is slow and can fail, so it is started once and the failure is remembered.",
+      "watch_out": "Any caller during the five-minute pause gets an error, so a bad browser setup blocks every capture for that time."
+    },
+    {
+      "start": 231,
+      "end": 243,
+      "kind": "function",
+      "name": "pump",
+      "id": "s19",
+      "hash": "8d86ee7d8a93d2b4",
+      "title": "Starting queued work",
+      "what": "Starts waiting captures while fewer than the allowed number are running. When everything is done, it closes the shared browser after a minute with no work.",
+      "why": "Likely reason: it limits how many pages are open at once and frees resources when idle.",
+      "watch_out": "The idle close is scheduled from a timer, and new work cancels it, so a busy queue keeps the browser open."
+    },
+    {
+      "start": 244,
+      "end": 291,
+      "kind": "function",
+      "name": "work",
+      "id": "s20",
+      "hash": "ea9d9d0eae0ca9bc",
+      "title": "Running one capture and reporting it",
+      "what": "Takes one source, captures it with its alternatives, and sends the result to every run waiting on it. Each card gets a screenshot, an alternative screenshot, or a failure reason. If the browser was lost, it restarts it once. Any other error becomes a service failure on every card.",
+      "why": "Likely reason: one capture is shared by many cards, so its result has to be reported to each of them.",
+      "watch_out": "The failure path reports the same error to every waiting card, so one broken source can mark many cards failed."
+    },
+    {
+      "start": 292,
+      "end": 303,
+      "kind": "function",
+      "name": "cardsForSource",
+      "id": "s21",
+      "hash": "f0b5d56670137d8f",
+      "title": "Finding the cards for a source",
+      "what": "Lists the cards in a run that asked for a capture of one source and have not yet got a result.",
+      "why": "Likely reason: results must reach exactly the cards still waiting, and no others.",
+      "watch_out": "It matches on the card key stored in the event payload, so a payload without that key is not found."
+    },
+    {
+      "start": 304,
+      "end": 321,
+      "kind": "type",
+      "name": "SourceCardInput",
+      "id": "s22",
+      "hash": "e7397d5a55a73cd5",
+      "title": "Shape of the source card input",
+      "what": "Describes what a stage gives to open a card: the card key, stage, project, label, source, whether the value came from the Yard or was newly found, the value, unit, basis tags, translation and extra details.",
+      "why": "Likely reason: each stage opens cards the same way, so the viewer receives consistent data.",
+      "watch_out": "Translations are only shown when the language is not English, which hides English translations on purpose."
+    },
+    {
+      "start": 322,
+      "end": 339,
+      "kind": "function",
+      "name": "openSourceCard, CheckTest",
+      "id": "s23",
+      "hash": "aa5be9a1a2e4df8f",
+      "title": "Opening a value card",
+      "what": "Records that a source was opened, runs the screenshot state step, then records the value found, its quote, basis tags and any translation. Returns the source id.",
+      "why": "Likely reason: the card should show the source first, then its screenshot, then the value.",
+      "watch_out": "The source lookup can return nothing, in which case the screenshot states that there is no source to outline."
+    },
+    {
+      "start": 340,
+      "end": 345,
+      "kind": "function",
+      "name": "emitChecks",
+      "id": "s24",
+      "hash": "6c0f6131d3f61492",
+      "title": "Recording checks",
+      "what": "Records a check result with a summary: how many checks failed and which, or that all passed.",
+      "why": "Likely reason: the reviewer should see which checks failed without opening each one.",
+      "watch_out": "Checks marked as not run are not counted as failures, so a blank result can look like a pass."
+    },
+    {
+      "start": 346,
+      "end": 348,
+      "kind": "function",
+      "name": "emitDecision",
+      "id": "s25",
+      "hash": "246fe47a36fde6fa",
+      "title": "Recording a decision",
+      "what": "Records whether a value was accepted, not used or held, with a note explaining why.",
+      "why": "Likely reason: the reason behind each decision must be kept with the run.",
+      "watch_out": "The outcome is only three fixed words, so any other outcome is not accepted by the type."
+    }
+  ],
+  "explained_at": "2026-11-12T03:29:11+00:00",
+  "explained_by": "haiku",
+  "summary": "Writes the live feed shown while a review run works: each step records what it opened, what screenshot it got, what value it found and what check it made, and screenshots are captured through a shared queue.",
+  "purpose": "Lets a reviewer watch a run as it happens and see the evidence behind each value, with a screenshot where one can be taken.",
+  "why": "Likely reason: a run can take a long time, and each value needs visible evidence, so events are streamed as they happen.",
+  "how": "Each run has one event log with an increasing sequence number. Events are buffered and written in batches. When a source is opened, the code looks for a stored screenshot, a screenshot from an alternative source or a recent failure, and otherwise queues a capture. A single process-wide queue runs up to a set number of captures at once in one shared browser, closes the browser after an idle minute, and reports results back to every run that asked for that source. After a restart, queued captures for a run are queued again once.",
+  "inputs": "Run identifiers, stage names, source web addresses and quotes, values and checks from the calling stage, and the screenshot environment settings.",
+  "outputs": "Rows in the run_event table, and screenshot and failure cards that the feed displays.",
+  "risks": "The queue and the waiting list live only in memory, so they are lost on restart and only resumed for runs that are read again. A browser that fails to start blocks captures for five minutes. Concurrency is set by an environment variable.",
+  "debug": "If cards stay queued, check captureQueueState and whether the browser can start. If events are missing, check the console for run_event write failures, since failures are logged and do not stop the run. If a stage shows duplicate cards, check resetStage and the card keys.",
+  "summary_hash": "sha256:c488539aeda2e7ea8315183b3a9d67dbd99b64f56b0568e6f5f526fadc99dada"
+}

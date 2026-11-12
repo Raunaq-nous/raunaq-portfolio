@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/reality-scan/deckAssistant.ts",
+  "language": "TypeScript",
+  "lines": 117,
+  "hash": "sha256:ffbb1e191435397761f96622119adc0b85d50254203061ccf89b16a814e269af",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Validation and error messages are careful and visible.",
+      "No test is visible for the reply checks.",
+      "The system instructions are cut off in the packet, so their full wording could not be checked here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Prompt",
+      "meaning": "the standing instructions and input sent to the AI model."
+    },
+    {
+      "term": "Schema",
+      "meaning": "a rule set that checks whether data has the expected shape."
+    },
+    {
+      "term": "JSON",
+      "meaning": "a plain text format for structured data."
+    },
+    {
+      "term": "Proposal",
+      "meaning": "a suggested edit waiting for a consultant to approve or dismiss."
+    },
+    {
+      "term": "Evidence pool",
+      "meaning": "the set of sources the assistant may cite."
+    }
+  ],
+  "depends_on": [
+    "../../lib/portkeyOpenAI",
+    "../../lib/modelConfig",
+    "./deckStore",
+    "./deckResearch",
+    "./assistantEvidence",
+    "../../../../../lib/api-client-react/src/scan-deck",
+    "zod"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/reality-scan/deckRoutes.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup, evidenceSchema",
+      "id": "s1",
+      "hash": "24a68906b0246ea3",
+      "title": "Imports and reply rules",
+      "what": "Brings in the AI connection, model settings, storage helpers, research and evidence helpers. Defines how an evidence quote must look: between 30 and 1600 characters, and at most six per item.",
+      "why": "Likely reason: forces quotes to be short enough to check.",
+      "watch_out": "Changing the quote limits changes which AI replies are accepted."
+    },
+    {
+      "start": 11,
+      "end": 20,
+      "kind": "value",
+      "name": "responseSchema",
+      "id": "s2",
+      "hash": "6062b681deb70bdc",
+      "title": "Shape of the AI reply",
+      "what": "Defines the structure the AI's answer must take: text, claims marked as reported or inference with evidence, and proposed edits to text elements with a reason and a kind. Length and count limits are set here, and any reply that does not match is rejected.",
+      "why": "Likely reason: stops badly shaped AI output from reaching the deck.",
+      "watch_out": "Empty default lists let a reply with no claims pass the shape check."
+    },
+    {
+      "start": 21,
+      "end": 38,
+      "kind": "function",
+      "name": "systemFor",
+      "id": "s3",
+      "hash": "2d1195a0dd71897a",
+      "title": "Standing instructions for the AI",
+      "what": "Builds the instructions for the assistant, naming the tool it works for. The rules require every factual point to carry evidence, forbid saying edits are applied, forbid changing stored records, and treat slide text and web content as data rather than commands. The packet text is cut off partway through.",
+      "why": "Likely reason: keeps AI output checkable and resistant to instructions hidden in web content.",
+      "watch_out": "These instructions are the main safety control against invented or injected content. The copy in the packet is truncated, so the full wording was not reviewed."
+    },
+    {
+      "start": 39,
+      "end": 95,
+      "kind": "function",
+      "name": "assistDeck (part 1)",
+      "id": "s4",
+      "hash": "59ab65b9921a5b7a",
+      "title": "Preparing a request and checking the reply",
+      "what": "Checks that the assistant is set up, the slide and element exist, and the run is under its message limit. Chooses research or re-check when the action or wording asks for it, builds the evidence pool, and asks the AI for a JSON reply with a 90 second limit. Invalid replies become a 502 error. Each proposed text edit is checked against the slide, and factual edits without evidence are withheld and counted.",
+      "why": "Likely reason: a rejected reply leaves the saved deck unchanged, so unverified text is never offered to the consultant.",
+      "watch_out": "A number changed in the text makes an edit count as factual, which then needs evidence."
+    },
+    {
+      "start": 96,
+      "end": 117,
+      "kind": "method",
+      "name": "assistDeck: for",
+      "id": "s5",
+      "hash": "e71b086e808524e7",
+      "title": "Turning checked claims into the reply",
+      "what": "Keeps only claims with valid evidence, adds numbered references to each, and labels inferences as things to validate. Builds the final answer, which states that nothing has been applied when edits are proposed, and adds notes on search coverage and withheld items. Returns a new deck with the user message and reply appended.",
+      "why": "Reason not stated in the code beyond a comment that consultant review is still required.",
+      "watch_out": "Claims without valid evidence are dropped from the answer text and only counted in the notes."
+    }
+  ],
+  "explained_at": "2026-11-12T05:00:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the slide assistant: it answers questions, drafts text edits and runs source research, and accepts a claim only when its quote traces to real evidence.",
+  "purpose": "Lets a consultant ask about a slide and receive answers and proposed edits that cite real sources.",
+  "why": "The system instructions say factual points need evidence, edits need approval, and stored records must not change. Likely reason: AI models can invent sources, so each claim is checked before it is shown.",
+  "how": "1. Confirm the assistant is configured, the slide and selected element exist, and the run is under its 200 message limit. 2. Pick the action from the message, such as research or re-check. 3. Run research when needed. 4. Build the evidence pool from saved slide evidence and fetched research. 5. Ask the AI model for a JSON reply with a 90 second limit, then check its shape. 6. For each proposed edit, check the target text element, and withhold factual edits without valid evidence. 7. For each claim, keep it only with valid evidence and add numbered references. 8. Return a new deck with the user message and the reply added. Saving is done by the route.",
+  "inputs": "The saved deck, the user message, the slide id, an optional element id, and the action type.",
+  "outputs": "A new deck object with pending proposals and two new messages. Failed AI replies raise a 502 error and nothing is changed.",
+  "risks": "Only the last 8 messages go to the AI. The system instructions are long and are cut off in the packet, so their full wording was not reviewed. Numbers changed in an edit make it count as factual. A failed reply leaves the saved deck unchanged.",
+  "debug": "If the assistant says it could not produce a source-supported answer, check the AI model configuration and whether the evidence pool is empty. If edits are missing, look at the withheld count in the notes. If a 502 error appears, the AI reply probably did not match the expected shape.",
+  "summary_hash": "sha256:ffbb1e191435397761f96622119adc0b85d50254203061ccf89b16a814e269af"
+}

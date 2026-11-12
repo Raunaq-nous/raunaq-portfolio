@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/middleware/auth.ts",
+  "language": "TypeScript",
+  "lines": 200,
+  "hash": "sha256:29d8c993c21939cfaf04f9193ba03cd7895402499324f9bcfabbc582f7f0b9b9",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the top of the file is visible, so login and permission logic cannot be checked.",
+      "Security-sensitive code is not shown.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "JWT (JSON Web Token)",
+      "meaning": "A signed piece of text that proves who a user is, given after login."
+    },
+    {
+      "term": "bcrypt",
+      "meaning": "A method for storing passwords as scrambled hashes, so the real password is never saved."
+    },
+    {
+      "term": "Hash",
+      "meaning": "A fixed scrambled form of a value, which cannot be turned back into the original."
+    },
+    {
+      "term": "Schema",
+      "meaning": "A written rule that says what shape and types the data must have."
+    },
+    {
+      "term": "Zod",
+      "meaning": "A library that checks data against a schema."
+    },
+    {
+      "term": "Middleware",
+      "meaning": "Code that runs between an incoming request and the final handler, often to check access."
+    },
+    {
+      "term": "Role",
+      "meaning": "A label, such as admin or analyst, that decides what a user may do."
+    }
+  ],
+  "depends_on": [
+    "express",
+    "jsonwebtoken",
+    "bcryptjs",
+    "zod"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "82e0bcd7b5ea9f3d",
+      "title": "Imports for login and checks",
+      "what": "Brings in the web types, the token library, the password hashing library, and the validation library.",
+      "why": "The imports show that the file handles login tokens, password checks, and input validation.",
+      "watch_out": "Token and password behavior depends on these libraries, so upgrades can change how logins work."
+    },
+    {
+      "start": 6,
+      "end": 13,
+      "kind": "value",
+      "name": "authUserSchema, authUsersSchema",
+      "id": "s2",
+      "hash": "f1e1224f4aaff947",
+      "title": "Shape of user accounts",
+      "what": "Each user needs a subject name, a password hash, and a role of admin or analyst. The user list must contain at least one user.",
+      "why": "Likely reason: rejects a malformed user list early, before logins are attempted.",
+      "watch_out": "The schema only checks the password hash is text, so a plain text password would also pass. Any new role must be added to the allowed list."
+    },
+    {
+      "start": 14,
+      "end": 31,
+      "kind": "function",
+      "name": "loadAuthUsers",
+      "id": "s3",
+      "hash": "dea7886f144db88b",
+      "title": "Reads and checks the user list",
+      "what": "Reads the AUTH_USERS setting, which must be a JSON list of users, checks its shape, and returns the list. The server refuses to start if the setting is missing, is not valid JSON, or has the wrong shape.",
+      "why": "Stops the app from running with no working login list.",
+      "watch_out": "The list is kept in memory after first load, so changes to the setting need a server restart to take effect."
+    },
+    {
+      "start": 32,
+      "end": 45,
+      "kind": "function",
+      "name": "getJwtSecret",
+      "id": "s4",
+      "hash": "3d8629f1006722bf",
+      "title": "Gets the token signing key",
+      "what": "Reads the secret used to sign login tokens from JWT_SECRET, or from SESSION_SECRET if that is the only one set, and requires at least 32 characters.",
+      "why": "Likely reason: a short signing key is easier to guess, so the length is enforced.",
+      "watch_out": "If neither setting is present or the value is too short, the server will not start."
+    },
+    {
+      "start": 46,
+      "end": 57,
+      "kind": "value",
+      "name": "SYSTEM_SUBS",
+      "id": "s5",
+      "hash": "4cc8580d04809a2d",
+      "title": "Accounts allowed without a user entry",
+      "what": "Lists account names that may use a validly signed token without appearing in the user list. It includes verify-script by default, plus any names given in SYSTEM_SUBS.",
+      "why": "The comments say this lets automated checks call protected endpoints without a human account.",
+      "watch_out": "Any name in SYSTEM_SUBS gets access with a valid token and has no user entry, so keep that list short and reviewed."
+    },
+    {
+      "start": 58,
+      "end": 61,
+      "kind": "function",
+      "name": "buildAuthSubjects",
+      "id": "s6",
+      "hash": "50fce5fd96a99b58",
+      "title": "Collects the known usernames",
+      "what": "Builds a set of every username in the user list so that membership can be checked quickly.",
+      "why": "Likely reason: a fast lookup is simpler than searching the list on each request.",
+      "watch_out": ""
+    },
+    {
+      "start": 62,
+      "end": 67,
+      "kind": "function",
+      "name": "validateAuthConfig",
+      "id": "s7",
+      "hash": "76840164ba1f8322",
+      "title": "Checks login setup at startup",
+      "what": "Exported function that loads the user list, the signing key and the username set in one step, so bad configuration fails at startup.",
+      "why": "Likely reason: fail at boot rather than on the first login attempt.",
+      "watch_out": "It only protects the app if the startup code actually calls it."
+    },
+    {
+      "start": 68,
+      "end": 72,
+      "kind": "function",
+      "name": "getAuthUsers",
+      "id": "s8",
+      "hash": "01f9f7f5b05152c0",
+      "title": "Returns the user list",
+      "what": "Returns the loaded user list, loading it first if startup did not.",
+      "why": "Reason not stated in the code beyond acting as a fallback to startup loading.",
+      "watch_out": ""
+    },
+    {
+      "start": 73,
+      "end": 80,
+      "kind": "function",
+      "name": "getAuthSubjects",
+      "id": "s9",
+      "hash": "4a9a1db5931f6f19",
+      "title": "Returns the known usernames",
+      "what": "Returns the set of usernames, building it from the user list if needed. Protected requests use it to reject tokens for unknown users.",
+      "why": "Reason not stated in the code beyond supporting the per-request subject check.",
+      "watch_out": ""
+    },
+    {
+      "start": 81,
+      "end": 85,
+      "kind": "function",
+      "name": "getSecret",
+      "id": "s10",
+      "hash": "2e8d0e34253f59d6",
+      "title": "Returns the signing key",
+      "what": "Returns the token signing key, loading it first if it has not been loaded yet.",
+      "why": "Same first-use loading pattern as the user list.",
+      "watch_out": ""
+    },
+    {
+      "start": 86,
+      "end": 98,
+      "kind": "type",
+      "name": "AuthUser",
+      "id": "s11",
+      "hash": "29babb8c5a16452c",
+      "title": "Shape of the logged-in user",
+      "what": "Describes the user attached to each request: a username and a role that is either admin or analyst. It also tells TypeScript that requests can carry this user.",
+      "why": "Lets route code read the caller's role safely.",
+      "watch_out": "The role is a fixed pair of values, so a new role must be added here as well as wherever it is checked."
+    },
+    {
+      "start": 99,
+      "end": 102,
+      "kind": "value",
+      "name": "loginAttempts",
+      "id": "s12",
+      "hash": "0115e61f8a9b89f2",
+      "title": "Stores login attempt counts",
+      "what": "Keeps an in-memory record of login attempts per IP address, including when each 15-minute window started.",
+      "why": "Supports the login limit that slows down password guessing.",
+      "watch_out": "The record lives only in memory and is never cleaned up, so restarts reset all counts and multiple server copies do not share them."
+    },
+    {
+      "start": 103,
+      "end": 113,
+      "kind": "function",
+      "name": "checkLoginRateLimit",
+      "id": "s13",
+      "hash": "4abc801ea567e181",
+      "title": "Limits login tries per address",
+      "what": "Allows at most 5 login attempts per IP address in each 15-minute window and returns false once that limit is passed.",
+      "why": "Slows down password guessing.",
+      "watch_out": "Every attempt counts, including successful ones, so users who share one address can lock each other out."
+    },
+    {
+      "start": 114,
+      "end": 157,
+      "kind": "function",
+      "name": "handleLogin",
+      "id": "s14",
+      "hash": "21b1aa86d44092e8",
+      "title": "Login endpoint and dev bypass switch",
+      "what": "Handles login. It checks the address limit, requires a username and password, compares the password with a stored hash, and returns a token valid for 24 hours. It also defines AUTH_DISABLED, a development-only switch that skips login checks and is ignored in production.",
+      "why": "Likely reason: keeps login rules in one place, and the switch lets local work continue without logins.",
+      "watch_out": "When the username is unknown the password check is skipped, so response time may reveal which usernames exist."
+    },
+    {
+      "start": 158,
+      "end": 187,
+      "kind": "function",
+      "name": "requireAuth",
+      "id": "s15",
+      "hash": "98453154810fd6e6",
+      "title": "Checks the login token on requests",
+      "what": "Guards protected routes. It reads the Bearer token, verifies its signature and expiry, confirms the subject is a known user or an allowed system name, and attaches the user to the request. With AUTH_DISABLED on, every request is treated as admin.",
+      "why": "Keeps every protected route checked the same way.",
+      "watch_out": "The role comes from the token, not the current user list, so a role change only applies after that user logs in again, up to 24 hours later."
+    },
+    {
+      "start": 188,
+      "end": 200,
+      "kind": "function",
+      "name": "requireRole",
+      "id": "s16",
+      "hash": "f961e28a22ce153a",
+      "title": "Limits routes to certain roles",
+      "what": "Returns a check that lets a request through only when its role is in the allowed list. It answers 401 when there is no user and 403 when the role is not allowed.",
+      "why": "Lets a route restrict itself to admins or other specific roles.",
+      "watch_out": "It must run after the login check, otherwise requests are refused as unauthorized."
+    }
+  ],
+  "explained_at": "2026-11-12T04:03:38+00:00",
+  "explained_by": "haiku",
+  "summary": "Controls who can log in and which pages they can reach, using signed login tokens and password hashes.",
+  "purpose": "Protects the API so only known users with valid accounts can use it, and limits some actions to admin users.",
+  "why": "Reason not stated in the visible code. The shapes of user records are defined at the top, which suggests the file checks users when it starts.",
+  "how": "Only the imports and the user record shape are visible. The shape requires a subject name, a password hash, and a role. The rest of the file, including login, token checks, and role checks, is not shown and cannot be explained here.",
+  "inputs": "The user account list (from configuration) when it loads, and login requests in the rest of the file.",
+  "outputs": "Not visible in the shown code.",
+  "risks": "The schema checks only that a password hash is text, so a plain text password would also pass this check. Security-related logic is not visible, so its safety cannot be judged here.",
+  "debug": "If startup fails with a user list problem, check that the list has at least one user and each user has a subject, a password hash, and a role of admin or analyst.",
+  "summary_hash": "sha256:29d8c993c21939cfaf04f9193ba03cd7895402499324f9bcfabbc582f7f0b9b9"
+}

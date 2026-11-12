@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/jobs/industrySearchProfiles.ts",
+  "language": "TypeScript",
+  "lines": 329,
+  "hash": "sha256:d1f38bbf2317c8098dff4b2cd5974e865ba7643d31ea67fee37be414daf91005",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test that checks the no-cross-industry rule is visible.",
+      "The lists are typed by hand, so typos are not caught.",
+      "Unknown industry names fall back silently to the generic profile.",
+      "Several industries have no country regulators or local-language phrases."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Industry slug",
+      "meaning": "a short name used as the key for an industry, such as nuclear or lng"
+    },
+    {
+      "term": "Search profile",
+      "meaning": "the full set of search settings for one industry"
+    },
+    {
+      "term": "Trusted domains",
+      "meaning": "the most authoritative websites for an industry, grouped as tier 1, and trade press as tier 2"
+    },
+    {
+      "term": "Site filter",
+      "meaning": "a search limited to results from one website, written as site: followed by a domain"
+    },
+    {
+      "term": "Regulator",
+      "meaning": "a government body that oversees an industry in a country"
+    },
+    {
+      "term": "Template",
+      "meaning": "a search phrase with a placeholder that is replaced by the project name"
+    },
+    {
+      "term": "Generic profile",
+      "meaning": "the neutral fallback profile used when an industry has no profile of its own"
+    }
+  ],
+  "depends_on": [
+    "None (this file has no imports)"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/jobs/enrichment.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "817c9e503ebf8a19",
+      "title": "Why per-industry search settings exist",
+      "what": "A long header comment explains the problem: nuclear search terms were used for every project, which found nothing for a real-estate project. It states the rule that no industry's terms may appear in another's searches.",
+      "why": "The comment states this as the reason the file exists.",
+      "watch_out": "The rule is only written down, and no code in this file enforces it."
+    },
+    {
+      "start": 16,
+      "end": 21,
+      "kind": "type",
+      "name": "CountryLanguageTemplate",
+      "id": "s2",
+      "hash": "6926d4a85edd7ad7",
+      "title": "Shape of a local-language search",
+      "what": "Describes one country's local-language search: a language code and a phrase with a placeholder for the project name.",
+      "why": "Likely reason: much project news is published in local languages, not English.",
+      "watch_out": "The placeholder must be spelled exactly, or the project name will not be inserted."
+    },
+    {
+      "start": 22,
+      "end": 42,
+      "kind": "type",
+      "name": "IndustrySearchProfile",
+      "id": "s3",
+      "hash": "cbd38743c40aaefa",
+      "title": "Shape of one industry's settings",
+      "what": "Defines every field an industry profile needs: its slug, key vocabulary, search phrases, enrichment phrases, trusted and trade sites, regulators by country, and local-language phrases.",
+      "why": "Reason stated in the comments on each field.",
+      "watch_out": "Every profile must include every field, or code that reads the missing field will fail."
+    },
+    {
+      "start": 43,
+      "end": 58,
+      "kind": "value",
+      "name": "NEUTRAL_ENRICHMENT_TEMPLATES",
+      "id": "s4",
+      "hash": "2e36a16d83e71e19",
+      "title": "Shared field-based search phrases",
+      "what": "Eight search phrases about budget, EPC contractor, financing, delay, start date, completion date, owners, and delivery model. Every industry uses them.",
+      "why": "The comment says these phrases carry no industry words, so every profile can share them.",
+      "watch_out": "They are added to every project's searches, so a change here affects every industry at once."
+    },
+    {
+      "start": 59,
+      "end": 74,
+      "kind": "value",
+      "name": "NUCLEAR_REGULATORS",
+      "id": "s5",
+      "hash": "ba9331ccf7f1743a",
+      "title": "Nuclear safety regulators by country",
+      "what": "Maps countries to their nuclear regulator's website, used for site-limited searches. Some countries appear under two names.",
+      "why": "The profile comment says nuclear regulators apply only to nuclear, and these are kept inside the nuclear profile.",
+      "watch_out": "Some entries include a path instead of a plain domain, and it is not clear the search filter handles that."
+    },
+    {
+      "start": 75,
+      "end": 99,
+      "kind": "value",
+      "name": "NUCLEAR_LANGUAGES",
+      "id": "s6",
+      "hash": "a744650aad1378a2",
+      "title": "Nuclear local-language search phrases",
+      "what": "For many countries, gives a language code and a search phrase in that language meaning news about a nuclear plant.",
+      "why": "Likely reason: nuclear news in local press is often not in English.",
+      "watch_out": "The phrases are hand-written translations, and a poor one returns weak results without an error."
+    },
+    {
+      "start": 100,
+      "end": 109,
+      "kind": "value",
+      "name": "REAL_ESTATE_LANGUAGES",
+      "id": "s7",
+      "hash": "aa1ce0b82d7c6f04",
+      "title": "Real-estate local-language search phrases",
+      "what": "Gives Arabic, French, and Chinese phrases for real-estate development news in six countries.",
+      "why": "The comment says Gulf megaprojects are mostly covered in Arabic and English.",
+      "watch_out": "Gulf countries get only an Arabic phrase, so the English coverage the comment assumes is not defined here."
+    },
+    {
+      "start": 110,
+      "end": 168,
+      "kind": "value",
+      "name": "INDUSTRY_SEARCH_PROFILES (part 1)",
+      "id": "s8",
+      "hash": "5bea331dad38957e",
+      "title": "Profiles for nuclear, LNG, and oil and gas",
+      "what": "Defines the search settings for three industries: nuclear, LNG, and oil and gas. Each has its own vocabulary, phrases, trusted and trade sites, and regulators.",
+      "why": "Reason stated by the structure: each industry keeps its own vocabulary so searches stay on topic.",
+      "watch_out": "The LNG profile has no local-language phrases, so non-English LNG news is not searched."
+    },
+    {
+      "start": 169,
+      "end": 222,
+      "kind": "value",
+      "name": "INDUSTRY_SEARCH_PROFILES (part 2)",
+      "id": "s9",
+      "hash": "f880f7be88ee6592",
+      "title": "Profiles for real estate, mining, and lithium",
+      "what": "Defines the settings for real estate, mining and metals, and lithium mining, including their vocabulary, phrases, and trusted sites.",
+      "why": "Same structure as the other profiles; reason stated by the layout.",
+      "watch_out": "Short words such as ore could match unrelated pages in a search."
+    },
+    {
+      "start": 223,
+      "end": 276,
+      "kind": "value",
+      "name": "INDUSTRY_SEARCH_PROFILES (part 3)",
+      "id": "s10",
+      "hash": "2434207ab6ebaf91",
+      "title": "Profiles for dairy, renewables, and gas power",
+      "what": "Defines settings for dairy, renewables, and gas-fired power, including trusted sites and search phrases.",
+      "why": "Same structure as the other profiles; reason stated by the layout.",
+      "watch_out": "Wind and solar share one profile, so a search for one can return the other."
+    },
+    {
+      "start": 277,
+      "end": 295,
+      "kind": "value",
+      "name": "INDUSTRY_SEARCH_PROFILES (part 4)",
+      "id": "s11",
+      "hash": "48d48e3a6c0c8fbe",
+      "title": "Profile for batteries and gigafactories",
+      "what": "Defines the settings for battery and cell factories, with phrases about cell capacity and battery-focused trade sites.",
+      "why": "Same structure as the other profiles; reason stated by the layout.",
+      "watch_out": "Words such as cell are common, so results can be broad."
+    },
+    {
+      "start": 296,
+      "end": 314,
+      "kind": "value",
+      "name": "GENERIC_PROFILE",
+      "id": "s12",
+      "hash": "f4f3b5ea4e5befe5",
+      "title": "Fallback for industries with no profile",
+      "what": "The settings used when an industry has no profile. It searches project names for news and construction status, with only one general trade site, and contains no industry words.",
+      "why": "The comment says an unknown industry should get a neutral search, not nuclear terms.",
+      "watch_out": "Adding industry vocabulary here would bring back the original bug, as the comment warns."
+    },
+    {
+      "start": 315,
+      "end": 319,
+      "kind": "function",
+      "name": "getIndustrySearchProfile",
+      "id": "s13",
+      "hash": "76c097b1dab812a0",
+      "title": "Looks up an industry's settings",
+      "what": "Returns the profile for a given industry slug, or the generic profile if the slug is missing or not listed.",
+      "why": "Reason stated by the fallback itself.",
+      "watch_out": "A typo in an industry slug gives generic searches quietly, not an error."
+    },
+    {
+      "start": 320,
+      "end": 325,
+      "kind": "function",
+      "name": "domainsForIndustry",
+      "id": "s14",
+      "hash": "2068ae9681236477",
+      "title": "Lists the allowed sites for an industry",
+      "what": "Returns both the tier 1 and tier 2 sites for an industry as one list. The comment calls these the sites the industry may filter on.",
+      "why": "Reason not stated in the code; it appears to limit which sites results may come from.",
+      "watch_out": "Unknown industries get only the generic trade site, so they receive very few sources."
+    },
+    {
+      "start": 326,
+      "end": 329,
+      "kind": "function",
+      "name": "neutralEnrichmentTemplates",
+      "id": "s15",
+      "hash": "be4dfe2c2321d837",
+      "title": "Returns a copy of the shared phrases",
+      "what": "Returns a copy of the shared field-based search phrases, so callers get their own list.",
+      "why": "Likely reason: a copy stops callers from changing the shared list by accident.",
+      "watch_out": "Changes made to the returned list do not affect the defaults, which can surprise someone expecting a live link."
+    }
+  ],
+  "explained_at": "2026-11-12T03:50:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the search settings for each industry, including search phrases, trusted websites, regulators, and local-language phrases, so each project is searched with its own industry's terms.",
+  "purpose": "Stops one industry's search words and sites from appearing in another industry's searches. The header gives a real case: a real-estate project was searched as a nuclear project.",
+  "why": "The header explains that the old code used nuclear terms and sites for every project, which found nothing useful for other industries.",
+  "how": "The enrichment job asks for an industry's profile by its slug. If the slug is missing or unknown, it gets the generic profile, which is free of industry terms. The profile's phrases, sites, regulators, and language phrases are then used to build search queries.",
+  "inputs": "An industry slug such as nuclear or lng, and a project's country name.",
+  "outputs": "A profile object with search phrases, trusted sites, regulators, and language phrases, a combined list of allowed sites, and a copy of the shared field phrases.",
+  "risks": "The header states a rule that no industry's terms may appear in another's searches, but no check in this file enforces it. Adding industry words to the generic profile would bring back the original bug. Some entries use a path such as a government subdomain and path rather than a plain domain, and it is not clear that a site filter handles these correctly. Some countries are listed under two names, so both must be updated together.",
+  "debug": "If a project gets no results, check that its industry slug matches a key here, and that its trusted sites are correct. If a project gets nuclear terms, check which slug the caller passes in, because unknown slugs fall back to the generic profile. Compare the phrases with the shared field phrases if results look off.",
+  "summary_hash": "sha256:d1f38bbf2317c8098dff4b2cd5974e865ba7643d31ea67fee37be414daf91005"
+}

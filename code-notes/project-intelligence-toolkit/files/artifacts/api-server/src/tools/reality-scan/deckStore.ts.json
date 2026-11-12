@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/reality-scan/deckStore.ts",
+  "language": "TypeScript",
+  "lines": 102,
+  "hash": "sha256:73dd15010f375bac78bee76560a4f89064042564845fd591788361a9f2b619f9",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Conflict and not-found errors are clear.",
+      "No test is visible.",
+      "Reading also rewrites slides, which makes problems harder to trace back to the saved data."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Compare-and-swap",
+      "meaning": "a save that succeeds only if the stored version has not changed since it was read."
+    },
+    {
+      "term": "Stage result",
+      "meaning": "the stored output of one step in a run, here the deck-model step."
+    },
+    {
+      "term": "JSON column",
+      "meaning": "a database column that holds structured data as text."
+    },
+    {
+      "term": "Revision",
+      "meaning": "a version number that increases on every save."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "../../db",
+    "@workspace/db",
+    "zod",
+    "../../../../../lib/api-client-react/src/scan-deck",
+    "../../../../../lib/api-client-react/src/scan-template",
+    "../../../../../lib/api-client-react/src/scan-review"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/reality-scan/deckRoutes.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "5b5cc573db5fa1e7",
+      "title": "Imports for deck storage",
+      "what": "Brings in the database tools, the run tables, the validation library, and the deck types and chart and review helpers.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 9,
+      "end": 12,
+      "kind": "class",
+      "name": "DeckError",
+      "id": "s2",
+      "hash": "f9739823c4b4b500",
+      "title": "Error that carries a status code",
+      "what": "A special error that holds a status code and a message, such as not found or conflict, so the route can reply with the right status.",
+      "why": "Likely reason: lets the route layer send clear, specific status codes to the screen.",
+      "watch_out": ""
+    },
+    {
+      "start": 13,
+      "end": 48,
+      "kind": "function",
+      "name": "getDeck (part 1)",
+      "id": "s3",
+      "hash": "af3acec1db88c8ea",
+      "title": "Loading a run's deck",
+      "what": "Finds the run and returns not found if it is missing. Then finds its deck-model stage result, and returns a conflict asking the user to complete the run if the stage has not succeeded or no deck is stored. Drops stored chart settings that fail validation.",
+      "why": "Likely reason: avoids trusting old or damaged saved settings.",
+      "watch_out": ""
+    },
+    {
+      "start": 49,
+      "end": 83,
+      "kind": "method",
+      "name": "getDeck: if",
+      "id": "s4",
+      "hash": "84b6d34fe2ab4abf",
+      "title": "Repairing and rebuilding slides on read",
+      "what": "Corrects some glossary labels and schedule-end text, and rebuilds the chart and its companion slides from the frozen projects, keeping edited text. Adds portfolio and classification slides and review slides when they are missing. Removes older narrative slides that claim no public reporting exists.",
+      "why": "The comment says charts are rebuilt on read so coverage notes always reflect the current builder.",
+      "watch_out": "Every read rebuilds the chart slides, so any change to the chart builder changes older saved decks immediately, without a new revision."
+    },
+    {
+      "start": 84,
+      "end": 90,
+      "kind": "value",
+      "name": "ChartConfigInput",
+      "id": "s5",
+      "hash": "324a413ab6dd42c2",
+      "title": "Allowed chart settings",
+      "what": "Defines the valid chart settings: size by equal, capex or capacity; view delivery or portfolio; an optional project list; and up to 12 filters, each with up to 500 values.",
+      "why": "Likely reason: protects the chart from unexpected input.",
+      "watch_out": "A change to size or view options here must match the chart builder."
+    },
+    {
+      "start": 91,
+      "end": 102,
+      "kind": "function",
+      "name": "saveDeck",
+      "id": "s6",
+      "hash": "7254269f30588870",
+      "title": "Saving without overwriting others",
+      "what": "Saves the deck only if the stored revision still equals the one the caller started from. On success it stores the deck with the revision increased by one and a new timestamp, and returns it. Otherwise it raises a conflict asking the user to reload.",
+      "why": "The comment says this protects another consultant's edits made during long AI requests.",
+      "watch_out": "The check compares the stored revision as a whole number, so malformed stored data produces a conflict instead of a clear error."
+    }
+  ],
+  "explained_at": "2026-11-12T05:00:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Loads and saves the slide deck for a Reality Scan run, and rebuilds chart and review slides so the saved deck stays in step with its frozen data.",
+  "purpose": "The storage layer for decks: loading them, saving them safely, and providing the deck error type.",
+  "why": "The comments say saves are compare-and-swap so another consultant's edits are not lost during long AI requests, and charts are rebuilt on read so the coverage notes are current.",
+  "how": "1. Load the run and its deck-model stage result, and refuse if either is missing or not succeeded. 2. Drop stored chart settings that fail validation. 3. Copy the deck, correct a few glossary labels, and rebuild chart slides from the frozen projects while keeping edited text. 4. Add missing portfolio, classification and review slides, and remove older narrative slides that claim no public reporting exists. 5. Save only if the stored revision still equals the revision the caller read, then increase it by one.",
+  "inputs": "A run id when loading. A deck and an expected revision when saving.",
+  "outputs": "The deck with rebuilt slides when loading, a saved deck with a new revision when saving, or a deck error with a status code.",
+  "risks": "Every read rebuilds chart slides, so changes to the chart builder apply to old decks at once without a new revision. Glossary corrections are tied to element name patterns and apply to any run that matches them.",
+  "debug": "If a user sees a message that no completed slide deck exists, check the deck-model stage status for the run. Repeated 409 errors on save mean another edit happened or the page is stale. If a glossary label is wrong, check the rules in the read function.",
+  "summary_hash": "sha256:73dd15010f375bac78bee76560a4f89064042564845fd591788361a9f2b619f9"
+}

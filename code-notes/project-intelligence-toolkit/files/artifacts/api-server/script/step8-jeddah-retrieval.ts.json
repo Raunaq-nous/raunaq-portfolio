@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/step8-jeddah-retrieval.ts",
+  "language": "TypeScript",
+  "lines": 148,
+  "hash": "sha256:c9bd14a106c7d476fb9e60776452e153ddbdf142d097a2c7af773ed0407e8c29",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No pass or fail checks; it prints numbers for a person to judge.",
+      "The project ID and name are hardcoded.",
+      "The pre-fix queries are a hand copy of old behavior, not the original code.",
+      "Writes to the database when RUN_JOB is set to 1."
+    ]
+  },
+  "terms": [
+    {
+      "term": "script",
+      "meaning": "a file run by hand from the command line"
+    },
+    {
+      "term": "search router",
+      "meaning": "the part of the app that sends a query to search providers and returns results"
+    },
+    {
+      "term": "evidence row",
+      "meaning": "a stored quote from a source, kept with its source details"
+    },
+    {
+      "term": "site filter",
+      "meaning": "a search operator that limits results to one website domain"
+    },
+    {
+      "term": "tier",
+      "meaning": "a ranking of how much a source is trusted"
+    }
+  ],
+  "depends_on": [
+    "../src/db",
+    "../src/storage",
+    "../src/search/createRouter",
+    "../src/jobs/steps/retrieval",
+    "drizzle-orm"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "854deb51139f2d48",
+      "title": "Imports and fixed project settings",
+      "what": "Loads the database, storage, search router and query builder, and fixes the project ID, name and country used in the test.",
+      "why": "Keeps the measurement pointed at one real project so runs can be compared.",
+      "watch_out": "The project ID is hardcoded, so the script only works for that project in that database."
+    },
+    {
+      "start": 20,
+      "end": 26,
+      "kind": "function",
+      "name": "evidenceCount",
+      "id": "s2",
+      "hash": "457d782508d080f9",
+      "title": "Counting evidence rows",
+      "what": "Counts how many evidence rows the Jeddah project currently has.",
+      "why": "Gives a before number and an after number to show whether a research run added evidence.",
+      "watch_out": "The count covers all evidence rows for the project, not only rows added by this run."
+    },
+    {
+      "start": 27,
+      "end": 36,
+      "kind": "function",
+      "name": "oldTierDomains",
+      "id": "s3",
+      "hash": "da92d4cf00f675b0",
+      "title": "Trusted domains before the fix",
+      "what": "Lists up to ten trusted website domains from the sources table, with no industry filter.",
+      "why": "Recreates what the old code would have loaded, so the before run is realistic.",
+      "watch_out": "If the database query changes, the before numbers no longer reflect the old behavior."
+    },
+    {
+      "start": 37,
+      "end": 46,
+      "kind": "function",
+      "name": "newTierDomains",
+      "id": "s4",
+      "hash": "ca9b422091851be1",
+      "title": "Trusted domains after the fix",
+      "what": "Lists up to ten trusted domains that match this project's industry.",
+      "why": "Matches the fixed behavior, where the industry limits which sources are used.",
+      "watch_out": "Returns an empty list if the project has no industry set."
+    },
+    {
+      "start": 47,
+      "end": 64,
+      "kind": "function",
+      "name": "preFixQueries",
+      "id": "s5",
+      "hash": "a1bbd026657f26ad",
+      "title": "Rebuilding the old query list",
+      "what": "Builds the old set of queries: a general news query, a construction query with the country, and up to three site-restricted queries, capped at eight.",
+      "why": "Likely reason: the comments say nuclear terms were not added for this project, so the old list had no industry-specific terms. Otherwise not stated in the code.",
+      "watch_out": "This is a hand copy of the old logic, so it can drift from what the app really used."
+    },
+    {
+      "start": 65,
+      "end": 97,
+      "kind": "function",
+      "name": "measure",
+      "id": "s6",
+      "hash": "2ebdb7a73a6e3bdf",
+      "title": "Running and measuring a query set",
+      "what": "Runs each query through the router and counts raw results, unique URLs and unique domains. Prints each query's result count and any errors.",
+      "why": "Passes the industry value that each code path really uses, so the comparison is fair.",
+      "watch_out": "Errors are caught and printed as a zero-result line, so a failing query can look like a quiet one."
+    },
+    {
+      "start": 98,
+      "end": 148,
+      "kind": "function",
+      "name": "main",
+      "id": "s7",
+      "hash": "911193e74f042ab1",
+      "title": "Running the full measurement",
+      "what": "Counts evidence, builds both query sets, measures both, prints a summary, and optionally runs a real research job and reports the change in evidence rows.",
+      "why": "Puts the steps in the order a reader needs to judge the fix.",
+      "watch_out": "Setting RUN_JOB to 1 is the only step that writes to the database, because it starts a real research job."
+    }
+  ],
+  "explained_at": "2026-11-12T03:15:28+00:00",
+  "explained_by": "haiku",
+  "summary": "A manual measurement script that compares search results for one real project before and after a retrieval fix, and can optionally run a real research job to count new evidence rows.",
+  "purpose": "Gives evidence that the query-building fix changed the search results for the Jeddah Central Arena project.",
+  "why": "Likely reason: the fix was made to query building for non-nuclear projects, so this run checks the fix against the live search router. Reason for the RUN_JOB option not stated in the code.",
+  "how": "Counts evidence rows, loads the project, rebuilds the old query set and builds the new one, runs both through the live search router, and prints totals. If RUN_JOB is set to 1, it runs a real research job and counts evidence rows again.",
+  "inputs": "The hardcoded project ID and name, the sources table, the project record, the live search router, and the RUN_JOB environment variable.",
+  "outputs": "Console output only: result counts per query, unique URLs and domains, a summary, and optionally the change in evidence rows. No files are written.",
+  "risks": "With RUN_JOB set to 1, the script creates and runs a real research job, which writes evidence rows to the database. The pre-fix query set is rebuilt by hand, so the before numbers are an approximation of the old code.",
+  "debug": "If counts are zero, check the sources table for enabled tier 1 or tier 2 rows and check the search router settings. If the script fails at startup, check the database connection. Compare the printed query lists with the expected project name.",
+  "summary_hash": "sha256:c9bd14a106c7d476fb9e60776452e153ddbdf142d097a2c7af773ed0407e8c29"
+}

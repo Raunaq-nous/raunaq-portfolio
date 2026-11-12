@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/locationWorker.ts",
+  "language": "TypeScript",
+  "lines": 202,
+  "hash": "sha256:e3e702f715b8322108bdd7473a96ff0a6a4a17145dfdf2868033f5d2a2d9c22c",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Error handling is thorough, and provider error text is reduced to safe codes.",
+      "A stored message says a new pass will be queued after stale results, but this file does not queue one; that depends on the next scheduled check.",
+      "No test for this worker is visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Advisory lock",
+      "meaning": "a lock in the database that only one process or connection can hold at a time."
+    },
+    {
+      "term": "Job queue",
+      "meaning": "a list of pending tasks stored in the database and processed by a worker."
+    },
+    {
+      "term": "Fingerprint",
+      "meaning": "a short code computed from the evidence; if it changes, the old answer may no longer be valid."
+    },
+    {
+      "term": "Manual and scheduled jobs",
+      "meaning": "manual jobs are requested by a person and may run even when monitoring is off; scheduled jobs run on the timer."
+    },
+    {
+      "term": "Stale result",
+      "meaning": "an answer produced from evidence that has since changed, so it is not saved."
+    },
+    {
+      "term": "Capex and announcement",
+      "meaning": "the stated project cost and whether a project was newly announced or approved."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "../../db",
+    "./store",
+    "./locationResearch",
+    "./facts",
+    "./types",
+    "../../evidence/runEvents"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/index.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 9,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d3a3178e35dc7999",
+      "title": "Imports for the location worker",
+      "what": "Brings in the database, storage helpers, research functions, the feed helpers, and the types this worker uses.",
+      "why": "Setup code only; no behaviour is decided here.",
+      "watch_out": ""
+    },
+    {
+      "start": 10,
+      "end": 36,
+      "kind": "function",
+      "name": "queueLocations",
+      "id": "s2",
+      "hash": "600c1d18463eb538",
+      "title": "Decide which signals to research",
+      "what": "Chooses which signals get a location job. Manual requests include every signal with sources, including dismissed ones. Scheduled requests skip dismissed or resolved signals and signals that are not due. Older completed passes without a fingerprint are marked with one instead of being researched again. A manual request promotes an existing queued job rather than adding a duplicate.",
+      "why": "The comments and checks show the goal: avoid duplicate work and repeated paid calls while letting people force a refresh.",
+      "watch_out": "Manual requests bypass the enabled setting and the dismissed status, so changing either check changes what a person can force."
+    },
+    {
+      "start": 37,
+      "end": 40,
+      "kind": "function",
+      "name": "sourcesHash",
+      "id": "s3",
+      "hash": "a20473a61f197a22",
+      "title": "Fingerprint of a signal's evidence",
+      "what": "Produces a short code from each source's address, quote, and status. Any change in that evidence changes the code.",
+      "why": "The comment says unchanged evidence means an unchanged answer, so the code shows when research is worth repeating.",
+      "watch_out": "The order and exact text of the sources matter, so reordering sources counts as a change."
+    },
+    {
+      "start": 41,
+      "end": 58,
+      "kind": "function",
+      "name": "locationResearchDue, fmtM",
+      "id": "s4",
+      "hash": "ad385347bc0e8d70",
+      "title": "When to research again, and number formatting",
+      "what": "Decides whether a scheduled re-research is worth running: yes if it has never run, the evidence changed, or the last attempt failed and the interval has passed. Otherwise no. This section also sets the number of location jobs that run at once to three and formats numbers for display with up to one decimal place.",
+      "why": "The comment explains that repeating finished work over unchanged evidence wasted search and model calls every day.",
+      "watch_out": "A signal with no stored fingerprint is treated as not due, so a completed pass that never received one will not be re-run."
+    },
+    {
+      "start": 59,
+      "end": 103,
+      "kind": "function",
+      "name": "emitLocationFeed",
+      "id": "s5",
+      "hash": "e683e9f6936e56a4",
+      "title": "Feed cards for a location pass",
+      "what": "Writes progress cards for one location pass: one per pin, one for capex, one for announcement, and notes for withheld claims. Pins taken from Yard records are labelled as such. Non-US capex also gets an approximate US dollar figure card, or a note that no rate is held.",
+      "why": "The feed is there so people can see what was found and what was accepted or rejected.",
+      "watch_out": "The caller ignores feed errors, so a broken feed fails silently."
+    },
+    {
+      "start": 104,
+      "end": 163,
+      "kind": "function",
+      "name": "runLocationJob",
+      "id": "s6",
+      "hash": "258a3472eb14622e",
+      "title": "Run one location job for one signal",
+      "what": "Runs a single queued job. It reuses existing pins if the signal was located recently and the job is not manual; otherwise it researches again. Then it looks for capex and announcements, writes the feed, and saves the results only if the source list still matches what the job started with. Finally it marks the job succeeded or no evidence, or records a failure with a plain reason and no guessed location.",
+      "why": "The comments say recently located signals keep their pins and that a feed problem must never fail the job.",
+      "watch_out": "The stored note says a new pass will be queued after stale results, but this function does not queue one, so the next scheduled check must pick it up."
+    },
+    {
+      "start": 164,
+      "end": 196,
+      "kind": "function",
+      "name": "tickLocationResearch",
+      "id": "s7",
+      "hash": "5e0e03bfa43e54ce",
+      "title": "Background cycle that starts jobs",
+      "what": "Each cycle takes the database lock, resets jobs stuck in running back to queued, queues signals that are due, then starts up to three queued jobs with manual ones first. It releases the lock at the end and logs a plain message if anything fails.",
+      "why": "The comment says a separate lock keeps location work from waiting behind account sweeps.",
+      "watch_out": "Only jobs whose industry starts with geo: are touched, so market and account jobs are left to their own worker."
+    },
+    {
+      "start": 197,
+      "end": 202,
+      "kind": "function",
+      "name": "startLocationResearch",
+      "id": "s8",
+      "hash": "ab01d8845c2de043",
+      "title": "Start the repeating worker",
+      "what": "Starts a timer that runs a location cycle every 30 seconds and runs one cycle straight away. The timer does not keep the server process alive on its own.",
+      "why": "Reason not stated in the code beyond keeping location research moving between requests.",
+      "watch_out": "Calling it again does nothing because of the existing timer check, and the code shown has no way to stop the timer."
+    }
+  ],
+  "explained_at": "2026-11-12T04:54:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the background queue that finds locations, capex, and announcements for each opportunity, and saves results only if the evidence has not changed during the run.",
+  "purpose": "Keep the map's pins and money figures up to date without repeating finished work or saving stale answers.",
+  "why": "The comments say recently located signals keep their pins, unchanged evidence is not researched again, and a feed problem must never fail a job. The advisory lock is described as keeping location work separate from the account sweeps. Reason for the status codes in error messages: stated in the code as keeping provider response text, which may hold credentials, out of the database.",
+  "how": "1. Take a database lock so only one worker cycle runs at a time. 2. Reset location jobs stuck in running back to queued. 3. Queue signals that are due. 4. Start up to three queued jobs, manual ones first. 5. For each job, research or reuse locations, look for capex and announcements, write a progress feed, then save results only if the source list still matches. 6. Record success, no evidence, or failure with a plain reason.",
+  "inputs": "Queued jobs whose industry field starts with the prefix geo:, the settings row (enabled flag and check interval), each signal's saved sources and prior research status, and results from the location and facts modules.",
+  "outputs": "Updated signal fields (locations, location research status, capex, announcement, facts research status), updated job rows with status and notes, and progress feed events for the job view.",
+  "risks": "Stale results are dropped and only mentioned in a note. A failed run is retried only after the interval. Changing the due rule can cause repeated paid calls. The lock depends on how the database session behaves.",
+  "debug": "Check the job rows whose industry starts with geo: for their status and error text. If jobs stay queued, check whether monitoring is off (then only manual jobs run) and whether another process holds the lock. Look for the server console message that says the location monitor is unavailable. A missing feed does not fail a job, so check the feed events separately.",
+  "summary_hash": "sha256:e3e702f715b8322108bdd7473a96ff0a6a4a17145dfdf2868033f5d2a2d9c22c"
+}

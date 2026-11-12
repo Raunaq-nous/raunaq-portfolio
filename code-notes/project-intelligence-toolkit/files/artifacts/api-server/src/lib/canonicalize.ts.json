@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/lib/canonicalize.ts",
+  "language": "TypeScript",
+  "lines": 63,
+  "hash": "sha256:14b3d5abac3d2379086a794a852f0154460f65084dde6e8348cb2f3adb915073",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this file.",
+      "The money helper is exported but not used in this file, so its behaviour is untested here.",
+      "Sorting depends on the machine's locale, which could give different orders on different computers."
+    ]
+  },
+  "terms": [
+    {
+      "term": "canonical form",
+      "meaning": "one agreed standard way of writing a value so that equal things look identical"
+    },
+    {
+      "term": "JSON",
+      "meaning": "a plain text format for storing structured data"
+    },
+    {
+      "term": "locale",
+      "meaning": "the language and regional rules a computer uses to compare and sort text"
+    },
+    {
+      "term": "diff",
+      "meaning": "a comparison that finds what changed between two versions"
+    }
+  ],
+  "depends_on": [],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "function",
+      "name": "canonicalizeValue",
+      "id": "s1",
+      "hash": "a549095d435b4d7b",
+      "title": "Main normalizing entry point",
+      "what": "Takes any value and returns a cleaned version. Text is tidied, objects and lists are handled by their own helpers, and simple numbers and flags pass through unchanged.",
+      "why": "Gives every caller one place to clean data of any shape.",
+      "watch_out": "Values of unusual types are returned untouched, so they may still differ between versions."
+    },
+    {
+      "start": 11,
+      "end": 14,
+      "kind": "function",
+      "name": "normalizeWhitespace",
+      "id": "s2",
+      "hash": "dbd46ad2f1bd0abb",
+      "title": "Collapsing spaces in text",
+      "what": "Replaces runs of any whitespace, including tabs and line breaks, with a single space and removes the spaces at each end.",
+      "why": "Stops text that differs only in spacing from looking changed.",
+      "watch_out": "Line breaks inside a text value are lost, which matters if the text is meant to keep its layout."
+    },
+    {
+      "start": 15,
+      "end": 21,
+      "kind": "function",
+      "name": "normalizeMoney",
+      "id": "s3",
+      "hash": "b69599d3a9c61b7f",
+      "title": "Formatting money to two decimals",
+      "what": "Turns a number or a numeric text into text with exactly two decimal places, or nothing if the value is missing or not a number.",
+      "why": "Keeps money values written the same way, so 5 and 5.00 compare equal.",
+      "watch_out": "The rounding comes from the standard number formatter, so very large or unusual values may not be handled as expected."
+    },
+    {
+      "start": 22,
+      "end": 39,
+      "kind": "function",
+      "name": "canonicalizeArray",
+      "id": "s4",
+      "hash": "a300b234982d58ff",
+      "title": "Sorting lists of objects",
+      "what": "Cleans each item in a list, then, when the items are objects, sorts them by a chosen text field. Lists of plain values keep their order.",
+      "why": "Lists such as people, components or terms can come back in a different order, and sorting them makes the comparison fair.",
+      "watch_out": "A list whose order actually means something, such as steps in a sequence, will be reordered if its items have a name-like field."
+    },
+    {
+      "start": 40,
+      "end": 51,
+      "kind": "function",
+      "name": "determineSortKey",
+      "id": "s5",
+      "hash": "5dfce9de051891c9",
+      "title": "Choosing the sort key",
+      "what": "Picks the text field used for sorting an object list. It checks a preferred list of names first, such as name, role, id and title. If none exist, it uses the first text field in alphabetical order.",
+      "why": "Gives a stable choice of sort field for records of different kinds.",
+      "watch_out": "The fallback depends on alphabetical key order, so adding a new field can change which field is used for sorting."
+    },
+    {
+      "start": 52,
+      "end": 60,
+      "kind": "function",
+      "name": "canonicalizeObject",
+      "id": "s6",
+      "hash": "32c88e24f701554b",
+      "title": "Sorting object keys",
+      "what": "Cleans each value in an object and rebuilds the object with its keys in alphabetical order.",
+      "why": "Two objects with the same contents then produce the same text, whatever order their keys were added in.",
+      "watch_out": "Only the keys are sorted, so the meaning of the object is not changed, but any code that relies on insertion order will see a different order."
+    },
+    {
+      "start": 61,
+      "end": 63,
+      "kind": "function",
+      "name": "canonicalizeForDiff",
+      "id": "s7",
+      "hash": "748cfa49ee93d48d",
+      "title": "Producing a comparable text form",
+      "what": "Cleans a value and turns it into a JSON text string. This string is what gets compared when checking whether a record has changed.",
+      "why": "A single text form makes it easy to say whether two versions are the same.",
+      "watch_out": "JSON text cannot hold some values, such as undefined inside a list, so those are dropped or changed in the text."
+    }
+  ],
+  "explained_at": "2026-11-12T03:55:16+00:00",
+  "explained_by": "haiku",
+  "summary": "Tidies a value so that two copies with the same meaning produce the same text, which lets the app detect real changes between versions of a record.",
+  "purpose": "Makes comparisons between old and new data reliable by removing differences in spacing, key order and list order.",
+  "why": "Likely reason: without a fixed form, the same record could look changed just because its keys were written in a different order.",
+  "how": "It walks through the value. Text has its spaces collapsed and trimmed. Objects get their keys sorted. Lists are cleaned item by item, then sorted by a name-like field when the items are objects. The final form is turned into a JSON string for comparison.",
+  "inputs": "Any value: text, a number, a true or false flag, a list, an object, null or nothing.",
+  "outputs": "A cleaned value of the same general kind, or for the diff helper, a single text string. The money helper returns text with two decimals, or nothing if the input is missing or not a number.",
+  "risks": "Sorting lists changes their order, which is wrong for lists where order matters. Sorting uses the locale's text rules, which can differ between computers.",
+  "debug": "If two equal records look different, compare their canonical text output. If a list seems to change order, check whether its first item has a name-like field, since that is what triggers sorting.",
+  "summary_hash": "sha256:14b3d5abac3d2379086a794a852f0154460f65084dde6e8348cb2f3adb915073"
+}

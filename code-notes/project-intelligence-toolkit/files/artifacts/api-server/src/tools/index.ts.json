@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/index.ts",
+  "language": "TypeScript",
+  "lines": 35,
+  "hash": "sha256:62fa8cf285431c9a83975de1569c6779d753f1395aeb5e105722576101b9aa9f",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible for this file.",
+      "If one tool's router throws during attachment, the loop has no protection, so the whole mount step can fail.",
+      "collectTools is async but returns a fixed list, which is simple but worth knowing."
+    ]
+  },
+  "terms": [
+    {
+      "term": "router",
+      "meaning": "a set of web addresses and the code that answers each one, attached to the server as one group"
+    },
+    {
+      "term": "slug",
+      "meaning": "the short name used in a web address, such as the last part of a tool's path"
+    },
+    {
+      "term": "middleware",
+      "meaning": "a step that runs before the real handler, such as a login check"
+    },
+    {
+      "term": "esbuild",
+      "meaning": "the tool that packages the server code into a single file before it runs"
+    }
+  ],
+  "depends_on": [
+    "express",
+    "artifacts/api-server/src/middleware/auth",
+    "artifacts/api-server/src/tools/types",
+    "artifacts/api-server/src/tools/reality-scan/index",
+    "artifacts/api-server/src/tools/lessons-learnt/index",
+    "artifacts/api-server/src/tools/recipe-harness/index",
+    "artifacts/api-server/src/tools/guided-demo/index",
+    "artifacts/api-server/src/tools/opportunity-map/index"
+  ],
+  "used_by": [
+    "Server startup code that calls mountTools (not visible in this packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup, TOOLS",
+      "id": "s1",
+      "hash": "9886de20670ac81a",
+      "title": "Fixed list of tool modules",
+      "what": "Lists the five tool modules the server knows about: reality scan, lessons learnt, recipe harness, guided demo and opportunity map. Adding a tool means adding an import and an entry here.",
+      "why": "The comment says the server is packaged at build time, so the list must be written in code.",
+      "watch_out": "A tool left out of this list will never be attached, and nothing will warn about it."
+    },
+    {
+      "start": 18,
+      "end": 21,
+      "kind": "function",
+      "name": "collectTools",
+      "id": "s2",
+      "hash": "36e0fca5e8dcdb4d",
+      "title": "Returning the tool list",
+      "what": "Gives back the same fixed list of tools to whoever asks.",
+      "why": "Reason not stated in the code. It keeps one source of truth for the tool list.",
+      "watch_out": "The same list object is returned each time, so a caller that changes it changes the master list."
+    },
+    {
+      "start": 22,
+      "end": 28,
+      "kind": "function",
+      "name": "mountTools",
+      "id": "s3",
+      "hash": "b3a4cdb398d672b1",
+      "title": "Attaching every tool to the server",
+      "what": "Goes through each tool and attaches its router under a web address made from its slug, so each tool lives at its own path under /api/tools/.",
+      "why": "The comment says login is applied here so a tool author cannot forget it and publish an open endpoint.",
+      "watch_out": "This step only checks that the user is logged in. Any stricter role rule must be added inside the tool itself."
+    },
+    {
+      "start": 29,
+      "end": 35,
+      "kind": "route",
+      "name": "use",
+      "id": "s4",
+      "hash": "09903d14ab7139a5",
+      "title": "Attaching each tool and logging it",
+      "what": "Attaches each tool's router with the login check in front, then writes a log line naming the tool and its path. If there are no tools, it writes a log line saying so.",
+      "why": "The log lines let an operator confirm at startup which tools came up.",
+      "watch_out": "A tool with no log line did not attach, so check the startup log first when a tool is missing."
+    }
+  ],
+  "explained_at": "2026-11-12T04:27:39+00:00",
+  "explained_by": "haiku",
+  "summary": "Lists the tool modules the server knows about and attaches each one to the web server under its own web address, requiring login for all of them.",
+  "purpose": "Makes each tool available to the app and keeps the list of tools in one place.",
+  "why": "The comment says the server is built ahead of time, so it cannot discover tool files while running. Adding a tool therefore needs an import and a list entry here.",
+  "how": "The file imports five tool modules and places them in a fixed list. When the server starts, mountTools reads that list and, for each tool, attaches its router under a path made from its slug, with the login check in front. It logs each attachment and logs a message if the list is empty.",
+  "inputs": "The Express app from the server startup, and the five tool modules imported at the top.",
+  "outputs": "Tool routes under /api/tools/ and a log line per tool.",
+  "risks": "A tool missing from the list is never attached, and nothing reports that it is missing. Tools that need a stricter role must add their own check, since this file only checks login.",
+  "debug": "If a tool's page is missing, first check that its import and list entry exist here, then look for its log line at startup. If the log line is missing, the attach step did not run for that tool. If the server fails at startup, check that each tool module exports a router and a slug.",
+  "summary_hash": "sha256:62fa8cf285431c9a83975de1569c6779d753f1395aeb5e105722576101b9aa9f"
+}

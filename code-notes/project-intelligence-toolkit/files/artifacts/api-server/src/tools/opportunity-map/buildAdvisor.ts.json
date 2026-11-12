@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/buildAdvisor.ts",
+  "language": "TypeScript",
+  "lines": 171,
+  "hash": "sha256:acef7f0b3af8da511a1e7b9b1660c01d36d1bfc5d175ad068a63490fc1ceac82",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only two of eleven sections were visible.",
+      "The header describes intent, but the grouping and classification steps were not shown.",
+      "No test file was shown for this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "build advisor",
+      "meaning": "the view showing who builds projects and how they are contracted."
+    },
+    {
+      "term": "EPC",
+      "meaning": "engineering, procurement and construction: a contractor that designs and builds the whole project."
+    },
+    {
+      "term": "EPCM",
+      "meaning": "a contractor that manages design and construction for the owner, with the owner paying the actual costs."
+    },
+    {
+      "term": "lump-sum",
+      "meaning": "a fixed price for the whole job, agreed up front."
+    },
+    {
+      "term": "alliance",
+      "meaning": "a shared-risk partnership between owner and contractors, usually with a target cost."
+    },
+    {
+      "term": "delivery model",
+      "meaning": "the contract arrangement that sets who designs, builds and carries the risk."
+    },
+    {
+      "term": "Yard",
+      "meaning": "the name the code uses for the app's shared store of project records."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/tools/opportunity-map/store",
+    "artifacts/api-server/src/tools/opportunity-map/projectFeed",
+    "artifacts/api-server/src/scan/budgetUnits",
+    "artifacts/api-server/src/shared/industries",
+    "drizzle-orm"
+  ],
+  "used_by": [
+    "None visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup, DeliveryCategory",
+      "id": "s1",
+      "hash": "9b977a856ca9f133",
+      "title": "Purpose and imports",
+      "what": "Explains that this view is built only from recorded Yard data. Brings in the database tools, the store, the project feed, the budget unit and industry helpers, and the delivery category type.",
+      "why": "The header states the rule that nothing is estimated here, and that illustrative layers are labelled separately by the client.",
+      "watch_out": "Because the file trusts recorded fields, a wrong value in the Yard appears in the advisor as if it were established."
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "kind": "value",
+      "name": "DELIVERY_LABEL",
+      "id": "s2",
+      "hash": "009936713b28cac5",
+      "title": "Delivery category labels",
+      "what": "Gives each delivery category a plain-language label, such as EPC lump-sum or turnkey, EPCM reimbursable, alliance, design and build, and owner-managed.",
+      "why": "Likely reason: owners and contractors read these labels, not internal category codes.",
+      "watch_out": "The labels are shown to users, so changing their wording changes what users read, while the category codes used in code must stay matched."
+    },
+    {
+      "start": 26,
+      "end": 37,
+      "kind": "value",
+      "name": "DELIVERY_RULES",
+      "id": "s3",
+      "hash": "afdf541b9a3042f2",
+      "title": "Ordered rules for delivery models",
+      "what": "A list of patterns that map a free-text description of how a project is delivered (for example alliance, public-private partnership, or lump sum) to one fixed category. The first matching rule wins, so the order decides the category for mixed descriptions.",
+      "why": "The comment says hybrid descriptions often also mention EPC, so more specific categories are checked first.",
+      "watch_out": "Moving one rule up or down can change the category of many projects, and nothing in this section warns about that."
+    },
+    {
+      "start": 38,
+      "end": 43,
+      "kind": "function",
+      "name": "deliveryCategory",
+      "id": "s4",
+      "hash": "412242cecfb45312",
+      "title": "Labelling a delivery description",
+      "what": "Turns one recorded delivery description into a category. Returns nothing for blank text or text saying tbd, n/a or unknown, and returns other when no rule matches.",
+      "why": "Reason not stated in the code. Likely reason: a fixed set of labels makes projects comparable.",
+      "watch_out": "Blank or unknown input gives no category while unmatched text gives other, so the two look different on screen."
+    },
+    {
+      "start": 44,
+      "end": 70,
+      "kind": "value",
+      "name": "FIRMS, LOWER_OK",
+      "id": "s5",
+      "hash": "1d63f32c14dd2dc0",
+      "title": "Known contractor names and allowed name words",
+      "what": "A list of well-known engineering and construction firms, each with a pattern that catches its many spellings. Also a small set of short words allowed to stay lower case inside a firm name, such as of or de.",
+      "why": "The comment says the same firm appears under several spellings in the Yard, so matching by firm family avoids duplicate entries.",
+      "watch_out": "Patterns are loose, so a common word inside another name can match a firm by mistake."
+    },
+    {
+      "start": 71,
+      "end": 75,
+      "kind": "function",
+      "name": "nameLike",
+      "id": "s6",
+      "hash": "f3449aac9b44624e",
+      "title": "Deciding if text looks like a firm name",
+      "what": "Decides whether a leftover piece of text is plausible as a company name. Rejects text that is too short or too long, starts with a lower case word, contains number patterns, or looks like a package label or project word.",
+      "why": "The comment says leftovers are kept only when they read like names, which keeps clauses and totals out of the firm list.",
+      "watch_out": "These are rough rules, so a real firm whose name contains a project word such as Development or Stadium would be dropped."
+    },
+    {
+      "start": 76,
+      "end": 81,
+      "kind": "function",
+      "name": "cleanName",
+      "id": "s7",
+      "hash": "0ddb153b6c559a91",
+      "title": "Trimming a raw name to its core",
+      "what": "Removes lead-in phrases such as joint venture of, cuts off trailing notes after dashes, brackets or words like awarded, and strips legal endings such as Ltd or LLC.",
+      "why": "Raw contractor text is written as sentences, so the firm name has to be cut out of them.",
+      "watch_out": "Cutting at words such as with or for can truncate a firm name that legitimately contains those words."
+    },
+    {
+      "start": 82,
+      "end": 100,
+      "kind": "function",
+      "name": "firmsIn",
+      "id": "s8",
+      "hash": "d1bc3b34da180cd7",
+      "title": "Finding firms in a contractor field",
+      "what": "Reads one EPC or contractor text and lists the firms it names. Known firms get their standard name and are marked catalogued; other names that pass the name check are kept and marked not catalogued. Blank or n/a text gives an empty list.",
+      "why": "The comment says firms are standardised where the family is known, so one firm appears once in the advisor list.",
+      "watch_out": "Names not in the known list come only from the text, so a misspelt firm shows up as a separate entry."
+    },
+    {
+      "start": 101,
+      "end": 106,
+      "kind": "type",
+      "name": "AdvisorProject, AdvisorLink, AdvisorFirm",
+      "id": "s9",
+      "hash": "8f98850832512f56",
+      "title": "Shapes of advisor project and firm data",
+      "what": "Defines the data the advisor page receives for each project (industry, place, delivery category, cost overrun, delay, capex) and for each firm, with the projects it links to and the source quote behind each link.",
+      "why": "Reason not stated in the code. Likely reason: gives the front end one clear structure for projects and firms.",
+      "watch_out": "Several fields can be empty, such as overrunPct and capexM, so the front end must handle missing values."
+    },
+    {
+      "start": 107,
+      "end": 120,
+      "kind": "type",
+      "name": "BuildAdvisorData, lite, cleanDate, slugOf",
+      "id": "s10",
+      "hash": "32f423f9283a6320",
+      "title": "Output shape and small text helpers",
+      "what": "Defines the full package returned to the advisor page: timestamp, industry totals, regions, projects, firms, delivery sources and labels. Small helpers shorten quotes to about 240 characters, reduce dates to year or year-month-day, and make URL-friendly ids.",
+      "why": "Likely reason: the helpers keep the response small and give each firm a stable id across loads.",
+      "watch_out": "Long quotes are cut and end with an ellipsis, so the stored text shown is not the full quote."
+    },
+    {
+      "start": 121,
+      "end": 171,
+      "kind": "function",
+      "name": "buildAdvisor",
+      "id": "s11",
+      "hash": "bd73764fa99e30f2",
+      "title": "Assembling the advisor page data",
+      "what": "Reads all projects and their active evidence quotes, works out each project's overrun percentage and delivery category, links firms named in the EPC and contractor fields, and returns counts per industry, sorted regions, and firms ranked by number of links. Only projects with a contractor link or a delivery category are included.",
+      "why": "Likely reason: keeps the advisor view to projects with usable contractor or delivery facts.",
+      "watch_out": "Overrun is calculated only when both planned and actual budgets are present and positive, so a missing budget leaves that figure blank without warning."
+    }
+  ],
+  "explained_at": "2026-11-12T04:49:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the build advisor view of the Opportunity Map, showing who builds projects and how they are delivered, using only recorded data from the Yard.",
+  "purpose": "Lets an owner or contractor see which contractors and delivery models were used on comparable projects, with outcomes and evidence quotes.",
+  "why": "The header says nothing is estimated in this file, and any illustrative layers are added by the client and labelled as such.",
+  "how": "Only the header and the delivery category labels are visible here. The rules that classify each project's delivery model and the steps that group projects by contractor were not included in this packet, so they are not described.",
+  "inputs": "Project records read from the Yard through the store helper, and the recorded contractor and delivery fields. The full flow is not visible.",
+  "outputs": "Not fully visible. The header says the output covers contractors, delivery model, country, stage, cost and schedule outcome, and evidence quotes.",
+  "risks": "The file trusts recorded fields, so a wrong value in the Yard appears here as if it were a fact. Only part of the file was reviewed.",
+  "debug": "If a project shows the wrong delivery label, check its recorded delivery model field and the classification rules in the rest of the file. If a contractor is missing, check whether the project record has it in the expected field.",
+  "summary_hash": "sha256:acef7f0b3af8da511a1e7b9b1660c01d36d1bfc5d175ad068a63490fc1ceac82"
+}

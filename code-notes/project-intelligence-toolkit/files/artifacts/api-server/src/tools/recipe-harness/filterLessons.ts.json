@@ -1,0 +1,286 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/recipe-harness/filterLessons.ts",
+  "language": "TypeScript",
+  "lines": 361,
+  "hash": "sha256:657e0434d012819513341ddba3132780ae876857186d976eb0bd92d1dc745d01",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this file.",
+      "A broken store file is silently replaced, which can erase learned rules.",
+      "Saves are not protected against simultaneous writes.",
+      "The store path depends on the current working folder.",
+      "Country and industry word lists are hardcoded."
+    ]
+  },
+  "terms": [
+    {
+      "term": "JSON file",
+      "meaning": "a plain text file that stores data in a structured, readable form"
+    },
+    {
+      "term": "Zod",
+      "meaning": "a library that checks that incoming data has the expected shape"
+    },
+    {
+      "term": "Seed rule",
+      "meaning": "a starter rule written into the code that the store always includes"
+    },
+    {
+      "term": "Zero-match",
+      "meaning": "a search that returns no projects at all"
+    },
+    {
+      "term": "Upsert",
+      "meaning": "update the item if its id already exists, otherwise add it"
+    },
+    {
+      "term": "Hint",
+      "meaning": "a short sentence given to the AI to guide how it reads a request"
+    }
+  ],
+  "depends_on": [
+    "fs (Node file access)",
+    "path (Node file path helper)",
+    "crypto (Node random id helper)",
+    "zod",
+    "recipe_harness/memory/filter_lessons.json"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/recipe-harness/index.ts",
+    "artifacts/api-server/src/tools/recipe-harness/parseFilterLlm.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "121737ba056896d1",
+      "title": "Imports and store location",
+      "what": "Loads the file helpers and fixes the location of the rules file under the recipe_harness memory folder.",
+      "why": "The header says the location is git-friendly, so the rules can be saved and shared through version control.",
+      "watch_out": "The folder name is relative, so the rules file moves if the server starts from a different folder."
+    },
+    {
+      "start": 13,
+      "end": 22,
+      "kind": "type",
+      "name": "FilterFields",
+      "id": "s2",
+      "hash": "17e8aa11f4f0ed5b",
+      "title": "Shape of the filter fields",
+      "what": "Defines the seven filter fields: geography, status, years, evidence, sector, keyword, and the natural-language prompt.",
+      "why": "Gives every part of the app one agreed shape for filters.",
+      "watch_out": "Renaming any field breaks the callers that read or write it."
+    },
+    {
+      "start": 23,
+      "end": 48,
+      "kind": "type",
+      "name": "FilterLesson",
+      "id": "s3",
+      "hash": "48f4bb43b371bed7",
+      "title": "Shape of one saved rule",
+      "what": "Defines what each saved rule holds: an id, a kind, an active or superseded status, a title, the hint sentence for the AI, evidence, a source, counts, and optional action flags.",
+      "why": "Gives every rule the same fields so the store can be read and applied the same way.",
+      "watch_out": "The superseded status exists, but no code in this file sets it, so retiring a rule needs its status changed by hand."
+    },
+    {
+      "start": 49,
+      "end": 53,
+      "kind": "type",
+      "name": "StoreFile",
+      "id": "s4",
+      "hash": "7e51be352fe1a602",
+      "title": "Shape of the whole store file",
+      "what": "Defines the top-level wrapper: a version number and a list of rules.",
+      "why": "Leaves room for future changes to the file format. Likely reason, not stated in the code.",
+      "watch_out": "The version is always 1 and no migration code exists, so a format change would need new handling."
+    },
+    {
+      "start": 54,
+      "end": 76,
+      "kind": "value",
+      "name": "learnBodySchema",
+      "id": "s5",
+      "hash": "299fc2e098d008cd",
+      "title": "Checking incoming failure reports",
+      "what": "Defines the allowed kinds of failure report and the optional details each can carry, such as the prompt, filters, match count, and note.",
+      "why": "Rejects reports with unknown kinds before they change the store.",
+      "watch_out": "The four kinds listed here must match what the app sends, or reports will be refused."
+    },
+    {
+      "start": 77,
+      "end": 79,
+      "kind": "type",
+      "name": "LearnBody",
+      "id": "s6",
+      "hash": "d8489b6127534e37",
+      "title": "Type for a valid report",
+      "what": "Creates the type for a checked report and exports the check itself so other files can reuse it.",
+      "why": "Lets other files use the same rules without copying them.",
+      "watch_out": "Changes to the report check change what callers are allowed to send."
+    },
+    {
+      "start": 80,
+      "end": 83,
+      "kind": "function",
+      "name": "nowIso",
+      "id": "s7",
+      "hash": "68b568c78a01085b",
+      "title": "Current time as text",
+      "what": "Returns the current server time as a standard text timestamp.",
+      "why": "Used to record when rules are created and changed.",
+      "watch_out": "The time comes from the server clock, so a wrong server clock gives wrong timestamps."
+    },
+    {
+      "start": 84,
+      "end": 121,
+      "kind": "function",
+      "name": "seedLessons",
+      "id": "s8",
+      "hash": "682b3284715409bf",
+      "title": "Starter rules",
+      "what": "Builds the two built-in rules: never put the industry name in the sector field, and when a geography is set, clear the keyword field and strip industry words from it.",
+      "why": "Each starter rule quotes the real incident that caused it in its evidence text.",
+      "watch_out": "The ids are fixed. If someone deletes a starter rule, the store adds it back the next time it loads."
+    },
+    {
+      "start": 122,
+      "end": 156,
+      "kind": "function",
+      "name": "ensureStore",
+      "id": "s9",
+      "hash": "e427e25acd7f2de2",
+      "title": "Loading or creating the store",
+      "what": "Returns the stored rules. It creates the file if missing, adds any missing starter rules, and rebuilds the file if it cannot be read.",
+      "why": "Makes first use and recovery work without manual setup. Likely reason, not stated in the code.",
+      "watch_out": "A broken file is replaced with only the starter rules, and no warning is given, so learned rules can disappear."
+    },
+    {
+      "start": 157,
+      "end": 161,
+      "kind": "function",
+      "name": "saveStore",
+      "id": "s10",
+      "hash": "7631b74c9cbb5e8d",
+      "title": "Saving the store",
+      "what": "Writes the full list of rules to the store file.",
+      "why": "Keeps the file in step with changes made in memory.",
+      "watch_out": "Every save rewrites the whole file, so two saves at once can overwrite each other."
+    },
+    {
+      "start": 162,
+      "end": 165,
+      "kind": "function",
+      "name": "listFilterLessons",
+      "id": "s11",
+      "hash": "584a0bdd7a05a454",
+      "title": "Listing active rules",
+      "what": "Returns only the rules whose status is active.",
+      "why": "Hides retired rules from the app and from the AI.",
+      "watch_out": "A rule with any status other than active disappears from this list."
+    },
+    {
+      "start": 166,
+      "end": 171,
+      "kind": "function",
+      "name": "filterLessonHintsForLlm",
+      "id": "s12",
+      "hash": "7c0735ccaa0b9f44",
+      "title": "Hint sentences for the AI",
+      "what": "Collects the hint sentence from every active rule so the AI parser can follow them.",
+      "why": "Lets the AI learn the lessons without changes to its code.",
+      "watch_out": "Every active rule is sent with each request, so a long list adds cost and may contradict itself."
+    },
+    {
+      "start": 172,
+      "end": 181,
+      "kind": "function",
+      "name": "isIndustryEcho",
+      "id": "s13",
+      "hash": "bd95197960fe0318",
+      "title": "Detecting an industry echo",
+      "what": "Decides whether a sector value just repeats the industry name, or is one of a fixed list of common industry words.",
+      "why": "The starter rules say a sector that repeats the industry caused zero matches.",
+      "watch_out": "The check uses partial text matching, so a very short sector value can be treated as a repeat by mistake."
+    },
+    {
+      "start": 182,
+      "end": 230,
+      "kind": "function",
+      "name": "applyFilterLessons",
+      "id": "s14",
+      "hash": "90460689ee424427",
+      "title": "Applying rules to a filter request",
+      "what": "Runs every active rule on the filter fields in stored order. It clears the sector if it echoes the industry, clears the keyword if a geography is set, and strips industry words from the keyword. It updates hit counts and saves when anything changed.",
+      "why": "Gives the same fixes to every search without relying on the AI to remember them. Likely reason, not stated in the code.",
+      "watch_out": "Each rule works on the output of the one before it, so changing the rule order can change the result."
+    },
+    {
+      "start": 231,
+      "end": 252,
+      "kind": "function",
+      "name": "upsertLesson",
+      "id": "s15",
+      "hash": "a9e100eb6ca23e6f",
+      "title": "Adding or updating one rule",
+      "what": "Adds a new rule, or updates an existing one with the same id and marks it active.",
+      "why": "Lets learned fixes replace older versions of the same rule.",
+      "watch_out": "Updating a rule overwrites its wording and evidence, so the old explanation is lost."
+    },
+    {
+      "start": 253,
+      "end": 305,
+      "kind": "function",
+      "name": "learnFromFilterIncident (part 1)",
+      "id": "s16",
+      "hash": "97054a1cd6dd87a0",
+      "title": "Learning from a failure report, first part",
+      "what": "Handles reports of an industry echo or a keyword that stays after a geography was set. It records or updates the matching rule and returns it.",
+      "why": "Turns a single failure into a rule that protects future searches. Reason beyond that not stated in the code.",
+      "watch_out": "The checks run in order, and the first match decides the outcome, so a report can land in an unexpected branch."
+    },
+    {
+      "start": 306,
+      "end": 358,
+      "kind": "method",
+      "name": "learnFromFilterIncident: if",
+      "id": "s17",
+      "hash": "d3d4f40566f4623f",
+      "title": "Learning from a failure report, second part",
+      "what": "Handles general zero-match reports by updating two rules, then handles analyst notes by adding a new rule with a random id.",
+      "why": "General zero-match reports reinforce the fixes most likely to help. Analyst notes let people add rules directly.",
+      "watch_out": "Each analyst note adds a new rule with a random id, so repeated notes create duplicates."
+    },
+    {
+      "start": 359,
+      "end": 361,
+      "kind": "function",
+      "name": "filterLessonsPath",
+      "id": "s18",
+      "hash": "d216d9da5a4b1044",
+      "title": "Where the rules file is",
+      "what": "Returns the path of the rules file.",
+      "why": "Lets the status route tell people where the rules are stored.",
+      "watch_out": "The path is relative to the server start folder, so it can point somewhere unexpected."
+    }
+  ],
+  "explained_at": "2026-11-12T05:06:04+00:00",
+  "explained_by": "haiku",
+  "summary": "Keeps a saved list of rules learned from past filter mistakes and applies those rules to every new filter request.",
+  "purpose": "Stops the same filter mistakes from happening again. When a search returns zero matches, the app records a rule, and later searches follow it automatically.",
+  "why": "The file header says it learns from parse and match failures and applies the fix everywhere. The seeded rules quote real incidents in their evidence text. Likely reason: avoid repeating the same mistake. Beyond that, reason not stated in the code.",
+  "how": "1. On first use, creates recipe_harness/memory/filter_lessons.json with two starter rules. 2. Each time filters are applied, every active rule is checked in stored order and may clear the sector, clear the keyword field, or strip industry words. 3. Each rule that changes something gets a hit count and an updated time, and the file is saved. 4. Failure reports from the learn route add or update rules through learnFromFilterIncident. 5. The AI parser reads the rule hint sentences and adds them to its instructions.",
+  "inputs": "A set of filter fields (geography, status, years, evidence, sector, keyword, and the natural-language prompt). Incident reports with a kind, prompt, filters, match count, or note. The JSON store file.",
+  "outputs": "Cleaned filter fields and a list of the rule ids that changed something. An updated JSON store file. A list of hint sentences for the AI. The full rule list for the status screen.",
+  "risks": "The store is rewritten in full on every save, with no lock, so two saves at the same moment can lose one. If the file is broken, ensureStore rebuilds it with only the starter rules and does not warn, which erases learned rules. The industry-echo check uses a fixed list of industry words. Analyst notes get a random id each time, so duplicates pile up. The path is relative, so it depends on where the server starts.",
+  "debug": "Open recipe_harness/memory/filter_lessons.json (the path is shown by the filter-lessons route). If a filter was changed unexpectedly, look at the applied rule ids and their hit counts. If the file is corrupt, restore it from git or an earlier copy, because the code will overwrite it with only the starter rules. Deleting the file resets to the starter rules and loses all learned rules.",
+  "summary_hash": "sha256:657e0434d012819513341ddba3132780ae876857186d976eb0bd92d1dc745d01"
+}

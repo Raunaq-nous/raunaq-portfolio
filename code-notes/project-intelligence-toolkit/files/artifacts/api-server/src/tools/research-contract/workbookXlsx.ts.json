@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/workbookXlsx.ts",
+  "language": "TypeScript",
+  "lines": 52,
+  "hash": "sha256:92f4be1788a9ff4673dc538d0af78abe15f43346cb781d63952143cce376214a",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "A test in scanInputs.test.ts writes a workbook and reads it back, checking sheet names and values.",
+      "Empty tabs produce a clear No rows recorded note.",
+      "I did not run the test, so passing is not confirmed here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "sheet",
+      "meaning": "one tab of an Excel file"
+    },
+    {
+      "term": "buffer",
+      "meaning": "a raw block of bytes, here the contents of an Excel file"
+    },
+    {
+      "term": "JSON",
+      "meaning": "a plain text format for structured data, used here to store nested values in one cell"
+    },
+    {
+      "term": "frozen header",
+      "meaning": "a top row that stays visible while scrolling"
+    }
+  ],
+  "depends_on": [
+    "exceljs"
+  ],
+  "used_by": [
+    "Probably artifacts/api-server/src/tools/research-contract/scanInputs.test.ts, which calls it; its import line is not in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "setup",
+      "name": "File setup, Row",
+      "id": "s1",
+      "hash": "1ba59108c63931aa",
+      "title": "File imports and row shape",
+      "what": "Brings in the Excel library and defines a row as a record with text keys.",
+      "why": "Likely reason: keeps the export's data shape loose so any tab can be written.",
+      "watch_out": ""
+    },
+    {
+      "start": 4,
+      "end": 6,
+      "kind": "function",
+      "name": "cell",
+      "id": "s2",
+      "hash": "8611fd2cdeb56303",
+      "title": "Making a value cell-safe",
+      "what": "Turns a value into something Excel can store. Text, numbers and true or false stay as they are, empty becomes blank, and anything else such as a list or nested object becomes JSON text.",
+      "why": "Stated in the workbook export comment: nested evidence is serialised, never summarised.",
+      "watch_out": "Nested data becomes hard-to-read JSON in the sheet, so a reader must parse it by eye."
+    },
+    {
+      "start": 7,
+      "end": 15,
+      "kind": "function",
+      "name": "sheetName",
+      "id": "s3",
+      "hash": "c1a153771e325496",
+      "title": "Making valid sheet names",
+      "what": "Creates a sheet name Excel accepts: removes forbidden characters, cuts it to 31 characters, and adds a number if another sheet already has the name.",
+      "why": "Stated in the comment: Excel has these name rules.",
+      "watch_out": "Long tab names are cut, so distinct names can look alike in the sheet list."
+    },
+    {
+      "start": 16,
+      "end": 26,
+      "kind": "function",
+      "name": "addTable",
+      "id": "s4",
+      "hash": "f093c71cccda036c",
+      "title": "Writing one tab as a sheet",
+      "what": "Creates one sheet with a column for every key found in any row, writes each row, bolds the header and freezes it. If there are no rows, it writes a note saying so.",
+      "why": "Likely reason: a shared column set keeps rows with different fields lined up.",
+      "watch_out": "A row missing a key gets a blank cell, and a misspelled key creates an extra column that looks like a real field."
+    },
+    {
+      "start": 27,
+      "end": 52,
+      "kind": "function",
+      "name": "workbookXlsx",
+      "id": "s5",
+      "hash": "0e0f50814d5b191f",
+      "title": "Building the whole Excel file",
+      "what": "Builds the About sheet with the notice, version and translation rules, adds a sheet for each tab, adds the optional extra tables, and returns the file as bytes. A null workbook falls back to a notice saying none was recorded.",
+      "why": "Stated in the comment: one sheet per tab, plus calculations and reason signals.",
+      "watch_out": "Any top-level value that is not a list, notice or version becomes a two-column measure sheet, so new top-level values appear as extra sheets."
+    }
+  ],
+  "explained_at": "2026-11-12T05:13:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns the research workbook, and optional calculation and reason tables, into an Excel file with one sheet per tab, a bold header row, and an About sheet.",
+  "purpose": "Lets the owner open the research in Excel with values exactly as recorded.",
+  "why": "Stated in the comment: values are written as recorded, and nested evidence is kept as JSON rather than summarised.",
+  "how": "First, create the file with an About sheet holding the notice, version and translation rules. Second, write each tab as a sheet: a list becomes rows, the Segments tab is flattened with a segment column, and a plain object becomes a measure and value table. Third, add the optional Yard evidence, calculation and reason tables. Fourth, return the file as raw bytes.",
+  "inputs": "The workbook object, which may be null, optional Yard evidence rows, calculation rows, reason rows, and a notice text.",
+  "outputs": "A Buffer, meaning the raw bytes of an Excel file.",
+  "risks": "Nested data becomes hard-to-read JSON text in cells. Sheet names longer than 31 characters are cut, so distinct tab names can look alike. Rows with different keys produce a union of columns, so a misspelled key creates an extra column.",
+  "debug": "If a tab is missing, check its name for forbidden characters or a clash with another sheet name. If a cell shows bracketed text, it is nested data written as JSON. The export is covered by a test that reads the file back.",
+  "summary_hash": "sha256:92f4be1788a9ff4673dc538d0af78abe15f43346cb781d63952143cce376214a"
+}

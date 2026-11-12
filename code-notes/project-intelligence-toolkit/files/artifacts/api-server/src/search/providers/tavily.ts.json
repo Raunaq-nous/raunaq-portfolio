@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/search/providers/tavily.ts",
+  "language": "TypeScript",
+  "lines": 83,
+  "hash": "sha256:fcb7e36eb71d34143b7d9177e245b84f571e84cb3542acb87f56c86e3f4d38a7",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Relies on the key chain module, which is not shown.",
+      "No tests are visible.",
+      "Invalid keys are logged but may not be parked, so the same failure repeats on each search."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Bearer header",
+      "meaning": "a standard way of sending a key inside the request headers."
+    },
+    {
+      "term": "POST request",
+      "meaning": "a web request that sends data in its body, used here for the search."
+    },
+    {
+      "term": "authorization header",
+      "meaning": "the part of a web request that carries proof of who is calling."
+    }
+  ],
+  "depends_on": [
+    "../interfaces",
+    "../../lib/keyChain",
+    "Node built-in fetch"
+  ],
+  "used_by": [
+    "The search router, through createRouter.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a957c5219802229a",
+      "title": "Imports and timeout",
+      "what": "Brings in the search types and key helpers, and sets the 15-second timeout.",
+      "why": "Likely reason: the same pattern is used by the other paid providers.",
+      "watch_out": ""
+    },
+    {
+      "start": 6,
+      "end": 60,
+      "kind": "class",
+      "name": "TavilyProvider (part 1)",
+      "id": "s2",
+      "hash": "0c62585923243f68",
+      "title": "Trying keys and sending the request",
+      "what": "Checks availability, then tries each key in turn. Each try sends a search request with the key in the authorization header and the query in the body.",
+      "why": "The comment says the header style is required, because the older body style got a silent 401 that hid this provider.",
+      "watch_out": "Moving the key back into the body would reproduce the silent failure described in the comments."
+    },
+    {
+      "start": 61,
+      "end": 83,
+      "kind": "class",
+      "name": "TavilyProvider (part 2)",
+      "id": "s3",
+      "hash": "dcd2109110db6766",
+      "title": "Reading results and errors",
+      "what": "On an error reply, logs the reply text with the key replaced by a placeholder, and flags invalid keys. On success, maps each result to the shared shape. Timeouts and other errors return nothing.",
+      "why": "Likely reason: logs must never show the key, so it is hidden before the reply is written out.",
+      "watch_out": "Unless the key chain counts 401 or 403 as spent, an invalid key is not parked and keeps being tried."
+    }
+  ],
+  "explained_at": "2026-11-12T04:12:18+00:00",
+  "explained_by": "haiku",
+  "summary": "Searches the web through the Tavily service. It tries a backup key if the main key is used up, and returns results with direct web addresses.",
+  "purpose": "A search source that returns openable links, which the comments say the rest of the pipeline depends on.",
+  "why": "The comments explain that an older way of sending the key caused silent failures. The current Bearer header is the fix described there.",
+  "how": "Tries each key in order. Each attempt sends a POST request with the query, result count, advanced search depth, and no raw page content, with the key in the authorization header. On an error reply it logs the reply with the key hidden and parks the key if the status means it is spent. On success it maps each result to the shared shape, within a 15-second timeout.",
+  "inputs": "Query text, maximum result count, and the Tavily key settings from the key chain module.",
+  "outputs": "Standard search results labelled tavily, with authority score 0 and direct web addresses.",
+  "risks": "Moving the key back into the request body would bring back the silent 401 failures described in the comments. Unless the key chain counts 401 or 403 as spent, a bad key is not parked and fails on every search.",
+  "debug": "Look for the tavily log lines. A line naming an invalid or expired key means the key itself is wrong. Check the key settings and whether a key has been parked.",
+  "summary_hash": "sha256:fcb7e36eb71d34143b7d9177e245b84f571e84cb3542acb87f56c86e3f4d38a7"
+}

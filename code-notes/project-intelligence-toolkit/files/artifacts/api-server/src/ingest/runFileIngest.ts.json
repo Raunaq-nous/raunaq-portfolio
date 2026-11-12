@@ -1,0 +1,509 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/runFileIngest.ts",
+  "language": "TypeScript",
+  "lines": 786,
+  "hash": "sha256:49d75a6253a2b29c7c76cd36ce4bf17284c00700a28dba0fbdcdc8aa92012e07",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet, so the matching and overwrite rules are not confirmed by this review.",
+      "The file is long and several helpers carry significant rules, which makes a change easy to get wrong without tests.",
+      "Only parts of the file were in the packet, so some behavior was reviewed from comments and code alone."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Dry run",
+      "meaning": "A preview that runs the full planning logic but saves nothing."
+    },
+    {
+      "term": "Transaction",
+      "meaning": "A group of database changes that either all save or all get cancelled together."
+    },
+    {
+      "term": "Advisory lock",
+      "meaning": "A database lock used here so that two imports of the same industry cannot run at the same time."
+    },
+    {
+      "term": "Source keys",
+      "meaning": "Reference codes that tie a project to an outside record, used to find the same project on a later import."
+    },
+    {
+      "term": "Audit log (change log)",
+      "meaning": "A table that records each changed field, its old and new value, and where the change came from."
+    },
+    {
+      "term": "Upsert",
+      "meaning": "A mode that both inserts new projects and updates existing ones."
+    },
+    {
+      "term": "Maturity",
+      "meaning": "A rating of how far along a project is, derived from its lifecycle stage unless research has set it."
+    },
+    {
+      "term": "Conflict",
+      "meaning": "A record that matches more than one existing project, so the import will not guess which one to update."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "../db",
+    "@workspace/db",
+    "../shared/maturity",
+    "../shared/ingest/conform",
+    "../storage",
+    "../shared/industries",
+    "../shared/classify",
+    "../lib/canonicalize"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 22,
+      "kind": "setup",
+      "name": "File setup, Db, Tx, Reader, IngestMode",
+      "id": "s1",
+      "hash": "e653a05733d2fff9",
+      "title": "Imports and database handle types",
+      "what": "Brings in the database, the project and audit tables, the record checker, and helper rules. It defines one type that works for the normal database and for a transaction, so the same code can preview or save.",
+      "why": "Likely reason: using one type for both paths keeps the preview and the save running the same logic.",
+      "watch_out": "Anything that uses the transaction type must only run inside a transaction, or it will fail."
+    },
+    {
+      "start": 23,
+      "end": 30,
+      "kind": "type",
+      "name": "RunFileIngestParams",
+      "id": "s2",
+      "hash": "737867cff99f0c20",
+      "title": "Import settings",
+      "what": "Describes what a caller passes in: the industry, the records, the mode, whether to dry run, and who triggered the import.",
+      "why": "Gathers the options in one place so every caller uses the same set.",
+      "watch_out": "The dry run setting defaults to true, so a caller that forgets it gets a preview and not a save. This is the safe default."
+    },
+    {
+      "start": 31,
+      "end": 35,
+      "kind": "type",
+      "name": "IssueItem",
+      "id": "s3",
+      "hash": "4906fd43867e574d",
+      "title": "Issue item shape",
+      "what": "Defines one entry in an error, conflict or warning list: a project name, which may be blank, and the list of problems found for it.",
+      "why": "Gives every problem report the same shape so the caller can display them the same way.",
+      "watch_out": "The name can be empty when the record did not have a usable name, so displays should handle that case."
+    },
+    {
+      "start": 36,
+      "end": 60,
+      "kind": "type",
+      "name": "DryRunPlan",
+      "id": "s4",
+      "hash": "65b65c7bc90f0607",
+      "title": "Preview result shape",
+      "what": "Defines what a preview returns: how many records would be added, updated, skipped or conflicted, which fields would change, sample names, problems, warnings and the spread of sub-industries.",
+      "why": "Lets an operator review the impact of an import before anything is saved.",
+      "watch_out": "The preview uses the same logic as the save but saves nothing, so it is a forecast and not a guarantee of the final result."
+    },
+    {
+      "start": 61,
+      "end": 79,
+      "kind": "type",
+      "name": "CommitResult, RunFileIngestResult",
+      "id": "s5",
+      "hash": "12fa7e4a67659b54",
+      "title": "Save result shape",
+      "what": "Defines what a real save returns: counts of inserted and updated projects, skipped items, evidence added, and the lists of errors and conflicts.",
+      "why": "Reports what was actually written so the operator can confirm the outcome.",
+      "watch_out": "The save result leaves out some preview-only fields, so code reading either result should check the dry run flag first."
+    },
+    {
+      "start": 80,
+      "end": 98,
+      "kind": "value",
+      "name": "SCALAR_FIELDS, MONEY_FIELDS, DATE_FIELDS, COMPLETION_DATE_FIELDS",
+      "id": "s6",
+      "hash": "518b4c87d550a509",
+      "title": "Which fields the file can fill",
+      "what": "Lists the project fields that a file may provide, and marks which are money, which are dates, and which are completion dates. Completion dates are the only dates allowed as a year alone, which is then set to December 31. A few required fields are kept out of the optional list for new projects.",
+      "why": "Reason not stated in the code for year-only completion dates, though a comment says existing data uses that convention.",
+      "watch_out": "Adding a field here makes it overwritable, so it must also exist in the database and in the record checker."
+    },
+    {
+      "start": 99,
+      "end": 103,
+      "kind": "value",
+      "name": "INT_FIELDS",
+      "id": "s7",
+      "hash": "9c64a99d729ae94b",
+      "title": "Whole-number fields",
+      "what": "Marks confidence score and delay months as whole-number fields rather than money. Zero is treated as real data and is kept.",
+      "why": "The comment explains that zero months of delay is a real value and should not be dropped.",
+      "watch_out": "Values are rounded to the nearest whole number, so a value like 2.6 becomes 3."
+    },
+    {
+      "start": 104,
+      "end": 107,
+      "kind": "function",
+      "name": "bump",
+      "id": "s8",
+      "hash": "c1b028c8c3fcbc15",
+      "title": "Counter helper",
+      "what": "Adds one to a named counter inside a summary object, starting from zero if the counter does not yet exist.",
+      "why": "Keeps the many summary counts in the preview and save results simple to update.",
+      "watch_out": "Counter names are plain text, so a typo creates a new counter instead of failing."
+    },
+    {
+      "start": 108,
+      "end": 111,
+      "kind": "function",
+      "name": "nonBlank",
+      "id": "s9",
+      "hash": "b901bcf59b2e8587",
+      "title": "Non-blank text helper",
+      "what": "Returns the trimmed text of a value only if it is a non-empty string, and returns nothing otherwise.",
+      "why": "Stops blank or non-text values from overwriting or filling project fields.",
+      "watch_out": "Numbers and other non-text values return nothing here, so they must be converted to text earlier if they are meant to be used."
+    },
+    {
+      "start": 112,
+      "end": 115,
+      "kind": "function",
+      "name": "normalizeForMatch",
+      "id": "s10",
+      "hash": "e66db4a4e893e434",
+      "title": "Name normalizing for matching",
+      "what": "Makes names comparable by lowercasing them and removing every character that is not a letter or digit.",
+      "why": "Lets records match existing projects even when spacing or punctuation differs.",
+      "watch_out": "Two different names that differ only by punctuation will be treated as the same project."
+    },
+    {
+      "start": 116,
+      "end": 127,
+      "kind": "function",
+      "name": "extractSourceKeys",
+      "id": "s11",
+      "hash": "94c8faf555498b50",
+      "title": "Reading source keys from a record",
+      "what": "Reads the source reference codes from a record, accepting either of two spellings of the field name. Empty values are dropped, and nothing is returned if no codes remain.",
+      "why": "Accepts input from more than one file layout.",
+      "watch_out": "Only text values are kept after trimming, so a numeric code is converted to text and could differ in formatting from the stored code."
+    },
+    {
+      "start": 128,
+      "end": 154,
+      "kind": "function",
+      "name": "coerceForColumn",
+      "id": "s12",
+      "hash": "5cb7a440c21b6623",
+      "title": "Converting values for each database column",
+      "what": "Converts an incoming value into the form its database column expects. Blank or invalid values are skipped rather than written, and year-only dates are only accepted for completion dates, where they become December 31.",
+      "why": "The comments say start dates would be shifted about a year late if year-only values were accepted, so those values are skipped on purpose.",
+      "watch_out": "A year-only start date is silently skipped, so the project may appear without that date even though the file had a year."
+    },
+    {
+      "start": 155,
+      "end": 161,
+      "kind": "function",
+      "name": "fieldCanon",
+      "id": "s13",
+      "hash": "f2abbbfe5bfec98a",
+      "title": "Standard text for comparing values",
+      "what": "Produces a standard text form of a value, used to decide whether a field really changed and to write the audit log. Money is normalized first so differences in formatting do not count as changes.",
+      "why": "Stops re-runs of the same file from creating false changes.",
+      "watch_out": "This text decides what counts as a change, so changing its rules can make every row look changed on the next run."
+    },
+    {
+      "start": 162,
+      "end": 169,
+      "kind": "type",
+      "name": "LooseVariances",
+      "id": "s14",
+      "hash": "f0f1a3e802cc2445",
+      "title": "Shape of the overrun reasons block",
+      "what": "Describes the stored block that holds the cost and schedule overrun reasons, along with any other keys that already exist in it.",
+      "why": "Makes clear that other keys in this block must be kept when a reason is updated.",
+      "watch_out": "Any code that rewrites this block must keep the unrelated keys, or existing data will be lost."
+    },
+    {
+      "start": 170,
+      "end": 174,
+      "kind": "type",
+      "name": "VariancesMerge",
+      "id": "s15",
+      "hash": "7c7001ecc7ae2875",
+      "title": "Shape of a reasons merge result",
+      "what": "Holds the updated reasons block together with the list of changed reason paths for the audit log.",
+      "why": "Keeps the new block and its change list together so they are saved as one step.",
+      "watch_out": "The list of changes must match the merged block, or the audit log will not reflect what was saved."
+    },
+    {
+      "start": 175,
+      "end": 204,
+      "kind": "function",
+      "name": "computeVariancesMerge",
+      "id": "s16",
+      "hash": "32633990f7c5c6e7",
+      "title": "Updating cost and schedule reasons",
+      "what": "Works out whether the cost reason or schedule reason in the file differs from what is stored. If one differs, it returns a copy of the block with only that reason replaced. Blank reasons never clear a stored reason, and nothing is returned if nothing differs.",
+      "why": "The comment says reasons are overwritten only when they differ, and blank input is ignored so good data is never erased.",
+      "watch_out": "Only the two reason fields change, and every other key is kept, so an empty file value will not clear an existing reason."
+    },
+    {
+      "start": 205,
+      "end": 233,
+      "kind": "function",
+      "name": "buildInsertValues",
+      "id": "s17",
+      "hash": "43c0f18a4fa26ff4",
+      "title": "Building values for a new project",
+      "what": "Builds the full set of values for a project that does not yet exist. It sets name, description, industry, start date, status, maturity and likelihood from the lifecycle stage, and then adds the optional fields, reasons and source keys that are present.",
+      "why": "Makes sure every new project starts with the required fields filled, even if the file leaves some blank.",
+      "watch_out": "Placeholder values appear in the database when the file does not provide them. The start date falls back to the text TBD and the status falls back to PLANNED."
+    },
+    {
+      "start": 234,
+      "end": 270,
+      "kind": "function",
+      "name": "buildNewChangeLogRows, ScalarChange, AttrChange",
+      "id": "s18",
+      "hash": "90f1296e57c8135e",
+      "title": "Audit rows for new projects and change shapes",
+      "what": "Creates one audit row for each filled field, attribute, reason and source key of a new project, so its history shows where its starting values came from. The two small shapes describe a single changed scalar field and a single changed attribute.",
+      "why": "Lets a reviewer see what the import set when it created the project.",
+      "watch_out": "Scalar fields are stored in standard text form while attributes use a different form, so readers of the audit log should expect both styles."
+    },
+    {
+      "start": 271,
+      "end": 278,
+      "kind": "type",
+      "name": "UpdateChanges",
+      "id": "s19",
+      "hash": "26462309d16c2cda",
+      "title": "Shape of planned changes for one project",
+      "what": "Groups every change planned for one existing project: changed scalar fields, changed attributes, the updated source keys, and the updated reasons.",
+      "why": "Gathers all planned edits so they can be saved together and logged together.",
+      "watch_out": "This shape only describes a plan. Nothing is written from it until the save step runs."
+    },
+    {
+      "start": 279,
+      "end": 337,
+      "kind": "function",
+      "name": "computeUpdate",
+      "id": "s20",
+      "hash": "977f3a958c3e53d7",
+      "title": "Planning changes for an existing project",
+      "what": "Compares each incoming field with the stored value and keeps only the real differences. It also keeps maturity and likelihood in line with the lifecycle stage, unless the project has researched maturity data. Attributes and source keys are merged, so existing entries are kept.",
+      "why": "The comments say projects with researched maturity are left alone because the research result should win.",
+      "watch_out": "Projects with researched maturity do not receive lifecycle-based maturity updates from a file. That is intended but is easy to forget while debugging."
+    },
+    {
+      "start": 338,
+      "end": 345,
+      "kind": "type",
+      "name": "Indexes",
+      "id": "s21",
+      "hash": "f06f79ce094984bd",
+      "title": "Lookup structure for matching",
+      "what": "Describes the two lookup tables used to match records to existing projects: one by normalized name and one by source key. Each lookup can hold more than one project.",
+      "why": "Keeping every match, rather than a single winner, lets duplicates be spotted and reported as conflicts.",
+      "watch_out": "A single-match lookup would silently hide duplicate projects, so this structure should not be simplified."
+    },
+    {
+      "start": 346,
+      "end": 351,
+      "kind": "function",
+      "name": "pushIndex",
+      "id": "s22",
+      "hash": "3b70d16f8bee3e94",
+      "title": "Adding to a lookup",
+      "what": "Adds a project to one lookup key, unless that project is already listed there.",
+      "why": "Prevents the same project from being listed twice under one key, which would cause false conflicts.",
+      "watch_out": "Projects are compared by ID, so two copies of the same project with different IDs would both be listed."
+    },
+    {
+      "start": 352,
+      "end": 359,
+      "kind": "function",
+      "name": "removeFromIndex",
+      "id": "s23",
+      "hash": "ba8d4d4122edf568",
+      "title": "Removing from a lookup",
+      "what": "Removes one project from a lookup key and deletes the key if it becomes empty.",
+      "why": "Used when a name or source key changes during the run, so later records match the new value.",
+      "watch_out": "If this removal is skipped after a change, a later record may match the old value and update the wrong project."
+    },
+    {
+      "start": 360,
+      "end": 372,
+      "kind": "function",
+      "name": "buildIndexes",
+      "id": "s24",
+      "hash": "699dbec7d4e044d7",
+      "title": "Building the initial lookups",
+      "what": "Builds both lookup tables from all existing projects in the industry before any record is matched.",
+      "why": "Lets each record be matched quickly without querying the database each time.",
+      "watch_out": "Only projects in the same industry are loaded, so a project in another industry can never be matched."
+    },
+    {
+      "start": 373,
+      "end": 380,
+      "kind": "function",
+      "name": "indexProject",
+      "id": "s25",
+      "hash": "c0f47767424d1185",
+      "title": "Adding a project to lookups",
+      "what": "Adds a project to both lookup tables, using the source keys passed in or, if none are passed, the keys already stored on the project.",
+      "why": "Keeps the lookups current when a project is inserted or updated during the run.",
+      "watch_out": "If the stored keys are used on an update, they may be out of date. The update path passes fresh keys to avoid this."
+    },
+    {
+      "start": 381,
+      "end": 385,
+      "kind": "type",
+      "name": "Action",
+      "id": "s26",
+      "hash": "f6130ded4d919572",
+      "title": "Possible outcomes for a record",
+      "what": "Lists the three possible outcomes for one record: create a new project, update a named existing project, or mark a conflict with a reason.",
+      "why": "Gives the matching step a fixed set of results to return.",
+      "watch_out": "A conflict does not stop the run. The record is set aside and the others continue."
+    },
+    {
+      "start": 386,
+      "end": 409,
+      "kind": "function",
+      "name": "classify",
+      "id": "s27",
+      "hash": "b0056e58c87c91d4",
+      "title": "Deciding what to do with a record",
+      "what": "Chooses the outcome for one record. It first tries the source keys, and reports a conflict if they point to more than one project. If there is no key match, it tries the normalized name, with the same rule for multiple matches. If nothing matches, the record is new.",
+      "why": "Source keys are checked first because they are more reliable than names.",
+      "watch_out": "A source key match wins over a name match, so a record can update a project whose name is different from the record's name."
+    },
+    {
+      "start": 410,
+      "end": 418,
+      "kind": "type",
+      "name": "Conformed",
+      "id": "s28",
+      "hash": "48909aba58e85ef4",
+      "title": "Record after checking",
+      "what": "Holds one record through the process: its raw input, its cleaned version, its problems, its source keys, its evidence quotes, and how many evidence quotes were dropped.",
+      "why": "Keeps the raw input next to the cleaned version so error reports can show the original name.",
+      "watch_out": "The raw input must stay attached, because error messages depend on it."
+    },
+    {
+      "start": 419,
+      "end": 433,
+      "kind": "type",
+      "name": "Aggregate",
+      "id": "s29",
+      "hash": "ce377220317235d7",
+      "title": "Running totals",
+      "what": "Holds the running counts and samples gathered while the plan is executed, including inserts, updates, skips, evidence, and conflicts.",
+      "why": "Lets the preview and the save report the same totals.",
+      "watch_out": "Totals are only reliable if preview and save use the same logic, which this file is built to ensure."
+    },
+    {
+      "start": 434,
+      "end": 483,
+      "kind": "function",
+      "name": "execPlan (part 1)",
+      "id": "s30",
+      "hash": "0bd6e1e757c78683",
+      "title": "Shared planning pass, setup",
+      "what": "Loads all existing projects in the industry, builds the lookups, finds projects with researched maturity, sets up the counters, and prepares a record of evidence quotes already seen for each project. It runs with either the normal database or the transaction, and only writes when told to apply.",
+      "why": "One shared pass means the preview and the save cannot drift apart.",
+      "watch_out": "All projects in the industry are loaded into memory, so very large industries will use more memory."
+    },
+    {
+      "start": 484,
+      "end": 542,
+      "kind": "function",
+      "name": "execPlan (part 2)",
+      "id": "s31",
+      "hash": "7baaa375d70e5f8c",
+      "title": "Attaching evidence quotes",
+      "what": "Adds the evidence quotes for one project, skipping any quote whose exact text is already stored for that project. In a real save, each new quote is written with a link fragment built from its first 120 characters.",
+      "why": "Keeps evidence append-only, so re-running an import never duplicates quotes.",
+      "watch_out": "The duplicate check uses exact text, so even a small wording change will create a second quote."
+    },
+    {
+      "start": 543,
+      "end": 594,
+      "kind": "method",
+      "name": "execPlan: for",
+      "id": "s32",
+      "hash": "fc8856a7dc0859f3",
+      "title": "Handling each record in the pass",
+      "what": "Walks through every record that passed the checks. Conflicts are logged and skipped. New records are inserted with their audit rows when saving, or counted when previewing. In update mode, new records are skipped, and in insert mode, existing projects are skipped.",
+      "why": "Mode settings let a user insert only new projects, or update only existing ones.",
+      "watch_out": "In insert mode existing projects are counted as skipped, not updated, so a preview in that mode will show no updates."
+    },
+    {
+      "start": 595,
+      "end": 653,
+      "kind": "method",
+      "name": "execPlan: if",
+      "id": "s33",
+      "hash": "09e3d5900b2b0ec3",
+      "title": "Saving changes to an existing project",
+      "what": "For an existing project with no real change, it only adds new evidence and counts it as unchanged. For a project with real changes, it saves the changed fields, merges attributes, saves the source keys and reasons, and writes an audit row for each change. It also updates the in-memory copy so later duplicates in the same file see the new values.",
+      "why": "Updating the in-memory copy keeps repeated rows in one file from being treated as new changes.",
+      "watch_out": "Attributes are merged in the database and empty values are removed, so an empty value in the file cannot be used to clear an existing attribute."
+    },
+    {
+      "start": 654,
+      "end": 685,
+      "kind": "method",
+      "name": "execPlan: if",
+      "id": "s34",
+      "hash": "042ccf9449862e69",
+      "title": "Keeping lookups correct after a change",
+      "what": "After an update, it removes the old source key and name entries from the lookups and adds the new ones. It then counts the update and attaches any new evidence.",
+      "why": "Makes later records in the same file match the updated project under its new name or key.",
+      "watch_out": "If this step is skipped, a later record can be matched to the old value or treated as a new project."
+    },
+    {
+      "start": 686,
+      "end": 736,
+      "kind": "function",
+      "name": "runFileIngest (part 1)",
+      "id": "s35",
+      "hash": "a461036cc5860d25",
+      "title": "Entry point: checking and converting records",
+      "what": "Checks that the industry exists and the records form a list. For data-driven industries, it loads the known sub-industry names. It converts every record, sets aside any with errors, and collects warnings and sub-industry counts for the eligible records.",
+      "why": "Errors are reported per record, so one bad row does not stop the others from being checked.",
+      "watch_out": "Records with errors are never imported, so a row that looks fine but has an error will be missing from the results."
+    },
+    {
+      "start": 737,
+      "end": 786,
+      "kind": "method",
+      "name": "runFileIngest: if",
+      "id": "s36",
+      "hash": "9e312963e5d0e6f1",
+      "title": "Preview or save",
+      "what": "In dry run mode, runs the shared pass without saving and returns the preview. Otherwise it takes a per-industry lock and runs the same pass inside one transaction, so either every change is saved or none is.",
+      "why": "The lock stops two imports of the same industry from running at once, and the transaction makes a failed run roll back cleanly.",
+      "watch_out": "The lock and transaction only protect this industry, so imports into different industries can still run together."
+    }
+  ],
+  "explained_at": "2026-11-12T03:35:36+00:00",
+  "explained_by": "haiku",
+  "summary": "Imports a list of project records from an uploaded file into the database, either as a safe preview or as a real save in one all-or-nothing transaction.",
+  "purpose": "Lets an operator load or refresh the projects of one industry from a file while protecting existing data from accidental overwrites.",
+  "why": "Likely reason: the same planning logic is run for both preview and save, so the preview is a reliable forecast of what the save will do.",
+  "how": "The function first checks the industry exists. It then converts every record, sets aside records with errors, and matches each remaining record to a new or existing project. In preview mode it counts the results and returns. In save mode it takes a per-industry lock, applies every change in one transaction, and writes an audit row for each change.",
+  "inputs": "An industry slug, a list of raw records from the file, a mode (upsert, insert or update), a dry run flag which defaults to true, and an optional name of who triggered the import.",
+  "outputs": "A preview summary with counts, samples, errors, conflicts and warnings, or a commit summary with the number of projects inserted, rows updated, and evidence quotes added.",
+  "risks": "A real save changes live project data. Fields are only overwritten when the new value is non-blank and actually different, but name or source key matches can send a record to the wrong project if the matching data is poor. Conflicts are reported rather than resolved.",
+  "debug": "Run the preview first and read the errored, conflicts and warnings lists. For a wrong match, check the source keys and normalized names of the target project. For unexpected blanks, check the coercion rules for dates and numbers. If a save fails, the whole transaction should roll back, so look at the thrown error message.",
+  "summary_hash": "sha256:49d75a6253a2b29c7c76cd36ce4bf17284c00700a28dba0fbdcdc8aa92012e07"
+}

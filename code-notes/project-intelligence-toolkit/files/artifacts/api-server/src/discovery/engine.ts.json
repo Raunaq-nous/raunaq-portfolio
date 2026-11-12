@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/discovery/engine.ts",
+  "language": "TypeScript",
+  "lines": 369,
+  "hash": "sha256:078664207e7d40be904c5d573649a26162b017df830de831a067f1c84408bb3e",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test or example run is visible in the packet.",
+      "New projects are always labelled as nuclear, which is wrong for other industries.",
+      "Partial name matching can attach facts to the wrong project.",
+      "Writes are not wrapped in one transaction, so a failure part way leaves partial data.",
+      "The shared ID counter can give clashing IDs if two runs overlap."
+    ]
+  },
+  "terms": [
+    {
+      "term": "storage",
+      "meaning": "the layer that reads and writes the database through one set of functions"
+    },
+    {
+      "term": "retriever",
+      "meaning": "the part that downloads a web page"
+    },
+    {
+      "term": "candidate",
+      "meaning": "one possible project found on a page, not yet saved"
+    },
+    {
+      "term": "confidence",
+      "meaning": "a score from 0 to 100 for how many facts were found for a candidate"
+    },
+    {
+      "term": "source key",
+      "meaning": "a saved label recording how a project was first found, used to match it again later"
+    },
+    {
+      "term": "change log",
+      "meaning": "a record of each field change, with the old value, the new value and what made the change"
+    },
+    {
+      "term": "cache",
+      "meaning": "a short-lived store of answers, cleared here so the app shows fresh data"
+    },
+    {
+      "term": "canonicalize",
+      "meaning": "a helper that turns a value into one standard text form so old and new values can be compared"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/storage",
+    "artifacts/api-server/src/jobs/interfaces",
+    "artifacts/api-server/src/discovery/interfaces",
+    "artifacts/api-server/src/discovery/extractor",
+    "artifacts/api-server/src/cache",
+    "artifacts/api-server/src/lib/canonicalize",
+    "@workspace/db"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f2a4c2b13ca4ea92",
+      "title": "Imports used by discovery",
+      "what": "Brings in the storage, retriever, candidate types, extractor, cache, text cleaner and project type that the discovery steps use.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 9,
+      "end": 20,
+      "kind": "function",
+      "name": "normalizeNameForMatch",
+      "id": "s2",
+      "hash": "153cc532469088e0",
+      "title": "Standardizing names for matching",
+      "what": "Turns a project name into a plain lowercase form with common plant wording, unit numbers and NPP removed, so one plant written two ways can be recognized as the same.",
+      "why": "Likely reason: name matching across websites and the database would fail on small wording differences otherwise.",
+      "watch_out": "Removing unit numbers means two different units at one site share a single key, so they can be treated as the same project."
+    },
+    {
+      "start": 21,
+      "end": 51,
+      "kind": "function",
+      "name": "deriveStatus",
+      "id": "s3",
+      "hash": "c4f5311ae36ed724",
+      "title": "Choosing status and likelihood from dates",
+      "what": "Works out a project's status, lifecycle stage, maturity and likelihood score. If the candidate already gives a status and stage, those are used. Otherwise a commercial operation year in the current or an earlier year means operating, a construction start means under construction, a final investment decision means pre-construction, and anything else is planned.",
+      "why": "Likely reason: sources rarely state a status, so the app infers one from the dates it found.",
+      "watch_out": "A wrong or past commercial operation date alone marks a plant as operating, and the year check uses the server's clock."
+    },
+    {
+      "start": 52,
+      "end": 69,
+      "kind": "function",
+      "name": "getNextProjectId",
+      "id": "s4",
+      "hash": "ac326e567bc922f1",
+      "title": "Creating new project IDs",
+      "what": "Produces the next project ID in the form p- followed by a three-digit number, starting after the highest existing number. The counter is held in memory for the run.",
+      "why": "Likely reason: a simple sequence keeps IDs readable and unique within a run.",
+      "watch_out": "The counter is a shared variable reset at the start of each run, so two overlapping runs could hand out the same number twice."
+    },
+    {
+      "start": 70,
+      "end": 73,
+      "kind": "value",
+      "name": "FILL_FIELDS",
+      "id": "s5",
+      "hash": "3db59d152b8a965f",
+      "title": "Fields discovery may fill in",
+      "what": "Lists the project fields discovery may fill when they are empty: country, technology, power, units, construction start, commercial operation, and final investment decision.",
+      "why": "Likely reason: limits which fields discovery may change on existing projects.",
+      "watch_out": "This list is not used in the sections shown here, and the field map in the fill-blank-fields section must be kept in step with it."
+    },
+    {
+      "start": 74,
+      "end": 115,
+      "kind": "function",
+      "name": "runDiscovery (part 1)",
+      "id": "s6",
+      "hash": "417e365b240b4b0e",
+      "title": "Starting a discovery run",
+      "what": "The entry point for a run. It takes an optional company, the name of who started it, the storage and the retriever. It clears the ID counter, sets up the result counts, and loads the companies to check, returning an empty result early if there are none.",
+      "why": "Reason for the count structure is not stated, but the counts make up the summary the run returns.",
+      "watch_out": "An empty company list returns quietly with zero counts, so a caller must read the log to tell nothing was found from nothing was checked."
+    },
+    {
+      "start": 116,
+      "end": 163,
+      "kind": "method",
+      "name": "runDiscovery: for",
+      "id": "s7",
+      "hash": "f3378c49d8914581",
+      "title": "Fetching each enabled web source",
+      "what": "For each enabled source of each company, downloads the page. If the status is a success or redirect, it extracts candidates from the page. It then records the time the source was checked, and a failed source logs a warning while the run continues.",
+      "why": "The catch block keeps one broken website from stopping the whole run.",
+      "watch_out": "The check time is saved even when the page returned an error code, so last crawled means last tried."
+    },
+    {
+      "start": 164,
+      "end": 212,
+      "kind": "method",
+      "name": "runDiscovery: if",
+      "id": "s8",
+      "hash": "33bb810f6c1738dc",
+      "title": "Filtering and matching each candidate",
+      "what": "Skips a candidate if its name repeats one already seen in this run, if its confidence is below 20, or if it lacks a usable name or country. Remaining candidates are matched to an existing project by source key, exact normalized name, or partial name overlap. Designer names are turned into linked companies.",
+      "why": "Likely reason: avoids duplicate projects and records with missing facts.",
+      "watch_out": "The partial-name match keeps the last hit rather than the best one, and the country check accepts the placeholder 'Unknown' because it is a non-empty string."
+    },
+    {
+      "start": 213,
+      "end": 271,
+      "kind": "function",
+      "name": "runDiscovery (part 4)",
+      "id": "s9",
+      "hash": "da20b78b5c2dc36d",
+      "title": "Updating matched projects and creating new ones",
+      "what": "When a candidate matches an existing project, fills its empty fields and records company links. Otherwise it creates a new project with a derived status, description, source key and change log entry, then records its company links.",
+      "why": "Likely reason: each candidate either enriches a known project or adds a new one, and the change log keeps a trail.",
+      "watch_out": "New projects are always given the role 'Nuclear Power Generation', so this path would mislabel non-nuclear projects."
+    },
+    {
+      "start": 272,
+      "end": 317,
+      "kind": "function",
+      "name": "runDiscovery (part 5)",
+      "id": "s10",
+      "hash": "935b31efb31049ba",
+      "title": "Saving reactor details and clearing caches",
+      "what": "For a new project, saves reactor type, designer, generation and power in a separate technology record when any are known, and logs it. A candidate that errors is counted as other and the run moves on. After the loop, the project and update caches are cleared and a summary is printed.",
+      "why": "Likely reason: one failing candidate should not stop the run, and clearing caches keeps the app from showing old project lists.",
+      "watch_out": "Reactor details are saved only for new projects, so an existing project never gets them through this path."
+    },
+    {
+      "start": 318,
+      "end": 369,
+      "kind": "function",
+      "name": "fillNullFields",
+      "id": "s11",
+      "hash": "f5d015c360392aa5",
+      "title": "Filling blank fields on existing projects",
+      "what": "For an existing project, copies candidate facts into any field that is empty, or power that is zero, logs each change, and adds a discovery source key if it is missing. It returns the list of fields it changed.",
+      "why": "Likely reason: adds new facts without overwriting facts already there.",
+      "watch_out": "Each change is logged before the project itself is saved, so a failed save leaves a log entry for a change that never happened."
+    }
+  ],
+  "explained_at": "2026-11-12T03:25:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Searches the web sources of tracked companies for nuclear projects and either adds each new project to the database or fills gaps in one already there.",
+  "purpose": "Finds nuclear projects from company websites so they do not have to be typed in by hand.",
+  "why": "Likely reason: entering many projects by hand is slow and error prone, so the app reads them from company pages.",
+  "how": "First, the ID counter is cleared. Then the companies and their enabled sources are loaded. Each page is downloaded and candidates are extracted. Weak, duplicate or incomplete candidates are dropped. Each remaining candidate is matched to an existing project or treated as new. Gaps are filled or a new project is created, with changes logged. Companies are linked and reactor details saved. Finally caches are cleared and a summary is returned.",
+  "inputs": "An optional company id, a text label for who started the run, a storage object for reading and writing data, and a retriever that downloads pages.",
+  "outputs": "New project records, updates to existing projects, change log entries, company-to-project links, reactor detail records, updated check times on sources, and a result summary with counts and reasons.",
+  "risks": "Name matching can attach facts to the wrong project or create duplicates. New projects are always labelled as nuclear. Writes are made one at a time without one overall transaction, so a crash mid-run leaves partial data. The ID counter is shared state. Some storage calls use a loose type cast.",
+  "debug": "Read the console lines that start with [discovery]: they show fetch failures, candidate counts and the skip breakdown. If a project is missing, check its skip reason, most often low confidence or a missing country. If projects are duplicated, check the output of normalizeNameForMatch and the source key. If IDs look odd, check getNextProjectId and whether two runs overlapped. Check the change log for what the run wrote.",
+  "summary_hash": "sha256:078664207e7d40be904c5d573649a26162b017df830de831a067f1c84408bb3e"
+}

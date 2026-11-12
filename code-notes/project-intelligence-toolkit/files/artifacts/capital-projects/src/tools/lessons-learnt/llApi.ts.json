@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/capital-projects/src/tools/lessons-learnt/llApi.ts",
+  "language": "TypeScript",
+  "lines": 174,
+  "hash": "sha256:80a3c16f7ceba2972ab4c5f8c8f21a3711554eee96cec312ca70fc6ca7a787c4",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in this file.",
+      "Many fields are typed as unknown or any, so the checks are weak.",
+      "Error handling is left to the shared request helper, which is not included here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Interface",
+      "meaning": "a written description of the fields an object must or may have, used so the editor and the code agree on names."
+    },
+    {
+      "term": "Type",
+      "meaning": "a named description of what a value can be, such as a text value or a number."
+    },
+    {
+      "term": "Citation",
+      "meaning": "a reference that links a statement in the deck back to the facts or sources that support it."
+    },
+    {
+      "term": "Fact",
+      "meaning": "one piece of sourced information about a project, such as a cost or a date, with a link to where it came from."
+    },
+    {
+      "term": "Pillar",
+      "meaning": "one of the main themes the lessons are grouped under."
+    },
+    {
+      "term": "Slide",
+      "meaning": "one page of the generated lessons deck, with a title, bullets, footnotes and an optional chart."
+    },
+    {
+      "term": "Blob",
+      "meaning": "a file held in the browser's memory, used here to download a file from the server."
+    },
+    {
+      "term": "Scope",
+      "meaning": "the set of industries, segments, projects and companies a run is built from."
+    }
+  ],
+  "depends_on": [
+    "@/lib/queryClient",
+    "@/components/tools/house/ResearchOptions"
+  ],
+  "used_by": [
+    "artifacts/capital-projects/src/tools/lessons-learnt/index.tsx",
+    "artifacts/capital-projects/src/tools/lessons-learnt/v3/CoverageView.tsx",
+    "Other Lessons Learnt files that call these functions (not all visible in this packet)."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup, RunStatus",
+      "id": "s1",
+      "hash": "6e2e1dd35fbc8a7a",
+      "title": "Base path and run statuses",
+      "what": "Sets the shared web path for all Lessons Learnt requests and lists every status a run can have, such as queued, running, succeeded or failed.",
+      "why": "Keeps the path in one place so it is not typed in many files, and gives the screens one list of statuses to compare against.",
+      "watch_out": "If a new status is added on the server, it must also be added here, or screens will not recognise it."
+    },
+    {
+      "start": 7,
+      "end": 15,
+      "kind": "type",
+      "name": "LLScope",
+      "id": "s2",
+      "hash": "bc4393b809b909f4",
+      "title": "Scope shape",
+      "what": "Describes the choices a user makes before a run: industries, segments, projects, companies, and optional research settings and peer inclusion.",
+      "why": "Gives every request the same structure so the server receives the scope in the expected form.",
+      "watch_out": "Some fields are optional and others are required, so leaving out a required list would produce a failed request."
+    },
+    {
+      "start": 16,
+      "end": 28,
+      "kind": "type",
+      "name": "LLRun",
+      "id": "s3",
+      "hash": "5ca798a1326ee073",
+      "title": "Run shape",
+      "what": "Describes a run record: its id, status, current stage, any error, the output file path, coverage, the scope and the dates.",
+      "why": "Lets the screens show progress and results from the same shape.",
+      "watch_out": "The index signature allows any extra field, so typos in field names will not be caught by the editor."
+    },
+    {
+      "start": 29,
+      "end": 36,
+      "kind": "type",
+      "name": "LLStage",
+      "id": "s4",
+      "hash": "2bb3eb49138c93f0",
+      "title": "Stage shape",
+      "what": "Describes one step inside a run, with its key name, status, log and summary.",
+      "why": "A run is made of stages, and the screens show each stage's progress from this shape.",
+      "watch_out": "The summary is typed as any, so the code that reads it must check the values itself."
+    },
+    {
+      "start": 37,
+      "end": 43,
+      "kind": "type",
+      "name": "LLRunDetail",
+      "id": "s5",
+      "hash": "6b93c283e8512b69",
+      "title": "Full run detail shape",
+      "what": "Combines the run record with the list of stages in order and the engine that produced it.",
+      "why": "The run view needs the run and its stages together in one response.",
+      "watch_out": "The stages list can contain empty entries, so readers must skip them."
+    },
+    {
+      "start": 44,
+      "end": 55,
+      "kind": "type",
+      "name": "LLFact",
+      "id": "s6",
+      "hash": "553d7efa2478adfa",
+      "title": "Fact shape",
+      "what": "Describes one sourced fact: its id, project, text, source link, publisher, the field it came from, and the pillar it was placed under.",
+      "why": "Facts are the evidence that every lesson must point back to.",
+      "watch_out": "The honesty and relevance fields are loosely typed, so their meaning depends on the server."
+    },
+    {
+      "start": 56,
+      "end": 61,
+      "kind": "type",
+      "name": "LLSubDriver",
+      "id": "s7",
+      "hash": "0a3b2be27c6ab9de",
+      "title": "Sub-driver shape",
+      "what": "Describes a smaller reason under a pillar, with its text, a short explanation and the facts it uses.",
+      "why": "Breaks each pillar into parts that users can read and check.",
+      "watch_out": "Like the other shapes, it is only a description, so a missing field is not reported until display."
+    },
+    {
+      "start": 62,
+      "end": 69,
+      "kind": "type",
+      "name": "LLPillar",
+      "id": "s8",
+      "hash": "4eca583aeaa6876c",
+      "title": "Pillar shape",
+      "what": "Describes one main theme: its id, name, guiding principle, supporting facts, and its sub-drivers.",
+      "why": "Pillars are the main organising units of the deck.",
+      "watch_out": "The pillar id is used to match facts and slides, so a changed id breaks those matches."
+    },
+    {
+      "start": 70,
+      "end": 78,
+      "kind": "type",
+      "name": "LLSlide",
+      "id": "s9",
+      "hash": "5d7094b7800731d5",
+      "title": "Slide shape",
+      "what": "Describes one slide with its title, subtitle, bullets, footnotes, chart and citation information.",
+      "why": "The deck screens draw each slide from this shape.",
+      "watch_out": "Bullets and footnotes can be text or objects, so the display code must handle both forms."
+    },
+    {
+      "start": 79,
+      "end": 85,
+      "kind": "type",
+      "name": "LLCitation",
+      "id": "s10",
+      "hash": "0e90ab0a54c81665",
+      "title": "Citation shape",
+      "what": "Describes one citation: its kind (evidence, calculation, methodology or gap), the fact ids it uses, related projects, and an explanation.",
+      "why": "Shows the reader why each statement is supported or where support is missing.",
+      "watch_out": "The kind must be one of the four listed values, or the display may not match it."
+    },
+    {
+      "start": 86,
+      "end": 96,
+      "kind": "type",
+      "name": "LLRecipe",
+      "id": "s11",
+      "hash": "5c3dc4a00052485a",
+      "title": "Recipe shape",
+      "what": "Describes the full set of results behind a deck: projects, facts, pillars, patterns, recommendations, slides, totals and method.",
+      "why": "Gives the recipe views one object that holds all the results of a run.",
+      "watch_out": "Most parts are optional, so a run with missing parts will show empty areas rather than an error."
+    },
+    {
+      "start": 97,
+      "end": 106,
+      "kind": "type",
+      "name": "SearchResult, TERMINAL",
+      "id": "s12",
+      "hash": "a496597dcec4389b",
+      "title": "Search result shape and terminal list",
+      "what": "Describes one project found by search, and lists the statuses that mean a run has finished.",
+      "why": "The search result shape is used by the project picker. The terminal list tells the page when to stop checking a run.",
+      "watch_out": "If a final status is missing from the terminal list, the page keeps checking that run forever."
+    },
+    {
+      "start": 107,
+      "end": 110,
+      "kind": "function",
+      "name": "createRun",
+      "id": "s13",
+      "hash": "844d91fbd2646302",
+      "title": "Create run request",
+      "what": "Sends the chosen scope to the server to start a new run and returns the run and its precheck result.",
+      "why": "This is the only way a user starts a real lessons build from the page.",
+      "watch_out": "Starting a run creates server work. Calling this more than once for the same scope creates more runs."
+    },
+    {
+      "start": 111,
+      "end": 114,
+      "kind": "function",
+      "name": "getRun",
+      "id": "s14",
+      "hash": "18193599c649eefc",
+      "title": "Get run request",
+      "what": "Asks the server for one run's full detail, including its stages, using its id.",
+      "why": "The run view needs this to show progress and results.",
+      "watch_out": "The id is encoded before it is added to the path, which protects against unusual characters."
+    },
+    {
+      "start": 115,
+      "end": 118,
+      "kind": "function",
+      "name": "listRuns",
+      "id": "s15",
+      "hash": "466ea3a4a674ad58",
+      "title": "List runs request",
+      "what": "Asks the server for the list of saved runs.",
+      "why": "The start page uses this list to show recent decks.",
+      "watch_out": "The list is not limited here, so a very long list could be slow to load."
+    },
+    {
+      "start": 119,
+      "end": 122,
+      "kind": "function",
+      "name": "precheck",
+      "id": "s16",
+      "hash": "0329e6463dc42a58",
+      "title": "Precheck request",
+      "what": "Sends a scope to the server and returns the count of projects and the breakdown by industry without starting a run.",
+      "why": "Lets users see how big a run would be before they start it.",
+      "watch_out": "The result is typed as any, so a missing count will only show up on screen."
+    },
+    {
+      "start": 123,
+      "end": 127,
+      "kind": "function",
+      "name": "searchProjects",
+      "id": "s17",
+      "hash": "4b6189159472cbb8",
+      "title": "Project search request",
+      "what": "Sends the search text to the server and returns the matching projects.",
+      "why": "Used by the scope picker so users can find projects by name.",
+      "watch_out": "The search text is encoded before sending, which keeps special characters from breaking the request."
+    },
+    {
+      "start": 128,
+      "end": 144,
+      "kind": "function",
+      "name": "downloadBlob",
+      "id": "s18",
+      "hash": "7ed4f74ed0e5ec3b",
+      "title": "File download helper",
+      "what": "Fetches a file from the server with the user's login, turns it into a file in the browser, and starts the download using the name the server suggests or a fallback name. It then removes the temporary link.",
+      "why": "Plain links cannot send the login details the server needs, so the file is fetched first and saved from the browser.",
+      "watch_out": "The file name is read from a header pattern. If the server changes that header, the fallback name is used."
+    },
+    {
+      "start": 145,
+      "end": 156,
+      "kind": "function",
+      "name": "asText",
+      "id": "s19",
+      "hash": "8b8ffaa3e6c79270",
+      "title": "Text converter",
+      "what": "Turns any value into readable text: empty values become blank, text stays text, numbers and yes or no values become words, objects with a text field use that text, and other objects are turned into JSON text.",
+      "why": "Deck data can hold several shapes, and screens need one safe way to show them.",
+      "watch_out": "Objects without a text field are shown as raw JSON, which can look technical on screen."
+    },
+    {
+      "start": 157,
+      "end": 161,
+      "kind": "function",
+      "name": "kickRun",
+      "id": "s20",
+      "hash": "9e77ccb2cfb801c3",
+      "title": "Kick run request",
+      "what": "Asks the server to restart or resume a run and returns whether it was resumed.",
+      "why": "Gives users or support a way to move a stuck run forward.",
+      "watch_out": "Where this is called from is not visible in this file. Calling it on a run that is still healthy could cause duplicate work."
+    },
+    {
+      "start": 162,
+      "end": 166,
+      "kind": "function",
+      "name": "isCitableFact",
+      "id": "s21",
+      "hash": "1f36cf4d54c859f8",
+      "title": "Citable fact check",
+      "what": "Decides whether a fact can be cited directly. A fact can be cited only if it has a real evidence id, a field path and a project. Ids starting with the text var- are treated as calculated values, not evidence.",
+      "why": "Stops the deck from presenting calculated values as if they were sourced facts.",
+      "watch_out": "The check relies on the var- prefix. If the server changes how calculated ids look, the check will misjudge them."
+    },
+    {
+      "start": 167,
+      "end": 171,
+      "kind": "function",
+      "name": "recipeOf",
+      "id": "s22",
+      "hash": "9c24de2d0bb8cf37",
+      "title": "Reading the recipe from a run",
+      "what": "Finds the deck model stage in a run's details and returns the recipe stored inside it, or nothing if it is not there.",
+      "why": "The recipe views need the results from one specific stage of the run.",
+      "watch_out": "It depends on the stage key name deck_model. A rename on the server would make every recipe appear empty."
+    },
+    {
+      "start": 172,
+      "end": 174,
+      "kind": "function",
+      "name": "humanKey",
+      "id": "s23",
+      "hash": "c37f334c41965ea9",
+      "title": "Readable label maker",
+      "what": "Turns a programming style name, such as one with underscores or camel case, into a plain label with spaces and a capital first letter.",
+      "why": "Lets raw field names appear as readable headings on screen.",
+      "watch_out": "It only handles underscores and camel case. Other naming styles are returned with minor changes only."
+    }
+  ],
+  "explained_at": "2026-11-12T06:28:47+00:00",
+  "explained_by": "haiku",
+  "summary": "This file holds the shared shapes of the Lessons Learnt data and the functions that ask the server for runs, precheck counts, project searches, and coverage details.",
+  "purpose": "Gives every Lessons Learnt screen one agreed description of runs, scopes, facts, slides and citations, and one set of request functions.",
+  "why": "Reason not stated in the code. Keeping the data shapes and request functions together means each screen uses the same names and paths.",
+  "how": "It first sets the base web path and the list of possible run statuses. Then it describes each data shape with interface definitions. Then it provides functions that call the server through a shared request helper and return the JSON. It also includes a file download helper, a text converter, a citability check, a recipe reader and a name formatter.",
+  "inputs": "Scope choices from the screens (industries, segments, projects, companies, research settings), run ids, search text, and file responses from the server.",
+  "outputs": "Typed data for the screens, server responses, a downloaded file in the browser, plain text values, and readable labels.",
+  "risks": "The shapes are described by hand, so if the server changes a field name the screens can break without an error. Many fields are marked optional or allowed to be any value, so mistakes may only appear at display time.",
+  "debug": "If a screen shows nothing or wrong values, compare the field names here with the server response. Check the request paths in the functions here, and the status list before debugging polling.",
+  "summary_hash": "sha256:80a3c16f7ceba2972ab4c5f8c8f21a3711554eee96cec312ca70fc6ca7a787c4"
+}

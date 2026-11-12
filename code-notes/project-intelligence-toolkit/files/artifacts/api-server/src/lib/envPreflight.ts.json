@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/lib/envPreflight.ts",
+  "language": "TypeScript",
+  "lines": 241,
+  "hash": "sha256:9c8d70f89338a833898b11256f87b3bcf3a1db8d7cae8b1ab682e37f742127a7",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in this file.",
+      "The startup function reports missing critical settings but does not stop the process here, so the decision to stop is unclear from this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "environment variable",
+      "meaning": "a named setting given to the program from outside, often holding keys or addresses"
+    },
+    {
+      "term": "slug-prefixed model",
+      "meaning": "a model name that begins with the account or project prefix the gateway needs to allow its use"
+    },
+    {
+      "term": "gateway",
+      "meaning": "an intermediary service that routes requests from the app to AI model providers"
+    },
+    {
+      "term": "role",
+      "meaning": "a task type, such as extraction or reasoning, each of which may use a different model"
+    },
+    {
+      "term": "health endpoint",
+      "meaning": "an address that other programs or people can call to check whether the server is working"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/lib/modelConfig",
+    "artifacts/api-server/src/lib/portkeyOpenAI"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 33,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1dd79331285774d4",
+      "title": "Purpose and secrecy rule",
+      "what": "Explains that the module reports only whether settings are present and their length, never their values. Lists the four failure types it is meant to catch. Brings in model and gateway helpers.",
+      "why": "The header states the rule so that anyone editing the module keeps secrets out of the report.",
+      "watch_out": "Adding any code that reads a secret value into the report would break the secrecy rule."
+    },
+    {
+      "start": 34,
+      "end": 43,
+      "kind": "type",
+      "name": "VarSpec",
+      "id": "s2",
+      "hash": "a6a8f91d003150d2",
+      "title": "Shape of one variable rule",
+      "what": "Defines how each variable is described: its name, whether it is critical, what breaks without it, and any alternative variables that can stand in for it.",
+      "why": "Makes it easy to add new variables with a clear note of the consequence.",
+      "watch_out": "The alternative list is the only way a missing critical variable can be satisfied, so typos there cause false alarms."
+    },
+    {
+      "start": 44,
+      "end": 82,
+      "kind": "value",
+      "name": "VAR_SPECS",
+      "id": "s3",
+      "hash": "c262eb1539ed4492",
+      "title": "List of environment variables",
+      "what": "Lists every variable the server reads, with whether it is critical and what breaks without it. Covers the database, login, AI gateway and keys, search providers, storage, server port and tuning settings.",
+      "why": "Gives one place to see the consequence of each setting, ordered by how much it matters.",
+      "watch_out": "Any variable read elsewhere but not listed here will be missing from the report."
+    },
+    {
+      "start": 83,
+      "end": 93,
+      "kind": "type",
+      "name": "EnvVarStatus",
+      "id": "s4",
+      "hash": "8b76a1be99a5a1d2",
+      "title": "Shape of one variable's status",
+      "what": "Defines what the report says about one variable: whether it is set, its length, whether it is critical, what breaks, and which alternative satisfies it if any.",
+      "why": "Lets the report show a complete picture for each variable without showing its value.",
+      "watch_out": "Length is shown, so a very short secret is visible as short, which is intentional."
+    },
+    {
+      "start": 94,
+      "end": 114,
+      "kind": "type",
+      "name": "EnvReport",
+      "id": "s5",
+      "hash": "532d8fc09a7a67fc",
+      "title": "Shape of the full report",
+      "what": "Defines the complete report: the artifact name, the resolved model and its source, role-by-role models, gateway details, all variable statuses, missing critical names, warnings and the check time.",
+      "why": "Gives both the startup log and the health endpoint one consistent structure.",
+      "watch_out": "Anything reading the health endpoint must match these field names."
+    },
+    {
+      "start": 115,
+      "end": 157,
+      "kind": "function",
+      "name": "buildEnvReport (part 1)",
+      "id": "s6",
+      "hash": "ca9fd63ff2889640",
+      "title": "Building the variable list and checks",
+      "what": "For each listed variable, checks whether it is set and whether an alternative covers it, then collects the critical ones that are missing. It then reads the model and role settings and warns about model names that are not slug-prefixed, unless the Replit AI transport is in use.",
+      "why": "The unscoped model name is a common cause of errors that look like authorisation failures, so it is flagged early.",
+      "watch_out": "The slug warnings are skipped when the Replit AI transport is active, so a bad model name will not be flagged in that mode."
+    },
+    {
+      "start": 158,
+      "end": 186,
+      "kind": "method",
+      "name": "buildEnvReport: if",
+      "id": "s7",
+      "hash": "cf4ee99bb0b1b5d8",
+      "title": "Warnings and final report",
+      "what": "Adds warnings for leftover legacy model settings that are ignored, and for having no AI transport configured. Then it assembles and returns the full report with a time stamp.",
+      "why": "Points the owner at settings that look right but do nothing, and at missing AI setup.",
+      "watch_out": "The no-transport warning says model-gated writes will do nothing, so this is a real functional loss, not only a notice."
+    },
+    {
+      "start": 187,
+      "end": 241,
+      "kind": "function",
+      "name": "runEnvPreflight",
+      "id": "s8",
+      "hash": "7f0bbcfa32cd398d",
+      "title": "Printing the preflight at boot",
+      "what": "Builds the report and writes it to the log as a readable block: model, roles, gateway, present and missing variables, warnings, and whether AI and search are on. Missing critical variables are logged as errors with a hint to set them and restart.",
+      "why": "Makes startup problems visible in the logs at the moment they matter.",
+      "watch_out": "The function does not stop the process, so an error line here will not on its own prevent a broken server from running."
+    }
+  ],
+  "explained_at": "2026-11-12T03:55:16+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks which environment settings the API server has at startup and on demand, and reports which ones are missing, which model is in use and what will break without each setting.",
+  "purpose": "Helps the owner find configuration problems quickly, such as a missing key, an unscoped model name or a secret added without a restart.",
+  "why": "The header lists the four failure types the project has repeatedly chased. The module is designed to answer all four in one report.",
+  "how": "It reads each known variable and records only whether it is set and how long its value is. It works out the model and the roles that use it, flags unscoped model names and legacy settings, and collects warnings. At startup it writes the report to the log, with loud error lines for missing critical settings.",
+  "inputs": "The process environment variables and the model and gateway configuration from other modules.",
+  "outputs": "An environment report with the model, roles, gateway, each variable's status, missing critical names and warnings. At startup it also writes log lines.",
+  "risks": "The report shows the model name and gateway address in full. Values of secret variables are never read into the report. The startup check only logs and does not itself stop the server, so a missing critical setting does not prevent boot here.",
+  "debug": "Look at the warnings list first, then the missing critical list. For model errors, check whether the model name is slug-scoped. For a secret added after startup, restart the server, because the environment is read at boot.",
+  "summary_hash": "sha256:9c8d70f89338a833898b11256f87b3bcf3a1db8d7cae8b1ab682e37f742127a7"
+}

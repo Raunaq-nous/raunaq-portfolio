@@ -1,0 +1,249 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/index.ts",
+  "language": "TypeScript",
+  "lines": 194,
+  "hash": "sha256:c01b7b274b7ad74fdc1d388caf07e34dfe98bbbfb042396d21bce64e6f37a44e",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the first 21 lines are visible.",
+      "Route validation and access checks cannot be confirmed from this section."
+    ]
+  },
+  "terms": [
+    {
+      "term": "route",
+      "meaning": "a web address and method that the server responds to"
+    },
+    {
+      "term": "router",
+      "meaning": "the part of the server that matches each request to the right route"
+    },
+    {
+      "term": "503",
+      "meaning": "a status code meaning the service is temporarily unavailable"
+    },
+    {
+      "term": "role check",
+      "meaning": "a test that the signed-in user is allowed to perform the action"
+    }
+  ],
+  "depends_on": [
+    "express",
+    "node:crypto",
+    "drizzle-orm",
+    "zod",
+    "../../db",
+    "../../middleware/auth",
+    "../types",
+    "./store",
+    "./worker",
+    "./search",
+    "./catalog",
+    "./locationWorker",
+    "./codebook",
+    "./classifyWorker",
+    "./yardSync",
+    "./projectFeed",
+    "./buildAdvisor",
+    "./branding"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 21,
+      "kind": "setup",
+      "name": "File setup, fail",
+      "id": "s1",
+      "hash": "61a616a7743b8d1f",
+      "title": "Setup and shared unavailable reply",
+      "what": "Creates the route group for the opportunity map and imports the helpers its routes need. Defines a shared fallback reply that returns a 503 unavailable error and suggests checking the database migration and service health.",
+      "why": "Likely reason: one shared error reply keeps the feature responding cleanly when its database or services are not ready.",
+      "watch_out": "Only this first section is visible, so how the other routes use this fallback cannot be confirmed."
+    },
+    {
+      "start": 22,
+      "end": 58,
+      "kind": "route",
+      "name": "get",
+      "id": "s2",
+      "hash": "025e6044fbafb8d3",
+      "title": "Main state snapshot for the page",
+      "what": "Gathers everything the Opportunity Map page needs in one response: settings, industries, signals, location research counts, account and solution lists, recent jobs, queue sizes with a rough wait estimate, and classification progress. Signals that contain blocked branding are removed before sending.",
+      "why": "Likely reason: the page loads one combined snapshot, and the no-store header means the browser always gets the latest state.",
+      "watch_out": "Branding is filtered in memory after the database query, so counts shown here can be lower than the raw row count in the database."
+    },
+    {
+      "start": 59,
+      "end": 64,
+      "kind": "function",
+      "name": "classificationProgress",
+      "id": "s3",
+      "hash": "331ae6b45fa7a7aa",
+      "title": "Classification progress summary",
+      "what": "Counts how many signals that have sources are complete, failed, or still waiting to be classified, and reports whether the classifier is running and its last error.",
+      "why": "Reason not stated in the code; likely to show progress on the page while classification runs in the background.",
+      "watch_out": "Signals without sources are not counted, so the total will be smaller than the number of signals in the system."
+    },
+    {
+      "start": 65,
+      "end": 67,
+      "kind": "route",
+      "name": "get",
+      "id": "s4",
+      "hash": "80d3d4a17bb733d9",
+      "title": "Read the classification codebook",
+      "what": "Returns the saved codebook, which holds the rules the classifier uses to label signals, and tells the browser not to cache it.",
+      "why": "Reason not stated in the code; likely so users can see the rules that drive the labels.",
+      "watch_out": "Any failure is turned into one generic error response, so the real cause is not shown to the user."
+    },
+    {
+      "start": 68,
+      "end": 78,
+      "kind": "route",
+      "name": "put",
+      "id": "s5",
+      "hash": "c8763a13a3fae683",
+      "title": "Save a new codebook and reclassify",
+      "what": "Checks the submitted codebook, saves it, and reports whether the fingerprint changed. A changed fingerprint starts background reclassification of every signal.",
+      "why": "The comment states that saving changes the codebook fingerprint, so every signal must be classified again under the new rules.",
+      "watch_out": "The response returns before reclassification finishes, so the page will show signals as pending for a while."
+    },
+    {
+      "start": 79,
+      "end": 85,
+      "kind": "route",
+      "name": "delete",
+      "id": "s6",
+      "hash": "b3b8e2580f869a34",
+      "title": "Reset the codebook",
+      "what": "Clears the saved codebook by saving an empty value, then starts background reclassification. The response always says reclassification has started.",
+      "why": "Reason not stated in the code beyond resetting the rules; likely to return classification to its default.",
+      "watch_out": "The response always reports reclassifying as true, even when nothing actually changed."
+    },
+    {
+      "start": 86,
+      "end": 94,
+      "kind": "route",
+      "name": "post",
+      "id": "s7",
+      "hash": "1f6d645b09e9d11f",
+      "title": "Force full reclassification",
+      "what": "Marks every classified signal as requeued so the classifier processes it again, while keeping the old results visible until new ones replace them. It returns how many signals were queued and starts the classifier.",
+      "why": "The comment says this is for cases such as a model change, when old results should be replaced.",
+      "watch_out": "No role check is visible on this route, unlike the settings route, so confirm that login is enforced elsewhere before exposing it."
+    },
+    {
+      "start": 95,
+      "end": 107,
+      "kind": "route",
+      "name": "post",
+      "id": "s8",
+      "hash": "488dea5b9bfa969e",
+      "title": "Queue location research for signals",
+      "what": "Queues location research for a chosen list of up to 500 signals, or for all of them if no list is given. It rejects unknown signal IDs and then starts the location worker.",
+      "why": "Reason for the ID check: stated in the code as rejecting unknown opportunities, so bad input does not queue work.",
+      "watch_out": "Queued refreshes are marked as manual, which lets them run even when the monitoring setting is switched off."
+    },
+    {
+      "start": 108,
+      "end": 123,
+      "kind": "route",
+      "name": "post, scopeSchema",
+      "id": "s9",
+      "hash": "1459311e71083ff1",
+      "title": "AI search over signals",
+      "what": "Runs a semantic search over signals that have sources, optionally limited to chosen IDs. If the AI service is not configured it returns a message saying keyword matching still works, and other failures return a retry message.",
+      "why": "The error messages show the design: the page should stay useful even when the AI search cannot run.",
+      "watch_out": "Only signals with sources are searched, so a new signal without sources will not appear in results."
+    },
+    {
+      "start": 124,
+      "end": 156,
+      "kind": "route",
+      "name": "post",
+      "id": "s10",
+      "hash": "f65850627ced6add",
+      "title": "Start market or account research",
+      "what": "Starts research either for chosen accounts or for chosen industries. Account requests are refused for accounts without a confirmed web domain. Industry requests skip any industry that had a manual check in the last five minutes, and a queued account job is promoted to manual instead of being duplicated.",
+      "why": "The comments say each industry has one active job and manual checks have a five-minute cooldown, which limits cost and repeated work.",
+      "watch_out": "Accounts and industries cannot be sent together in one request, and the cooldown only looks at earlier manual jobs."
+    },
+    {
+      "start": 157,
+      "end": 169,
+      "kind": "route",
+      "name": "patch",
+      "id": "s11",
+      "hash": "e1766ff6aae955b6",
+      "title": "Change monitoring settings",
+      "what": "Lets an admin turn monitoring on or off, choose the industries it covers, and set how often it runs (1 to 168 hours). Only the fields sent are changed, and it then starts the monitoring worker.",
+      "why": "The admin restriction and the 168-hour limit are visible in the code, so only trusted users can change how often paid research runs.",
+      "watch_out": "Industries are checked against existing project data before saving, so a new industry must exist in that data first."
+    },
+    {
+      "start": 170,
+      "end": 174,
+      "kind": "route",
+      "name": "post",
+      "id": "s12",
+      "hash": "28a4f28b28e3ed28",
+      "title": "Run the Yard sync now",
+      "what": "Runs the sync that copies Opportunity Map results into the Yard project database straight away, and returns counts of what changed. A force flag is passed through when the request sets it.",
+      "why": "The comment says the background worker also runs this sync on every tick, so this route is a manual trigger.",
+      "watch_out": "Reason for the force option is not stated in the code. No role check is visible on this route."
+    },
+    {
+      "start": 175,
+      "end": 179,
+      "kind": "route",
+      "name": "get",
+      "id": "s13",
+      "hash": "dce1f3ee86edcc31",
+      "title": "Yard-backed project news and profiles",
+      "what": "Returns the news list and key-project profiles from the Yard, without caching. Failures are logged on the server and returned as a generic error.",
+      "why": "The comment describes it as event-dated news and key project profiles, so the page can show what has happened on each project.",
+      "watch_out": "The feed relies on the project feed module for date rules, so changes there change what this route shows."
+    },
+    {
+      "start": 180,
+      "end": 184,
+      "kind": "route",
+      "name": "get",
+      "id": "s14",
+      "hash": "7f7d38b98ed7c587",
+      "title": "Contractor and delivery model view",
+      "what": "Returns the contractors and delivery models recorded in the Yard, with their sources, for owners and engineering-procurement-construction firms. Failures are logged and returned as a generic error.",
+      "why": "The comment says this view is for owners and EPC firms, who need to know who builds projects and how.",
+      "watch_out": "The data comes only from Yard records, so gaps in those records appear as gaps here."
+    },
+    {
+      "start": 185,
+      "end": 194,
+      "kind": "route",
+      "name": "patch",
+      "id": "s15",
+      "hash": "9591b6004bcab97d",
+      "title": "Update a signal's review status",
+      "what": "Sets a signal's review status to new, reviewing, dismissed, or resolved, then returns the updated signal. It returns a not-found message if the signal does not exist.",
+      "why": "Reason not stated in the code; likely to let a reviewer track which signals have been looked at.",
+      "watch_out": "No role check is visible on this route, so confirm that access is controlled elsewhere."
+    }
+  ],
+  "explained_at": "2026-11-12T04:54:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the web routes for the opportunity map feature, through which the app reads and changes runs, signals, codebooks and settings.",
+  "purpose": "Single entry point for the opportunity map's web endpoints.",
+  "why": "Likely reason: keeping every feature endpoint in one file makes them easier to find.",
+  "how": "1. Load shared helpers, background workers and data files. 2. Create a router. 3. Provide a shared unavailable reply. 4. Define each route, with role checks in the parts not shown.",
+  "inputs": "Web requests from the app, including saved codebook data and search text.",
+  "outputs": "JSON replies, or a 503 unavailable reply.",
+  "risks": "Only the first section is visible, so the checks and validation on the other routes cannot be judged. A missing role check would expose data.",
+  "debug": "If every route returns 503, check the database migration and the service health. For a single failing route, check its section in this file.",
+  "summary_hash": "sha256:c01b7b274b7ad74fdc1d388caf07e34dfe98bbbfb042396d21bce64e6f37a44e"
+}

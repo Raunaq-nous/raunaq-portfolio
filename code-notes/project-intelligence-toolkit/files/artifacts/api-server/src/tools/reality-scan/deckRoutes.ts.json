@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/reality-scan/deckRoutes.ts",
+  "language": "TypeScript",
+  "lines": 146,
+  "hash": "sha256:23e90ac347d07979efb9973451df1b9bbcad1ccc1ce192d5b9b1b8a2bc187e05",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Input checks and error messages are clear and visible.",
+      "No test is visible.",
+      "Manual edits are allowed and marked as not independently verified, which by design leaves room for unsourced text."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Route",
+      "meaning": "a web address that the server answers with code."
+    },
+    {
+      "term": "Revision",
+      "meaning": "a version number that increases on each save."
+    },
+    {
+      "term": "Compare-and-swap",
+      "meaning": "a save that succeeds only if the stored version has not changed since it was read."
+    },
+    {
+      "term": "Proposal",
+      "meaning": "a suggested change that a consultant can apply or dismiss."
+    }
+  ],
+  "depends_on": [
+    "express",
+    "@workspace/api-zod",
+    "../../../../../lib/api-client-react/src/scan-deck",
+    "../../../../../lib/api-client-react/src/scan-template",
+    "./deckStore",
+    "./deckAssistant",
+    "./deckExport"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a4dd395816ddb4c8",
+      "title": "Imports and shared setup",
+      "what": "Brings in the web framework, request checks, the chart builder, the storage functions, and the assistant and export helpers. Re-exports the deck error type so other files can use it.",
+      "why": "Likely reason: one shared error type lets the same error handling apply everywhere.",
+      "watch_out": ""
+    },
+    {
+      "start": 11,
+      "end": 21,
+      "kind": "type",
+      "name": "DeckStore",
+      "id": "s2",
+      "hash": "76515055d017f3aa",
+      "title": "Shape of a storage adapter",
+      "what": "Defines what a storage adapter must provide: a way to read a deck, a way to save it with a revision check, a file name prefix, a tool name, and an optional flag for the older export path.",
+      "why": "Lets Reality Scan and Lessons Learnt share the routes while keeping separate storage.",
+      "watch_out": "A new adapter must perform the revision check in its save, or overwrites will happen silently."
+    },
+    {
+      "start": 22,
+      "end": 29,
+      "kind": "function",
+      "name": "makeDeckRouter",
+      "id": "s3",
+      "hash": "555cda2e4c38d461",
+      "title": "Creating the router for a tool",
+      "what": "Builds a router from the storage adapter and attaches all deck routes to it. Each tool gets its own router with its own file name and tool name.",
+      "why": "The doc comment says the router serves whichever tool's deck it is given.",
+      "watch_out": ""
+    },
+    {
+      "start": 30,
+      "end": 88,
+      "kind": "function",
+      "name": "fail (part 1)",
+      "id": "s4",
+      "hash": "35882fd53d4a3e08",
+      "title": "Error handling, reading, chart cuts and text edits",
+      "what": "The error handler replies with the deck's status code, or a generic message saying the saved deck was not replaced. The read route returns the deck. The chart-cut route rebuilds the chart from chosen projects after checking the revision and that every project belongs to the run. The text edit route changes one text element, records a proposal marked applied with a note that it is not verified, adds a message, and saves against the revision.",
+      "why": "Likely reason: every consultant edit is logged, so there is a record of what changed.",
+      "watch_out": "A manual edit is classed as factual when it has a source or its numbers change, so the classification should be checked for edge cases."
+    },
+    {
+      "start": 89,
+      "end": 129,
+      "kind": "function",
+      "name": "fail (part 2)",
+      "id": "s5",
+      "hash": "53617f9045ffd831",
+      "title": "Assistant and proposal routes",
+      "what": "The assistant route checks the revision, runs the assistant and saves the result. The proposal route lets a consultant apply or dismiss a pending suggestion. Applying checks that the target text is unchanged since the suggestion, writes the new text, then either attaches the new sources or marks a factual edit with no source as missing. Each proposal can be decided only once.",
+      "why": "The code comment says a changed factual claim never keeps an older project citation.",
+      "watch_out": "A proposal applied after the slide has moved on is refused with a 409 error. This is intended, but it can confuse users."
+    },
+    {
+      "start": 130,
+      "end": 146,
+      "kind": "function",
+      "name": "exportPptx",
+      "id": "s6",
+      "hash": "ea7ad8941a991a90",
+      "title": "Downloading the deck as PowerPoint",
+      "what": "Builds the PowerPoint file and sends it with a name made from the run's first eight characters and the revision number. The response is marked as not cacheable. The same handler is also available at the older Reality Scan export path.",
+      "why": "The code keeps the older path for existing links, as its flag indicates.",
+      "watch_out": "The older path only exists when its flag is on, so existing saved links break if the flag is turned off."
+    }
+  ],
+  "explained_at": "2026-11-12T05:00:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the web addresses the slide screen calls to view, edit, cut the chart, ask the assistant, decide on proposals, and download the deck.",
+  "purpose": "Connects the browser's slide screen to the saved deck.",
+  "why": "The file says the same routes serve Reality Scan and Lessons Learnt, each with its own storage. Likely reason: avoids writing the same slide code twice.",
+  "how": "1. Build a router from a storage adapter, a file prefix, and a tool name. 2. For each route, check the request shape and the current revision, make the change, and save only if the revision still matches. 3. The export route builds the PowerPoint file and sends it with a file name. 4. Errors go through one handler that keeps deck error status codes and hides other details.",
+  "inputs": "Requests carrying the run id, revision numbers, slide and element ids, text, chart settings and proposal decisions.",
+  "outputs": "Updated deck data, the PowerPoint file, or an error message.",
+  "risks": "Revision numbers are the only protection against two people overwriting each other. The apply path changes the element before saving, so a save failure relies on the store to keep the old version.",
+  "debug": "A 409 error means the deck changed, so the screen must reload. A 400 error means the request body is wrong. A 404 on a text edit means the element id is wrong or is not a text element.",
+  "summary_hash": "sha256:23e90ac347d07979efb9973451df1b9bbcad1ccc1ce192d5b9b1b8a2bc187e05"
+}

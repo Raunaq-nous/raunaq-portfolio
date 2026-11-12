@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/jobs/steps/validation.ts",
+  "language": "TypeScript",
+  "lines": 234,
+  "hash": "sha256:c1e6d92ab56e989e2a1960e9014240f5728a0a5a9df7a8c369904942732e83d1",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test or sample run is visible in this file.",
+      "The existing-updates key uses the event date when present but the batch key uses only the date, so the two checks can disagree.",
+      "Source collection is written out twice in the same way for validated fields and anomalies."
+    ]
+  },
+  "terms": [
+    {
+      "term": "zod",
+      "meaning": "a library that checks that data has the shape the code expects"
+    },
+    {
+      "term": "schema",
+      "meaning": "a written description of what valid data looks like"
+    },
+    {
+      "term": "confidence score",
+      "meaning": "a number from 0 to 1 that says how much the extracted facts can be trusted"
+    },
+    {
+      "term": "anomaly",
+      "meaning": "a value that changed so much from its old value that a person should look at it"
+    },
+    {
+      "term": "normalized URL",
+      "meaning": "a web address cleaned of tracking codes, fragments and trailing slashes so that the same page compares equal"
+    },
+    {
+      "term": "domain",
+      "meaning": "the site name part of a web address, such as the host name without the www prefix"
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "artifacts/api-server/src/jobs/interfaces"
+  ],
+  "used_by": [
+    "Not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "9543f44c6875fb21",
+      "title": "Imports and anomaly threshold",
+      "what": "Brings in the schema library and the shared data types, and sets the anomaly threshold to 0.5, meaning a change of more than 50 percent.",
+      "why": "Likely reason: a single named threshold keeps the rule easy to find and change.",
+      "watch_out": "Changing this number changes which numeric jumps are held back for review."
+    },
+    {
+      "start": 6,
+      "end": 22,
+      "kind": "type",
+      "name": "ValidationResult",
+      "id": "s2",
+      "hash": "7d872c9de0588653",
+      "title": "Shape of validation output",
+      "what": "Defines the exact shape of what validation returns: accepted values, sources, anomalies, updates, confidence and evidence count.",
+      "why": "Gives the rest of the app one fixed structure to read, so callers do not need to guess.",
+      "watch_out": "Anything that reads this result has to match these field names exactly."
+    },
+    {
+      "start": 23,
+      "end": 27,
+      "kind": "value",
+      "name": "numericFields",
+      "id": "s3",
+      "hash": "8906867373865b05",
+      "title": "Fields checked for big jumps",
+      "what": "Lists the fields that are compared with their old values for big changes. These are budgets, megawatts, likelihood, confidence, units, planned and actual budget, and delay months.",
+      "why": "Likely reason: these are the figures where a large unexplained change most often signals an error.",
+      "watch_out": "Other fields, including text fields, are never checked for jumps, so a wrong name in a text field will pass."
+    },
+    {
+      "start": 28,
+      "end": 37,
+      "kind": "function",
+      "name": "computeChangeRatio",
+      "id": "s4",
+      "hash": "9eccec49a83f4b65",
+      "title": "Measuring relative change",
+      "what": "Works out how far a new number is from an old one, as a fraction of the old one. Returns zero when either value is missing, not a number, or the old value is zero.",
+      "why": "A percentage change is easier to compare across fields of different size than a raw difference.",
+      "watch_out": "Because an old value of zero gives zero change, a field that starts at zero can never be flagged."
+    },
+    {
+      "start": 38,
+      "end": 51,
+      "kind": "function",
+      "name": "scoreConfidence",
+      "id": "s5",
+      "hash": "147a08cff0d07d7d",
+      "title": "Scoring confidence in an extraction",
+      "what": "Starts from the extractor's own confidence, adds a little for three or more and five or more pieces of evidence, adds a little when any evidence has a web address, and takes away a lot when there is no evidence at all. The result is rounded to two decimals.",
+      "why": "Gives a single number that reflects how well the claim is backed by evidence, not only how sure the model sounds.",
+      "watch_out": "The score can never go above 1 or below 0, so very different cases can land on the same value."
+    },
+    {
+      "start": 52,
+      "end": 66,
+      "kind": "function",
+      "name": "normalizeUrl",
+      "id": "s6",
+      "hash": "793843b7bd5d96c7",
+      "title": "Normalizing web addresses",
+      "what": "Cleans a web address by removing the fragment, common tracking parameters and a trailing slash. If the address cannot be read, it is returned unchanged.",
+      "why": "The same article often appears with different tracking codes, and cleaning them lets the code spot repeats.",
+      "watch_out": "The removal list includes a parameter called 'ref', which some sites use for real page content, so those pages could look identical after cleaning."
+    },
+    {
+      "start": 67,
+      "end": 78,
+      "kind": "function",
+      "name": "isValidUpdate",
+      "id": "s7",
+      "hash": "a9118d2cb1114557",
+      "title": "Checking one proposed update",
+      "what": "Accepts an update only if it has a headline of at least five characters, a source, a date in the form year-month-day from 2000 to 2030, and a date not after today. Blank web addresses are set to nothing. It changes the update object it receives.",
+      "why": "Rejects the most common kinds of bad output from the model, such as missing dates or invented future events.",
+      "watch_out": "The code changes the incoming update in place, so any caller that reuses the original object will see the cleaned version."
+    },
+    {
+      "start": 79,
+      "end": 106,
+      "kind": "function",
+      "name": "dedupUpdatesWithinBatch",
+      "id": "s8",
+      "hash": "6d5df1dd66a01590",
+      "title": "Removing repeats within one batch",
+      "what": "Removes updates that share a web address or share the same date and headline. It also trims headlines to 300 characters, sources to 200 and excerpts to 1,000.",
+      "why": "The model often returns the same event more than once in a single answer.",
+      "watch_out": "Two different updates that cite the same web address are treated as duplicates, and only the first one is kept."
+    },
+    {
+      "start": 107,
+      "end": 116,
+      "kind": "function",
+      "name": "extractUrlDomain, fieldSchema",
+      "id": "s9",
+      "hash": "b9d5dbd8997747d9",
+      "title": "Domain helper and field schema",
+      "what": "Gets the site name from a web address without the www prefix, and defines a schema that accepts any set of named values for the fields.",
+      "why": "The domain name is used to count how many different sites support a value. The loose schema accepts whatever field names the extractor produces.",
+      "watch_out": "The domain helper returns the whole input string if it is not a valid address, which can make two different bad inputs look like different sites."
+    },
+    {
+      "start": 117,
+      "end": 149,
+      "kind": "function",
+      "name": "runValidation (part 1)",
+      "id": "s10",
+      "hash": "a8f4814adf68d08f",
+      "title": "Checking each field against history",
+      "what": "Goes through every proposed field. Numeric fields that jump too far are set aside as anomalies, and the rest are accepted. Then it cleans the proposed updates and removes any that were already stored, comparing by web address or by date and headline.",
+      "why": "Stops suspicious numbers from silently overwriting stored values, and avoids saving the same event twice.",
+      "watch_out": "The field schema parse runs first and throws an error if the fields are not a valid object, so a bad extraction stops the whole validation."
+    },
+    {
+      "start": 150,
+      "end": 204,
+      "kind": "method",
+      "name": "runValidation: if",
+      "id": "s11",
+      "hash": "667442a56184d4a2",
+      "title": "Filtering stored updates and collecting sources",
+      "what": "Removes proposed updates already stored, using the event date when one exists and the date otherwise. Then, for each accepted field, gathers the web addresses that support it from the extractor's field sources and from the evidence list, and counts the distinct sites.",
+      "why": "Lets the app show how many independent sites back each value, which is a key measure of how much a value can be trusted.",
+      "watch_out": "The stored-update key uses the event date when present, but the batch key uses only the date. This mismatch can let some duplicates through."
+    },
+    {
+      "start": 205,
+      "end": 234,
+      "kind": "method",
+      "name": "runValidation: for",
+      "id": "s12",
+      "hash": "cef127effffa4a22",
+      "title": "Collecting sources for anomalies and returning",
+      "what": "Does the same source gathering for each anomaly as for accepted fields, so a flagged value still shows where it came from. Then it returns the full validation result with the confidence score and evidence count.",
+      "why": "A reviewer deciding on an anomaly needs to see its sources as well.",
+      "watch_out": "This source gathering duplicates the one above, so a fix made in one place must be made in the other."
+    }
+  ],
+  "explained_at": "2026-11-12T03:55:16+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks the facts pulled out of documents before they are saved, flagging big numeric jumps, dropping invalid or repeated updates, and counting how many different web sites support each value.",
+  "purpose": "Stops bad or doubtful data from reaching the stored project record. It keeps a clear list of what was accepted, what looked suspicious and how well each value is sourced.",
+  "why": "Likely reason: the extraction step is done by a language model, which can produce wrong or repeated results, so a separate rule-based check is applied before anything is saved.",
+  "how": "First it reads the proposed fields and sets aside any numeric field that changes by more than half from its current value. Then it checks each proposed update for a valid headline, source, date between 2000 and 2030 and not in the future. It removes repeats within the batch and any already stored. Last, for each kept value it gathers the web addresses that support it and counts the distinct web sites, and it scores the overall confidence.",
+  "inputs": "An extraction result holding fields, evidence items, proposed updates, per-field sources and a confidence number. Also the current stored values, and optionally the existing stored updates.",
+  "outputs": "A validation result with the accepted field values, per-field source addresses and domain counts, a list of anomalies with the old and new values, the accepted updates, a confidence score and the evidence count.",
+  "risks": "Numeric fields that are zero or missing never get flagged as big jumps. Updates dated after the year 2030 are rejected. Parsing errors from the field schema are not caught here, so bad input stops the whole validation.",
+  "debug": "If a good value disappears, check the anomaly list and the half-change threshold first. If a duplicate update gets through, check how stored updates are keyed in the existing-updates filter. If a confidence number looks wrong, check the evidence count and whether any URLs are present.",
+  "summary_hash": "sha256:c1e6d92ab56e989e2a1960e9014240f5728a0a5a9df7a8c369904942732e83d1"
+}

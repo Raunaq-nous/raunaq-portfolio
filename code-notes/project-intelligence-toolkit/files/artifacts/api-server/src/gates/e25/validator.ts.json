@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/gates/e25/validator.ts",
+  "language": "TypeScript",
+  "lines": 200,
+  "hash": "sha256:0c73b748630c0ae2e3265de9922bce8ff9249c1ba6d84e39c9ac1c6c6ac490c0",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible, although the design supports fixture tests.",
+      "The client supplied class counts toward passing, which the owner should judge."
+    ]
+  },
+  "terms": [
+    {
+      "term": "classification",
+      "meaning": "the decision that puts each number into one of the four classes"
+    },
+    {
+      "term": "rate",
+      "meaning": "the share of all numbers in a category, from zero to one"
+    },
+    {
+      "term": "client supplied",
+      "meaning": "a value that came from a file the customer uploaded, with no public source"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/gates/e25/types.ts",
+    "artifacts/api-server/src/gates/e25/numeralMatch.ts"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/gates/e25/runE25.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 26,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "815fd6cec9f2af89",
+      "title": "Checker setup and rules",
+      "what": "Imports the shared vocabulary and the matcher, and states that the checker reads and writes nothing.",
+      "why": "The header says that pure input and output makes the gate testable and rerunnable.",
+      "watch_out": "Adding any database call here breaks that promise."
+    },
+    {
+      "start": 27,
+      "end": 33,
+      "kind": "type",
+      "name": "E25Input",
+      "id": "s2",
+      "hash": "ab56955d3496b789",
+      "title": "Checker input shape",
+      "what": "Defines the four inputs: artifact, mode, numerals, and the snapshot.",
+      "why": "Gives the checker one clear bundle of everything it needs.",
+      "watch_out": ""
+    },
+    {
+      "start": 34,
+      "end": 83,
+      "kind": "function",
+      "name": "classify (part 1)",
+      "id": "s3",
+      "hash": "8edce10fd24fc52b",
+      "title": "Checking derived numbers",
+      "what": "A derived number is computed only if a calculation record exists and its stored value matches the number. Otherwise it is untraceable.",
+      "why": "The comment says the arithmetic is the claim, and evidence behind the inputs does not prove the arithmetic.",
+      "watch_out": "A derived number with no calculation record always fails, even if its inputs are well sourced."
+    },
+    {
+      "start": 84,
+      "end": 130,
+      "kind": "method",
+      "name": "classify: if",
+      "id": "s4",
+      "hash": "6b1ed14494d019ab",
+      "title": "Checking reported numbers against sources",
+      "what": "For a reported number, collects its linked evidence. No linked evidence means untraceable. If a source passage contains the number, it is sourced. Client supplied evidence is accepted when no passage matches.",
+      "why": "Likely reason: the spec admits uploaded files as their own class, so they are not counted as failures.",
+      "watch_out": "Passages are checked before client supplied evidence, so a row that has both is judged by its passages first."
+    },
+    {
+      "start": 131,
+      "end": 148,
+      "kind": "method",
+      "name": "classify: if",
+      "id": "s5",
+      "hash": "e49d227e2469efe3",
+      "title": "Last checks for reported numbers",
+      "what": "If a client supplied row exists, the number is client supplied. Otherwise it is untraceable because its passages do not contain the number.",
+      "why": "This is the final fallback that decides the cause.",
+      "watch_out": "The explanation reports how many passages were compared but not the text that was compared, so it is hard to see why a match failed."
+    },
+    {
+      "start": 149,
+      "end": 200,
+      "kind": "function",
+      "name": "validateNumericProvenance",
+      "id": "s6",
+      "hash": "76b1cdc972f4db6e",
+      "title": "Building the final report",
+      "what": "Classifies every number, counts each class, computes rates, tallies causes and labels, and sets pass or fail. A pass needs at least one number and a traceable rate at or above the threshold.",
+      "why": "The report gives a rate and distance, not a bare result.",
+      "watch_out": "The report sets wouldBlock whether or not the mode blocks, so it is shown even in warn mode."
+    }
+  ],
+  "explained_at": "2026-11-12T03:33:41+00:00",
+  "explained_by": "haiku",
+  "summary": "The checker: it sorts every number in an artifact into computed, sourced, client supplied, or untraceable, and then reports the rates and whether the gate passes.",
+  "purpose": "Decides for each number whether the app can show proof of where it came from.",
+  "why": "The header says it is pure, meaning it reads nothing from outside, so it can be tested with fixed inputs and rerun on stored artifacts later.",
+  "how": "For each number, checks derived numbers against a calculation record. For reported numbers, looks for linked evidence, then for a source passage containing the number, then for client supplied evidence. Any number that fails gets a cause. Then it counts results, computes rates, tallies causes and labels, and decides pass or fail.",
+  "inputs": "The artifact reference, the mode, the list of numerals, and the snapshot of evidence and calculations.",
+  "outputs": "A full gate report.",
+  "risks": "Client supplied numbers count toward the traceable rate, so unverified uploads can raise the score. An artifact with no numbers fails, which is correct but may surprise a reader.",
+  "debug": "Read the explanation attached to each untraceable number. Confirm that the linked IDs exist in the snapshot. Check the unit hint if a number that should match does not.",
+  "summary_hash": "sha256:0c73b748630c0ae2e3265de9922bce8ff9249c1ba6d84e39c9ac1c6c6ac490c0"
+}

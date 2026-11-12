@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/presentationAssistant.ts",
+  "language": "TypeScript",
+  "lines": 68,
+  "hash": "sha256:01b55b022fece8cb976df1a88034789b2f301e78a1593828f743dc257af8ce2b",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test file for this module is visible in the packet.",
+      "Model errors are not handled here; the router turns them into a generic 503 reply.",
+      "Answer quality depends on model output, which cannot be checked by reading the code."
+    ]
+  },
+  "terms": [
+    {
+      "term": "schema",
+      "meaning": "a set of rules that describes what valid data must look like"
+    },
+    {
+      "term": "admitted fact",
+      "meaning": "a statement that passed the source check and may be shown to readers"
+    },
+    {
+      "term": "language model",
+      "meaning": "an AI system that writes text from a prompt"
+    },
+    {
+      "term": "timeout",
+      "meaning": "the longest time a call may wait before it is stopped with an error"
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "artifacts/api-server/src/lib/portkeyOpenAI",
+    "artifacts/api-server/src/lib/modelConfig",
+    "artifacts/api-server/src/tools/lessons-learnt/recipeResult",
+    "artifacts/api-server/src/tools/research-contract/semanticPolicy"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/lessons-learnt/presentationRouter.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "5247667c8cf05b0a",
+      "title": "Imports for question answering",
+      "what": "Brings in the schema library, the AI chat helper, the model picker, the recipe type, and the filter that keeps only admitted facts.",
+      "why": "Likely reason: the module needs these pieces to answer questions from saved facts.",
+      "watch_out": ""
+    },
+    {
+      "start": 7,
+      "end": 13,
+      "kind": "value",
+      "name": "answerSchema, verdictSchema",
+      "id": "s2",
+      "hash": "d983250061a5cb7c",
+      "title": "Shapes of the answer and verdict",
+      "what": "Defines the required form of an answer (text, basis, fact IDs) and of the second model's verdict (supported yes or no, and a reason). Replies that do not match are treated as errors.",
+      "why": "Likely reason: the code only trusts model output after checking its shape.",
+      "watch_out": "Answer text is capped at 10,000 characters and fact IDs at 20, so longer model output fails as an error rather than being cut short."
+    },
+    {
+      "start": 14,
+      "end": 68,
+      "kind": "function",
+      "name": "answerPresentationQuestion",
+      "id": "s3",
+      "hash": "209c63ab8c38aa11",
+      "title": "Answer a question from admitted facts",
+      "what": "Selects up to 20 relevant admitted facts, asks a model for an answer, and asks a second model to check it. If the check fails or the answer has no basis, returns exact matching quotes instead. Returns the text and the IDs of the facts used.",
+      "why": "Likely reason: the design refuses unsupported claims, so the fallback shows verified quotes instead.",
+      "watch_out": "Facts are picked by simple keyword matches, so a differently worded question can miss relevant facts, and any model or parse failure throws instead of returning a fallback."
+    }
+  ],
+  "explained_at": "2026-11-12T04:36:51+00:00",
+  "explained_by": "haiku",
+  "summary": "Answers a question about one saved lessons run using only admitted facts, then checks the answer with a second model before showing it.",
+  "purpose": "Let a reader ask questions of a saved presentation and get answers that point back to exact source statements.",
+  "why": "The code states the intent that answers may use only admitted claims, with no new research or causal conclusions. The two-pass design is likely meant to catch unsupported answers.",
+  "how": "First, keep only admitted facts. Second, narrow to any project named in the question. Third, rank facts by keyword matches with the question. Fourth, select up to 20 facts within a size limit. Fifth, ask a model for a JSON answer with cited fact IDs. Sixth, reject answers with no valid basis or unknown IDs. Seventh, ask a second model to verify the answer against the same facts. Eighth, return the answer with a coverage note, or fall back to matching quotes.",
+  "inputs": "A saved recipe object (projects, facts, pillars and methodology) and the user's question text.",
+  "outputs": "An object with text and a list of fact IDs. The text is either a checked answer, a set of exact quotes with a note that the answer was not validated, or a fixed message when no admitted facts exist.",
+  "risks": "Model replies are treated as untrusted and must pass shape and reference checks. A wrong verdict from the second model could let an unsupported answer through or reject a good one. Fact selection uses simple keyword matches, so differently worded questions can miss facts. Model calls have a 90 second timeout and no retry, and any error here is thrown up to the router.",
+  "debug": "Check the router error log for the request. If every answer is a fallback, read the reason text, which says whether the draft or the check failed. If the no-facts message appears, confirm the run's facts are marked admitted. Model choice comes from the role settings in modelConfig.",
+  "summary_hash": "sha256:01b55b022fece8cb976df1a88034789b2f301e78a1593828f743dc257af8ce2b"
+}

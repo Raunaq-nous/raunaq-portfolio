@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/verify-wind-live.ts",
+  "language": "TypeScript",
+  "lines": 65,
+  "hash": "sha256:29972145c1650daf6ddf9de6056a5bded6d18be460dd4b87c026c790753b5faf",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Leaves a live admin token in a shared temp folder",
+      "Uses a fixed project id and fixed counts",
+      "Depends on a live server and a recent Node version",
+      "Writes constant values such as phase alias searches as 3"
+    ]
+  },
+  "terms": [
+    {
+      "term": "JWT",
+      "meaning": "a signed ticket that proves to the server who is calling"
+    },
+    {
+      "term": "register",
+      "meaning": "the list of references the wind project uses"
+    },
+    {
+      "term": "source pack",
+      "meaning": "a bundle of source documents imported together"
+    },
+    {
+      "term": "alias",
+      "meaning": "another name a project is known by, such as a phase name"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/ingest/wind/prepared.json",
+    "jsonwebtoken",
+    "data/wind/commit.json",
+    "data/wind/live-verification.json (written by this script)"
+  ],
+  "used_by": [
+    "Not visible in the packet; appears to be a manual check run after the wind import"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6fe3b9ea66ee3db2",
+      "title": "Setup and temporary token",
+      "what": "Loads the prepared wind data and the committed import record. Creates a one-hour admin token and saves it to a temporary file with owner-only permissions. Sets the server address.",
+      "why": "The token lets the script call protected routes on the live server.",
+      "watch_out": "The token file stays in the temp folder after the run, so it should be deleted by hand."
+    },
+    {
+      "start": 13,
+      "end": 17,
+      "kind": "function",
+      "name": "get",
+      "id": "s2",
+      "hash": "239d617e6a131a50",
+      "title": "Request helper",
+      "what": "Calls a route on the live server with the token and requires a 200 response.",
+      "why": "Keeps the live calls short and makes failures obvious.",
+      "watch_out": "One non-200 response stops the whole script."
+    },
+    {
+      "start": 18,
+      "end": 61,
+      "kind": "value",
+      "name": "results",
+      "id": "s3",
+      "hash": "ca4c9ad2ba737a6c",
+      "title": "Per-project and portfolio checks",
+      "what": "For each committed project, compares the stored dossier with the prepared data, checks budget and likelihood fields, then checks each claim has verified evidence with the right references, scope and date. Checks companies and sources exist. Runs phase-name searches, checks the reference register count, and confirms the source pack has no new entries.",
+      "why": "Confirms the live system shows what the import intended, including the Dogger Bank phase names being searchable.",
+      "watch_out": "The checks compare against prepared.json, so that file must stay in step with the committed data."
+    },
+    {
+      "start": 62,
+      "end": 65,
+      "kind": "value",
+      "name": "out",
+      "id": "s4",
+      "hash": "d1ac5c6bf36da234",
+      "title": "Results file",
+      "what": "Writes the results to live-verification.json and prints a short summary.",
+      "why": "Gives a saved record of the live check.",
+      "watch_out": "The phase alias search count and the verified flag are fixed values, not computed here."
+    }
+  ],
+  "explained_at": "2026-11-12T03:17:48+00:00",
+  "explained_by": "haiku",
+  "summary": "Live check of the wind import: confirms each committed wind project's stored dossier, evidence, companies, sources and register match the prepared data.",
+  "purpose": "Confirms the wind data is visible and correct on the running system.",
+  "why": "Likely reason: the import and its prepared data must match what the live API serves. Reason not further stated in the code.",
+  "how": "Creates a one-hour admin token and writes it to a temporary file. For each committed project, checks the stored dossier, that budget fields are empty, and that unassessed projects have no likelihood. Checks each claim has verified evidence and that report quotes carry the right references, scope and date. Checks companies and sources are present. Runs three phase-name searches, checks the reference register, and checks the source pack has no new entries. Then writes a live-verification file.",
+  "inputs": "prepared.json from the wind ingest folder. commit.json from the repository data folder. The REPLIT_DEV_DOMAIN address. A JWT_SECRET or SESSION_SECRET environment variable.",
+  "outputs": "A live-verification.json file in the data folder, a temporary token file in the system temp folder, and a summary printed to the console.",
+  "risks": "The token file is left on disk in the shared temp folder. The project id for the phase search is fixed in code. The verified flag is only written after all checks pass, so a failed run leaves no file. The script relies on import.meta.dirname, which needs a recent Node version.",
+  "debug": "If a claim check fails, the message names the project and the field. If a search fails, check the Dogger Bank alias and the project id. Check the token file is written and that the secret variable is set.",
+  "summary_hash": "sha256:29972145c1650daf6ddf9de6056a5bded6d18be460dd4b87c026c790753b5faf"
+}

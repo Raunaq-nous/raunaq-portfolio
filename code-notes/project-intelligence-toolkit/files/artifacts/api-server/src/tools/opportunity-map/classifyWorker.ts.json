@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/classifyWorker.ts",
+  "language": "TypeScript",
+  "lines": 75,
+  "hash": "sha256:43bff3f5f61cd058398b4d24c321645e05ead0045f19161993e3528830070997",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Failures are recorded and retried, not silently dropped, which is good.",
+      "The variable retryFailed is set from the worker enabled setting, so its name does not match its meaning.",
+      "No test for this file is visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "database lock",
+      "meaning": "a flag in the database that stops two workers running at the same time"
+    },
+    {
+      "term": "batch",
+      "meaning": "a small group of signals sent to the model together"
+    },
+    {
+      "term": "cool-down",
+      "meaning": "a waiting period before a failed item is tried again"
+    },
+    {
+      "term": "timer interval",
+      "meaning": "how often a repeating task runs"
+    }
+  ],
+  "depends_on": [
+    "../../db",
+    "./codebook",
+    "./store",
+    "./classify"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/index.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup, classifierStatus",
+      "id": "s1",
+      "hash": "7d1025296aff9792",
+      "title": "Worker settings and status reporting",
+      "what": "Sets how many signals go in each batch, how many batches run at once, and how long to wait before retrying failed signals. Provides a status report showing whether the worker is running and the last error.",
+      "why": "The header says failures are recorded and retried after a cool-down, never silently dropped.",
+      "watch_out": "The last error is held in memory, so it resets when the server restarts."
+    },
+    {
+      "start": 19,
+      "end": 69,
+      "kind": "function",
+      "name": "tickClassification",
+      "id": "s2",
+      "hash": "d991b883d400459f",
+      "title": "Background pass that classifies pending signals",
+      "what": "Runs one pass that finds signals not yet classified under the current codebook, or failed ones that are due for retry. It classifies them in batches and saves each result. A database lock ensures only one pass runs at once. The pass stops early if no model is configured.",
+      "why": "The header says a codebook save re-classifies signals, and the database lock prevents overlapping runs.",
+      "watch_out": "The variable named retryFailed is actually set from the worker enabled setting, so retry behaviour depends on a flag with a different name. Check this before changing retry rules."
+    },
+    {
+      "start": 70,
+      "end": 75,
+      "kind": "function",
+      "name": "startClassification",
+      "id": "s3",
+      "hash": "5b0cc65b2b96ecf5",
+      "title": "Starting the background timer",
+      "what": "Starts the worker to run every 30 seconds and runs one pass straight away. Does nothing if it has already started.",
+      "why": "Likely reason: a repeating timer keeps new and failed signals processed without a user action.",
+      "watch_out": "The timer is set not to keep the process alive, so it does not stop the server from shutting down."
+    }
+  ],
+  "explained_at": "2026-11-12T04:49:26+00:00",
+  "explained_by": "haiku",
+  "summary": "A background loop that finds signals needing classification or a retry, classifies them in small batches, saves each result, and reports its status.",
+  "purpose": "Keeps every signal labelled under the current codebook without any user action, including after codebook edits.",
+  "why": "The header says saving a codebook re-classifies all signals automatically, and failures are retried after a cool-down rather than dropped.",
+  "how": "1. Take a database lock so only one worker runs at a time. 2. Load the current codebook. 3. Select signals that are unclassified, classified under an old codebook, or failed and due for retry. 4. Split them into batches and classify three batches at once. 5. Save each result, keeping the last good result if a retry fails. 6. Repeat for up to 50 rounds, stopping if no model is configured. 7. Release the lock.",
+  "inputs": "The codebook, the signal table in the database, and the settings flag that controls whether failed signals are retried.",
+  "outputs": "Updated classification fields on each signal, a status with running state and last error, and a console message when the database is unreachable.",
+  "risks": "A missing model or a misconfigured setting can stop the loop. Running several batches at once can overload the model service. The timer runs every 30 seconds even when there is nothing to do.",
+  "debug": "Check classifierStatus for the last error. If nothing runs, check the database lock key and the database connection. If signals stay failed, check the retry setting and the 30 minute cool-down.",
+  "summary_hash": "sha256:43bff3f5f61cd058398b4d24c321645e05ead0045f19161993e3528830070997"
+}

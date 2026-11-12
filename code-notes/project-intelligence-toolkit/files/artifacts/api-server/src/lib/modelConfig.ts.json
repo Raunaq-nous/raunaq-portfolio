@@ -1,0 +1,347 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/lib/modelConfig.ts",
+  "language": "TypeScript",
+  "lines": 255,
+  "hash": "sha256:e2445fad0561688f8dce7bf589a53ff760273c9d3231bc1dd5f25887e9ada996",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible for model selection.",
+      "Model family rules are name patterns and need manual upkeep."
+    ]
+  },
+  "terms": [
+    {
+      "term": "gateway",
+      "meaning": "a middle service that receives model requests, checks them, and forwards them to the actual AI provider"
+    },
+    {
+      "term": "slug",
+      "meaning": "the prefix in a model name, such as @owner/model, that tells the gateway which connected account to use"
+    },
+    {
+      "term": "role",
+      "meaning": "a kind of task, here extraction or reasoning, each with its own model choice"
+    },
+    {
+      "term": "temperature",
+      "meaning": "a setting that controls how random a model's answers are"
+    },
+    {
+      "term": "max_tokens",
+      "meaning": "a cap on how long a model's reply may be, counted in small pieces of text called tokens"
+    }
+  ],
+  "depends_on": [
+    "No imports. Read by other modules through environment variables."
+  ],
+  "used_by": [
+    "./portkeyOpenAI.ts",
+    "./modelLiveCheck.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 44,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7628a5cefcf33827",
+      "title": "Header and default model",
+      "what": "Explains why model names need a gateway prefix, and sets the built-in default model that is used when no setting names one.",
+      "why": "The header states that a missing prefix produces a misleading access error that looks like a login failure.",
+      "watch_out": "Keep the default slug-prefixed and pointed at a model this project is allowed to call."
+    },
+    {
+      "start": 45,
+      "end": 47,
+      "kind": "type",
+      "name": "ModelRole",
+      "id": "s2",
+      "hash": "06b15891add87ada",
+      "title": "The two kinds of work",
+      "what": "Names the two roles: extraction for pulling literal text, and reasoning for naming and summaries.",
+      "why": "The code states that each kind of work has different model needs.",
+      "watch_out": "Adding a role means updating several maps further down in this file."
+    },
+    {
+      "start": 48,
+      "end": 56,
+      "kind": "type",
+      "name": "RoleSpec",
+      "id": "s3",
+      "hash": "0b0de1182c51326d",
+      "title": "Shape of a role description",
+      "what": "Defines what a role description holds: its variable name, what uses it, and why.",
+      "why": "Likely reason: documentation that also feeds the boot logs.",
+      "watch_out": ""
+    },
+    {
+      "start": 57,
+      "end": 71,
+      "kind": "value",
+      "name": "ROLE_SPECS",
+      "id": "s4",
+      "hash": "a513effaf611ed7e",
+      "title": "Description of each role",
+      "what": "Lists the two roles, with the work each one does and the reason it gets that model.",
+      "why": "The rationale text states that extraction is mechanical and reasoning needs the strongest model.",
+      "watch_out": "The descriptions are plain text and are not checked against the real callers, so they can drift out of date."
+    },
+    {
+      "start": 72,
+      "end": 76,
+      "kind": "value",
+      "name": "ROLE_ENV_VARS",
+      "id": "s5",
+      "hash": "6b8d467c225df00f",
+      "title": "Role to variable name lookup",
+      "what": "Maps each role to the environment variable that overrides its model.",
+      "why": "Likely reason: a quick lookup used by every resolution step.",
+      "watch_out": "Renaming a variable here silently breaks deployments that still set the old name."
+    },
+    {
+      "start": 77,
+      "end": 89,
+      "kind": "value",
+      "name": "LEGACY_MODEL_ENV_VARS",
+      "id": "s6",
+      "hash": "1e43583d0664f4dc",
+      "title": "Retired model variables",
+      "what": "Lists old per-feature model variables that are no longer used for selection.",
+      "why": "The comment states they are kept only so startup checks can warn when one is still set.",
+      "watch_out": "Setting one of these does nothing except trigger a warning."
+    },
+    {
+      "start": 90,
+      "end": 94,
+      "kind": "function",
+      "name": "readEnv",
+      "id": "s7",
+      "hash": "8611ad48eb2a86f6",
+      "title": "Reading a setting safely",
+      "what": "Reads one environment variable and treats a blank value as not set.",
+      "why": "Likely reason: a blank setting should not count as a model name.",
+      "watch_out": ""
+    },
+    {
+      "start": 95,
+      "end": 103,
+      "kind": "function",
+      "name": "replitAIActive",
+      "id": "s8",
+      "hash": "04b2c9659b3fc2ef",
+      "title": "Checking for the Replit proxy",
+      "what": "Reports whether the Replit AI proxy is in use. It is used only when both of its settings exist and LLM_PROVIDER is not set to portkey.",
+      "why": "Stated in the comment.",
+      "watch_out": "Changing either Replit setting or LLM_PROVIDER switches every model choice at once."
+    },
+    {
+      "start": 104,
+      "end": 115,
+      "kind": "value",
+      "name": "REPLIT_ROLE_MODELS",
+      "id": "s9",
+      "hash": "d50b4670bbd02ae1",
+      "title": "Replit default models",
+      "what": "Gives the default model for each role when running on the Replit proxy: a small model for extraction and a general model for reasoning.",
+      "why": "The comment states they were chosen for cost per useful output.",
+      "watch_out": "These names are bare, so they must not carry a gateway prefix."
+    },
+    {
+      "start": 116,
+      "end": 120,
+      "kind": "function",
+      "name": "bareModel",
+      "id": "s10",
+      "hash": "c675a56e78af134e",
+      "title": "Removing the gateway prefix",
+      "what": "Strips the gateway prefix from a model name, leaving the plain provider model name.",
+      "why": "Likely reason: the Replit proxy rejects prefixed names.",
+      "watch_out": ""
+    },
+    {
+      "start": 121,
+      "end": 124,
+      "kind": "function",
+      "name": "replitOverride",
+      "id": "s11",
+      "hash": "9ffef3fe67c44a12",
+      "title": "Accepting a Replit model override",
+      "what": "On the Replit proxy, accepts a setting only if it has no gateway prefix, and ignores it otherwise.",
+      "why": "Stated in the comment on the Replit defaults: prefixed values are ignored there.",
+      "watch_out": "A prefixed value in CPD_MODEL is silently dropped on Replit, which can confuse anyone checking settings."
+    },
+    {
+      "start": 125,
+      "end": 134,
+      "kind": "function",
+      "name": "getChatModel",
+      "id": "s12",
+      "hash": "8ccb1bf5c396d4d0",
+      "title": "General fallback model",
+      "what": "Returns the general model: on Replit, the override or the Replit default; otherwise CPD_MODEL or the built-in default.",
+      "why": "The comment states that callers which are neither role use it, and it is read at call time.",
+      "watch_out": "Environment changes take effect only after a restart."
+    },
+    {
+      "start": 135,
+      "end": 140,
+      "kind": "function",
+      "name": "getChatModelSource",
+      "id": "s13",
+      "hash": "100035930210f869",
+      "title": "Where the general model came from",
+      "what": "Says whether the general model came from CPD_MODEL, the Replit default, or the built-in default.",
+      "why": "The comment states it is for the preflight and health report.",
+      "watch_out": "It must stay in step with the function that picks the model, or reports will show the wrong source."
+    },
+    {
+      "start": 141,
+      "end": 146,
+      "kind": "function",
+      "name": "getModelForRole",
+      "id": "s14",
+      "hash": "86213b2612c09a4f",
+      "title": "Model for one role",
+      "what": "Returns the model for a role: its own variable first, then the general model. On Replit it uses the role's own default instead of the general model.",
+      "why": "The comment describes the order of the lookup.",
+      "watch_out": "On Replit the general model setting does not reach the roles unless it is overridden."
+    },
+    {
+      "start": 147,
+      "end": 152,
+      "kind": "value",
+      "name": "BACKUP_ROLE_ENV_VARS",
+      "id": "s15",
+      "hash": "b880287d6e84f1fb",
+      "title": "Backup model variable names",
+      "what": "Names the variables that hold the backup-key model for each role.",
+      "why": "The comment states that the shared backup variable covers any role left unset.",
+      "watch_out": "A role with no variable of its own falls back to the shared backup variable."
+    },
+    {
+      "start": 153,
+      "end": 167,
+      "kind": "function",
+      "name": "backupModelFor",
+      "id": "s16",
+      "hash": "2adce6d414fe555d",
+      "title": "Choosing the backup model",
+      "what": "Works out which role a requested model belongs to, then picks the backup model for that role, or the shared backup, or the requested model itself.",
+      "why": "The comment states that cheap extraction must not be billed at the reasoning rate on the backup provider.",
+      "watch_out": "If both roles resolve to the same model, the role cannot be told apart and the shared backup is used."
+    },
+    {
+      "start": 168,
+      "end": 176,
+      "kind": "function",
+      "name": "getModelSourceForRole",
+      "id": "s17",
+      "hash": "0b38b2834f599f2c",
+      "title": "Where a role's model came from",
+      "what": "Explains which layer supplied a role's model: its own variable, the general variable, or the built-in default.",
+      "why": "The comment states it reports which of the three layers supplied the model.",
+      "watch_out": "The Replit branch uses a different label from the other branches, so labels are not uniform."
+    },
+    {
+      "start": 177,
+      "end": 181,
+      "kind": "function",
+      "name": "isSlugPrefixed",
+      "id": "s18",
+      "hash": "283225fa9d6837af",
+      "title": "Checking for the gateway prefix",
+      "what": "Tells whether a model name starts with an at-sign and contains a slash.",
+      "why": "The comment states that a gateway model name must carry a slug.",
+      "watch_out": "It only checks the shape of the name, not whether the slug is real. A wrong slug still fails at call time."
+    },
+    {
+      "start": 182,
+      "end": 194,
+      "kind": "function",
+      "name": "usesReasoningParams",
+      "id": "s19",
+      "hash": "f304945ba07f24e8",
+      "title": "Newer request style check",
+      "what": "Decides whether a model needs the newer request style: a token-limit field called max_completion_tokens and default temperature only. This is based on the model name pattern.",
+      "why": "The comment states that the older style gets an HTTP 400 error on these models.",
+      "watch_out": "It works from name patterns, so a new model family needs the pattern updated."
+    },
+    {
+      "start": 195,
+      "end": 211,
+      "kind": "function",
+      "name": "rejectsTemperature",
+      "id": "s20",
+      "hash": "f965c40364d6ca1b",
+      "title": "Models that refuse temperature",
+      "what": "Decides whether a model refuses an explicit temperature setting. This covers the newer reasoning models and Claude models.",
+      "why": "The comment records that Claude answers with a 400 error when temperature is sent.",
+      "watch_out": "It depends on the same name patterns as the newer request style check."
+    },
+    {
+      "start": 212,
+      "end": 216,
+      "kind": "function",
+      "name": "outputTokenCap",
+      "id": "s21",
+      "hash": "135cb848f1d76d11",
+      "title": "Output limit for Claude models",
+      "what": "Adds a fixed amount of extra room to the output limit for Claude models, so their hidden thinking does not use up the visible answer.",
+      "why": "The comment records a measured case where a limit of 7000 returned an empty or cut-off reply.",
+      "watch_out": "Claude calls get a much larger limit than the caller asked for, so cost can rise."
+    },
+    {
+      "start": 217,
+      "end": 224,
+      "kind": "function",
+      "name": "getIgnoredLegacyModelVars",
+      "id": "s22",
+      "hash": "8bcbc49d76b6c611",
+      "title": "Retired variables still set",
+      "what": "Lists retired model variables that are set but no longer used.",
+      "why": "Likely reason: lets startup warn the operator about them.",
+      "watch_out": "It only detects them. It does not change any behaviour."
+    },
+    {
+      "start": 225,
+      "end": 235,
+      "kind": "type",
+      "name": "RoleResolution",
+      "id": "s23",
+      "hash": "4ba01abb133555e7",
+      "title": "Shape of a role report",
+      "what": "Defines the fields in one role's report: role, variable, model, source, prefix check, request style, and what uses it.",
+      "why": "Likely reason: a fixed shape for logs and the health endpoint.",
+      "watch_out": ""
+    },
+    {
+      "start": 236,
+      "end": 255,
+      "kind": "function",
+      "name": "getRoleResolutions",
+      "id": "s24",
+      "hash": "a7c4900923cf2ca5",
+      "title": "Report for every role",
+      "what": "Builds the report for both roles, used in boot logs and the health endpoint, so it is always clear which model produced which output.",
+      "why": "The comment states that which model produced which output must never be a guess.",
+      "watch_out": "It reads the current environment each time it runs, so the report reflects settings at that moment only."
+    }
+  ],
+  "explained_at": "2026-11-12T03:57:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the one list of AI model names the server uses, chooses a model for each kind of task, and knows which request style each model accepts.",
+  "purpose": "Decide which model handles simple extraction and which handles judgement work, and keep those choices in one place.",
+  "why": "The header explains the reasons: the gateway rejects bare model names with a misleading access error, and the two kinds of work need different models.",
+  "how": "Looks up the role's own environment variable, then the general CPD_MODEL variable, then a built-in default. On the Replit proxy it uses its own per-role defaults instead. Other helpers then describe where a model came from and which request fields it needs.",
+  "inputs": "The CPD_MODEL and per-role model environment variables, the backup model variables, the Replit proxy settings, and LLM_PROVIDER.",
+  "outputs": "Model name strings, labels for where each came from, flags for the request style, and a full report per role.",
+  "risks": "Changing DEFAULT_CHAT_MODEL to a bare name breaks every call. Old per-feature variables are silently ignored. The model family checks match name patterns, so a new family can be treated wrongly until the patterns are updated.",
+  "debug": "If a call fails with Project does not have access, check that the model name starts with the gateway prefix. The health endpoint lists each role's model and source, so use it to see which setting won. If a request fails with an unsupported parameter, check the family pattern in usesReasoningParams.",
+  "summary_hash": "sha256:e2445fad0561688f8dce7bf589a53ff760273c9d3231bc1dd5f25887e9ada996"
+}

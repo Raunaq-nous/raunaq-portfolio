@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/check-scan-evidence.ts",
+  "language": "TypeScript",
+  "lines": 148,
+  "hash": "sha256:262aa5de169cc085ea5db3812be87066ef5f75a24893cde057eea0a30003ad40",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test file is visible for this checker itself.",
+      "The baseline script depends on the exact wording of its output."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Scan-ready",
+      "meaning": "A project that has a planned budget above zero and filled-in actual budget and delay values."
+    },
+    {
+      "term": "Active evidence",
+      "meaning": "A saved source quote that is currently marked as in use."
+    },
+    {
+      "term": "Evidence path",
+      "meaning": "The list of places in the evidence records where a given field's source might be stored."
+    },
+    {
+      "term": "Exit code",
+      "meaning": "The number a program returns when it ends, where zero means success."
+    }
+  ],
+  "depends_on": [
+    "src/shared/industries",
+    "src/db",
+    "src/storage",
+    "src/scan/scanFields"
+  ],
+  "used_by": [
+    "compass-check-scan-evidence-baseline.ts runs this check through the project check command (src/check:scan-evidence)."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4fb9f229c6daa229",
+      "title": "Imports and setup",
+      "what": "Brings in the industry list, the database connection, the storage layer, and the scan field helpers that this check needs.",
+      "why": "Reason not stated in the code beyond the imports themselves.",
+      "watch_out": ""
+    },
+    {
+      "start": 7,
+      "end": 20,
+      "kind": "function",
+      "name": "industriesToCheck, SCAN_EVIDENCE_FIELDS, FIELD_BY_KEY",
+      "id": "s2",
+      "hash": "1cee0a629c21d20c",
+      "title": "Choosing industries and fields",
+      "what": "Selects every live industry plus any other industry that already has project rows. It also fixes the three fields to check and a lookup from field key to its definition.",
+      "why": "The header explains that a population batch that is not yet live still appears in the tools and must meet the same evidence rule.",
+      "watch_out": "A new scan field must be added to the fixed list here, or it will never be checked."
+    },
+    {
+      "start": 21,
+      "end": 28,
+      "kind": "type",
+      "name": "MissingEvidence",
+      "id": "s3",
+      "hash": "464cb11a3a166b0c",
+      "title": "Missing evidence record shape",
+      "what": "Defines the information kept for each missing evidence item: the industry, project, field, and value.",
+      "why": "Reason not stated in the code beyond naming the record for the failure report.",
+      "watch_out": "The value is typed as a string or a number, but a missing value can still arrive as nothing, so the report may print a blank value."
+    },
+    {
+      "start": 29,
+      "end": 74,
+      "kind": "function",
+      "name": "checkScanEvidence (part 1)",
+      "id": "s4",
+      "hash": "3acb4548ea32cf7f",
+      "title": "Reading scan-ready projects",
+      "what": "Goes through each industry and project. It throws an error if the project list is incomplete, reads the three values for each project, and skips projects that are not scan-ready.",
+      "why": "Likely reason: the completeness check stops a partial result from passing as a full check.",
+      "watch_out": "An incomplete project list stops the entire run rather than reporting what was checked."
+    },
+    {
+      "start": 75,
+      "end": 131,
+      "kind": "function",
+      "name": "checkScanEvidence (part 2)",
+      "id": "s5",
+      "hash": "dc3a4f75707f6a66",
+      "title": "Looking for evidence per value",
+      "what": "For each populated value on a scan-ready project, it looks for an active citation on that field. For the delay, it also accepts active citations for both the planned end and actual end dates. Missing items are recorded and then printed as a failure list.",
+      "why": "The code comment explains that a delay is derived from its two end dates, so requiring both citations avoids asking for a redundant delay citation.",
+      "watch_out": "The delay rule accepts two date citations in place of a delay citation, so changing either path changes how strict the check is."
+    },
+    {
+      "start": 132,
+      "end": 148,
+      "kind": "method",
+      "name": "checkScanEvidence: if",
+      "id": "s6",
+      "hash": "bbb2a55b542a56b5",
+      "title": "Summary, exit code, and cleanup",
+      "what": "Prints the failure summary by industry, notes any items beyond the 100 shown, and sets the exit code to 1. On success it prints a PASS line. The bottom of the file catches errors, reports them, and closes the database connection.",
+      "why": "Reason not stated in the code beyond the summary output and the closing of the connection.",
+      "watch_out": "An error in the main check is reported and the run exits with 1, so a crash is never silently treated as success."
+    }
+  ],
+  "explained_at": "2026-11-12T02:57:01+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that every scan-ready project has source evidence behind its planned budget, actual budget and schedule delay, and fails the run if any value lacks it.",
+  "purpose": "Makes sure the numbers used for scanning can be traced to an active source quote.",
+  "why": "The header says imports into not yet live industries must follow the same evidence rule, so the check covers every industry that has project rows and every live industry.",
+  "how": "Finds the industries to check, then goes through each project in them. It skips projects that are not scan-ready. For each populated value on a scan-ready project, it looks for an active evidence quote on that field. For the delay it also accepts quotes for both the planned end and the actual end. It prints a summary and lists up to 100 missing items, then sets the exit code. It always closes the database connection at the end.",
+  "inputs": "The database of projects and active evidence rows, plus the list of industries and the scan field definitions.",
+  "outputs": "Console output with per industry counts, a list of missing items, and an exit code of 0 or 1.",
+  "risks": "It reads every project in every checked industry. If a project query returns fewer rows than expected, the whole run stops rather than reporting a partial result. Missing items beyond 100 are only counted.",
+  "debug": "Read the summary line for the number of scan-ready projects. For a failure, find the project name and field listed and check its active evidence in the database. The message Scan evidence check could not complete means an error, so read the error text printed after it.",
+  "summary_hash": "sha256:262aa5de169cc085ea5db3812be87066ef5f75a24893cde057eea0a30003ad40"
+}

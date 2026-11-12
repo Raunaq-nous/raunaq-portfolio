@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/yardResearch/toolCatchup.ts",
+  "language": "TypeScript",
+  "lines": 272,
+  "hash": "sha256:1048b8af6779bc64ea676048b3ab582c4b3734de077f7d6f179167094fbb08a9",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only 6 of the 15 sections in this file are visible, so the verdict rules and the start logic cannot be fully checked.",
+      "No test is visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Whole-industry run",
+      "meaning": "An analysis run that covers exactly one industry, with no narrowing to segments, projects or companies."
+    },
+    {
+      "term": "Advisory lock",
+      "meaning": "A database marker that a running job holds, showing that a live worker owns it."
+    },
+    {
+      "term": "Queued run",
+      "meaning": "A job recorded in the database that is waiting for the server to start it."
+    },
+    {
+      "term": "Pickup window",
+      "meaning": "The time limit after which a queued run is no longer picked up by the server."
+    },
+    {
+      "term": "Opportunity Map",
+      "meaning": "An analysis tool that refreshes its view of an industry after the data changes."
+    },
+    {
+      "term": "Fingerprint (for the Opportunity Map)",
+      "meaning": "A stored code showing the data state that was last refreshed, so the same refresh is not queued twice."
+    }
+  ],
+  "depends_on": [
+    "replayLedger.ts",
+    "tools/reality-scan/createRun",
+    "tools/lessons-learnt/createRun",
+    "tools/opportunity-map/store",
+    "tools/queuedRunPickup (named in the header, not in the packet)",
+    "@workspace/db (scope schemas)",
+    "drizzle-orm"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 39,
+      "kind": "setup",
+      "name": "File setup, ToolKey, TOOL_LABEL, Verdict, RunRow, ToolState",
+      "id": "s1",
+      "hash": "0bcc710fe0a718b5",
+      "title": "File header, tool names and verdicts",
+      "what": "Explains the freshness rules and the meaning of each verdict, and sets up the tool names and the data types used later.",
+      "why": "The header defines exactly when each tool counts as up to date, so the rules are written where a reader will find them.",
+      "watch_out": "The two-day pickup window must match the server's setting, or verdicts will be wrong."
+    },
+    {
+      "start": 40,
+      "end": 46,
+      "kind": "type",
+      "name": "IndustryFreshness",
+      "id": "s2",
+      "hash": "43b20b0fb710497a",
+      "title": "Freshness summary shape",
+      "what": "Describes the summary for one industry: batch counts, the latest batch and the state of each tool.",
+      "why": "Gives the owner one consistent summary to read for each industry.",
+      "watch_out": "The batch counts are only as good as the ledger and the database rows behind them."
+    },
+    {
+      "start": 47,
+      "end": 53,
+      "kind": "value",
+      "name": "catchupScope",
+      "id": "s3",
+      "hash": "dbc4c31e196760a4",
+      "title": "Standard catch-up scope",
+      "what": "Builds the scope used for catch-up runs: one industry, no segments or projects, Yard-only research for Reality Scan.",
+      "why": "Catch-up runs match the existing whole-industry runs so they can be compared.",
+      "watch_out": "If this scope differs from the existing whole-industry runs, freshness checks will miss those runs."
+    },
+    {
+      "start": 54,
+      "end": 60,
+      "kind": "value",
+      "name": "RUN_TABLE",
+      "id": "s4",
+      "hash": "0b21018d8ddf85fc",
+      "title": "Run tables and whole-industry filter",
+      "what": "Maps each tool to its run table, sets the pickup window, and defines the test that picks out whole-industry runs.",
+      "why": "Narrows the check to runs that cover exactly the industry, as the header requires.",
+      "watch_out": "The pickup window must stay in step with the server's queued run pickup setting."
+    },
+    {
+      "start": 61,
+      "end": 63,
+      "kind": "function",
+      "name": "lockHeld",
+      "id": "s5",
+      "hash": "a29f944880c2fe29",
+      "title": "Lock check",
+      "what": "Builds a database check that tells whether a run's lock is held by a live worker.",
+      "why": "Separates a run that is really running from one that was left behind.",
+      "watch_out": "The check depends on the lock naming scheme used by the tools; if that naming changes, this check breaks silently."
+    },
+    {
+      "start": 64,
+      "end": 68,
+      "kind": "function",
+      "name": "industryRuns",
+      "id": "s6",
+      "hash": "36d1932883b6e5f6",
+      "title": "Listing recent industry runs",
+      "what": "Returns the latest 50 whole-industry runs for one tool, with each run's status, stage, error, lock state and pickup state.",
+      "why": "Feeds the verdict logic with the runs that matter.",
+      "watch_out": "Only the latest 50 runs are read, so an older run beyond that limit is never considered."
+    },
+    {
+      "start": 69,
+      "end": 73,
+      "kind": "function",
+      "name": "omJobs",
+      "id": "s7",
+      "hash": "507790ed3f69ca65",
+      "title": "Loads recent Opportunity Map jobs",
+      "what": "Fetches the 50 most recent Opportunity Map jobs for one industry, newest first. Each job is shown as not locked and pickable, because these jobs have no lock or pickup columns to read.",
+      "why": "Likely reason: the other tools' run records have those fields, so fixed values keep all three tools in the same shape for the report.",
+      "watch_out": "The locked and pickable values are constants, so they do not show whether a job is really waiting or running."
+    },
+    {
+      "start": 74,
+      "end": 86,
+      "kind": "function",
+      "name": "plainError, failedStage, fmt",
+      "id": "s8",
+      "hash": "622c5ed4fd509811",
+      "title": "Turns raw errors into plain sentences",
+      "what": "Converts a stored error into a short reason, such as the AI usage limit being spent, a refused login, a rate limit, or a search provider with no results. Other errors are shortened to about 220 characters. failedStage picks the stage name from the error or the current stage, and fmt prints a timestamp in UTC.",
+      "why": "The comment says raw provider text should not be shown, so the code translates known error patterns into plain wording.",
+      "watch_out": "Unrecognized errors fall through to a shortened copy of the raw text, so the comment's promise is only partly kept."
+    },
+    {
+      "start": 87,
+      "end": 113,
+      "kind": "function",
+      "name": "scanOutcome",
+      "id": "s9",
+      "hash": "3320a45dac95aa20",
+      "title": "Summarizes the latest Reality Scan run",
+      "what": "Reads the stage results of the latest Reality Scan run and writes one sentence. It says how many projects were calculated, how many plot on the cost and schedule chart, and the main reasons the others are blocked. If no calculation exists, it gives the project scope and how the run ended.",
+      "why": "The doc comment says it reports which plants plot on the chart and what blocks the rest.",
+      "watch_out": "The counts depend on the stored shape of the calculation result, so a changed shape can make the counts show zero without any error."
+    },
+    {
+      "start": 114,
+      "end": 128,
+      "kind": "function",
+      "name": "lessonsOutcome",
+      "id": "s10",
+      "hash": "a79ca524e769c068",
+      "title": "Summarizes the latest Lessons Learnt run",
+      "what": "If the run succeeded, reads the deck model stage and reports the number of lesson pillars, their names, the admitted facts, and the project count. If the run has insufficient evidence, failed, or is still going, it says so in plain words.",
+      "why": "Likely reason: older runs did not record a lesson count, so the code has a fallback message for them.",
+      "watch_out": "A successful run with no totals gets the older-engine message, which can hide a real missing-data problem."
+    },
+    {
+      "start": 129,
+      "end": 144,
+      "kind": "function",
+      "name": "omOutcome",
+      "id": "s11",
+      "hash": "4f31af0f7ccc3b4f",
+      "title": "Summarizes the latest Opportunity Map job",
+      "what": "Reads the job's counts and coverage notes and reports how many signals came from how many sources. When nothing was found, it lists the causes recorded in the notes, such as failed web searches or no usable page text.",
+      "why": "Likely reason: the coverage notes are the only record of why a search came up empty, so the code turns them into plain causes.",
+      "watch_out": "The causes are found by matching words in the notes, so a change in wording silently drops the explanation."
+    },
+    {
+      "start": 145,
+      "end": 161,
+      "kind": "function",
+      "name": "verdictOf",
+      "id": "s12",
+      "hash": "2ee56a495cb54750",
+      "title": "Decides if a tool is current, running, or stale",
+      "what": "Compares a tool's runs with the time its data was loaded and returns one verdict: no data, running, stale, interrupted, or up to date. It also returns the latest run and any run still active.",
+      "why": "The comments explain that queued runs and live runs count differently, and the rules follow that.",
+      "watch_out": "A run that started before the newest data does not count as covering it, so changing the time comparison changes whether new work gets queued."
+    },
+    {
+      "start": 162,
+      "end": 199,
+      "kind": "function",
+      "name": "toolFreshness, CatchupOptions",
+      "id": "s13",
+      "hash": "9a110ce4b99adc05",
+      "title": "Builds the freshness report for each industry",
+      "what": "For each industry, counts its replay ledger batches as loaded, pending, or partial, finds the most recent loaded batch time, and gives each of the three tools a verdict and an outcome sentence. The options type lets a caller pick one industry and ask to resume failed runs.",
+      "why": "The comment says one industry can have several ledger folders, and their batches should count together.",
+      "watch_out": "An unrecognized industry name is treated as a folder name, so a typo can fail when the ledger is read."
+    },
+    {
+      "start": 200,
+      "end": 251,
+      "kind": "function",
+      "name": "catchUp",
+      "id": "s14",
+      "hash": "8d629883965dd3bf",
+      "title": "Queues the runs that stale industries need",
+      "what": "Takes a single lock so two catch-ups cannot start runs at once, then checks freshness. For each industry with data, it requeues interrupted runs, queues new Reality Scan or Lessons Learnt runs when stale, and queues an Opportunity Map refresh unless monitoring is paused. It also records a fingerprint so the worker does not queue the same refresh again.",
+      "why": "The doc comment says the function is safe to run again and uses one lock so two catch-ups never both start runs.",
+      "watch_out": "The fingerprint is saved after the refresh is queued, so a crash between those two steps could allow a duplicate refresh."
+    },
+    {
+      "start": 252,
+      "end": 272,
+      "kind": "function",
+      "name": "formatFreshness",
+      "id": "s15",
+      "hash": "c362098963bae6d5",
+      "title": "Prints the freshness report as text",
+      "what": "Turns the freshness data into a readable block for each industry. It shows batch counts, the latest batch time, and for each tool a status word, the latest run, its outcome, and any action taken. If a failed run is marked up to date, it also prints the command to resume it.",
+      "why": "The function's comment says it prints one block per industry.",
+      "watch_out": "The resume hint names the file research-tool-catchup.ts, so renaming that file leaves the hint wrong."
+    }
+  ],
+  "explained_at": "2026-11-12T03:50:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Works out whether Reality Scan, Lessons Learnt and the Opportunity Map are up to date for each industry after research is loaded, and can queue catch-up runs.",
+  "purpose": "Tells the owner which analysis tools need re-running after new research lands, and starts the runs when asked.",
+  "why": "The header defines the rules: a tool is up to date only if a whole-industry run started after the newest loaded data.",
+  "how": "1. Finds the newest loaded batch time for each industry. 2. Looks at each tool's recent whole-industry runs. 3. Gives each tool a verdict: up to date, running, interrupted, stale or no data. 4. When asked to start, creates queued runs with the standard scope, and queues an Opportunity Map refresh. 5. Records a fingerprint so the worker does not queue the same refresh twice.",
+  "inputs": "The replay ledgers, the database, and the scope rules for each tool.",
+  "outputs": "A freshness summary per industry with a verdict for each tool, and queued runs or jobs when catch-up is started.",
+  "risks": "Starting catch-up queues real analysis runs that cost time and resources. A wrong pickup window or scope rule can make a current tool look stale or a stale tool look current.",
+  "debug": "Check the verdict first, then the latest run in the database. A run is interrupted when it is marked running but has no live lock. A failed run is only requeued when resumeFailed is set. If verdicts look wrong, compare the scope with the existing whole-industry scope and the pickup window with the server setting.",
+  "summary_hash": "sha256:1048b8af6779bc64ea676048b3ab582c4b3734de077f7d6f179167094fbb08a9"
+}

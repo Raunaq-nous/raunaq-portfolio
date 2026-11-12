@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/exportCompassFlat.ts",
+  "language": "TypeScript",
+  "lines": 209,
+  "hash": "sha256:a2f81bd675c39b0582012e1c3cadec6e856642289c91f7161d7cf6867ddc0643",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Missing project scope is handled with a clear error, which is good.",
+      "Write failures to the samples folder are not handled in this file, so a disk or permission error would surface as a raw error.",
+      "The output folder depends on the working directory, so files can land in the wrong place if the server starts elsewhere.",
+      "No test or other evidence that this file was checked was visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Yard",
+      "meaning": "The name the code uses for the app's own project database, where projects and evidence quotes are stored."
+    },
+    {
+      "term": "Compass",
+      "meaning": "A related project-data layout that the app's field names and categories follow. Not explained further in this file."
+    },
+    {
+      "term": "Evidence quote",
+      "meaning": "A saved passage from a source that backs up a statement about a project, with the link and publisher where it came from."
+    },
+    {
+      "term": "Verbatim",
+      "meaning": "Word for word, exactly as stored, without rewriting."
+    },
+    {
+      "term": "Scope",
+      "meaning": "The set of industries, segments or projects that the user has chosen to work on."
+    },
+    {
+      "term": "Flat format",
+      "meaning": "A layout where each project is one row with numbered fields, instead of nested records."
+    },
+    {
+      "term": "Slug",
+      "meaning": "A short, lower-case, underscore-separated name used in file names."
+    },
+    {
+      "term": "Thin",
+      "meaning": "A flag meaning the export has few facts compared with the number of projects."
+    }
+  ],
+  "depends_on": [
+    "@workspace/db",
+    "drizzle-orm",
+    "fs",
+    "path",
+    "../../db",
+    "../reality-scan/scope",
+    "./framework",
+    "./buildRecipeFromScope"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/lessons-learnt/index.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "66d9937a0fbea884",
+      "title": "Imports and size limits",
+      "what": "Brings in the tools and project data this file needs, and sets two limits: at most 80 projects and 40 facts per project.",
+      "why": "Likely reason: the limits keep the file to a size the Python agent can handle. The header comment explains the no-outside-facts rule.",
+      "watch_out": "Raising either limit changes how much data reaches the agent, and nothing in this file warns about that."
+    },
+    {
+      "start": 20,
+      "end": 30,
+      "kind": "type",
+      "name": "CompassExportResult",
+      "id": "s2",
+      "hash": "bd994e060fe9c774",
+      "title": "Shape of the export result",
+      "what": "Describes the summary returned to the caller: where the file is saved, project and fact counts, industry label, slug, thin flag and warnings.",
+      "why": "Likely reason: gives callers one consistent summary to show or log.",
+      "watch_out": "The thin flag is a rough count-based signal, not a measure of evidence quality."
+    },
+    {
+      "start": 31,
+      "end": 36,
+      "kind": "function",
+      "name": "num",
+      "id": "s3",
+      "hash": "3e947a7a4d37e954",
+      "title": "Turning values into numbers",
+      "what": "Turns a stored budget or count, which may be a number or text with commas, into a number, or nothing if it cannot be read.",
+      "why": "Likely reason: budget values are stored as text in some cases, so they need converting before arithmetic.",
+      "watch_out": "An unreadable value becomes nothing and later appears as a blank field, not as zero."
+    },
+    {
+      "start": 37,
+      "end": 42,
+      "kind": "function",
+      "name": "companyOf",
+      "id": "s4",
+      "hash": "caf0bc943220f92a",
+      "title": "Picking the company name",
+      "what": "Chooses the company name for a project, preferring a party whose role is operator or owner, then the operator field, then the vendor field.",
+      "why": "Likely reason: a project can list several parties, and the owner or operator is the most useful company name.",
+      "watch_out": "The vendor fallback may name a contractor rather than the project owner."
+    },
+    {
+      "start": 43,
+      "end": 89,
+      "kind": "function",
+      "name": "toCompassProject",
+      "id": "s5",
+      "hash": "ae59b0b913adad32",
+      "title": "Making one flat row per project",
+      "what": "Turns one project and its evidence quotes into a single flat row. It holds name, company, location, status, technology, budgets, cost and schedule overrun, a shortened overview, and up to 40 numbered facts with their link, category, publisher and id.",
+      "why": "The Python agent reads flat rows, so this is the conversion step. Overrun is computed here as actual minus planned.",
+      "watch_out": "Cost overrun is only filled when both planned and actual values exist, and the fact id is based on position, so it changes if the quote order changes."
+    },
+    {
+      "start": 90,
+      "end": 110,
+      "kind": "function",
+      "name": "industryLabel",
+      "id": "s6",
+      "hash": "cd1d2b4e89a34bb0",
+      "title": "Choosing the industry label",
+      "what": "Produces a readable industry name, taken first from the scope, then from the most common industry among the projects, falling back to Capital.",
+      "why": "Likely reason: the label gives the deck a readable title.",
+      "watch_out": "If the scope has no industry, the majority vote can give a label that does not match what the user selected."
+    },
+    {
+      "start": 111,
+      "end": 115,
+      "kind": "function",
+      "name": "exportDir",
+      "id": "s7",
+      "hash": "86433a264edc071b",
+      "title": "Choosing where files are saved",
+      "what": "Works out the folder where export files are written, a fixed subfolder under the current working directory.",
+      "why": "Likely reason: the Python agent looks for exports in that folder.",
+      "watch_out": "The path is relative, so starting the server from another folder moves where files are written."
+    },
+    {
+      "start": 116,
+      "end": 171,
+      "kind": "function",
+      "name": "exportYardScopeToCompassFlat (part 1)",
+      "id": "s8",
+      "hash": "5152c7642c4c0ae5",
+      "title": "Preparing the export",
+      "what": "Starts the export: resolves the scope, requires enrich mode with at least one project, optionally narrows to named projects, caps the list at 80, loads the projects and active quotes, and builds the rows. It counts facts and collects warnings about missing links.",
+      "why": "The header says facts come only from the app's own project data, so the export starts from the stored records.",
+      "watch_out": "Both a scope that is not in enrich mode and a name list that matches nothing stop the export with an error."
+    },
+    {
+      "start": 172,
+      "end": 209,
+      "kind": "method",
+      "name": "exportYardScopeToCompassFlat: if",
+      "id": "s9",
+      "hash": "15c3acc64cc34729",
+      "title": "Writing the export file",
+      "what": "Builds the file name from the slug and a timestamp, creates the folder if needed, saves the JSON with schema details and the rows, and returns the result summary.",
+      "why": "Likely reason: the timestamp in the name keeps earlier exports from being overwritten.",
+      "watch_out": "The slug is cut to 48 characters, writes are not cleaned up, and the returned relative path uses fixed folder names, so it can drift from the real folder if that changes."
+    }
+  ],
+  "explained_at": "2026-11-12T04:32:01+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds a JSON file of the app's own projects and their saved evidence quotes, in the flat layout that the lessons-learnt Python agent reads, then reports where the file was saved.",
+  "purpose": "Gives the Python agent its input data in one flat row per project, so it does not need to query the app's database itself.",
+  "why": "Likely reason: the header says the facts stay exactly as stored, verbatim with their links, so the agent cannot add outside facts. The layout is also the shape the agent expects.",
+  "how": "First it resolves the chosen scope to projects and requires that there is at least one. It can narrow to named projects and caps the list at 80. It loads active evidence quotes for those projects and turns each project into one row with up to 40 numbered facts. It counts the facts, collects warnings about missing text or links, works out an industry label and a file-name slug, saves the JSON into the samples folder, and returns a summary.",
+  "inputs": "A scope (industries, segments and projects), an optional list of project names to narrow to, and an optional slug for the file name.",
+  "outputs": "A JSON file in the lessons-learnt-agent samples yard_exports folder, with a schema version, export time, label, counts and project rows. It returns the full path, relative path, project and fact counts, label, slug, a thin flag and a list of warnings.",
+  "risks": "Projects and facts are capped without a clear message beyond the counts. Quotes shorter than 12 characters are dropped. Each call writes a new file and nothing cleans old ones up. The output folder is relative to the working directory of the server. Quotes with no link are still exported and only produce a warning.",
+  "debug": "If the export throws about scope, check that the scope resolves to enrich mode and has projects. If a named project is missing, check the name matching in the narrowing step. If facts are missing, check that the quotes are active and have text of 12 characters or more. Read the warnings and the thin flag in the result. Confirm the JSON file appears in the samples folder.",
+  "summary_hash": "sha256:a2f81bd675c39b0582012e1c3cadec6e856642289c91f7161d7cf6867ddc0643"
+}

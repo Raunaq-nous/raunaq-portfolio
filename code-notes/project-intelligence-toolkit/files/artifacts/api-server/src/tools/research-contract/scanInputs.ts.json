@@ -1,0 +1,306 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/scanInputs.ts",
+  "language": "TypeScript",
+  "lines": 267,
+  "hash": "sha256:a5a92a98065b26397bfb509c96e8a474d02c6935997fd8ef9bc8a7afc26ed4b4",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "A test file covers most helpers, including money, dates, price basis, overruns, reasons, value chain, gap queries, exchange rates and export.",
+      "Failures return plain reasons instead of throwing in most places.",
+      "I did not run the tests, so passing is not confirmed here.",
+      "Known limits are the first-match currency fallback and the checked-day date source."
+    ]
+  },
+  "terms": [
+    {
+      "term": "admitted fact",
+      "meaning": "a research finding that passed the independent check of its source, wording and attribution, so it may be used"
+    },
+    {
+      "term": "overlay",
+      "meaning": "a research value placed on top of a calculation input, with its source attached"
+    },
+    {
+      "term": "ledger",
+      "meaning": "the per-project record of collected facts, sources and missing fields"
+    },
+    {
+      "term": "price basis",
+      "meaning": "whether a cost is stated in money of its own day (nominal) or in fixed prices of an earlier year (real)"
+    },
+    {
+      "term": "nominal",
+      "meaning": "money as it was spent at the time, without adjusting for inflation"
+    },
+    {
+      "term": "World Bank exchange rate",
+      "meaning": "the official yearly rate the World Bank publishes, in local currency units per US dollar"
+    },
+    {
+      "term": "held table",
+      "meaning": "a built-in list of exchange rates shipped with the app, checked before any web request"
+    },
+    {
+      "term": "approximate-delay convention",
+      "meaning": "the rule that a vague date is set to a fixed day, such as the end of the year, and flagged as approximate"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/lib/fx",
+    "artifacts/api-server/src/lib/money",
+    "artifacts/api-server/src/tools/lessons-learnt/recipeResult",
+    "artifacts/api-server/src/tools/research-contract/collection",
+    "artifacts/api-server/src/tools/research-contract/semanticPolicy"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/research-contract/workbook.ts",
+    "artifacts/api-server/src/tools/research-contract/yardHeld.ts",
+    "artifacts/api-server/src/tools/research-contract/scanInputs.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 21,
+      "kind": "setup",
+      "name": "File setup, OverlaySource, OverlayValue, Overlay",
+      "id": "s1",
+      "hash": "0fd97cfb6ebbc525",
+      "title": "Purpose notes and overlay types",
+      "what": "The header explains that these helpers let calculations use research findings and that they refuse to guess. It also defines the shape of one research value and where its source is recorded.",
+      "why": "Stated in the header: admission rules, one-value rule, and literal currency and precision are the core promises.",
+      "watch_out": "Any change that lets unreviewed facts reach the calculations would break the promise made in this header."
+    },
+    {
+      "start": 22,
+      "end": 32,
+      "kind": "value",
+      "name": "OVERLAY_FIELDS, OverlayKey",
+      "id": "s2",
+      "hash": "fc24404d36ce07ac",
+      "title": "Calculation inputs mapped to fields",
+      "what": "Lists which calculation input, such as planned budget, actual budget, completion dates, overrun or delay, is fed by which research field.",
+      "why": "Reason not stated in the code beyond the table itself. It is a lookup table.",
+      "watch_out": "Renaming a field here without matching the collection's field names means no research will ever be found for that input, with no error."
+    },
+    {
+      "start": 33,
+      "end": 48,
+      "kind": "function",
+      "name": "researchValue",
+      "id": "s3",
+      "hash": "b0538019f2aa5b10",
+      "title": "Choosing one research value",
+      "what": "For one project and one input, it finds research facts for that field, keeps those that passed the review and are in the project's record, and returns the value with its source. If nothing qualifies or the values disagree, it returns a plain reason.",
+      "why": "Stated in the code: a value is used only when admitted and unambiguous.",
+      "watch_out": "The source date shown is the day the page was checked, not necessarily the day it was published."
+    },
+    {
+      "start": 49,
+      "end": 57,
+      "kind": "value",
+      "name": "CURRENCY_SYMBOL",
+      "id": "s4",
+      "hash": "827f9f4298a4ea67",
+      "title": "Currency name patterns",
+      "what": "A list of patterns that map money words and symbols, such as US dollar signs, euro or rupees, to standard currency codes. A bare dollar sign maps to a marker meaning the country is unknown.",
+      "why": "Likely reason: lets calculations name the currency from the source's own wording.",
+      "watch_out": "Order matters because the first matching pattern wins, so the bare dollar sign has to stay last."
+    },
+    {
+      "start": 58,
+      "end": 70,
+      "kind": "function",
+      "name": "currencyOf",
+      "id": "s5",
+      "hash": "cff438b9b588505f",
+      "title": "Reading the currency of an amount",
+      "what": "Returns the currency code for a value, preferring an explicit code from the extractor, then a currency attached to the amount, then the symbol list. Returns nothing if no currency is found.",
+      "why": "Stated in the code: the currency written next to the amount wins over other currencies in the sentence.",
+      "watch_out": "When a sentence names several currencies and none is attached to the amount, the first symbol match is used, which can pick the wrong one."
+    },
+    {
+      "start": 71,
+      "end": 81,
+      "kind": "function",
+      "name": "amountInMillions",
+      "id": "s6",
+      "hash": "53125ad698e48490",
+      "title": "Turning an amount into millions",
+      "what": "Reads one money amount from the text and converts it to millions in its currency. It refuses ranges, qualifiers, and sentences with several amounts.",
+      "why": "The header says research values are often full sentences, so only a clearly anchored amount is read.",
+      "watch_out": "The real parsing is done in a shared money helper, so a change there changes this behaviour too."
+    },
+    {
+      "start": 82,
+      "end": 90,
+      "kind": "function",
+      "name": "priceBasisOf",
+      "id": "s7",
+      "hash": "ff0653131e5cace0",
+      "title": "Detecting the price basis",
+      "what": "Reads the text for words showing whether a cost is in nominal money or in fixed prices of a given year, and returns that basis or nothing.",
+      "why": "Likely reason: costs from different price years cannot be compared unless their basis is known.",
+      "watch_out": "It matches simple phrasing only, so unusual wording returns nothing rather than a wrong basis."
+    },
+    {
+      "start": 91,
+      "end": 108,
+      "kind": "function",
+      "name": "priceBasisCheck, PartialDate, MONTHS, lastDay, pad",
+      "id": "s8",
+      "hash": "e56b35809d0534aa",
+      "title": "Price basis comparison and date helpers",
+      "what": "Compares the price basis of a planned cost and an actual cost. It blocks the comparison only when both bases are stated and differ, and otherwise adds a note that unstated bases are treated as nominal. Also holds small helpers for month names and days.",
+      "why": "Stated in the comment above the comparison.",
+      "watch_out": "When neither cost states a basis, the comparison proceeds as nominal, and that assumption is visible only in the note."
+    },
+    {
+      "start": 109,
+      "end": 138,
+      "kind": "function",
+      "name": "parseReportedDate",
+      "id": "s9",
+      "hash": "54059ce17f12ab17",
+      "title": "Reading a reported date",
+      "what": "Turns a date as written, such as a full day, a month and year, a quarter, early or mid year, or a bare year, into a standard date with a precision and an approximate flag. Unknown or TBD values return nothing.",
+      "why": "Stated in the comment: vague dates follow the approximate-delay convention.",
+      "watch_out": "Bare years are set to 31 December, so a delay measured from them can look longer or shorter than it really was."
+    },
+    {
+      "start": 139,
+      "end": 149,
+      "kind": "function",
+      "name": "monthsBetweenReported",
+      "id": "s10",
+      "hash": "85cb1011101019a4",
+      "title": "Months between two reported dates",
+      "what": "Counts whole months between two reported dates at their shared precision, adding or removing a month when the day difference is 15 or more.",
+      "why": "Reason not stated in the code. The 15-day rule looks like a simple rounding choice.",
+      "watch_out": "The rule ignores month lengths, so the result is a rough measure rather than an exact count."
+    },
+    {
+      "start": 150,
+      "end": 157,
+      "kind": "function",
+      "name": "reportedOverrunPct, WORD_NUM",
+      "id": "s11",
+      "hash": "91f5063ba1606463",
+      "title": "Overrun percentage reader and number words",
+      "what": "Finds a percentage in a sentence such as 40 percent over budget and returns it as a number, negative when the wording says under budget or savings. A small table maps number words to numbers for later use.",
+      "why": "Likely reason: lets the app use an overrun the source states directly instead of computing one.",
+      "watch_out": "The first percentage in the sentence is taken, so a sentence mentioning another percentage first can mislead it."
+    },
+    {
+      "start": 158,
+      "end": 164,
+      "kind": "function",
+      "name": "reportedDelayMonths",
+      "id": "s12",
+      "hash": "443ff3e66e94c937",
+      "title": "Reading a delay in months",
+      "what": "Finds a number and a unit of months or years in a sentence and returns the delay in months. Accepts digits or a short list of number words.",
+      "why": "Likely reason: converts stated delays into one common unit.",
+      "watch_out": "Only the first number and unit pair is read, so unusual phrasing returns nothing."
+    },
+    {
+      "start": 165,
+      "end": 185,
+      "kind": "value",
+      "name": "REASON_TAXONOMY, ReasonSignal",
+      "id": "s13",
+      "hash": "2a5e8ed5ac3f69fe",
+      "title": "Overrun reason categories",
+      "what": "A list of reason categories, such as scope change, labour, supply chain, inflation or COVID-19, each with the literal phrases that count as evidence for it.",
+      "why": "Stated in the comment: the passage, not the category, is the evidence.",
+      "watch_out": "Phrases are matched as written, so a source that describes the same cause in other words will not be counted."
+    },
+    {
+      "start": 186,
+      "end": 198,
+      "kind": "function",
+      "name": "overrunReasonSignals",
+      "id": "s14",
+      "hash": "bc0752247cf476e8",
+      "title": "Finding overrun reasons in sources",
+      "what": "For one project, goes through its research facts, skips those not admitted unless told otherwise, and records each category whose phrase appears in the passage, with the phrase and its source.",
+      "why": "Stated in the code: each reason is tied to a passage and its source.",
+      "watch_out": "Only the first match per category per passage is recorded, so signal counts are not counts of separate sources."
+    },
+    {
+      "start": 199,
+      "end": 211,
+      "kind": "value",
+      "name": "VALUE_CHAIN",
+      "id": "s15",
+      "hash": "3bee9a11ae2f140c",
+      "title": "Value chain stage patterns",
+      "what": "A list of keyword patterns that map a Yard segment label, such as refinery or pipeline, to a stage such as upstream, generation or recycling.",
+      "why": "Stated in the comment: this is the Yard's own classification, labelled as a lookup.",
+      "watch_out": "The first matching pattern wins, so a label that fits two stages gets whichever is listed first."
+    },
+    {
+      "start": 212,
+      "end": 220,
+      "kind": "function",
+      "name": "valueChainPosition, CRITICAL_FIELDS",
+      "id": "s16",
+      "hash": "f7df440c218ceeb1",
+      "title": "Value chain lookup and critical field list",
+      "what": "Returns the value chain stage for a segment label, or Unmapped with a note if nothing matches or the segment is empty. Also lists the seven research fields that the calculations need.",
+      "why": "Stated in the comment: unmatched segments stay unmapped rather than guessed.",
+      "watch_out": "Unmapped is a normal result, not an error, so reports should show it rather than hide the project."
+    },
+    {
+      "start": 221,
+      "end": 229,
+      "kind": "value",
+      "name": "GAP_QUERY",
+      "id": "s17",
+      "hash": "da61678708f2fcec",
+      "title": "Search words for each critical field",
+      "what": "Maps each critical field to a set of search words used to look for it when the first search missed it.",
+      "why": "Likely reason: targeted words find a specific figure more reliably than a general query.",
+      "watch_out": "These words decide what the second search finds, and no test checks them."
+    },
+    {
+      "start": 230,
+      "end": 238,
+      "kind": "function",
+      "name": "gapQueries, FxRate, fxCache",
+      "id": "s18",
+      "hash": "9ae346d9d654b041",
+      "title": "Follow-up searches and rate cache",
+      "what": "Builds up to three follow-up search queries for missing critical fields by joining the project name with the search words. Also defines the shape of an exchange rate result and an in-memory cache for rates.",
+      "why": "Stated in the comment: this is the second pass for fields the first pass missed. The cache reason is not stated; likely it avoids repeat lookups in one run.",
+      "watch_out": "The cache is shared by the whole server process and is never cleared, so a stored rate stays until the server restarts."
+    },
+    {
+      "start": 239,
+      "end": 267,
+      "kind": "function",
+      "name": "worldBankFx",
+      "id": "s19",
+      "hash": "7b7ed6785b3036db",
+      "title": "Fetching a yearly exchange rate",
+      "what": "Returns the official exchange rate for one currency and year, checking the built-in table first and the World Bank web service second. Returns a plain reason when no rate can be found, and keeps successful results in the cache.",
+      "why": "Stated in the comment: held table first, live service second.",
+      "watch_out": "The rate is local currency per US dollar, so converting in the wrong direction gives a wrong answer."
+    }
+  ],
+  "explained_at": "2026-11-12T05:13:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Helper functions that turn research findings into checked amounts, dates, percentages and exchange rates for the Reality Scan calculations, and refuse to guess when the source wording is unclear.",
+  "purpose": "Gives the calculations a safe way to use research. It picks one admitted value per field, reads money, dates and percentages from the source wording, maps value chain labels, builds follow-up search queries, and looks up exchange rates.",
+  "why": "The header states the rules: use research only after independent review, use only one unambiguous value, and keep currency and date precision as the source wrote them.",
+  "how": "First, take the research facts for one project and keep only admitted ones, refusing if they conflict. Second, read the currency, amount, price basis and date from the literal wording. Third, read overrun percentages, delay months and overrun reasons from wording. Fourth, map the Yard segment label to a value chain stage. Fifth, build up to three follow-up searches for missing critical fields. Sixth, look up an exchange rate from the built-in table or the World Bank service, and keep the result in memory.",
+  "inputs": "Research facts with their review status, the project's collection record, literal value text, an optional number format hint such as decimal comma, an optional currency code from the extractor, the Yard segment label, and for exchange rates a currency code and year.",
+  "outputs": "Either a usable value with its source, or a plain reason it cannot be used. Also amounts in millions with a currency, dates with a precision flag and an approximate flag, overrun and delay numbers, reason signals with their source, a value chain stage, search queries, and exchange rates with the URL and raw text.",
+  "risks": "A sentence with several amounts or currencies can yield the wrong currency, because a fallback picks the first symbol match. The source date shown is the day the page was checked, not necessarily when it was published. Year-only dates are assumed to end on 31 December. The exchange rate cache lives in memory until the server restarts. The live World Bank call can fail or time out.",
+  "debug": "Read the reason text first. It says whether no candidate exists, a candidate failed review, or values conflict. For a wrong currency or amount, run the currency and amount helpers on the same literal text and compare. For a wrong exchange rate, check the table entry and then the cached result. The related tests are in scanInputs.test.ts.",
+  "summary_hash": "sha256:a5a92a98065b26397bfb509c96e8a474d02c6935997fd8ef9bc8a7afc26ed4b4"
+}

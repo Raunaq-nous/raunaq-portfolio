@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/evidence/apsPack.ts",
+  "language": "TypeScript",
+  "lines": 121,
+  "hash": "sha256:037bdaaa1547de78e306e4542ab976c4b02f97076a8843ef1f988d3baf672bf4",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the header of this file is in the packet, so its reading logic cannot be checked.",
+      "Handling of malformed or unexpected input is not visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "HTML",
+      "meaning": "the markup language web pages are written in"
+    },
+    {
+      "term": "data block",
+      "meaning": "a hidden section of a page that holds structured data as text"
+    },
+    {
+      "term": "screenshot figure",
+      "meaning": "an image embedded in a page with a label describing it"
+    },
+    {
+      "term": "parse",
+      "meaning": "to read text and turn it into structured data the code can use"
+    }
+  ],
+  "depends_on": [],
+  "used_by": [
+    "artifacts/api-server/src/evidence/apsImport.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "dd798cd9cfb0608e",
+      "title": "Header describing the evidence file formats",
+      "what": "A comment block that describes the three kinds of evidence files this module reads and which parts of each file it reads.",
+      "why": "The header says the same readers serve the import and a later re-upload path, so one set of parsers handles both.",
+      "watch_out": "The comment names the exact HTML markers the readers depend on, so a change to those markers in the pages breaks reading."
+    },
+    {
+      "start": 11,
+      "end": 26,
+      "kind": "type",
+      "name": "PackSource, PackShot, PackVetting",
+      "id": "s2",
+      "hash": "71add58a1aeb5ada",
+      "title": "Shapes of evidence pack data",
+      "what": "Defines the data shapes for a source citation, a screenshot and a reviewer verdict. A verdict is either vetted (checked and accepted) or doubt (questioned). Each record notes whether it came from the workbench page or the slide page.",
+      "why": "Likely reason: the pack can come from two kinds of HTML page, so each record keeps its origin for tracing.",
+      "watch_out": "Most fields are optional, so code reading these records must check for missing values before using them."
+    },
+    {
+      "start": 27,
+      "end": 33,
+      "kind": "function",
+      "name": "scriptJson",
+      "id": "s3",
+      "hash": "20490ea5832082e6",
+      "title": "Reading embedded JSON from a page",
+      "what": "Finds a script tag with a given id inside a saved HTML page and turns its contents into data. This is how the pack's embedded source, vetting and slide data are read.",
+      "why": "Likely reason: the saved pages store their data as embedded JSON, so reading that block is the simplest way to recover it.",
+      "watch_out": "The id is placed directly into a pattern without escaping, and malformed JSON makes the parse throw. The callers do not catch that error."
+    },
+    {
+      "start": 34,
+      "end": 36,
+      "kind": "function",
+      "name": "decodeEntities",
+      "id": "s4",
+      "hash": "b0a85eac54f822c8",
+      "title": "Undoing HTML character codes",
+      "what": "Turns a fixed set of HTML codes, such as ampersand and less-than codes, back into ordinary characters.",
+      "why": "Likely reason: saved pages encode special characters, and the captions and labels must be read as plain text.",
+      "watch_out": "The ampersand code is undone before the others, so an encoded sequence like ampersand-lt can be decoded twice. Only the listed codes are handled."
+    },
+    {
+      "start": 37,
+      "end": 66,
+      "kind": "function",
+      "name": "parseWorkbenchHtml",
+      "id": "s5",
+      "hash": "694d017e344c0895",
+      "title": "Reading the workbench page",
+      "what": "Reads a saved workbench page and returns its sources, reviewer verdicts, screenshots with their captions and capture times, and the explorer data. Only figures that contain an embedded image are kept.",
+      "why": "Likely reason: the workbench is the main place the pack is built, so this function pulls all its parts out at once.",
+      "watch_out": "A screenshot figure that does not match the expected markup or has no embedded image is skipped silently, so a changed page layout can lose evidence without any error."
+    },
+    {
+      "start": 67,
+      "end": 81,
+      "kind": "function",
+      "name": "parseSlideHtml",
+      "id": "s6",
+      "hash": "7c5a96e34344def0",
+      "title": "Reading the slide page",
+      "what": "Reads a saved slide page and returns its screenshots, reviewer verdicts and a status record for each source, including its kind, status, note and what it was used for.",
+      "why": "Likely reason: the slide page keeps its own copy of the source data, so it needs its own reader.",
+      "watch_out": "Each source is keyed by its code, so two entries with the same code would overwrite each other in the status record."
+    },
+    {
+      "start": 82,
+      "end": 89,
+      "kind": "type",
+      "name": "ValidationEntry",
+      "id": "s7",
+      "hash": "a09a1721dc195d32",
+      "title": "Shape of a validation result",
+      "what": "Describes one checked source: the address tried, the final address, the HTTP status, whether the quote was found, the screenshot paths, the match details and the list of attempts.",
+      "why": "Reason not stated in the code. The many optional fields suggest a single record covers both successful and failed checks.",
+      "watch_out": "Almost every field is optional, so a reader that assumes a value is present can fail on a failed check."
+    },
+    {
+      "start": 90,
+      "end": 108,
+      "kind": "function",
+      "name": "classifyShotLabel",
+      "id": "s8",
+      "hash": "95c06628617a362d",
+      "title": "Deciding what a screenshot label proves",
+      "what": "Reads a screenshot's label and decides what kind of evidence it is: an archive copy, a PDF page, a reviewer's confirmation, or a network screenshot. It also decides whether the image counts as genuine proof of the quote, and adds a warning flag where needed.",
+      "why": "Likely reason: labels carry the proof status, so classifying them in one place keeps the rule consistent across the pack.",
+      "watch_out": "Labels are matched by fixed words, so a rewording of the label text would change the result, and unrecognised labels fall through to an error status."
+    },
+    {
+      "start": 109,
+      "end": 121,
+      "kind": "function",
+      "name": "parsePackTime",
+      "id": "s9",
+      "hash": "3c6ccd948b96ca84",
+      "title": "Reading dates from pack text",
+      "what": "Turns date text in one of two common forms, a timestamp in UTC or a day month year, into a date value. Anything it cannot read becomes null.",
+      "why": "Likely reason: the pack stores capture times as plain text in more than one format, so the reader tries each form in turn.",
+      "watch_out": "Day-only text is treated as midnight UTC, and the final fallback relies on the system's own date parsing, which can differ between machines."
+    }
+  ],
+  "explained_at": "2026-11-12T03:27:36+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads the APS evidence files (workbench HTML, slide HTML and check results) and turns them into the data the APS import uses.",
+  "purpose": "Converts reviewer and check outputs into structured records that the import can store.",
+  "why": "The header says the same readers serve the import and a later re-upload path, so an uploaded file goes through the same code.",
+  "how": "Only the header of this file is in the packet. The outline names the parsing steps: workbench reading, slide reading, screenshot label classification, and time parsing. Their code is not shown, so the order and details cannot be confirmed here.",
+  "inputs": "Workbench HTML with embedded data blocks and screenshot figures; slide HTML with a data block; validation results; remote check results.",
+  "outputs": "Structured lists of sources, screenshots, reviewer verdicts and check entries, plus parsed times.",
+  "risks": "The readers depend on exact HTML markers, so a changed page layout will break them. Handling of malformed files is not visible.",
+  "debug": "If the import finds no screenshots or verdicts, check that the file still contains the data blocks and figure markers named in the header. If captures have no times, check the time parsing step.",
+  "summary_hash": "sha256:037bdaaa1547de78e306e4542ab976c4b02f97076a8843ef1f988d3baf672bf4"
+}

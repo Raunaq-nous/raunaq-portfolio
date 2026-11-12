@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/lib/safeFetch.ts",
+  "language": "TypeScript",
+  "lines": 203,
+  "hash": "sha256:1a7c2ba5c9b1d417924edbcaede7ac6ac26b3bef587f4a0e7432d0aefb831a46",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The fetch function and the retriever class were not included in this packet, so their behaviour cannot be checked.",
+      "The check and the actual request resolve the host separately, which may leave a gap."
+    ]
+  },
+  "terms": [
+    {
+      "term": "SSRF",
+      "meaning": "server-side request forgery, where a server is tricked into requesting an internal address on an attacker's behalf"
+    },
+    {
+      "term": "DNS",
+      "meaning": "the internet's address book that turns a host name into numeric addresses"
+    },
+    {
+      "term": "IP address",
+      "meaning": "a numeric address for a machine on a network, in IPv4 or IPv6 form"
+    },
+    {
+      "term": "PDF",
+      "meaning": "a document file format whose text must be extracted before it can be read"
+    }
+  ],
+  "depends_on": [
+    "dns/promises",
+    "url",
+    "../jobs/interfaces"
+  ],
+  "used_by": [
+    "Not visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 4,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "1ffc5205c068ad00",
+      "title": "Imports",
+      "what": "Loads the DNS lookup tool, the URL parser, and the retriever type this module implements.",
+      "why": "Likely reason: needed for lookups and to match the retriever contract.",
+      "watch_out": ""
+    },
+    {
+      "start": 5,
+      "end": 9,
+      "kind": "value",
+      "name": "BLOCKED_HOSTNAMES",
+      "id": "s2",
+      "hash": "bf900a73ab9bcae5",
+      "title": "Always-blocked host names",
+      "what": "Lists host names that are always refused, such as localhost and a cloud metadata host.",
+      "why": "Likely reason: these are common routes to internal services.",
+      "watch_out": "The list is short, so other internal names are not stopped by this list alone."
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "kind": "value",
+      "name": "BLOCKED_HOSTNAME_SUFFIXES",
+      "id": "s3",
+      "hash": "b6dcd41aa21633d1",
+      "title": "Blocked host name endings",
+      "what": "Lists endings such as local and internal that are refused.",
+      "why": "Likely reason: these name internal networks.",
+      "watch_out": "Endings are matched in lower case after conversion, so a new ending must also be lower case."
+    },
+    {
+      "start": 16,
+      "end": 24,
+      "kind": "function",
+      "name": "isBlockedHostname",
+      "id": "s4",
+      "hash": "6bd35e00df0e2053",
+      "title": "Checking a host name",
+      "what": "Checks a host name against the blocked names and endings, ignoring case.",
+      "why": "Likely reason: a quick first check before any network lookup.",
+      "watch_out": "A public name can still point to a private address, which the address check must catch."
+    },
+    {
+      "start": 25,
+      "end": 41,
+      "kind": "function",
+      "name": "isPrivateIP",
+      "id": "s5",
+      "hash": "b557a3b7b630311e",
+      "title": "Checking whether an address is private",
+      "what": "Decides whether an address is private, loopback, link-local, or unspecified, for IPv4 and some IPv6.",
+      "why": "Likely reason: stops the server reaching internal machines.",
+      "watch_out": "The list is incomplete. Some reserved ranges are not covered."
+    },
+    {
+      "start": 42,
+      "end": 45,
+      "kind": "function",
+      "name": "looksLikeIP",
+      "id": "s6",
+      "hash": "e19c5c415a83dd82",
+      "title": "Recognising an IP address",
+      "what": "Tells whether a text is already an IP address rather than a host name.",
+      "why": "Likely reason: an address can be checked directly with no lookup.",
+      "watch_out": "Any text with a colon is treated as IPv6, so unusual text with colons may be misread."
+    },
+    {
+      "start": 46,
+      "end": 89,
+      "kind": "function",
+      "name": "resolveAndCheck",
+      "id": "s7",
+      "hash": "bf4d37760e602e25",
+      "title": "Resolving and checking a host",
+      "what": "Looks up all IPv4 and IPv6 addresses for a host. Refuses if any address is private, or if the host has none. Also sets the limits used later: redirects, page size, PDF size and timeout.",
+      "why": "The comments state that a host with no records is a dead link, not an attack, so it gets its own message.",
+      "watch_out": "The check happens at one moment, and the real request resolves the host again later. A changing DNS record could pass this check and then point somewhere else."
+    },
+    {
+      "start": 90,
+      "end": 98,
+      "kind": "function",
+      "name": "isPdfUrl",
+      "id": "s8",
+      "hash": "8f0a23cd9a2953bd",
+      "title": "Recognising a PDF link",
+      "what": "Checks whether the path of a URL ends in pdf.",
+      "why": "Likely reason: decides PDF handling from the link alone.",
+      "watch_out": "A PDF behind a link without that ending is missed here. The content type check is a separate test."
+    },
+    {
+      "start": 99,
+      "end": 102,
+      "kind": "function",
+      "name": "isPdfContentType",
+      "id": "s9",
+      "hash": "dc335e619b9f19fd",
+      "title": "Recognising a PDF response",
+      "what": "Checks whether the content type header says PDF.",
+      "why": "Likely reason: confirms the file type from the server's own statement.",
+      "watch_out": "Matching is loose, so a header that merely contains the words is treated as a PDF."
+    },
+    {
+      "start": 103,
+      "end": 122,
+      "kind": "function",
+      "name": "extractPdfText",
+      "id": "s10",
+      "hash": "c7112426f1fc7ed9",
+      "title": "Reading text from a PDF",
+      "what": "Reads text from PDF bytes, collapses spaces, and keeps at most 60,000 characters. On failure it logs a warning and returns empty text.",
+      "why": "The code notes the parser's interface changes between versions, so it tries two forms.",
+      "watch_out": "A failed read returns empty text, so a broken PDF looks like an empty document to callers."
+    },
+    {
+      "start": 123,
+      "end": 174,
+      "kind": "function",
+      "name": "safeFetch (part 1)",
+      "id": "s11",
+      "hash": "bfc8b49e753f7b9b",
+      "title": "Fetching the page, first half",
+      "what": "The code for this section was not included in this packet, so this note cannot describe it.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 175,
+      "end": 194,
+      "kind": "function",
+      "name": "safeFetch (part 2)",
+      "id": "s12",
+      "hash": "5ebec53734c331d7",
+      "title": "Fetching the page, second half",
+      "what": "The code for this section was not included in this packet, so this note cannot describe it.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 195,
+      "end": 203,
+      "kind": "class",
+      "name": "SafeFetchRetriever",
+      "id": "s13",
+      "hash": "8e57024b2d000642",
+      "title": "Retriever for fetched sources",
+      "what": "The code for this section was not included in this packet, so this note cannot describe it.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T03:57:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Downloads a web page or PDF only after checking that the address is public, and turns PDFs into plain text.",
+  "purpose": "Stop the server from being tricked into reading internal machines or cloud metadata addresses.",
+  "why": "The error messages name the protection: SSRF blocked for private targets. The DNS message separates dead links from attacks.",
+  "how": "Checks the host name against a block list, resolves it to all its addresses, and refuses if any address is private. Also decides whether a link is a PDF and extracts text from PDF bytes. The fetch function itself is only partly included in this packet.",
+  "inputs": "URLs and host names. PDF bytes when a PDF is being read.",
+  "outputs": "Fetched content, extracted PDF text, or an error that says why a fetch was refused.",
+  "risks": "The address is checked before the request, so the address could change in between. The list of private ranges is partial. A PDF read failure returns empty text silently.",
+  "debug": "Error text names the reason: SSRF blocked or DNS unresolvable. Check the host name and its DNS records. For PDF problems, look for the PDF parse failed warning in the logs.",
+  "summary_hash": "sha256:1a7c2ba5c9b1d417924edbcaede7ac6ac26b3bef587f4a0e7432d0aefb831a46"
+}

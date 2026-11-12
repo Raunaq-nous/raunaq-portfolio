@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/classify.ts",
+  "language": "TypeScript",
+  "lines": 132,
+  "hash": "sha256:019c15d463ba6535ddbe5cf804b907646636af73e517cc4a53ea60278de9e280",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Checks on ids and quotes are a good safeguard.",
+      "A malformed model reply fails the whole batch rather than one item.",
+      "No test in this file is visible; the codebook test file covers validateClassification only."
+    ]
+  },
+  "terms": [
+    {
+      "term": "codebook",
+      "meaning": "the team's own list of categories, definitions and cue words used to label signals"
+    },
+    {
+      "term": "verbatim",
+      "meaning": "word for word, exactly as written"
+    },
+    {
+      "term": "schema",
+      "meaning": "a written rule for the exact shape that data must have"
+    },
+    {
+      "term": "model",
+      "meaning": "the AI language model that reads text and returns an answer"
+    }
+  ],
+  "depends_on": [
+    "../../lib/portkeyOpenAI",
+    "../../lib/modelConfig",
+    "./codebook",
+    "./branding",
+    "zod"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/classifyWorker.ts",
+    "artifacts/api-server/src/tools/opportunity-map/codebook.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f50292904b0b4d15",
+      "title": "Imports for classification",
+      "what": "Brings in the schema checker, the AI model connection, the model choice setting, the codebook helpers and the branding filters used by this file.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Changes to the branding filter or model settings affect every classification."
+    },
+    {
+      "start": 7,
+      "end": 19,
+      "kind": "type",
+      "name": "NewProjectAssessment",
+      "id": "s2",
+      "hash": "d20985131950352b",
+      "title": "Shape of the new project result",
+      "what": "Defines what is stored about whether a signal announces a new project: yes or no, the project name, its stage, the supporting quote and its source link, and a short reason.",
+      "why": "The header comment describes the new project check as separate and strict, so it has its own record.",
+      "watch_out": "A yes answer needs both a quote and a source link; the validation step is what enforces this."
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "kind": "type",
+      "name": "Classification",
+      "id": "s3",
+      "hash": "69a034717710fc7b",
+      "title": "Stored classification record",
+      "what": "Defines the record saved for each signal after classification: the codebook version used, whether it worked, the chosen signal type, solutions, trigger, themes, industry, companies, the new project check, and a short rationale.",
+      "why": "The codebook fingerprint lets the app know when a stored result is out of date.",
+      "watch_out": "A failed record has empty fields, so screens must check the status before showing values."
+    },
+    {
+      "start": 26,
+      "end": 33,
+      "kind": "type",
+      "name": "ClassifiableSignal",
+      "id": "s4",
+      "hash": "833403323df5f385",
+      "title": "Input shape for a signal",
+      "what": "Describes the signal data sent to the classifier: title, summary, kind, industry, sources with quotes, optional capex and announcement quotes, and an optional mapping to a stage or project name.",
+      "why": "Reason not stated in the code. Likely reason: the optional fields exist because some signals are only partly filled in.",
+      "watch_out": "Only quoted sources count as evidence, so a signal with no quotes cannot be grounded."
+    },
+    {
+      "start": 34,
+      "end": 52,
+      "kind": "value",
+      "name": "itemSchema, responseSchema, norm",
+      "id": "s5",
+      "hash": "b33dc2576d5b2cd8",
+      "title": "Checking the model's reply format",
+      "what": "Defines the exact shape the model must reply in, with limits on list lengths and text sizes. Also a helper that normalises text for comparison by unifying case, quote marks and spacing.",
+      "why": "Likely reason: the model reply is untrusted, so it is checked before the app uses it.",
+      "watch_out": "A reply that breaks a limit fails the whole batch, not just the one item."
+    },
+    {
+      "start": 53,
+      "end": 62,
+      "kind": "function",
+      "name": "evidencePassages, pick",
+      "id": "s6",
+      "hash": "80f694aaa778bb27",
+      "title": "Evidence passages and id checking",
+      "what": "Collects every quote a signal has as evidence, from its sources and from its capex and announcement records. Also a helper that keeps an id only if it appears in the allowed list.",
+      "why": "The comment says only previously grounded quotes count, so the model cannot add new evidence.",
+      "watch_out": "Only quotes that have a source link are collected, so a quote without a link is ignored."
+    },
+    {
+      "start": 63,
+      "end": 91,
+      "kind": "function",
+      "name": "validateClassification, emphasisNote",
+      "id": "s7",
+      "hash": "d184f7596cfb4ea9",
+      "title": "Checking model results against the rules",
+      "what": "Checks each model result against the codebook and the signal's evidence. Drops unknown ids, keeps at most three secondary solutions and three themes, keeps company names only if they appear in the signal text, and accepts a new project claim only if its quote is a true passage from the evidence. The emphasis note adds a PRIORITISED or DEPRIORITISED tag to the list shown to the model.",
+      "why": "The header says every id is checked and no new facts may be asserted.",
+      "watch_out": "A correct announcement can be rejected if the model's quote differs from the stored text, even by one word after normalising."
+    },
+    {
+      "start": 92,
+      "end": 103,
+      "kind": "function",
+      "name": "catalogue",
+      "id": "s8",
+      "hash": "f7792371b6fd0b06",
+      "title": "Codebook list written into the prompt",
+      "what": "Builds the lists of signal types, solutions, trigger families, themes and industries that the model may choose from, each with its definition, cue words and priority tag. Solutions limited to secondary use are labelled.",
+      "why": "Likely reason: the model may only choose from the team's own list, so the list is sent in the prompt.",
+      "watch_out": "Definitions are cut to 400 characters and cue words to 15, so long definitions can lose detail."
+    },
+    {
+      "start": 104,
+      "end": 132,
+      "kind": "function",
+      "name": "classifyBatch",
+      "id": "s9",
+      "hash": "98b115956a44ac40",
+      "title": "Sending a batch to the model",
+      "what": "Stops with an error if no model is configured. Otherwise sends the batch of signals with the codebook to the reasoning model, reads the JSON reply, checks it, and returns a classification for each signal that passes.",
+      "why": "Likely reason: signals are sent in small batches to keep each call bounded and to check the model's output.",
+      "watch_out": "The prompt tells the model to treat signal text as data, but that is only a request; the checks in validateClassification are the real safeguard. A bad JSON reply throws for the whole batch."
+    }
+  ],
+  "explained_at": "2026-11-12T04:49:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Asks an AI model to sort each captured signal into the team's codebook categories and to flag new project announcements, then checks every answer against the codebook and the signal's own evidence before saving it.",
+  "purpose": "Turns raw signals into consistent, team-specific labels and a strict yes or no on new projects, without letting the model invent facts.",
+  "why": "The header comment says every id is checked against the codebook and every announcement quote must be a word-for-word passage from stored evidence, so nothing new is asserted.",
+  "how": "1. Build the list of allowed categories from the codebook. 2. Send the batch of signals to the reasoning model, asking for JSON. 3. Read the reply against a strict schema. 4. For each result, keep only allowed ids, company names found in the text, and quotes found in the evidence. 5. Return one classification per signal.",
+  "inputs": "A batch of signals with title, summary, kind, industry, sources with quotes, optional capex and announcement quotes, plus the current codebook.",
+  "outputs": "A map from signal id to a classification record. Throws an error if no model is configured or the model reply cannot be read.",
+  "risks": "A reply that breaks the schema throws for the whole batch. Checks catch invalid ids and ungrounded quotes but cannot judge whether a chosen category is the right one. Company names are matched as text, so spelling differences cause them to be dropped.",
+  "debug": "If every result shows failed, check the model configuration and the error text on the classification record. If a new project flag is missing, check whether the quote matches the stored evidence after normalising. The reasons for dropped items are in validateClassification.",
+  "summary_hash": "sha256:019c15d463ba6535ddbe5cf804b907646636af73e517cc4a53ea60278de9e280"
+}

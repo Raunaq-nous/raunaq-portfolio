@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/projectMetrics.ts",
+  "language": "TypeScript",
+  "lines": 102,
+  "hash": "sha256:d12235d6e69f1ade9794269ec77580f93f0c73937c964468289ded0c9c9ac241",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Every failure path returns a reason rather than a wrong number.",
+      "Covered by projectMetrics.test.ts for the main withholding rules."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Overrun",
+      "meaning": "How far the final cost went above the approved cost, shown as a percentage."
+    },
+    {
+      "term": "Sanctioned cost",
+      "meaning": "The cost a project was approved to spend at the start."
+    },
+    {
+      "term": "Admitted fact",
+      "meaning": "A project fact that has passed the source and meaning checks, so it can be used."
+    },
+    {
+      "term": "Unavailable result",
+      "meaning": "A result with no number, returned together with the reason it could not be calculated."
+    },
+    {
+      "term": "Approximate date",
+      "meaning": "A date given only to the month or year, so its schedule result is an estimate."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/tools/lessons-learnt/recipeResult.ts",
+    "artifacts/api-server/src/tools/research-contract/evidence.ts",
+    "artifacts/api-server/src/tools/research-contract/semanticPolicy.ts",
+    "artifacts/api-server/src/tools/research-contract/assertion.ts"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/research-contract/projectMetrics.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup, Input",
+      "id": "s1",
+      "hash": "de236ed9e47da52a",
+      "title": "Imports and the input record",
+      "what": "Brings in the shared fact type, the overrun calculation, the admission check and the assertion type. Also defines the record each calculated input carries: which facts, the field, the original text, the number and the unit.",
+      "why": "Likely reason: every number must point back to the facts it came from.",
+      "watch_out": ""
+    },
+    {
+      "start": 7,
+      "end": 15,
+      "kind": "type",
+      "name": "DerivedMetric, unavailable, normalized, scales",
+      "id": "s2",
+      "hash": "75db5b3a4dd7e7fc",
+      "title": "Result shape and unit scales",
+      "what": "Defines what a metric result looks like. Holds the helper that builds an unavailable result, the text tidier, and the table that converts million, billion, thousand and similar words into plain numbers.",
+      "why": "Likely reason: a missing result still needs to explain itself, and money in different units needs one common scale.",
+      "watch_out": "The scale table is the only place units are converted, so an unknown unit word causes an error rather than a guess."
+    },
+    {
+      "start": 16,
+      "end": 31,
+      "kind": "function",
+      "name": "literalNumber",
+      "id": "s3",
+      "hash": "07b8aff2c7bcb0f3",
+      "title": "Reads a number as written",
+      "what": "Turns the stored number text into a number, after removing any currency code, symbol or magnitude word. Reads comma or dot punctuation according to the stated number format, and refuses unclear spellings.",
+      "why": "Likely reason: sources write numbers differently by country, so the format must be stated instead of guessed.",
+      "watch_out": "A number with commas but no stated format is refused, so the format must be recorded on the fact."
+    },
+    {
+      "start": 32,
+      "end": 42,
+      "kind": "function",
+      "name": "money",
+      "id": "s4",
+      "hash": "f0b66a1d1740269f",
+      "title": "Reads a money amount",
+      "what": "Checks that a money fact has a currency, a unit and a price basis, then converts the amount into plain units. Refuses unknown units and negative amounts. Does not convert between currencies.",
+      "why": "Likely reason: costs in different currencies or units must not be silently added together.",
+      "watch_out": "An unknown unit word causes an error, so new unit wording needs a row added to the scale table."
+    },
+    {
+      "start": 43,
+      "end": 61,
+      "kind": "function",
+      "name": "datePoint",
+      "id": "s5",
+      "hash": "2a950f715d60b844",
+      "title": "Reads a date and its precision",
+      "what": "Accepts an exact ISO date or a plain English date with a month and year. Checks that the stated precision (day, month or year) matches the text, and confirms the calendar date exists. Returns the date and whether it is approximate.",
+      "why": "The comment says there is no locale guessing, so dates are read only in explicit forms.",
+      "watch_out": "Dates written in other languages are refused, so they will not feed the schedule result until handled."
+    },
+    {
+      "start": 62,
+      "end": 102,
+      "kind": "function",
+      "name": "projectMetrics",
+      "id": "s6",
+      "hash": "76343c18d56f5a44",
+      "title": "Builds cost and schedule for one project",
+      "what": "For one project, uses only admitted facts. Returns unavailable results when the status is cancelled, suspended, under construction or planned. Otherwise calculates the percentage overrun from the cost pair and the schedule slip in months from the completion pair. Each result either has a value with its inputs and assumptions, or is unavailable with a reason.",
+      "why": "The comment describes it as a run-local bridge, so the numbers come only from the admitted facts of this run.",
+      "watch_out": "Any conflicting record blocks the result, and the schedule slip uses an average month length, which is stated in the output as an assumption."
+    }
+  ],
+  "explained_at": "2026-11-12T05:10:33+00:00",
+  "explained_by": "haiku",
+  "summary": "Calculates a project's cost overrun percentage and schedule slip in months from admitted, consistent facts, and explains why a figure is missing when it cannot be calculated.",
+  "purpose": "Produces the numerical cost and schedule results for each project in a run, with the facts behind each number.",
+  "why": "The comment says it is a run-local bridge, so no values come from the project record and no missing denominator is guessed.",
+  "how": "Keeps only admitted facts for the project. Stops early with unavailable results when the status is unfinished, cancelled or suspended. Reads the planned and actual cost, and calculates the overrun. Reads the planned and actual completion dates and calculates the month difference. Each result records its formula, inputs and assumptions.",
+  "inputs": "A project identifier and the list of project facts, each with an assertion carrying field, value, currency, unit, price basis, date precision and milestone.",
+  "outputs": "Two results, cost and schedule, each with a value (or none), unit, provenance, formula, inputs, assumptions, an approximation flag and a reason when unavailable.",
+  "risks": "One conflicting or mismatched record withholds the whole result, so a single bad fact can remove a project's figures. Schedule months use an average month length, which is stated in the output but is an approximation.",
+  "debug": "Start with the reason text on the unavailable result. It names the missing field, the conflict or the unit that was refused. Check the status facts if a project unexpectedly shows unavailable. Test expectations are in projectMetrics.test.ts.",
+  "summary_hash": "sha256:d12235d6e69f1ade9794269ec77580f93f0c73937c964468289ded0c9c9ac241"
+}

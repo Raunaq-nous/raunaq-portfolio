@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/test-solar-report.ts",
+  "language": "TypeScript",
+  "lines": 87,
+  "hash": "sha256:9e694aa12a121e41d590711529e25ab56e1cf5ed5485941f53182484697f8b14",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Many hardcoded counts and source IDs.",
+      "Depends on a saved dry-run file.",
+      "This review did not run the file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "identity",
+      "meaning": "deciding which existing project a new record belongs to"
+    },
+    {
+      "term": "dry run",
+      "meaning": "a planned import that is shown but not saved"
+    },
+    {
+      "term": "source ID",
+      "meaning": "a short label for one document in the source list"
+    },
+    {
+      "term": "enrichment",
+      "meaning": "adding information to a project that already exists"
+    }
+  ],
+  "depends_on": [
+    "../src/ingest/solarReport/manifest",
+    "../src/ingest/solarReport/import",
+    "../src/mappers/toProjectListRow",
+    "../src/mappers/toProjectDetailDTO",
+    "../src/shared/industryConfig",
+    "../../capital-projects/src/shared/industryConfig",
+    "@workspace/db",
+    "artifacts/api-server/data/solar-report/dry-run.json"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6e16caeeb75373c4",
+      "title": "Imports for solar report checks",
+      "what": "Loads the manifest, identity matching, list mapping, field evidence, industry configs and the project type.",
+      "why": "Gives the test every part of the import it checks.",
+      "watch_out": "Two copies of the industry config must stay identical, and the test compares them."
+    },
+    {
+      "start": 11,
+      "end": 42,
+      "kind": "function",
+      "name": "get",
+      "id": "s2",
+      "hash": "c8a0dcdf996b1265",
+      "title": "Per-entry integrity checks",
+      "what": "Checks entry count and unique keys, confirms the two config copies match, and for each entry checks that attributes are kept, quotes are real and sourced, and milestone dates are full dates. Also sets the expected issue count, with one allowed issue for topaz.",
+      "why": "Likely reason: stops the import from losing or inventing content.",
+      "watch_out": "The single allowed issue for topaz is hardcoded, so a fix to that entry requires updating this test."
+    },
+    {
+      "start": 43,
+      "end": 65,
+      "kind": "value",
+      "name": "checks, wind",
+      "id": "s3",
+      "hash": "de34165ace0c2604",
+      "title": "Source-backed figure checks",
+      "what": "Lists expected report phrases for specific projects and the sources allowed to support each, then checks that matching evidence comes only from those sources. Also checks a wind project is not matched to a solar one.",
+      "why": "Likely reason: confirms each figure is backed by the right document.",
+      "watch_out": "The phrase patterns are long and specific, so an edit to the report breaks them."
+    },
+    {
+      "start": 66,
+      "end": 87,
+      "kind": "value",
+      "name": "solar",
+      "id": "s4",
+      "hash": "2b727dfc397bc571",
+      "title": "Identity, list values and dry-run plan",
+      "what": "Checks identity matching finds the right solar project, and errors when a match is missing or ambiguous. Checks list values for negative and zero likelihood. Then checks the saved dry-run plan counts, and that the plan never changes actual budgets or delays.",
+      "why": "Likely reason: makes sure updates go to the right record and never change actual spend or delay figures.",
+      "watch_out": "The expected counts such as 8 inserts and 193 evidence rows must match the saved plan exactly."
+    }
+  ],
+  "explained_at": "2026-11-12T03:15:28+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks the solar report import: eleven projects with source-backed quotes, correct identity matching, no invented figures, and a dry-run plan with the expected counts.",
+  "purpose": "Keeps the solar import from creating wrong project records or claims that cannot be traced to a source.",
+  "why": "Likely reason: without these checks, the import could add projects or figures that no source supports.",
+  "how": "Checks each entry: no attributes lost, quotes exist in the report or are live excerpts with sources, milestone dates are full dates, and specific figures come only from allowed sources. Then checks identity matching picks the right project or none, checks list values, and verifies the saved dry-run plan counts and that budgets and delays are not changed.",
+  "inputs": "Solar manifest entries and report text, the identity and conform modules, the list mapper, field evidence, the industry configs, and the saved dry-run JSON.",
+  "outputs": "One pass line, then exit code 0.",
+  "risks": "Depends on the dry-run file being current. Many counts and source IDs are hardcoded, so a changed report breaks many checks.",
+  "debug": "If summary counts fail, regenerate the dry-run and compare. If a source check fails, confirm the source ID is in the allowed list for that figure.",
+  "summary_hash": "sha256:9e694aa12a121e41d590711529e25ab56e1cf5ed5485941f53182484697f8b14"
+}

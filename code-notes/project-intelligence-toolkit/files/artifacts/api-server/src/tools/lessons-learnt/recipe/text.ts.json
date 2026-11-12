@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/recipe/text.ts",
+  "language": "TypeScript",
+  "lines": 72,
+  "hash": "sha256:edb3fe130db84b4e8484656669663b58e23750c29825206d782f50baaa202d48",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only six of thirteen sections were shown, so the number, page, sentence, pool and JSON helpers could not be checked.",
+      "No test is visible in the code shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Normalise",
+      "meaning": "convert text to one standard form so that equal text compares as equal"
+    },
+    {
+      "term": "Unicode (NFKC)",
+      "meaning": "a standard way of writing characters so that look-alike characters match"
+    },
+    {
+      "term": "Stopword",
+      "meaning": "a very common word ignored when looking for meaning"
+    },
+    {
+      "term": "Stemming",
+      "meaning": "removing word endings so that related word forms match"
+    },
+    {
+      "term": "Regular expression (regex)",
+      "meaning": "a pattern that describes text to search for"
+    }
+  ],
+  "depends_on": [
+    "None visible in the code shown"
+  ],
+  "used_by": [
+    "routing.ts (imports normal)",
+    "synthesis.ts (imports parseJsonObject and pool)",
+    "Other recipe files not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 2,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "59b65ae5e681ab8b",
+      "title": "File purpose",
+      "what": "Says this file holds shared text cleaning used by routing, verification and relevance checks.",
+      "why": "Stated in the header comment.",
+      "watch_out": "Changes here affect every file that uses these helpers, so test them together."
+    },
+    {
+      "start": 3,
+      "end": 9,
+      "kind": "value",
+      "name": "STOP",
+      "id": "s2",
+      "hash": "9dbefcc9571be602",
+      "title": "Common words ignored in matching",
+      "what": "A list of very common English words and generic project words such as the, company, project and reported. These are ignored when looking for meaningful words.",
+      "why": "Likely reason: common words would match almost everything and add noise.",
+      "watch_out": "Words such as new, first, year and percent are also ignored, so a search on those words will match nothing useful."
+    },
+    {
+      "start": 10,
+      "end": 14,
+      "kind": "function",
+      "name": "normal",
+      "id": "s3",
+      "hash": "1ab465afaea6b21a",
+      "title": "Cleaning text to a standard form",
+      "what": "Converts text to one standard form: lowercase, curly quotes and long dashes replaced by plain ones, and extra spaces collapsed. Other helpers depend on this so that matching is not thrown off by typography.",
+      "why": "Likely reason: source documents use different characters for the same thing.",
+      "watch_out": "The output is no longer the original wording, so keep the original text wherever a quotation is needed."
+    },
+    {
+      "start": 15,
+      "end": 18,
+      "kind": "function",
+      "name": "words",
+      "id": "s4",
+      "hash": "d0e41887cac9545e",
+      "title": "Splitting text into words",
+      "what": "Takes cleaned text and splits it into words wherever a character is not a letter or number. Letters from many languages are kept.",
+      "why": "Likely reason: word matching needs to work on text in any language.",
+      "watch_out": "Hyphenated words and words with apostrophes are split into pieces, so first-of-a-kind becomes several separate words."
+    },
+    {
+      "start": 19,
+      "end": 23,
+      "kind": "function",
+      "name": "salient",
+      "id": "s5",
+      "hash": "892647a670bbda8d",
+      "title": "Picking out meaningful keywords",
+      "what": "Returns the unique meaningful words in a text: at least four letters, not on the stop list, not pure numbers, and shortened by the stem helper. Used to decide whether two texts share real content.",
+      "why": "Stated in the comment above the function.",
+      "watch_out": "Words of three letters or fewer are never kept, so acronyms such as EPC or LNG cannot be matched this way."
+    },
+    {
+      "start": 24,
+      "end": 27,
+      "kind": "function",
+      "name": "stem",
+      "id": "s6",
+      "hash": "669550022beba4c5",
+      "title": "Trimming word endings",
+      "what": "Shortens a word by removing common endings such as -ing, -ed, -es and -s, turns -ies into -y, and keeps at most nine characters. This lets contracts and contract count as the same word.",
+      "why": "Likely reason: different forms of a word should match one another.",
+      "watch_out": "The nine-character cut is blunt, so unrelated long words that share a start can merge into one token."
+    },
+    {
+      "start": 28,
+      "end": 38,
+      "kind": "function",
+      "name": "numbers",
+      "id": "s7",
+      "hash": "3e9f86c9c80f1057",
+      "title": "Number extraction for source checks",
+      "what": "Pulls every multi-digit number out of a piece of text in the form a page would print it, ignoring thousands separators and trailing zeros after a decimal point. Single digits are skipped.",
+      "why": "Likely reason: a fact is only trusted when its figures appear on the cited page, so both sides must be written the same way.",
+      "watch_out": "Single digits are skipped on purpose, so a fact whose only figure is one digit cannot be checked by number."
+    },
+    {
+      "start": 39,
+      "end": 42,
+      "kind": "function",
+      "name": "pageNumbers",
+      "id": "s8",
+      "hash": "e4171230a547a08a",
+      "title": "Set of page numbers",
+      "what": "Returns the unique numbers found in a piece of text as a lookup set, so a page can be checked quickly against many facts.",
+      "why": "Likely reason: a set makes repeated lookups fast when many facts are checked against one page.",
+      "watch_out": "It only wraps the number extraction, so it inherits every limit of that step."
+    },
+    {
+      "start": 43,
+      "end": 46,
+      "kind": "function",
+      "name": "sentences",
+      "id": "s9",
+      "hash": "6c0cd3178e05b119",
+      "title": "Splitting text into sentences",
+      "what": "Splits a block of text into sentences, collapsing extra spaces and breaking after full stops, question marks, exclamation marks, semicolons or colons when a capital letter, digit, quote or bracket follows.",
+      "why": "Likely reason: source checks compare a fact against short runs of sentences, so the text needs to be cut into sentence units first.",
+      "watch_out": "The split is a heuristic, so an abbreviation such as Inc. followed by a capital can create a false break."
+    },
+    {
+      "start": 47,
+      "end": 51,
+      "kind": "function",
+      "name": "containsNormal",
+      "id": "s10",
+      "hash": "070dc226f16df69e",
+      "title": "Phrase found inside text",
+      "what": "Checks whether one piece of text appears inside another, ignoring case and spacing differences. Very short search phrases are never treated as found.",
+      "why": "Likely reason: a minimum length stops short common phrases from matching by accident.",
+      "watch_out": "Any search phrase under twelve characters always returns not found, so a short but real quote will not match."
+    },
+    {
+      "start": 52,
+      "end": 56,
+      "kind": "function",
+      "name": "host",
+      "id": "s11",
+      "hash": "689a477b0cb8cbd8",
+      "title": "Website domain from an address",
+      "what": "Returns the domain name of a web address without a leading www, or an empty text if the address is missing or malformed.",
+      "why": "Likely reason: reports show a short source name, and bad addresses must not stop the run.",
+      "watch_out": "A bad address returns empty text without any error, so a missing domain is easy to overlook."
+    },
+    {
+      "start": 57,
+      "end": 66,
+      "kind": "function",
+      "name": "pool",
+      "id": "s12",
+      "hash": "e2c922f156e4d4a2",
+      "title": "Running jobs with a limit",
+      "what": "Runs a list of jobs with a fixed maximum running at once. Each worker takes the next unstarted item as soon as it finishes one.",
+      "why": "Likely reason: lets many page fetches or model calls run in parallel without overwhelming the sources or the service.",
+      "watch_out": "If one job fails, the whole call fails early while the other jobs may still be running in the background."
+    },
+    {
+      "start": 67,
+      "end": 72,
+      "kind": "function",
+      "name": "parseJsonObject",
+      "id": "s13",
+      "hash": "4a6402f2b95b6e04",
+      "title": "Reading a JSON object from model text",
+      "what": "Takes a model reply, cuts out the text from the first opening brace to the last closing brace, and parses it as an object. If no object is found, it stops with a plain error message.",
+      "why": "Likely reason: models often add words before or after the JSON, so the code extracts just the object.",
+      "watch_out": "Anything between the first and last brace is included, so extra braces in surrounding words will cause a parse error."
+    }
+  ],
+  "explained_at": "2026-11-12T04:46:42+00:00",
+  "explained_by": "haiku",
+  "summary": "Small helper functions that clean and split text, used by routing and by the synthesis step to match and check words.",
+  "purpose": "Gives the other recipe files one shared way to clean text, split it into words, and pick out the meaningful words for matching.",
+  "why": "Likely reason: the file header says it is shared by routing, verification and relevance, so the same rules must apply everywhere.",
+  "how": "1. Clean text: standard Unicode form, lowercase, curly quotes and long dashes made plain, spacing collapsed. 2. Split cleaned text into words at any character that is not a letter or number. 3. Keep meaningful words: at least four letters, not on the stop list, not pure numbers, and shortened by the stem function. The stop list, number helpers, page helpers, sentence helpers, a concurrency helper and a JSON parser are in the part not shown here.",
+  "inputs": "Plain text strings.",
+  "outputs": "Cleaned text, lists of words, or lists of meaningful keywords.",
+  "risks": "Stemming is crude: it removes common endings and keeps at most nine characters, so different words can collapse to the same token. Words of three letters or fewer are never kept, so acronyms such as EPC and LNG are invisible to keyword matching.",
+  "debug": "If matching misses something, pass the same text through the cleaning and keyword functions and look at the output. Check the stop list for words that should count. Check the nine-character cut when two different words appear to match.",
+  "summary_hash": "sha256:edb3fe130db84b4e8484656669663b58e23750c29825206d782f50baaa202d48"
+}

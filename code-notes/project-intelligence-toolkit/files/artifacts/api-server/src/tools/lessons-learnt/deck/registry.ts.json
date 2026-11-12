@@ -1,0 +1,255 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/deck/registry.ts",
+  "language": "TypeScript",
+  "lines": 340,
+  "hash": "sha256:95aa072045746ee9587c1d325aa40454b64589e3594ca7e36ceeb802935efd7d",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for this file was shown.",
+      "Several paths throw errors on bad data, which is safe, but other paths use defaults silently.",
+      "Charts are drawn by hand, so their correctness depends on the scaling code and was not run."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Registry",
+      "meaning": "an ordered list of the slides the deck will contain."
+    },
+    {
+      "term": "Builder",
+      "meaning": "a function that draws one slide when given the presentation and the context."
+    },
+    {
+      "term": "Eyebrow",
+      "meaning": "the small label above a slide title, such as PILLAR or APPENDIX."
+    },
+    {
+      "term": "Canonical page",
+      "meaning": "a slide drawn by fixed rules from stored text rather than by free layout."
+    },
+    {
+      "term": "Table spec",
+      "meaning": "the stored description of a table: its column names, rows and column widths."
+    },
+    {
+      "term": "Native chart",
+      "meaning": "a chart object built into PowerPoint that can be edited with its data."
+    },
+    {
+      "term": "Hyperlink",
+      "meaning": "a clickable link inside a slide that jumps to another slide or opens a web page."
+    }
+  ],
+  "depends_on": [
+    "./branding",
+    "./pagination",
+    "./citations",
+    "./provenanceNotes",
+    "./canonicalBody",
+    "../recipeResult",
+    "../slideCitations",
+    "@workspace/api-client-react/presentation-edits",
+    "pptxgenjs"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/lessons-learnt/deckStore.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 33,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "dd3cc6330ac40f67",
+      "title": "Registry overview and imports",
+      "what": "Explains that the file builds the slide list for a run and brings in the drawing library, shared styles, pagination, citation, notes, table and body helpers.",
+      "why": "Stated in the comment: Stage 1 keeps the same slides and content while the new structure sits underneath.",
+      "watch_out": "Imports from another package path, so moving that file breaks the whole deck build."
+    },
+    {
+      "start": 34,
+      "end": 53,
+      "kind": "type",
+      "name": "DeckCtx",
+      "id": "s2",
+      "hash": "f1fd4d1f10648cd5",
+      "title": "What slide builders may see",
+      "what": "Defines the bundle of information each builder can use: a notes helper, the citation appendix, the run id, the slide list, scope, totals, the methodology title and the project count.",
+      "why": "Stated in the comment: raw facts and unsourced values are deliberately left out so builders cannot print them.",
+      "watch_out": "Adding raw fact data here would let slides print unverified values, which the design forbids."
+    },
+    {
+      "start": 54,
+      "end": 60,
+      "kind": "type",
+      "name": "SlideRenderFn",
+      "id": "s3",
+      "hash": "bba1978da8118b9d",
+      "title": "Shape of a slide builder",
+      "what": "Describes the function every slide builder must follow: it receives the presentation, the context, the slide number and the total count.",
+      "why": "Likely reason: one shared signature lets the deck loop call every slide the same way.",
+      "watch_out": "Builders that ignore the slide number or total can produce wrong page labels."
+    },
+    {
+      "start": 61,
+      "end": 67,
+      "kind": "type",
+      "name": "SlideEntry",
+      "id": "s4",
+      "hash": "94351f00aa1ccc9e",
+      "title": "One entry in the slide list",
+      "what": "Each entry holds a slide id, a builder function and an include rule that decides whether the slide appears in this run.",
+      "why": "Stated in the comment: include rules exist so later stages can skip slides; they are always true now.",
+      "watch_out": "Since every rule is true, no slide is skipped today, and changing a rule changes which slides appear."
+    },
+    {
+      "start": 68,
+      "end": 78,
+      "kind": "value",
+      "name": "SLIDE_TITLES",
+      "id": "s5",
+      "hash": "f6f0d6cdad9dcec5",
+      "title": "Fixed slide titles",
+      "what": "Holds the titles of the fixed slides such as cover, executive summary, agenda and the appendix, for use in a preview list.",
+      "why": "Stated in the comment: static titles for the fixed slide order.",
+      "watch_out": "These titles are separate from the titles stored in the run, so editing one may not update the other."
+    },
+    {
+      "start": 79,
+      "end": 85,
+      "kind": "function",
+      "name": "slideTitlesForRun",
+      "id": "s6",
+      "hash": "b376a075bb075838",
+      "title": "Titles for this run",
+      "what": "Builds a lookup from each slide id to its title for this run, including pillar and appendix slides whose titles vary per run.",
+      "why": "Stated in the comment: dynamic slides resolve their titles per run.",
+      "watch_out": "If two slides share an id, the later title silently replaces the earlier one."
+    },
+    {
+      "start": 86,
+      "end": 89,
+      "kind": "function",
+      "name": "isAppendix",
+      "id": "s7",
+      "hash": "42232b91579a2e29",
+      "title": "Recognising appendix slides",
+      "what": "Returns true for the appendix slide and for any slide whose id begins with appendix followed by an underscore.",
+      "why": "Likely reason: appendix slides use different sizes and skip the chart.",
+      "watch_out": "Relies on the id naming pattern, so an appendix slide with another name is styled as a normal slide."
+    },
+    {
+      "start": 90,
+      "end": 93,
+      "kind": "function",
+      "name": "isPillar",
+      "id": "s8",
+      "hash": "3e79639584ce2ee7",
+      "title": "Recognising pillar slides",
+      "what": "Returns true for slides whose id begins with pillar followed by an underscore. These are the topic slides that may be split into pages.",
+      "why": "Stated in the paging step: pillar slides expand into pages.",
+      "watch_out": "Relies on the id pattern, so a pillar slide with another id is not paged."
+    },
+    {
+      "start": 94,
+      "end": 103,
+      "kind": "function",
+      "name": "eyebrowFor",
+      "id": "s9",
+      "hash": "3c487e2d31680e29",
+      "title": "Choosing the small label above titles",
+      "what": "Picks the small uppercase label above each title, such as PILLAR, APPENDIX or ASSESSMENT, based on the slide id. Other slides get the default label.",
+      "why": "Likely reason: tells the reader what kind of slide this is.",
+      "watch_out": "New slide types need a new branch here, or they show the default label."
+    },
+    {
+      "start": 104,
+      "end": 162,
+      "kind": "function",
+      "name": "makeBlockBuilder (part 1)",
+      "id": "s10",
+      "hash": "a843a33a5444f8d9",
+      "title": "Setting up a slide builder",
+      "what": "Creates the builder for one slide. It prepares citation links, adds the slide, draws the full-colour cover separately when needed, and otherwise adds the top bar and the small label.",
+      "why": "Stated in the comment: each slide uses only branding constants and fresh option objects, because the drawing library changes them.",
+      "watch_out": "The citation link for claim-source slides searches the whole slide list each time, which may slow large decks."
+    },
+    {
+      "start": 163,
+      "end": 201,
+      "kind": "function",
+      "name": "makeBlockBuilder (part 2)",
+      "id": "s11",
+      "hash": "f87565b933c3abec",
+      "title": "Placing the title, subtitle and bullets",
+      "what": "Writes the title and optional subtitle, then works out where the bullet area starts and how wide and tall it is. The font size is chosen by slide type.",
+      "why": "Likely reason: the title and subtitle sit at fixed heights so bullets always start in the same place.",
+      "watch_out": "Slides with a chart get a narrower bullet area to leave room for the chart."
+    },
+    {
+      "start": 202,
+      "end": 246,
+      "kind": "method",
+      "name": "makeBlockBuilder: if",
+      "id": "s12",
+      "hash": "550b23a4f56c1ec2",
+      "title": "Drawing a table, canonical body or bullets",
+      "what": "Draws one of three things: a table if the slide has a table spec, a canonical body if flagged, or a plain bullet text box. Bullets get a symbol unless the line already starts with a bullet or the word Evidence.",
+      "why": "Likely reason: three different slide kinds share one builder, so the choice is made here.",
+      "watch_out": "Table rows point to bullet positions. If those positions drift, the table shows the wrong text."
+    },
+    {
+      "start": 247,
+      "end": 295,
+      "kind": "function",
+      "name": "makeBlockBuilder (part 4)",
+      "id": "s13",
+      "hash": "bbd8d60782e621d9",
+      "title": "Drawing the bar chart, footnotes and footer",
+      "what": "Draws a hand-built bar chart on the right for numeric chart slides, then the footnotes, the footer line and the speaker notes.",
+      "why": "Stated in the comment: per-bar hyperlinks are not reliable in native charts, so bars are drawn as shapes.",
+      "watch_out": "Bar lengths are scaled to the smallest and largest values. A warning marker appears when a saved percentage conflicts with budget inputs."
+    },
+    {
+      "start": 296,
+      "end": 311,
+      "kind": "function",
+      "name": "buildDeckCtx",
+      "id": "s14",
+      "hash": "995847246d595574",
+      "title": "Building the context for a run",
+      "what": "Prepares the context bundle for one run. It fills in citation data for slides that lack it and gathers the notes helper, slide lookup, scope, totals, methodology title and project count.",
+      "why": "Likely reason: builders must only see what this function passes in.",
+      "watch_out": "Reads the methodology title directly, so a recipe with no methodology fails here."
+    },
+    {
+      "start": 312,
+      "end": 340,
+      "kind": "function",
+      "name": "slidesForRun",
+      "id": "s15",
+      "hash": "81d6ab0c7d8b4ded",
+      "title": "Final ordered slide list",
+      "what": "Expands pillar slides into their pages, passes other slides through unchanged, attaches a builder to each, and keeps only entries whose include rule passes. Paging warnings go to a callback.",
+      "why": "Stated in the docstring: the order comes from the upstream slide plan.",
+      "watch_out": "Every entry is currently kept, and the conditional examples in the comment are not active."
+    }
+  ],
+  "explained_at": "2026-11-12T04:29:58+00:00",
+  "explained_by": "haiku",
+  "summary": "The list of slides for a run, in order, plus the shared drawing routine that turns each stored slide into a PowerPoint slide.",
+  "purpose": "Turns the stored slide plan for a run into the finished deck, with consistent titles, labels, body text, charts, footnotes and speaker notes.",
+  "why": "Stated in the file comment: the new structure sits underneath while the output stays the same as before, and charts use real run values only.",
+  "how": "First, buildDeckCtx prepares the context, filling in citation data where missing. Then slidesForRun expands long pillar slides into pages and attaches one builder to each slide. Each builder adds a presentation slide, draws a top bar and a small label, then the title and subtitle. Next it draws a table, a canonical body, or plain bullet text. It then draws a hand-built bar chart if the slide has numbers, footnotes, a footer line and speaker notes. The cover slide is drawn separately with its own colours.",
+  "inputs": "A recipe result with its slides, facts, projects, scope, totals and methodology, plus a run id. An optional warning callback.",
+  "outputs": "Slide entries with ids, builder functions and include rules, which the deck build then runs to add slides to a presentation.",
+  "risks": "The include rule is always true, so no slide is skipped. Chart bars are drawn as shapes, not native charts, so editing them is manual. Builders read the stored slide list, so a malformed slide can break the build. buildDeckCtx reads the methodology and projects directly, so missing data there causes an error.",
+  "debug": "If a slide is missing, check slidesForRun and the include rule. If text is cut off or overlapping, check the font size choices in makeBlockBuilder and the layout numbers in branding. If a table or chart looks wrong, check the stored table spec and the chart values. If a link goes to the wrong slide, check the link helper and the order of slides.",
+  "summary_hash": "sha256:95aa072045746ee9587c1d325aa40454b64589e3594ca7e36ceeb802935efd7d"
+}

@@ -1,0 +1,335 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/capital-projects/src/tools/reality-scan/index.tsx",
+  "language": "TypeScript (React)",
+  "lines": 499,
+  "hash": "sha256:4a37d591e46fc007e97b39772a7747f99176db5d7e6d92596c65ec48ae124c50",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Error and empty states are handled in each view, which is good.",
+      "No test or other clear evidence of behavior is visible in this file.",
+      "Demo and replay modes add branches that are hard to follow without running them."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Run",
+      "meaning": "One scan job, from start to finish, with its own saved stages and results."
+    },
+    {
+      "term": "Scope",
+      "meaning": "The chosen set of industries, segments, projects and companies that a scan covers."
+    },
+    {
+      "term": "Precheck",
+      "meaning": "A preview that counts the projects a scope would include, before any run starts."
+    },
+    {
+      "term": "Polling",
+      "meaning": "Asking the server for an update again at fixed time intervals."
+    },
+    {
+      "term": "Deck",
+      "meaning": "The saved set of slides produced by a finished run."
+    },
+    {
+      "term": "URL parameter",
+      "meaning": "A setting placed after the question mark in a web address, such as run or view, which controls what the page shows."
+    },
+    {
+      "term": "Component",
+      "meaning": "A reusable piece of a screen, built in React, which this app uses to assemble pages."
+    }
+  ],
+  "depends_on": [
+    "wouter",
+    "@tanstack/react-query",
+    "lucide-react",
+    "@/lib/queryClient",
+    "@/shared/industries",
+    "@/components/tools/house/ScopePicker",
+    "./scanStages",
+    "@/components/tools/house/AgentProcess",
+    "@/components/tools/house/LiveRunFeed",
+    "@/components/tools/house/RunPanelTabs",
+    "@/components/dark/CollationField",
+    "./SlideEditor",
+    "@/components/tools/house/RunControls",
+    "@/components/tools/guided/ToolDemo",
+    "./SlideScene",
+    "./ChartCutPanel",
+    "./scanApi"
+  ],
+  "used_by": [
+    "artifacts/capital-projects/src/tools/registry.ts (loads this file's default export as the tool)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 31,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b0b6da28baeedb2e",
+      "title": "Imports and the server address",
+      "what": "Brings in the screen pieces, data helpers and icons this page uses. It also sets the base address that all Reality Scan server calls start from.",
+      "why": "Reason not stated in the code beyond organizing the page's dependencies.",
+      "watch_out": "Changing the base address moves every server call on this page."
+    },
+    {
+      "start": 32,
+      "end": 40,
+      "kind": "type",
+      "name": "ScopeSelection",
+      "id": "s2",
+      "hash": "d9eb36297538da3f",
+      "title": "Scope choice shape",
+      "what": "Describes what a user can select: industries, segments, projects, companies and research settings. It is the form of the scope sent when a run starts.",
+      "why": "Likely reason: it defines the data a run is built from.",
+      "watch_out": "Saved runs keep this shape, so renaming a field can break how older runs display."
+    },
+    {
+      "start": 41,
+      "end": 50,
+      "kind": "type",
+      "name": "ResolvedItem",
+      "id": "s3",
+      "hash": "9aa1ab8937f54c40",
+      "title": "One resolved scope item",
+      "what": "Describes one line of the preview, such as an industry or a single project, with its project count and whether it is enriched from existing data or researched from scratch.",
+      "why": "Likely reason: the preview lists what the scope turned into so the user can check it.",
+      "watch_out": "The mode values must match what the server sends, or the label will not be shown correctly."
+    },
+    {
+      "start": 51,
+      "end": 59,
+      "kind": "type",
+      "name": "PrecheckResponse",
+      "id": "s4",
+      "hash": "cd99a4b7a46ca2f6",
+      "title": "Preview reply shape",
+      "what": "Describes the server's preview reply: total projects, project IDs, a count by industry, the resolved items, and the overall mode.",
+      "why": "Likely reason: the user should confirm the scope before a run is created.",
+      "watch_out": "The totals come from the server, so this page cannot check whether they are correct."
+    },
+    {
+      "start": 60,
+      "end": 71,
+      "kind": "type",
+      "name": "RunRow",
+      "id": "s5",
+      "hash": "500f751fb021251c",
+      "title": "One saved run",
+      "what": "Describes one run as the server lists it: its ID, scope, status, current stage, times and any error.",
+      "why": "Likely reason: the recent runs list and the run header both need these fields.",
+      "watch_out": "The status list is fixed here, so any new status from the server must be added to it."
+    },
+    {
+      "start": 72,
+      "end": 82,
+      "kind": "type",
+      "name": "StageRow",
+      "id": "s6",
+      "hash": "b53b79d5b2539a18",
+      "title": "One stage of a run",
+      "what": "Describes one stage of a run, such as fetch or calculate, with its status, start and finish times, summary and log text.",
+      "why": "Likely reason: the run page shows progress and logs one stage at a time.",
+      "watch_out": "A stage can be missing, so the page must allow for an empty stage."
+    },
+    {
+      "start": 83,
+      "end": 88,
+      "kind": "type",
+      "name": "RunDetail",
+      "id": "s7",
+      "hash": "1976448c6c902ff0",
+      "title": "Full run details",
+      "what": "Groups a run with its stage order and each stage record, as one reply from the server.",
+      "why": "Likely reason: one request gives the page everything it needs to show progress.",
+      "watch_out": "The stage list lines up by position with the stage order, so both must come back in the same order."
+    },
+    {
+      "start": 89,
+      "end": 92,
+      "kind": "function",
+      "name": "industryName",
+      "id": "s8",
+      "hash": "e657e00d8a48065a",
+      "title": "Readable industry name",
+      "what": "Turns an industry code into its short display name, and shows the raw code if no name is found.",
+      "why": "Likely reason: users should see names, not internal codes.",
+      "watch_out": "A code missing from the industry list will show as raw text."
+    },
+    {
+      "start": 93,
+      "end": 100,
+      "kind": "function",
+      "name": "modeLabel",
+      "id": "s9",
+      "hash": "a40c6ada96e15ce1",
+      "title": "Readable mode name",
+      "what": "Turns the mode code into plain words: enrich existing data, research from scratch, or mixed.",
+      "why": "Likely reason: the mode codes are internal, so plain words are shown to the user.",
+      "watch_out": "Any unexpected mode value quietly shows as mixed."
+    },
+    {
+      "start": 101,
+      "end": 105,
+      "kind": "function",
+      "name": "searchScanProjects",
+      "id": "s10",
+      "hash": "998c61b4c5312f46",
+      "title": "Project search request",
+      "what": "Asks the server for projects whose names match the search text and returns the matches.",
+      "why": "Likely reason: it powers the project search in the scope picker.",
+      "watch_out": "The search text is encoded before sending, so special characters are safe."
+    },
+    {
+      "start": 106,
+      "end": 136,
+      "kind": "function",
+      "name": "ScanPicker (part 1)",
+      "id": "s11",
+      "hash": "def3aedf56d556ef",
+      "title": "Picker state and live updates",
+      "what": "Starts the scope with any industries given in the web address, asks for a preview as the scope changes, creates runs, and reloads the recent runs list every 5 seconds.",
+      "why": "Likely reason: the preview must stay in step with what the user has chosen.",
+      "watch_out": "The preview is switched off when the scope is empty, so an empty scope shows only the placeholder text."
+    },
+    {
+      "start": 137,
+      "end": 194,
+      "kind": "function",
+      "name": "ScanPicker (part 2)",
+      "id": "s12",
+      "hash": "383ee52a2cd57444",
+      "title": "Preview panel and start button",
+      "what": "Shows the project total, a bar for each industry, a collapsible list of how the scope resolved, and the Run Reality Scan button. Demo mode adds extra checks before the button works.",
+      "why": "Likely reason: the user should see what a run will cover before starting it.",
+      "watch_out": "The button is disabled when no projects resolve, and in demo mode it also needs a matching prepared scope."
+    },
+    {
+      "start": 195,
+      "end": 202,
+      "kind": "function",
+      "name": "ScanPicker (part 3)",
+      "id": "s13",
+      "hash": "4d77bc06c0ca5065",
+      "title": "Picker layout",
+      "what": "Places the scope picker and its preview together, and shows the recent runs list when not in demo mode.",
+      "why": "Likely reason: demo mode hides history so the demo stays clean. Not stated in the code.",
+      "watch_out": "Demo mode hides the recent runs list, so a demo cannot be used to reopen a real run."
+    },
+    {
+      "start": 203,
+      "end": 233,
+      "kind": "function",
+      "name": "RecentRuns",
+      "id": "s14",
+      "hash": "255af6bff4a72a43",
+      "title": "Recent runs list",
+      "what": "Lists saved runs with a coloured dot, a date, the mode and a status badge. Each row links to that run. An empty message appears when there are no runs.",
+      "why": "Likely reason: it lets the user reopen earlier scans.",
+      "watch_out": "Any status other than succeeded or failed shows as the same grey dot."
+    },
+    {
+      "start": 234,
+      "end": 250,
+      "kind": "function",
+      "name": "RunStatusBadge",
+      "id": "s15",
+      "hash": "a3ea9f5f922e530f",
+      "title": "Run status badge",
+      "what": "Shows a small labelled badge whose colour depends on the run status. Queued and running runs also show a spinning icon.",
+      "why": "Likely reason: a quick visual reading of a run's state.",
+      "watch_out": "A status not listed here falls back to the default style, so it may look like an ordinary run."
+    },
+    {
+      "start": 251,
+      "end": 292,
+      "kind": "function",
+      "name": "RunView (part 1)",
+      "id": "s16",
+      "hash": "ece528315bf749de",
+      "title": "Run page loading and controls",
+      "what": "Loads run details, asks the server again every 1.2 seconds while the run is queued or running, and shows loading and error states. It decides whether the run has stopped and whether the retry or resume button should appear. It also reads the playback setting from the web address.",
+      "why": "Likely reason: progress must update live, and the buttons must match what the run allows.",
+      "watch_out": "Failed runs can be retried, but cancelled, interrupted and succeeded runs cannot be resumed."
+    },
+    {
+      "start": 293,
+      "end": 350,
+      "kind": "function",
+      "name": "RunView (part 2)",
+      "id": "s17",
+      "hash": "c0f1c3f59712c089",
+      "title": "Run page content",
+      "what": "Shows the run title, badges, action buttons (retry or resume, cancel, downloads, new scan), messages for errors, skipped research and stopped runs. Once a run succeeds, it shows links to the analysis and slide editor. It also shows three tabs: collated results, live feed and process trace.",
+      "why": "Likely reason: one page gives all run controls and results together.",
+      "watch_out": "A stopped run says no deck was produced, but the research ledger still holds what was recorded."
+    },
+    {
+      "start": 351,
+      "end": 400,
+      "kind": "function",
+      "name": "AnalysisView (part 1)",
+      "id": "s18",
+      "hash": "6d284b2d055f2abe",
+      "title": "Analysis page loading",
+      "what": "Loads the run, and loads the saved deck only after the run has succeeded. It chooses which chart slide to show and keeps the unsaved preview and conflict messages.",
+      "why": "Likely reason: the deck does not exist until the run finishes, so loading it earlier would cause errors.",
+      "watch_out": "The deck request retries on failure, except for 404 and 409 responses, which are treated as final."
+    },
+    {
+      "start": 401,
+      "end": 441,
+      "kind": "function",
+      "name": "AnalysisView (part 2)",
+      "id": "s19",
+      "hash": "3772861cf7155b2f",
+      "title": "Analysis page content",
+      "what": "Shows a loading block, an error, a not-finished message, a legacy-run message, a no-chart message, or the chart with its cut panel. A legacy run is one made before the unified deck existed, and it is offered a new run instead of a repair.",
+      "why": "Likely reason: each situation gets a clear message instead of a blank page.",
+      "watch_out": "Older runs cannot be converted to charts here, so the user must start a new run to get one."
+    },
+    {
+      "start": 442,
+      "end": 488,
+      "kind": "function",
+      "name": "RealityScanPage",
+      "id": "s20",
+      "hash": "057dac296a384686",
+      "title": "Page router",
+      "what": "Reads the web address and chooses one view: replay, slide editor, analysis, run page, or scope picker. It also sets the page width for the chosen view.",
+      "why": "Likely reason: keeping the view choice in the web address lets each view be linked and reloaded.",
+      "watch_out": "The slide editor opens for any run ID with view set to slides, and this page does not check the run status first. The editor must handle that case."
+    },
+    {
+      "start": 489,
+      "end": 499,
+      "kind": "value",
+      "name": "tool",
+      "id": "s21",
+      "hash": "d2e07f5b8840f793",
+      "title": "Tool registration",
+      "what": "Describes the tool for the tools list: its name, subtitle, LIVE status, icon, path and page component. The file exports this as its default.",
+      "why": "Likely reason: the tools registry reads this export to list and open the tool.",
+      "watch_out": "The path must be exactly the tool's slug under the tools route, or the registry rejects the tool."
+    }
+  ],
+  "explained_at": "2026-11-12T06:42:39+00:00",
+  "explained_by": "haiku",
+  "summary": "The main page for the Reality Scan tool, where a user picks a scope, starts a scan run, follows its progress, and opens the results as an analysis chart or a slide deck.",
+  "purpose": "Gives the user one place to choose which projects to scan, watch the run, read saved results, and open the chart and slide editors.",
+  "why": "Likely reason: the page switches between views based on the web address, so each view can be bookmarked, shared, and reloaded. The code does not state this directly.",
+  "how": "The page reads the web address settings first. With no run selected, it shows the scope picker, which asks the server for a preview and lets the user start a run. Starting a run opens that run's page. While the run is queued or running, the page asks the server for status every 1.2 seconds. Once the run succeeds, links open the analysis chart and the slide editor. The analysis view loads the saved deck and shows the chart with cut controls.",
+  "inputs": "Web address settings (run, view, slide, demo, replay, playback, industries), the user's scope choices and search text, and replies from the Reality Scan server routes.",
+  "outputs": "A new scan run created on the server, the rendered pages for each view, and download links for the research ledger and the workbook.",
+  "risks": "While a run is active the page keeps polling the server, so a stuck run keeps requests going until the user leaves. Demo mode depends on prepared scope recordings, and a mismatch disables the run button. A deck that is too old or missing shows a message instead of a chart.",
+  "debug": "Open the browser network tab and look for calls under the reality-scan route. Check the status badge and the error text on the run page. For a blank analysis view, read the message shown, since 404 and 409 errors mean an older run without a deck. For an empty picker, check the precheck error text. Confirm the web address parameters, because they decide which view appears.",
+  "summary_hash": "sha256:4a37d591e46fc007e97b39772a7747f99176db5d7e6d92596c65ec48ae124c50"
+}

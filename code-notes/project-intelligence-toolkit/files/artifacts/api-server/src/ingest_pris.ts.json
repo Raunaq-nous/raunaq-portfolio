@@ -1,0 +1,345 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest_pris.ts",
+  "language": "TypeScript",
+  "lines": 425,
+  "hash": "sha256:6754eb38b2f65f07efab5988a91a50fe8b7fdbe5a94b7e2cb4da362dc40b2f01",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test or dry-run mode is visible in the file.",
+      "Company IDs are hardcoded, so the links depend on the database content staying the same.",
+      "Each reactor is saved separately with no transaction, so a crash can leave partial data.",
+      "The first grid connection date is stored in the commercial operation date field by design, which can mislead anyone reading that field."
+    ]
+  },
+  "terms": [
+    {
+      "term": "PRIS",
+      "meaning": "the IAEA Power Reactor Information System, a public database of nuclear reactors"
+    },
+    {
+      "term": "IAEA",
+      "meaning": "the International Atomic Energy Agency, a UN body that publishes reactor data"
+    },
+    {
+      "term": "COD",
+      "meaning": "commercial operation date, the date a plant starts selling power; this file stores first grid connection in that field"
+    },
+    {
+      "term": "Drizzle ORM",
+      "meaning": "a library that lets code ask the database questions in TypeScript instead of raw SQL"
+    },
+    {
+      "term": "Seed data",
+      "meaning": "a starter data file loaded into the system once or repeatedly"
+    },
+    {
+      "term": "Company-project link",
+      "meaning": "a record saying which company plays which role, such as owner or operator, in a project"
+    }
+  ],
+  "depends_on": [
+    "./db",
+    "@workspace/db",
+    "./shared/nuclearClassify",
+    "drizzle-orm",
+    "fs, path, url (Node built-ins)",
+    "seed_data/pris_reactors.json"
+  ],
+  "used_by": [
+    "None visible in the packet; the file appears to be run directly from the command line."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "046b18f70da4006b",
+      "title": "Imports and file location setup",
+      "what": "Brings in the database connection, the project and company link table definitions, a nuclear classifier, and file tools. It also works out the folder the script lives in so it can find its data file.",
+      "why": "Likely reason: a script run outside the app needs its own connection and file path handling.",
+      "watch_out": "The data file is found relative to this folder, so moving the script also moves where it looks for data."
+    },
+    {
+      "start": 12,
+      "end": 29,
+      "kind": "type",
+      "name": "PrisReactor",
+      "id": "s2",
+      "hash": "d7cd198e772dd4b4",
+      "title": "The shape of one reactor record",
+      "what": "Describes the fields each PRIS reactor entry must have: IAEA id, name, country, reactor type, capacity, status, and two dates. A long comment records a decision that the grid date means first grid connection, not commercial operation.",
+      "why": "The comment states the decision and points to a reconciliation script and a country helper for the reasoning.",
+      "watch_out": "Readers of the commercial operation date field should know that for these rows it holds first grid connection."
+    },
+    {
+      "start": 30,
+      "end": 38,
+      "kind": "value",
+      "name": "STATUS_MAP",
+      "id": "s3",
+      "hash": "6032601d20ee31e6",
+      "title": "Turns PRIS status into project status",
+      "what": "Converts each PRIS status text into the app's project status and lifecycle stage. For example, an operational plant becomes on track and operating.",
+      "why": "Reason not stated in the code beyond the mapping itself; it translates outside wording into the app's terms.",
+      "watch_out": "Any status text not in this list is treated as planned by the main loop, so a new PRIS status can be recorded wrongly without an error."
+    },
+    {
+      "start": 39,
+      "end": 48,
+      "kind": "value",
+      "name": "TECH_MAP",
+      "id": "s4",
+      "hash": "7a0b7eee5c416a28",
+      "title": "Turns reactor family codes into names",
+      "what": "Converts PRIS reactor family codes into readable technology names, for example mapping the old graphite-channel code to RBMK.",
+      "why": "Likely reason: PRIS uses short codes that are not meant for display.",
+      "watch_out": "A code missing from this list is stored as it is, so an unfamiliar code shows up raw in the app."
+    },
+    {
+      "start": 49,
+      "end": 53,
+      "kind": "type",
+      "name": "CompanyRule",
+      "id": "s5",
+      "hash": "e511219f65175cd9",
+      "title": "Shape of a company link rule",
+      "what": "Describes one rule: a company ID and the role that company plays for a project, such as owner or operator.",
+      "why": "Reason not stated; it is the data shape for the country map.",
+      "watch_out": "Roles are free text here, so a misspelled role creates a link that matches nothing."
+    },
+    {
+      "start": 54,
+      "end": 92,
+      "kind": "value",
+      "name": "COUNTRY_COMPANY_MAP",
+      "id": "s6",
+      "hash": "c4251514d9cd47c5",
+      "title": "Default companies by country",
+      "what": "Lists which company IDs act as owners, operators, reactor vendors, or technology providers for each country. These rules are applied when company linking is switched on.",
+      "why": "Likely reason: most reactors in a country share the same owner or vendor, so one table fills many links.",
+      "watch_out": "The IDs are hardcoded, and the same ID appears under several countries and roles without explanation."
+    },
+    {
+      "start": 93,
+      "end": 97,
+      "kind": "value",
+      "name": "CHINA_CGN_PATTERNS",
+      "id": "s7",
+      "hash": "e206156946e7403e",
+      "title": "Name hints for a Chinese nuclear owner",
+      "what": "A list of plant name fragments that identify plants run by one Chinese nuclear group.",
+      "why": "Reason not stated; likely used to decide the owner from the plant's name.",
+      "watch_out": "Matching is a simple text search, so a short fragment could match an unrelated name."
+    },
+    {
+      "start": 98,
+      "end": 107,
+      "kind": "function",
+      "name": "getChinaOwner, CANADA_BRUCE_PATTERNS",
+      "id": "s8",
+      "hash": "af0c06e04a21ad98",
+      "title": "Picks the owner for Chinese plants",
+      "what": "Checks a plant name against the list and returns one owner ID. If nothing matches, it returns a fallback owner ID. The Canada name list is also defined here.",
+      "why": "Reason not stated; the fallback appears to be a default owner.",
+      "watch_out": "Any plant not on the list is assigned the fallback owner without a warning."
+    },
+    {
+      "start": 108,
+      "end": 115,
+      "kind": "function",
+      "name": "getCanadaOwner",
+      "id": "s9",
+      "hash": "09eb7ec17ebad94f",
+      "title": "Picks the owner for Canadian plants",
+      "what": "Returns one fixed owner for Bruce plants and a different default owner for other Canadian plants.",
+      "why": "Likely reason: the Bruce plants have a different owner from the rest.",
+      "watch_out": "Only the word bruce is matched, so a renamed plant falls into the default owner."
+    },
+    {
+      "start": 116,
+      "end": 142,
+      "kind": "value",
+      "name": "US_OPERATOR_MAP",
+      "id": "s10",
+      "hash": "153b352c8173278b",
+      "title": "Maps US plant names to operators",
+      "what": "Lists name fragments for US reactor sites, each paired with an operator company ID.",
+      "why": "Likely reason: operator data is not in PRIS, so a manual list fills the gap.",
+      "watch_out": "Fragments are not checked for overlaps, and a plant missing from the list gets no operator."
+    },
+    {
+      "start": 143,
+      "end": 150,
+      "kind": "function",
+      "name": "getUSOperator",
+      "id": "s11",
+      "hash": "b3264767749214b0",
+      "title": "Finds the operator for a US plant",
+      "what": "Returns the operator ID for the first name fragment found in the plant's name, or nothing if none match.",
+      "why": "Reason not stated beyond the name matching itself.",
+      "watch_out": "The first match in the list wins, so overlapping names can pick the wrong operator."
+    },
+    {
+      "start": 151,
+      "end": 160,
+      "kind": "function",
+      "name": "likelihood",
+      "id": "s12",
+      "hash": "3bc2e059130c578b",
+      "title": "Gives a likelihood score by status",
+      "what": "Returns a score for how likely a project is to happen, based on its PRIS status. Operating plants get 80, under construction 70, planned 50, shut down 100, and anything else 30.",
+      "why": "Reason not stated; the numbers appear to be fixed judgments.",
+      "watch_out": "A shut-down plant scores 100, which reads as most certain in the app, and the code does not explain this."
+    },
+    {
+      "start": 161,
+      "end": 173,
+      "kind": "function",
+      "name": "maturity",
+      "id": "s13",
+      "hash": "e2b114d32c2cafa5",
+      "title": "Gives a maturity label by status",
+      "what": "Labels operating, under construction, and shut-down plants as bankable, planned plants as medium, and all others as low.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Shut-down plants are labeled bankable, which may confuse readers."
+    },
+    {
+      "start": 174,
+      "end": 177,
+      "kind": "function",
+      "name": "normalizeForMatch",
+      "id": "s14",
+      "hash": "e66db4a4e893e434",
+      "title": "Makes names comparable",
+      "what": "Lowercases a name and removes everything except letters and digits, so differently punctuated names can match.",
+      "why": "Likely reason: the same plant is often spelled with different spacing and punctuation across sources.",
+      "watch_out": "Names that differ only in punctuation are treated as the same, so two similar plants could be merged."
+    },
+    {
+      "start": 178,
+      "end": 185,
+      "kind": "function",
+      "name": "getNextId",
+      "id": "s15",
+      "hash": "92a7f7c5a407ad81",
+      "title": "Finds the next free project number",
+      "what": "Looks at existing project ids starting with p- and returns one more than the highest number.",
+      "why": "Likely reason: new projects need unique readable ids.",
+      "watch_out": "The number is worked out once at the start, so two runs at the same time could pick the same number."
+    },
+    {
+      "start": 186,
+      "end": 194,
+      "kind": "function",
+      "name": "snakeToCamel",
+      "id": "s16",
+      "hash": "46b6b84cbe7c715e",
+      "title": "Renames database columns to camel case",
+      "what": "Converts column names such as source_keys into sourceKeys, so the rest of the script uses the same names as the code.",
+      "why": "Likely reason: raw database queries return underscore names, while the code uses camel case.",
+      "watch_out": "It only changes names, not values, so it is safe but applies only to raw query results."
+    },
+    {
+      "start": 195,
+      "end": 202,
+      "kind": "function",
+      "name": "findByIaeaKey",
+      "id": "s17",
+      "hash": "afa725bce69499b2",
+      "title": "Looks up a project by PRIS id",
+      "what": "Searches projects whose stored source keys include this PRIS number and returns the first match, with its names converted.",
+      "why": "Likely reason: the PRIS number is the most reliable way to recognize a plant already in the database.",
+      "watch_out": "The lookup only works if the stored source keys hold the PRIS number as text."
+    },
+    {
+      "start": 203,
+      "end": 225,
+      "kind": "function",
+      "name": "upsertLink",
+      "id": "s18",
+      "hash": "0eb567717f169cce",
+      "title": "Adds or refreshes one company link",
+      "what": "If a link with the same company, project, and role exists, it updates the last-seen time. Otherwise it creates a new link with a confidence of 0.7.",
+      "why": "Likely reason: running the script again should not create duplicate links.",
+      "watch_out": "Every new link gets the same fixed confidence of 0.7, and the code does not say why."
+    },
+    {
+      "start": 226,
+      "end": 259,
+      "kind": "function",
+      "name": "linkCompanies",
+      "id": "s19",
+      "hash": "1e0c070e46d33e7a",
+      "title": "Links companies to one plant",
+      "what": "Applies the country table, then the China, Canada, and US owner or operator rules for the plant, and returns how many link attempts it made.",
+      "why": "Reason stated only by the rules themselves; the function groups all the linking in one place.",
+      "watch_out": "The count is of attempts, not of newly created links, so the final total can be higher than the new rows added."
+    },
+    {
+      "start": 260,
+      "end": 315,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s20",
+      "hash": "c09f1a81a1436981",
+      "title": "Starts the run and prepares each reactor",
+      "what": "Reads the command flags, prints a header, loads the seed file, and loads all existing projects into a lookup by name and country. For each reactor it works out status, technology, classification, and capacity, then looks for an existing match by PRIS id or by name and country.",
+      "why": "Likely reason: loading everything once avoids a database query for each name match.",
+      "watch_out": "The name lookup is built before the loop, so a project added during the run is only found later if it is also added to that lookup."
+    },
+    {
+      "start": 316,
+      "end": 364,
+      "kind": "method",
+      "name": "main: if",
+      "id": "s21",
+      "hash": "ec00c6aaef73306b",
+      "title": "Updates a plant already in the database",
+      "what": "Compares the existing project with the PRIS record. With --force it overwrites many fields. Without it, it only fills empty fields, and it fixes plants marked Permanent Shutdown that are still listed as operating.",
+      "why": "The comments say fill-if-empty keeps rows that were already corrected and keeps analyst edits.",
+      "watch_out": "Without force, a wrong value already in the database stays, and with force, analyst edits to these fields are overwritten."
+    },
+    {
+      "start": 365,
+      "end": 407,
+      "kind": "function",
+      "name": "main (part 3)",
+      "id": "s22",
+      "hash": "bae13e61e3f51398",
+      "title": "Saves changes or inserts a new plant",
+      "what": "If an existing plant has changes, it saves them and counts it as updated, otherwise it counts it as skipped. For a new reactor it creates a project with the next p-number and a description naming the technology and country.",
+      "why": "Reason not stated for the exact insert values; they come from the mappings above.",
+      "watch_out": "A missing construction start date is stored as the text TBD in a date field, so the app may show odd dates."
+    },
+    {
+      "start": 408,
+      "end": 425,
+      "kind": "method",
+      "name": "main: if",
+      "id": "s23",
+      "hash": "163cc80dbc84e4aa",
+      "title": "Optionally links companies",
+      "what": "When the link flag is on, it runs company linking for the reactor and adds the number of links to the total.",
+      "why": "Reason stated by the flag check: linking happens only when asked for, so it is opt-in.",
+      "watch_out": "This runs after the project is saved, so an error here stops the run and leaves the remaining reactors unprocessed."
+    }
+  ],
+  "explained_at": "2026-11-12T03:50:09+00:00",
+  "explained_by": "haiku",
+  "summary": "A script that reads IAEA PRIS reactor data from a local JSON file and adds or updates matching projects in the database, and can also link owners and operators by country.",
+  "purpose": "Keeps the project list in step with the IAEA Power Reactor Information System, a public reactor database.",
+  "why": "The comments record a decision that the grid date means first grid connection, and that a reconciliation script exists for older rows. The country and owner mappings are likely there to fill in ownership, which PRIS does not supply.",
+  "how": "It reads the command flags, loads the seed JSON file, and loads all existing projects into memory. For each reactor it looks for a match by PRIS id, then by name and country. It updates matches according to the flags, or inserts a new project with the next p-number. If asked, it links companies, then prints totals and exits.",
+  "inputs": "The file seed_data/pris_reactors.json next to the script, the command flags --force, --link-companies, and --limit=N, and the projects and company-project link tables.",
+  "outputs": "New or changed rows in the projects table and company-project links, plus console output with counts of inserted, updated, and skipped records and the total project count.",
+  "risks": "Without --force it only fills empty fields, so wrong existing values stay. With --force it overwrites many fields, including status, dates, and attributes. Company links use hardcoded IDs, so a changed ID links the wrong company. Each reactor is saved one at a time with no transaction, so a failure part-way leaves some rows changed. A grid date is stored in the commercial operation date field.",
+  "debug": "Run with --limit=5 first and read the INSERTED and UPDATED lines. Check that the seed file path resolves, since the script reads it from its own folder. If --limit is not a number, the run processes nothing. For wrong owners or operators, check the country map and the name patterns. For failed runs, read the message printed by the final error handler.",
+  "summary_hash": "sha256:6754eb38b2f65f07efab5988a91a50fe8b7fdbe5a94b7e2cb4da362dc40b2f01"
+}

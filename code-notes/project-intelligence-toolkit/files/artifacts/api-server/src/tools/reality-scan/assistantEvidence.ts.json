@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/reality-scan/assistantEvidence.ts",
+  "language": "TypeScript",
+  "lines": 43,
+  "hash": "sha256:d8f75e015a9d025f4f7e5397eea14ddf60f7e2556c0deb45b157b3fae36d8cc4",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The checks are clear, but no test or error handling for the database query is visible in this file.",
+      "A non-null assertion depends on an earlier check and would fail if that check changed.",
+      "A malformed web address would raise an error rather than being rejected cleanly."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Substring",
+      "meaning": "a piece of text found inside a longer text."
+    },
+    {
+      "term": "Normalization",
+      "meaning": "a standard tidy-up of text, such as collapsing spaces and making look-alike characters match."
+    },
+    {
+      "term": "Evidence pool",
+      "meaning": "the set of sources the assistant is allowed to cite."
+    },
+    {
+      "term": "Fetched",
+      "meaning": "the source page was successfully downloaded and its text stored."
+    }
+  ],
+  "depends_on": [
+    "../../db",
+    "../../lib/researchSources",
+    "../../../../../lib/api-client-react/src/scan-deck",
+    "drizzle-orm"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/reality-scan/deckAssistant.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup, AssistantSource, EvidenceSelection, normal",
+      "id": "s1",
+      "hash": "6b0db781b3bb8781",
+      "title": "Setup and shared types",
+      "what": "Brings in the database, the source registry and the shared deck types. Defines the shapes of a source and of a citation, and a helper that tidies text so quotes can be compared fairly.",
+      "why": "Lets the rest of the file compare quotes using the same rules.",
+      "watch_out": ""
+    },
+    {
+      "start": 9,
+      "end": 14,
+      "kind": "function",
+      "name": "validSelections",
+      "id": "s2",
+      "hash": "5c5c3065976fdab4",
+      "title": "Checking the assistant's citations",
+      "what": "Returns true only if there is at least one citation and every citation points to a fetched source in the pool, uses a quote of at least 30 characters, and that quote appears in the source text.",
+      "why": "Likely reason: stops invented or misquoted evidence from reaching a slide.",
+      "watch_out": "The check is a plain text search, so a short quote can match a passage that means something different in its original context."
+    },
+    {
+      "start": 15,
+      "end": 27,
+      "kind": "function",
+      "name": "savedDeckEvidence",
+      "id": "s3",
+      "hash": "85be4b7d693aa2f2",
+      "title": "Loading evidence saved for a slide",
+      "what": "Reads up to 60 active evidence records for the projects used on a slide, or for all projects in the deck when the slide names none. Only records with web addresses are kept, and each becomes a source with a title built from the project name and field.",
+      "why": "Likely reason: gives the assistant real saved facts to cite instead of relying on what it already knows.",
+      "watch_out": "The 60-record limit with ordering by id means that on a large set of projects some evidence never reaches the assistant, and the code does not say so."
+    },
+    {
+      "start": 28,
+      "end": 43,
+      "kind": "function",
+      "name": "resolveSelections",
+      "id": "s4",
+      "hash": "2e3b935632c15b4d",
+      "title": "Turning citations into saved sources",
+      "what": "Runs the citation check and then, for each citation, returns the source details and a reference. Sources that are not project records are first saved to the research source registry, which gives them a permanent id. Returns nothing if the check fails.",
+      "why": "Likely reason: every statement on a slide should trace to a stored source.",
+      "watch_out": "A malformed web address raises an error here, and no handling for that case is visible."
+    }
+  ],
+  "explained_at": "2026-11-12T05:00:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks the deck assistant's cited quotes against real fetched source text and loads saved evidence for a slide.",
+  "purpose": "Gives the deck assistant a pool of usable sources and blocks any cited quote that does not appear in that source.",
+  "why": "Likely reason: the assistant is an AI model that can misquote or invent a passage, so each quote is checked against stored text before it reaches a slide.",
+  "how": "1. Load the database, source registry and shared deck types. 2. For each citation, confirm the source exists in the pool and was fetched, the quote is at least 30 characters after tidying, and the quote appears in the source excerpt. 3. For a saved slide, load up to 60 active evidence records for its projects, keeping only those with web addresses. 4. For valid citations, register sources that are not project records and return them with references for the slide.",
+  "inputs": "Selected quotes with source ids, a pool of sources, a saved deck and a slide id, and the evidence_quotes database table.",
+  "outputs": "A yes or no result for the citation check, a pool of sources for the assistant, and sources and references ready to attach to a slide. Returns nothing when a citation fails.",
+  "risks": "Matching is a plain substring test after tidying, so a quote that is only partly present can be missed, and the pool is capped at 60 records. Creating a URL from a non-web address throws an error. A non-null assertion relies on the earlier check having passed.",
+  "debug": "If assistant claims disappear, check that each quote is at least 30 characters and that the source status is fetched. If a slide has no sources, check that its evidence records have web addresses beginning with http. If a function throws, look for a malformed web address in the source.",
+  "summary_hash": "sha256:d8f75e015a9d025f4f7e5397eea14ddf60f7e2556c0deb45b157b3fae36d8cc4"
+}

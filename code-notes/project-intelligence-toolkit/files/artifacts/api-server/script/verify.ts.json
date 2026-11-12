@@ -1,0 +1,551 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/verify.ts",
+  "language": "TypeScript",
+  "lines": 767,
+  "hash": "sha256:1ceb97cc3d6d3a586373f0c6a3a9846004b8589e0789c08ba32fcbf88ddda386",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the first twenty of forty sections are visible, so the engine, render, environment and main sections cannot be checked",
+      "The visible design is careful: skips count as failures and checks read live state",
+      "A query returning no rows becomes an empty string, which converts to zero, so that case needs care"
+    ]
+  },
+  "terms": [
+    {
+      "term": "suite",
+      "meaning": "a named group of related checks, such as schema or data"
+    },
+    {
+      "term": "baseline",
+      "meaning": "the expected counts and values saved in a file, which later results are compared against"
+    },
+    {
+      "term": "migration",
+      "meaning": "a saved script that changes the database structure, applied in order"
+    },
+    {
+      "term": "ledger",
+      "meaning": "the database table that records which migrations have been applied and their fingerprints"
+    },
+    {
+      "term": "hash",
+      "meaning": "a fingerprint of a file used to detect that it has changed"
+    },
+    {
+      "term": "SKIP",
+      "meaning": "a check that did not run, which this script counts as a failure"
+    },
+    {
+      "term": "pg",
+      "meaning": "the library the script uses to talk to the PostgreSQL database"
+    }
+  ],
+  "depends_on": [
+    "pg",
+    "script/verify.baseline.json",
+    "lib/db/migrations",
+    "artifacts/api-server/script (folder for this file)",
+    "Node built-in modules for files, paths, crypto and child processes"
+  ],
+  "used_by": [
+    "Not visible in the packet; intended as the single verification command for the project"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 26,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c7efd49ddf39f64b",
+      "title": "File header and rules",
+      "what": "Explains how to run the command and the rules for pass, fail and skip. Says a skipped check counts as a failure and that every check must read live state, a database, a network endpoint or a file.",
+      "why": "The header states the rules so a green run cannot be faked by a skipped or trivial check.",
+      "watch_out": "Any new check must follow these rules, or it weakens the whole command."
+    },
+    {
+      "start": 27,
+      "end": 45,
+      "kind": "function",
+      "name": "findRepoRoot, ALL_SUITES",
+      "id": "s2",
+      "hash": "73c50e7db07bdb4e",
+      "title": "Repository root and suite list",
+      "what": "Walks up the folder tree to find the workspace file, and lists the five suites: schema, data, engine, render and env.",
+      "why": "Lets the script run from any subfolder of the project.",
+      "watch_out": "The search gives up after eight levels up and throws an error."
+    },
+    {
+      "start": 46,
+      "end": 51,
+      "kind": "type",
+      "name": "Suite",
+      "id": "s3",
+      "hash": "004a537dd3adb0a9",
+      "title": "Suite selection",
+      "what": "Reads the --suite option, splits it on commas, and checks every name is a known suite. With no option, all suites run.",
+      "why": "Lets a single area be checked on its own.",
+      "watch_out": "An unknown suite name stops the script immediately with a message listing the valid names."
+    },
+    {
+      "start": 52,
+      "end": 54,
+      "kind": "type",
+      "name": "BaselineEntry",
+      "id": "s4",
+      "hash": "e70db40aa0e9d680",
+      "title": "Baseline loading",
+      "what": "Reads verify.baseline.json once at startup into memory.",
+      "why": "The baseline lets results show differences from the expected state, not just pass or fail.",
+      "watch_out": "If the file is missing or not valid JSON, the whole script stops before any check runs."
+    },
+    {
+      "start": 55,
+      "end": 62,
+      "kind": "function",
+      "name": "base, Status",
+      "id": "s5",
+      "hash": "c719f50b49317e06",
+      "title": "Baseline lookup",
+      "what": "Returns the stored value for a baseline key and stops with an error if the key is not in the file.",
+      "why": "Prevents a check from silently comparing against nothing.",
+      "watch_out": "Every new baseline key must be added to the file, or the check that uses it will throw."
+    },
+    {
+      "start": 63,
+      "end": 68,
+      "kind": "type",
+      "name": "Result, results, record",
+      "id": "s6",
+      "hash": "9032210c4ef66d80",
+      "title": "Result record",
+      "what": "Defines the shape of one result, which holds an id, suite, title, status, expected value, actual value and difference, and a list that collects them.",
+      "why": "Gives the final report one consistent format for every check.",
+      "watch_out": "No specific risk beyond keeping the fields consistent."
+    },
+    {
+      "start": 69,
+      "end": 71,
+      "kind": "function",
+      "name": "ok",
+      "id": "s7",
+      "hash": "c4b1b6e348cda0a4",
+      "title": "Pass recorder",
+      "what": "Records a check as passed with its expected and actual values.",
+      "why": "Keeps the pass path short and consistent.",
+      "watch_out": "No specific risk."
+    },
+    {
+      "start": 72,
+      "end": 74,
+      "kind": "function",
+      "name": "bad",
+      "id": "s8",
+      "hash": "afa7d914a505d9eb",
+      "title": "Fail recorder",
+      "what": "Records a check as failed, including the difference text that explains the failure.",
+      "why": "A failure must say what went wrong, not just that it did.",
+      "watch_out": "The difference text is what people read first, so it should stay short and plain."
+    },
+    {
+      "start": 75,
+      "end": 77,
+      "kind": "function",
+      "name": "skip",
+      "id": "s9",
+      "hash": "8309b4b166556ddd",
+      "title": "Skip recorder",
+      "what": "Records a check as skipped, with the reason it did not run.",
+      "why": "Makes skipped checks visible instead of letting them disappear.",
+      "watch_out": "A skip is counted as a failure, so a skip must never be used to hide a broken check."
+    },
+    {
+      "start": 78,
+      "end": 84,
+      "kind": "function",
+      "name": "expectEq",
+      "id": "s10",
+      "hash": "9dbc5c6499389a8c",
+      "title": "Equality check",
+      "what": "Compares an expected and an actual value, converting each to text first. Records a pass if they match, otherwise a fail with a difference.",
+      "why": "One shared pattern for most checks keeps results uniform.",
+      "watch_out": "Objects are compared by their text form, so differences in key order can look like a mismatch."
+    },
+    {
+      "start": 85,
+      "end": 94,
+      "kind": "function",
+      "name": "diffNumbersOrText",
+      "id": "s11",
+      "hash": "205f7ddd00d0bcac",
+      "title": "Difference text",
+      "what": "For two numbers, gives the signed difference. For anything else, says the values are not equal.",
+      "why": "Gives a short, readable reason for numeric failures.",
+      "watch_out": "Text mismatches give only a generic message, with no detail on where they differ."
+    },
+    {
+      "start": 95,
+      "end": 98,
+      "kind": "function",
+      "name": "q",
+      "id": "s12",
+      "hash": "ad2f5e016b7821a9",
+      "title": "Database query helper",
+      "what": "Runs an SQL query through the database connection and returns the rows.",
+      "why": "Every data check reads the live database through this one helper.",
+      "watch_out": "It sends the SQL text as given, so any query that includes outside input would need careful handling."
+    },
+    {
+      "start": 99,
+      "end": 103,
+      "kind": "function",
+      "name": "scalar",
+      "id": "s13",
+      "hash": "384c2d63d7fe3b7b",
+      "title": "Single value helper",
+      "what": "Runs a query and returns the first value from the first row as text.",
+      "why": "Used for counts and other single results.",
+      "watch_out": "If the query returns no rows, the value becomes an empty string, and converting that to a number gives zero, so an empty result could look like a real zero."
+    },
+    {
+      "start": 104,
+      "end": 115,
+      "kind": "function",
+      "name": "api",
+      "id": "s14",
+      "hash": "423db1003109ebc9",
+      "title": "HTTP helper",
+      "what": "Calls the live API at the configured address and returns the status, the parsed body and the raw text.",
+      "why": "Lets checks look at both the status and the content of a response.",
+      "watch_out": "The body is null if the response is not JSON, so checks must handle that case."
+    },
+    {
+      "start": 116,
+      "end": 126,
+      "kind": "function",
+      "name": "have",
+      "id": "s15",
+      "hash": "656efaf5c7b5dc32",
+      "title": "Tool presence check",
+      "what": "Checks whether a command-line tool is installed by asking a login shell.",
+      "why": "Lets a check decide whether a required tool exists before using it.",
+      "watch_out": "The answer depends on the shell's startup settings, so it may differ between machines."
+    },
+    {
+      "start": 127,
+      "end": 135,
+      "kind": "function",
+      "name": "resolveDeck",
+      "id": "s16",
+      "hash": "69d71d9c7362b5c3",
+      "title": "Deck file lookup",
+      "what": "Finds a saved deck file by its relative path, checking the API server folder and then the repository root.",
+      "why": "The comment explains that older decks were saved relative to the repository root, not the API server folder.",
+      "watch_out": "If the file is in neither folder the function returns null, and the caller must count that as a failure, not a pass."
+    },
+    {
+      "start": 136,
+      "end": 140,
+      "kind": "type",
+      "name": "JournalEntry",
+      "id": "s17",
+      "hash": "a0b5dc3dd8e215ec",
+      "title": "Migration journal entry shape",
+      "what": "Describes one entry in the migration journal: its index, timestamp and tag name.",
+      "why": "Lets the schema suite match each applied migration to its file.",
+      "watch_out": "The index and tag must stay in order, or the schema checks report problems."
+    },
+    {
+      "start": 141,
+      "end": 177,
+      "kind": "function",
+      "name": "suiteSchema (part 1)",
+      "id": "s18",
+      "hash": "7116608269472ed2",
+      "title": "Schema checks: files and ledger",
+      "what": "Checks the migration files exist, the journal numbering is continuous, and the ledger has the expected number of rows. Compares each applied migration's stored fingerprint with the file's current fingerprint.",
+      "why": "Detects migration files that were edited after they were applied, which means the database and the code no longer agree.",
+      "watch_out": "Editing an old migration after it has run will fail this check, and the right fix is to add a new migration instead."
+    },
+    {
+      "start": 178,
+      "end": 208,
+      "kind": "method",
+      "name": "suiteSchema: for",
+      "id": "s19",
+      "hash": "ba843808658622a5",
+      "title": "Schema checks: fingerprints and tables",
+      "what": "Matches each ledger row to its journal entry by timestamp, flags any fingerprint that no longer matches its file, and then checks that all required tables exist in the public schema.",
+      "why": "Confirms the database has the structure the code expects.",
+      "watch_out": "Matching is done by timestamp, so if timestamps change, every ledger row will fail to match."
+    },
+    {
+      "start": 209,
+      "end": 247,
+      "kind": "function",
+      "name": "suiteData (part 1)",
+      "id": "s20",
+      "hash": "871ec239189c00da",
+      "title": "Data checks: counts and evidence",
+      "what": "Compares total project and evidence counts with the baseline and checks per-industry counts. Looks for placeholder text such as None in evidence quotes or URLs, and for fact sources that are not web addresses. Starts a source-span check that runs inside the database.",
+      "why": "Stops the data drifting from the expected state, and stops placeholder text entering evidence. The span check runs in the database because JavaScript and Postgres count characters differently for some symbols.",
+      "watch_out": "Every legitimate data addition needs a matching baseline update, or this suite reports a difference."
+    },
+    {
+      "start": 248,
+      "end": 271,
+      "kind": "method",
+      "name": "suiteData: if",
+      "id": "s21",
+      "hash": "e5fd7b5abb9c2eae",
+      "title": "Span round-trip check in the database",
+      "what": "Checks that every stored source span, when cut out of its document text using its start and end positions, matches the stored quote exactly. It reports a pass when no span mismatches and a failure otherwise, and it also fails when the span table is empty.",
+      "why": "The check exists so the quoted text shown to users can be trusted to come from the document it cites. The code compares mismatch counts rather than percentages, which avoids false differences from number formatting.",
+      "watch_out": "An empty span table is treated as a failure, so a fresh database fails this check until spans are created."
+    },
+    {
+      "start": 272,
+      "end": 277,
+      "kind": "type",
+      "name": "RunRow, RunView",
+      "id": "s22",
+      "hash": "bfeec019b347f2e6",
+      "title": "Expected shape of run and stage data",
+      "what": "Describes, loosely, the fields a run and its stages are expected to have, so the later checks can read them. It does not enforce anything by itself.",
+      "why": "Likely reason: the server names fields in more than one style, so the descriptions allow both spellings.",
+      "watch_out": "Because these descriptions are not enforced, a renamed field only shows up as a failure in a later check."
+    },
+    {
+      "start": 278,
+      "end": 282,
+      "kind": "function",
+      "name": "startRun",
+      "id": "s23",
+      "hash": "a4ebeac884c3f855",
+      "title": "Start a Lessons Learnt or Reality Scan run",
+      "what": "Asks the server to start a run for a given tool and scope, and returns the new run ID. If the server does not return a created run, it returns the reason, including the first 200 characters of the response.",
+      "why": "Later checks need the run ID to follow the run until it finishes.",
+      "watch_out": "Only the first 200 characters of an error response are kept, so the real cause may be cut off."
+    },
+    {
+      "start": 283,
+      "end": 297,
+      "kind": "function",
+      "name": "pollRun",
+      "id": "s24",
+      "hash": "697c40aac1d69b85",
+      "title": "Wait for a run to finish",
+      "what": "Checks the run status every 3 seconds until it reaches a final state (succeeded, failed, insufficient_evidence or error) or the time limit runs out. A timeout reports the last status it saw.",
+      "why": "Runs happen in the background on the server, so the check has to wait for them to end.",
+      "watch_out": "A slow run that hits the time limit is reported as a failure, not as a slow run."
+    },
+    {
+      "start": 298,
+      "end": 301,
+      "kind": "function",
+      "name": "stageSummary",
+      "id": "s25",
+      "hash": "6d86195b96c3dd35",
+      "title": "Read one stage of a run",
+      "what": "Finds the stage with a given key in a run and returns its summary data, or nothing if the stage or summary is missing.",
+      "why": "Stage results come back as a list, so this picks out the one a check needs.",
+      "watch_out": "A missing stage returns nothing, so every caller has to handle that case or it will fail later with an unclear message."
+    },
+    {
+      "start": 302,
+      "end": 311,
+      "kind": "function",
+      "name": "dig",
+      "id": "s26",
+      "hash": "320caf88d6f677f0",
+      "title": "Safely read nested values",
+      "what": "Walks down a chain of field names inside unknown data and returns the value at the end, or nothing if any step is missing.",
+      "why": "The server data shape can vary, so this stops the checks from crashing when a field is absent.",
+      "watch_out": "A misspelled field name silently returns nothing, which can hide a real problem."
+    },
+    {
+      "start": 312,
+      "end": 371,
+      "kind": "function",
+      "name": "suiteEngine (part 1)",
+      "id": "s27",
+      "hash": "4cbfd043b40790d5",
+      "title": "Reality Scan check for two projects",
+      "what": "Starts a Reality Scan on Hinkley Point C (p-010) and Darlington-1 (p-356), then compares their cost and schedule overrun figures with the expected baseline. It also requires Hinkley's cost figure to be marked as directly reported, and requires Darlington to have no cost or schedule figure but to give a reason for that.",
+      "why": "The expected values are kept in a baseline file, so this check works as a regression test that flags any change in results.",
+      "watch_out": "The expected values come from the baseline file, so updating that file without review would make the check pass for the wrong reasons."
+    },
+    {
+      "start": 372,
+      "end": 427,
+      "kind": "function",
+      "name": "suiteEngine (part 2)",
+      "id": "s28",
+      "hash": "0e4b336eefe464e9",
+      "title": "Lessons Learnt check for lithium mining",
+      "what": "Runs Lessons Learnt for lithium mining and checks that coverage matches the expected count, that five pillars exist, and that each pillar's driver fact counts add up exactly to its total. It then checks that the deck file exists on disk. The section ends by starting the nuclear run used in the next section.",
+      "why": "Likely reason: exact sums show that no fact was dropped or counted twice across drivers.",
+      "watch_out": "Several fallback field names are tried, so a renamed field can produce a confusing failure message, so read the problem text carefully."
+    },
+    {
+      "start": 428,
+      "end": 485,
+      "kind": "method",
+      "name": "suiteEngine: if",
+      "id": "s29",
+      "hash": "8b8b8668542b65de",
+      "title": "Nuclear fallback and no-evidence checks",
+      "what": "Checks that every nuclear pillar reports the descriptive fallback basis. It then picks an industry that has no evidence and expects the run to end as insufficient_evidence, produce no deck, and refuse a retry with HTTP 409.",
+      "why": "These checks test two paths that real data would not otherwise exercise: the fallback basis and the refusal to run without evidence.",
+      "watch_out": "The no-evidence check fails outright if every industry now has evidence, which is intended to be reported but may surprise someone reading the results."
+    },
+    {
+      "start": 486,
+      "end": 508,
+      "kind": "method",
+      "name": "suiteEngine: if",
+      "id": "s30",
+      "hash": "4b87a38bb8089f38",
+      "title": "Repeat run makes no model calls",
+      "what": "Runs the lithium-mining job a second time and expects zero model calls, meaning the driver-name cache answered every lookup.",
+      "why": "The comment in the code states that a non-zero count means the cache missed.",
+      "watch_out": "If the first lithium run did not succeed, this check cannot measure anything and is marked as a failure."
+    },
+    {
+      "start": 509,
+      "end": 541,
+      "kind": "function",
+      "name": "suiteRender (part 1)",
+      "id": "s31",
+      "hash": "cc54967e3cf70be9",
+      "title": "Set up the deck render checks",
+      "what": "Finds the most recent successful lithium deck in the database, resolves its file path, and lists anything missing for rendering: the PowerPoint converter, the PDF font and text tools, or the Carlito font.",
+      "why": "The code comments say that a substituted font changes text widths and makes layout results false, so the font must be present before any layout check runs.",
+      "watch_out": "A missing tool produces a failure rather than a skipped check, so the render suite cannot pass on a machine without these tools."
+    },
+    {
+      "start": 542,
+      "end": 597,
+      "kind": "method",
+      "name": "suiteRender: if",
+      "id": "s32",
+      "hash": "06039618d1ad9a08",
+      "title": "Render the deck and check its layout",
+      "what": "When setup is complete, converts the deck to PDF using the Carlito font, confirms that font is embedded, then checks each slide for text past the page edge and text overlapping the bottom footnote area. It also counts the slides and checks the count is within the accepted range.",
+      "why": "The font check gates the layout check, because the layout numbers are meaningless if the wrong font was used.",
+      "watch_out": "Temporary folders are created under the system temp directory and are never removed by this code."
+    },
+    {
+      "start": 598,
+      "end": 602,
+      "kind": "function",
+      "name": "findCarlitoDir",
+      "id": "s33",
+      "hash": "fa8fa6e2da07c5b0",
+      "title": "Find the Carlito font folder",
+      "what": "Asks the system for the folder that holds the Carlito font and returns that folder, or nothing if the font is not installed.",
+      "why": "The render step needs this folder so it can force the converter to use Carlito.",
+      "watch_out": "This depends on the font listing command and text search being available on the machine, and an empty result is read simply as not installed."
+    },
+    {
+      "start": 603,
+      "end": 613,
+      "kind": "function",
+      "name": "writeFontconfig",
+      "id": "s34",
+      "hash": "d0f161c785be176d",
+      "title": "Write a font settings file for the converter",
+      "what": "Writes a small configuration file that points the converter at the Carlito folder and at a cache folder inside the temporary directory.",
+      "why": "Forces the converter to use Carlito, so the layout check measures the real font widths.",
+      "watch_out": "The folder path is placed into the file without any escaping, so an unusual path could make the file invalid."
+    },
+    {
+      "start": 614,
+      "end": 631,
+      "kind": "function",
+      "name": "measureGeometry",
+      "id": "s35",
+      "hash": "84c5cc5a1681e121",
+      "title": "Measure layout problems in the PDF",
+      "what": "Reads the text box positions from the PDF and reports slides where text goes outside the page, or where body text reaches the bottom eight percent of the slide where footnotes sit.",
+      "why": "This is how the render check finds overflow and footnote collisions without looking at the slides by eye.",
+      "watch_out": "The eight percent footnote area and the half-point tolerance are fixed numbers, so a layout change may need them adjusted."
+    },
+    {
+      "start": 632,
+      "end": 640,
+      "kind": "function",
+      "name": "countSlides",
+      "id": "s36",
+      "hash": "d1dfbe89bf4b4239",
+      "title": "Count slides in the deck",
+      "what": "Counts the slide files stored inside the PowerPoint archive and returns that number, or nothing if the archive cannot be read.",
+      "why": "Counting from the file itself avoids depending on another record of the slide count.",
+      "watch_out": "An unreadable archive returns nothing without any message, which the caller then reports as unreadable."
+    },
+    {
+      "start": 641,
+      "end": 681,
+      "kind": "function",
+      "name": "suiteEnv (part 1)",
+      "id": "s37",
+      "hash": "e12bbafba2865d81",
+      "title": "Environment health check",
+      "what": "Asks the server for its environment status and checks that the model name is workspace-scoped, that the gateway address matches the expected one, that no critical setting is missing, and that the expected model roles are configured.",
+      "why": "The code comments say the gateway rejects model names that are not workspace-scoped, so this catches that problem early.",
+      "watch_out": "If the API server is not running, this check reports it as unreachable, which is the first thing to confirm when it fails."
+    },
+    {
+      "start": 682,
+      "end": 704,
+      "kind": "method",
+      "name": "suiteEnv: if",
+      "id": "s38",
+      "hash": "dd193700e8d81bf2",
+      "title": "Live model call for each role",
+      "what": "Asks the server to make a small live model call for each configured role, collects the roles that fail, and reports how many roles answered. For each failure it shows only the HTTP status and a short reason.",
+      "why": "The server's own failure reason is preferred, and provider messages are not echoed because they can contain credentials.",
+      "watch_out": "The code accepts the results as either a list or a map, so an unexpected shape could give a misleading count of working roles."
+    },
+    {
+      "start": 705,
+      "end": 713,
+      "kind": "function",
+      "name": "classifyModelFailure",
+      "id": "s39",
+      "hash": "536b8e7bea60e6d1",
+      "title": "Turn a model failure into a short label",
+      "what": "Converts a failed model call into one of four labels: model not found, gateway authorisation problem, provider key problem, or unclassified.",
+      "why": "Gives a readable reason without repeating the provider text, which can include the API key.",
+      "watch_out": "The labels come from matching words in the error text, so an unusual message will be labelled unclassified."
+    },
+    {
+      "start": 714,
+      "end": 767,
+      "kind": "function",
+      "name": "main",
+      "id": "s40",
+      "hash": "52638131d0ddbc8c",
+      "title": "Run the selected suites and report",
+      "what": "Connects to the database, runs the chosen suites in order (schema, data, engine, render, env), closes the connection, and prints either a readable report or JSON. It exits with code 0 when everything passes and code 1 otherwise, and a crash also exits with code 1.",
+      "why": "One entry point with a clear exit code lets automated tools read the result without parsing text.",
+      "watch_out": "Any check that is skipped counts as a failure, which is intentional, so a partly run suite always shows as FAIL."
+    }
+  ],
+  "explained_at": "2026-11-12T03:19:31+00:00",
+  "explained_by": "haiku",
+  "summary": "The single verification command for the project. It runs named suites of checks against the database, the live API and files on disk, and reports each result as pass, fail or skip.",
+  "purpose": "Gives one place to confirm the system is in the expected state, with a clear green or red result.",
+  "why": "The header says a skipped check proves nothing, so skips must not allow a green run. It also says checks must read real state rather than rely on a successful compile.",
+  "how": "Finds the repository root and reads which suites to run from the command line. Loads the baseline file. For the schema suite, checks migration files, the migration ledger hashes and the required tables. For the data suite, compares row counts and per-industry counts with the baseline, and checks evidence rows for placeholder text and non-web fact sources. The visible sections stop before the engine, render and environment suites, and the main function, which are not in this view.",
+  "inputs": "Command line options --suite and --json. Environment variables VERIFY_API_BASE, which defaults to localhost port 8080, and VERIFY_ENGINE_TIMEOUT_MS. A database connection. The baseline file verify.baseline.json. Migration files under lib/db/migrations.",
+  "outputs": "A list of results, each with an id, suite, title, status, expected value, actual value and difference. Printed as text, or as JSON when --json is given. The exit code is 0 only when every selected check passes.",
+  "risks": "A skipped check counts as a failure, which is intended. A legitimate change to the data needs a matching baseline update with a reason, or the data suite fails. Schema hash checks will fail if any applied migration file is edited afterwards.",
+  "debug": "Run with --suite=schema or --suite=data to narrow the search. Read the diff field of any FAIL line. Check the database connection and the VERIFY_API_BASE address. A missing baseline key stops the script with a clear message.",
+  "summary_hash": "sha256:1ceb97cc3d6d3a586373f0c6a3a9846004b8589e0789c08ba32fcbf88ddda386"
+}

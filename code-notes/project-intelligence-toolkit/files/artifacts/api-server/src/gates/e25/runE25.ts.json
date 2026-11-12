@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/gates/e25/runE25.ts",
+  "language": "TypeScript",
+  "lines": 87,
+  "hash": "sha256:f965f7bc40803c376254aff6af80beee91da79031404d6afc36f7bb56d487f14",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The database write is not wrapped in error handling.",
+      "No test is visible for the run."
+    ]
+  },
+  "terms": [
+    {
+      "term": "computation record",
+      "meaning": "a stored row that records how a number was calculated and what it came to"
+    },
+    {
+      "term": "upsert",
+      "meaning": "insert a row, or update the existing row if one with the same key is already there"
+    },
+    {
+      "term": "dry run",
+      "meaning": "a trial run that does not save its results"
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/gates/e25/modes.ts",
+    "artifacts/api-server/src/gates/e25/provenance.ts",
+    "artifacts/api-server/src/gates/e25/validator.ts",
+    "artifacts/api-server/src/gates/e25/types.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "556cd87932c851f1",
+      "title": "Runner purpose and imports",
+      "what": "Explains that this file is the thin shell around the checker: it looks up, checks, saves a record, and returns the result.",
+      "why": "The header says a provenance gate that cannot show where its own rate came from cannot judge anything else.",
+      "watch_out": "Logic that belongs in the checker should not be added here, so the checker stays testable."
+    },
+    {
+      "start": 24,
+      "end": 28,
+      "kind": "type",
+      "name": "RunE25Options",
+      "id": "s2",
+      "hash": "c1e98e9a4ce87086",
+      "title": "Run options",
+      "what": "Defines the one option: skip the save step, used for dry runs and test fixtures.",
+      "why": "The comment says it lets trial runs avoid writing records.",
+      "watch_out": "A caller that forgets this option will write a record on every test."
+    },
+    {
+      "start": 29,
+      "end": 45,
+      "kind": "function",
+      "name": "runE25",
+      "id": "s3",
+      "hash": "7bea6322e1410da8",
+      "title": "Running the gate",
+      "what": "Checks the artifact's mode, stops if off, then runs the lookup, snapshot, checker, and optional save in order, returning the report.",
+      "why": "The function is the one place that ties the steps together.",
+      "watch_out": "An off mode returns nothing, so callers must handle a missing report."
+    },
+    {
+      "start": 46,
+      "end": 87,
+      "kind": "function",
+      "name": "writeGateComputationRecord",
+      "id": "s4",
+      "hash": "058451a282fbb4da",
+      "title": "Saving the gate's own record",
+      "what": "Writes one calculation record per artifact, per run, per engine version. A repeat run updates the existing row instead of adding another.",
+      "why": "The comment says the artifact ID is stored in the field path so two artifacts from the same run can coexist.",
+      "watch_out": "The key includes the engine version, so changing the engine version creates a new row instead of replacing the old one."
+    }
+  ],
+  "explained_at": "2026-11-12T03:33:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the provenance gate on one artifact: looks up evidence, checks the numbers, saves a record of the result, and returns the report.",
+  "purpose": "The single entry point the rest of the app calls to run the gate on an artifact.",
+  "why": "The header says the gate records its own arithmetic, so its rate can be traced like any other number.",
+  "how": "Reads the mode for the artifact and stops if it is off. Otherwise it looks up evidence, builds the snapshot, runs the pure checker, saves a calculation record unless told not to, and returns the report.",
+  "inputs": "An artifact reference with an ID and optional run details, a list of numerals, and options that can skip the save.",
+  "outputs": "The gate report, or nothing when the mode is off.",
+  "risks": "Every run writes to the database unless the save is skipped. The save has no error handling, so a database failure stops the run.",
+  "debug": "If no record appears, check that the mode is not off, the save is not skipped, and the artifact ID is set. If a record shows old numbers, the engine version may not have changed.",
+  "summary_hash": "sha256:f965f7bc40803c376254aff6af80beee91da79031404d6afc36f7bb56d487f14"
+}

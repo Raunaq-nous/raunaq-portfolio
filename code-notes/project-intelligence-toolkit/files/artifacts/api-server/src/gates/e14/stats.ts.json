@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/gates/e14/stats.ts",
+  "language": "TypeScript",
+  "lines": 163,
+  "hash": "sha256:2b3b2ed384267f04c916ce35517fad6224dfa3c54bc7575826a7c762dab52713",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The header cites a verification script, but the script was not in the packet, so I could not confirm the checks pass.",
+      "The factorial calculation is an approximation and is not checked here.",
+      "No tests are visible in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "confidence interval",
+      "meaning": "a range that the true value is likely to fall in, given the sample."
+    },
+    {
+      "term": "p-value",
+      "meaning": "the chance of seeing a gap at least this large if there were really no difference."
+    },
+    {
+      "term": "Wilson interval",
+      "meaning": "a range for one share that stays between zero and one and behaves well with small samples."
+    },
+    {
+      "term": "Newcombe interval",
+      "meaning": "a range for the difference between two shares, built from the two Wilson ranges."
+    },
+    {
+      "term": "Fisher exact test",
+      "meaning": "a test of whether two groups differ, computed exactly from the counts rather than estimated."
+    },
+    {
+      "term": "power",
+      "meaning": "the chance of detecting a real gap of a given size when one exists."
+    },
+    {
+      "term": "z-score",
+      "meaning": "the number of standard deviations away from the middle of a normal curve, used to set the confidence level."
+    }
+  ],
+  "depends_on": [],
+  "used_by": [
+    "artifacts/api-server/src/gates/e14/validator.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4ed7654cdbf77b51",
+      "title": "File purpose and design choices",
+      "what": "Header comment that says the file has no outside dependencies, is built to be correct for small samples, and is checked against textbook values.",
+      "why": "States the reason for the chosen methods: simple approximations fail with small or empty groups.",
+      "watch_out": "The claim of checking against textbook values depends on a script not visible here."
+    },
+    {
+      "start": 14,
+      "end": 55,
+      "kind": "function",
+      "name": "normInv",
+      "id": "s2",
+      "hash": "bb5c2105381d8156",
+      "title": "Converting a confidence level to a z-score",
+      "what": "Gives the cut-off value on a normal curve for a given probability, using a published approximation. Refuses any value outside zero to one.",
+      "why": "Needed to build every range in the file.",
+      "watch_out": "The approximation is accurate to a very small error, but bad inputs stop the run with an error message."
+    },
+    {
+      "start": 56,
+      "end": 69,
+      "kind": "function",
+      "name": "wilsonInterval",
+      "id": "s3",
+      "hash": "8198670d91a763a1",
+      "title": "Range for one share",
+      "what": "Returns a range for a single share of projects that stays between zero and one, and returns the full zero to one range when there are no projects.",
+      "why": "Keeps the range honest when counts are zero or all projects match.",
+      "watch_out": "With no projects it returns the whole zero to one range, which is correct but looks like no information."
+    },
+    {
+      "start": 70,
+      "end": 91,
+      "kind": "function",
+      "name": "newcombeDiffCI",
+      "id": "s4",
+      "hash": "da94d14a2fc6bd10",
+      "title": "Range for the difference between two shares",
+      "what": "Returns a range for the gap between two shares by combining the two single-share ranges, clipped to minus one to one.",
+      "why": "Named in the comment as the method that copes with zero counts where the simpler method misleads.",
+      "watch_out": "Zero-size groups are treated as zero share, which can make a gap look smaller than it is."
+    },
+    {
+      "start": 92,
+      "end": 97,
+      "kind": "function",
+      "name": "cohensH",
+      "id": "s5",
+      "hash": "f7202fb0e9738a92",
+      "title": "Effect size",
+      "what": "Computes Cohen's h, a difference of two shares on a scale that does not depend on how common the outcome is.",
+      "why": "Gives a size measure that can be compared across criteria with different base rates.",
+      "watch_out": "Shares are clipped to the zero to one range, so bad inputs are hidden rather than flagged."
+    },
+    {
+      "start": 98,
+      "end": 113,
+      "kind": "function",
+      "name": "logGamma",
+      "id": "s6",
+      "hash": "92120fe85f4682e5",
+      "title": "Log of the gamma function",
+      "what": "Approximates the logarithm of a factorial-like function, used to compute probabilities without very large numbers.",
+      "why": "Keeps the exact test numerically stable with the sample sizes used.",
+      "watch_out": "This is an approximation. Its accuracy is not checked in this file."
+    },
+    {
+      "start": 114,
+      "end": 116,
+      "kind": "function",
+      "name": "logChoose",
+      "id": "s7",
+      "hash": "1920eaea5f54c74e",
+      "title": "Log of a choose count",
+      "what": "Gives the log of the number of ways to pick some items from a set, using the function above.",
+      "why": "Used by the exact test to build probabilities.",
+      "watch_out": ""
+    },
+    {
+      "start": 117,
+      "end": 142,
+      "kind": "function",
+      "name": "fisherExactTwoSided",
+      "id": "s8",
+      "hash": "7eb53a7cc4e8a614",
+      "title": "Exact two-sided test",
+      "what": "Computes a p-value for a two-by-two table by adding the probabilities of all tables at least as unlikely as the observed one. Returns one when a margin is empty.",
+      "why": "An exact test stays valid for small counts where approximate tests are unreliable, as the header says.",
+      "watch_out": "The sum includes a tiny tolerance when comparing probabilities, so near-ties are counted in."
+    },
+    {
+      "start": 143,
+      "end": 163,
+      "kind": "function",
+      "name": "requiredNPerGroup",
+      "id": "s9",
+      "hash": "4467fea2b73f1680",
+      "title": "Sample size needed per group",
+      "what": "Estimates how many projects per group are needed to detect a given gap at a chosen confidence and power, using a standard two-proportion formula. Returns infinity for a zero gap and one when the variance is zero.",
+      "why": "Used only to say what the data would need, never to decide a verdict, as the comment states.",
+      "watch_out": "It is a rough planning figure based on an approximation, so it should not be read as exact."
+    }
+  ],
+  "explained_at": "2026-11-12T03:31:30+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the statistics helpers that the E14 check uses to measure the gap between two groups of projects, with honest ranges of uncertainty and an exact test, using no outside libraries.",
+  "purpose": "Gives trustworthy numbers for small samples: the size of the gap, the plausible range around it, a p-value, and how many projects would be needed to detect a given gap.",
+  "why": "The header says a simple approximation gives zero-width ranges at 0 or 100 percent and would turn 'we saw nothing' into 'we are certain'. So it uses Wilson and Newcombe ranges and an exact test instead. The header also says each function is checked against textbook values in script/verify-e14.ts.",
+  "how": "1. Convert a confidence level into a z-score. 2. Compute a range for one share (Wilson). 3. Compute a range for the difference between two shares (Newcombe). 4. Compute an effect size (Cohen's h). 5. Compute an exact p-value (Fisher) using log-scale arithmetic for the factorials. 6. Estimate the sample size per group needed for a given gap.",
+  "inputs": "Counts of met projects and total projects for each group, the confidence level, the power, and the smallest gap that matters.",
+  "outputs": "Range bounds, an effect size, a p-value, and a required sample size per group. All are plain numbers.",
+  "risks": "The factorial approximation is an approximation, not an exact value. Impossible counts, such as more met than total, give meaningless results without an error. The required sample size is infinite when the minimum gap is zero.",
+  "debug": "Compare the output with the values in script/verify-e14.ts. Check that met counts do not exceed totals. If a p-value looks wrong, check the four table cells add up to the group sizes. If a range goes outside zero to one, check the inputs.",
+  "summary_hash": "sha256:2b3b2ed384267f04c916ce35517fad6224dfa3c54bc7575826a7c762dab52713"
+}

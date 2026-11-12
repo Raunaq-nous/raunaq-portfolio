@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/replit_integrations/object_storage/objectStorage.ts",
+  "language": "TypeScript",
+  "lines": 301,
+  "hash": "sha256:15cf0a49e31d5495144ede2dd825a2fe288d8e1d75c9512afa719176be966e4b",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The download step skips its own permission check.",
+      "Only half of the file was reviewed.",
+      "It depends on a sidecar that is provided by the hosting environment and is not in this code."
+    ]
+  },
+  "terms": [
+    {
+      "term": "bucket",
+      "meaning": "a named container in cloud storage that holds files"
+    },
+    {
+      "term": "object",
+      "meaning": "a stored file inside a bucket"
+    },
+    {
+      "term": "streaming",
+      "meaning": "sending a file piece by piece as it is read, instead of loading it all at once"
+    },
+    {
+      "term": "sidecar",
+      "meaning": "a helper program that runs next to the app and provides services to it"
+    },
+    {
+      "term": "cache header",
+      "meaning": "an instruction telling browsers how long they may keep a copy"
+    }
+  ],
+  "depends_on": [
+    "@google-cloud/storage",
+    "express",
+    "crypto (built into Node)",
+    "./objectAcl"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/replit_integrations/object_storage/routes.ts",
+    "artifacts/api-server/src/replit_integrations/object_storage/index.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "007c9dbfd7faf551",
+      "title": "Imports and sidecar address",
+      "what": "Brings in the cloud storage library, the Express response type, a random ID helper and the access helpers, and sets the fixed local address of the sidecar service.",
+      "why": "Likely reason: the storage login is provided by a local helper at that address.",
+      "watch_out": "The address is fixed to one local port, so this only works on the host that runs that helper."
+    },
+    {
+      "start": 14,
+      "end": 32,
+      "kind": "value",
+      "name": "objectStorageClient",
+      "id": "s2",
+      "hash": "fcd85ad16b85ef95",
+      "title": "Cloud storage client",
+      "what": "Creates the shared storage client. It gets short-lived access from the local sidecar rather than from a stored key file.",
+      "why": "Likely reason: keeps credentials out of the code.",
+      "watch_out": "If the sidecar is down, every storage call fails."
+    },
+    {
+      "start": 33,
+      "end": 40,
+      "kind": "class",
+      "name": "ObjectNotFoundError",
+      "id": "s3",
+      "hash": "4fa6561243a5ed3b",
+      "title": "Not-found error type",
+      "what": "A named error that means the requested file does not exist, so callers can tell missing files apart from other failures.",
+      "why": "Likely reason: lets the routes return a correct not-found response. The routes were not reviewed to confirm this.",
+      "watch_out": "Callers must check for this error type specifically, or a missing file looks like a server error."
+    },
+    {
+      "start": 41,
+      "end": 96,
+      "kind": "class",
+      "name": "ObjectStorageService (part 1)",
+      "id": "s4",
+      "hash": "90d80e00d565d857",
+      "title": "Settings and public file search",
+      "what": "Reads the public search folders and private folder from settings, failing with a clear message if either is missing. Searches the public folders in order and returns the first file it finds.",
+      "why": "Lets public files be found across several storage locations.",
+      "watch_out": "Only the first match is returned, so a file with the same name in an earlier folder hides the later one."
+    },
+    {
+      "start": 97,
+      "end": 135,
+      "kind": "method",
+      "name": "ObjectStorageService: downloadObject",
+      "id": "s5",
+      "hash": "dfea824315d1e841",
+      "title": "Streams a file to a visitor",
+      "what": "Reads the file's type, size and visibility, sets response headers so public files can be cached and private files are not, then streams the file. On failure it sends an error unless the response has already started.",
+      "why": "Serves files without loading them fully into memory.",
+      "watch_out": "This function does not check who may read the file, so callers must run the access check first."
+    },
+    {
+      "start": 136,
+      "end": 177,
+      "kind": "method",
+      "name": "ObjectStorageService: if",
+      "id": "s6",
+      "hash": "b0e0e8ec87af83cc",
+      "title": "Upload link builder and file lookup",
+      "what": "Builds the temporary web address a browser uses to upload a new file, valid for 15 minutes. It also finds a stored file from its /objects/ path and confirms the file exists in the bucket. The name of the method that owns the upload-link code is not shown in this section.",
+      "why": "Likely reason: the browser uploads straight to storage, so large files never pass through the app server. The 15 minute limit is set in the code, but the reason is not stated.",
+      "watch_out": "The upload link fails with an error if PRIVATE_OBJECT_DIR is not set, and that error tells the owner to create a bucket and set it."
+    },
+    {
+      "start": 178,
+      "end": 223,
+      "kind": "method",
+      "name": "ObjectStorageService: if",
+      "id": "s7",
+      "hash": "55b9a39e4a3bdcc6",
+      "title": "Path cleanup and access setting",
+      "what": "Turns a full storage web address into the short /objects/ path the app keeps, and can apply an access setting to a stored file. If the address is not a storage address, it is returned unchanged.",
+      "why": "Likely reason: the app keeps only short paths in its records, so the storage location can change without breaking them. Reason not stated in the code.",
+      "watch_out": "A path outside the private folder is returned as it is, not shortened, so a caller can get back a raw path where a short one was expected."
+    },
+    {
+      "start": 224,
+      "end": 241,
+      "kind": "class",
+      "name": "ObjectStorageService (part 5)",
+      "id": "s8",
+      "hash": "eb16ede90c2eaa85",
+      "title": "Permission check for one file",
+      "what": "Answers whether a given user may access a stored file. If no permission level is named, it checks for read access.",
+      "why": "Reason not stated in the code beyond passing the check to a shared helper named canAccessObject, which is not in this packet.",
+      "watch_out": "The real rules live in canAccessObject, which is not shown here, so this method is only as strict as that helper."
+    },
+    {
+      "start": 242,
+      "end": 262,
+      "kind": "function",
+      "name": "parseObjectPath",
+      "id": "s9",
+      "hash": "b4a0bed15fc26333",
+      "title": "Splits a storage path into bucket and file name",
+      "what": "Separates a storage path into the bucket name (the first folder) and the file name inside it. A path with no bucket name raises an error.",
+      "why": "Likely reason: Google style storage addresses a file by bucket and name as two separate parts.",
+      "watch_out": "A path with only one part throws an error, so callers must handle failure rather than assume a result."
+    },
+    {
+      "start": 263,
+      "end": 301,
+      "kind": "function",
+      "name": "signObjectURL",
+      "id": "s10",
+      "hash": "2aa7adc5c0d364d2",
+      "title": "Asks the Replit service for a signed link",
+      "what": "Sends a request to the Replit storage helper for a temporary signed web address for one file and one action such as PUT or GET. The link expires after the time given in seconds. If the helper refuses, it raises an error that says the app may not be running on Replit.",
+      "why": "Likely reason: the app does not sign links itself, so it borrows the platform helper. The reason is not stated in the code beyond the error text.",
+      "watch_out": "Outside Replit every upload and download link fails, and the error message is the only hint about why."
+    }
+  ],
+  "explained_at": "2026-11-12T04:06:01+00:00",
+  "explained_by": "haiku",
+  "summary": "Connects the server to cloud file storage: finds files, streams them to visitors and prepares uploads.",
+  "purpose": "Lets the server store and serve uploaded files, such as documents, outside the database.",
+  "why": "Likely reason: files are kept in cloud storage rather than the database. Not otherwise stated.",
+  "how": "1. Creates a storage client that gets its login from a local sidecar service. 2. Reads the public search folders and the private folder from settings. 3. Searches public folders for a file. 4. Streams a file to a response with cache headers chosen by visibility. 5. Prepares upload locations under the private folder. Only the first five sections were reviewed, so the upload and signing steps are not described here.",
+  "inputs": "Environment settings for the search folders and private folder, file objects, and response objects for streaming.",
+  "outputs": "File objects, streamed file contents, error responses and, from code not fully reviewed, upload links.",
+  "risks": "The download step does not check permissions itself, so callers must run the access check first. Storage calls fail if the sidecar address is unreachable. Both folder settings must be set or calls throw. Once streaming has started, an error cannot change the status code.",
+  "debug": "If setup errors name PUBLIC_OBJECT_SEARCH_PATHS or PRIVATE_OBJECT_DIR, set them in the environment. If storage calls cannot connect, check the sidecar at its local address. If downloads stop partway, look for the stream error log line.",
+  "summary_hash": "sha256:15cf0a49e31d5495144ede2dd825a2fe288d8e1d75c9512afa719176be966e4b"
+}

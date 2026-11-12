@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/routes/portfolio.ts",
+  "language": "TypeScript",
+  "lines": 145,
+  "hash": "sha256:e2d377ae228550781c6f332897d597edbb2de3af5660a836a07825f996df73db",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The full project list is loaded with no limit, which may become slow as data grows.",
+      "No tests are visible.",
+      "Budget conversion depends on helpers in other files that are not in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Alias",
+      "meaning": "Another name a company is known by."
+    },
+    {
+      "term": "Capex",
+      "meaning": "Capital expenditure: the money spent building a project."
+    },
+    {
+      "term": "Phase",
+      "meaning": "The stage a project is in, such as under construction or operating."
+    },
+    {
+      "term": "Catalogue",
+      "meaning": "The official list of industries the app recognises."
+    },
+    {
+      "term": "Tidy-up (name key)",
+      "meaning": "Making names comparable by removing extra spaces and capital letters."
+    }
+  ],
+  "depends_on": [
+    "../db",
+    "../middleware/auth",
+    "../shared/industries",
+    "../scan/budgetUnits",
+    "@workspace/db",
+    "drizzle-orm",
+    "express"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/routes/routes.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "222e73ffd951c47a",
+      "title": "Imports for the portfolio routes",
+      "what": "Brings in the project, company and evidence tables, the login check, the industry list and the budget unit helper.",
+      "why": "Reason not stated in the code beyond what each import is used for below.",
+      "watch_out": ""
+    },
+    {
+      "start": 9,
+      "end": 11,
+      "kind": "function",
+      "name": "nameKey",
+      "id": "s2",
+      "hash": "a619840c462d0812",
+      "title": "Tidies names so they can be matched",
+      "what": "Turns a name into a lowercase, single-spaced form so spelling and spacing differences do not stop a match. A second pattern spots placeholder words such as n/a, unknown or tbd, so they are ignored.",
+      "why": "Reason partly stated by the matching design. The reason for the placeholder list is not stated in the code.",
+      "watch_out": "Only the listed placeholder words are caught, so another made-up name is treated as a real party."
+    },
+    {
+      "start": 12,
+      "end": 21,
+      "kind": "function",
+      "name": "portfolioCapex",
+      "id": "s3",
+      "hash": "86c510cf3d15a67f",
+      "title": "Picks the capital cost to show",
+      "what": "Chooses one budget figure for a project, using the planned budget first and the actual budget if needed, and converts it to US dollar millions. Also reports which of the two was used.",
+      "why": "The comment says budget columns are already in US dollar millions, with non-US figures converted in advance.",
+      "watch_out": "Zero or negative budgets are skipped, so a project with no real budget shows no capital cost rather than zero."
+    },
+    {
+      "start": 22,
+      "end": 26,
+      "kind": "function",
+      "name": "portfolioPhase",
+      "id": "s4",
+      "hash": "d3f6e54364014757",
+      "title": "Makes phase names consistent",
+      "what": "Converts a phase name into upper case with underscores, and turns OPERATIONAL into OPERATING. Empty values become UNKNOWN.",
+      "why": "Likely reason: so the same stage is always counted under one label.",
+      "watch_out": "Only OPERATIONAL is mapped, so other spellings of an operating stage are shown and counted separately."
+    },
+    {
+      "start": 27,
+      "end": 61,
+      "kind": "function",
+      "name": "loadProjectTotals, registerPortfolioRoutes",
+      "id": "s5",
+      "hash": "3df82dc5cb5d9ce8",
+      "title": "Counts projects per industry",
+      "what": "Counts projects and evidence records for each industry, keeps records with no industry in the total, and returns the totals used on the home pages. Reads the database on every call.",
+      "why": "The header comment says there is no server cache, so imports and edits appear immediately.",
+      "watch_out": "Records with no industry are counted under an empty key, so any change in how industry is stored can move them out of the total."
+    },
+    {
+      "start": 62,
+      "end": 71,
+      "kind": "route",
+      "name": "get",
+      "id": "s6",
+      "hash": "938e86c6125581ce",
+      "title": "Serves the totals to the browser",
+      "what": "Returns the totals to logged-in users, with no-store caching so the browser never shows old counts. On failure it returns a 500 with a generic message.",
+      "why": "The no-store header matches the comment that totals are read live.",
+      "watch_out": "The error detail is only written to the server log, so the user sees just the generic message."
+    },
+    {
+      "start": 72,
+      "end": 131,
+      "kind": "route",
+      "name": "get (part 1)",
+      "id": "s7",
+      "hash": "43615198cac8bd5d",
+      "title": "Builds the project list with companies",
+      "what": "Loads all projects, companies, aliases and company links. For each project, gathers its companies from the links and from its party names, matching names to known companies. Converts coordinates and capacity into the values shown.",
+      "why": "The comment says company membership follows projects, not a single industry tag, because one organisation can span industries.",
+      "watch_out": "A party name that matches more than one company is not linked, and instead appears as a separate entry with no company record."
+    },
+    {
+      "start": 132,
+      "end": 145,
+      "kind": "route",
+      "name": "get (part 2)",
+      "id": "s8",
+      "hash": "9c2aca5955b237a4",
+      "title": "Sorts projects and lists industries",
+      "what": "Sorts the projects by name, adds industry counts including any industry not in the catalogue, and sends the result. On failure returns a 500 with a generic message.",
+      "why": "The comment says data imported under an unregistered industry is still shown, so nothing is silently dropped.",
+      "watch_out": "Projects with the same name are ordered by ID, so the order between them is not meaningful to a reader."
+    }
+  ],
+  "explained_at": "2026-11-12T04:06:01+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the portfolio view: the list of all projects with their companies, budget, location and phase, plus the industry totals shown on the home pages.",
+  "purpose": "Feeds the portfolio list and the project totals shown on the launcher and industry pages.",
+  "why": "The header comment says totals are read live from the database on every call, so edits show at once. The comments also explain that one organisation can span several industries, which is why company membership follows projects.",
+  "how": "For totals: count projects and evidence records per industry, add records with unknown industries, and return the totals. For the portfolio: load all projects, companies, aliases and links; match each project's party names to known companies by tidied name; work out the capital cost, phase and capacity; then return a sorted list plus industry counts.",
+  "inputs": "Database tables for projects, companies, company aliases, company project links and evidence quotes. HTTP GET requests from logged-in users.",
+  "outputs": "Totals: total count, unassigned count, populated industries, catalogue size, evidence total, and a per-industry list. Portfolio: a list of projects with phase, capital cost, dates, coordinates, capacity and companies, plus the industry list.",
+  "risks": "The portfolio route loads the whole project table with no limit. Name matching only links a party when exactly one known company has that name. Coordinates outside valid ranges are dropped.",
+  "debug": "If a count looks wrong, compare the per-industry numbers with the database. If a company is missing, check whether its name matches after tidy-up and whether more than one company shares it, which blocks matching. Budget values come from budgetToMillions in another file.",
+  "summary_hash": "sha256:e2d377ae228550781c6f332897d597edbb2de3af5660a836a07825f996df73db"
+}

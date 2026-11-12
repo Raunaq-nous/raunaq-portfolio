@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/backfill-ll-coverage.ts",
+  "language": "TypeScript",
+  "lines": 39,
+  "hash": "sha256:c62bbfac85d65838f7ee4fd53447e980f3562d6def274d188b53b956b03337a7",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No per-run error handling, so one failure stops the rest of the batch.",
+      "No test or dry-run option is visible; the script writes directly to the database.",
+      "Re-running overwrites existing coverage rows without warning."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Database",
+      "meaning": "the storage where the app keeps its projects, runs and results."
+    },
+    {
+      "term": "Stage row",
+      "meaning": "one saved record of one step in a run, such as deck_model or record_coverage."
+    },
+    {
+      "term": "Deck model",
+      "meaning": "the saved output of the deck_model step, which the coverage counts are based on."
+    },
+    {
+      "term": "Coverage ledger",
+      "meaning": "the counts of what the run covered, saved so it can be checked later."
+    },
+    {
+      "term": "Backfill",
+      "meaning": "filling in a record that was missing for older work, after the fact."
+    },
+    {
+      "term": "Upsert",
+      "meaning": "save a row, updating it if it already exists and inserting it if not."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "@workspace/db",
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/coverage",
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/types"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 39,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "2a8beafb328c54ab",
+      "title": "Loading tools and backfilling each run",
+      "what": "This is the whole script. It finds the eligible runs, reads each run's saved deck model result, and writes a coverage record for it. The console shows one line per run, or a skipped note when a run has no saved result.",
+      "why": "Likely reason: a one-off repair tool for older runs, kept with the other scripts. Reason not otherwise stated in the code.",
+      "watch_out": "The run filter is applied inside the database query, so an unknown run ID silently processes nothing and exits normally."
+    }
+  ],
+  "explained_at": "2026-11-12T02:51:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Adds a coverage record for older successful recipe-v3 Lessons Learnt runs, using only the result already saved for each run.",
+  "purpose": "Gives runs that finished before the coverage step existed the same coverage record that newer runs have, so their results read as complete.",
+  "why": "Likely reason: the coverage step was added later, so older runs never got one. The header says the script recomputes nothing and leaves existing stage results unchanged.",
+  "how": "Takes an optional run ID from the command line. Selects succeeded recipe-v3 runs that have a succeeded deck_model stage, and narrows to one run if an ID was given. For each run, reads the saved deck model result and calculates the ledger counts with the coverage function. Then saves a succeeded record_coverage stage row marked as backfilled, prints one line per run, and exits.",
+  "inputs": "An optional run ID as the first command argument. The database, through the shared db module, with the lessons_learnt_runs and lessons_learnt_stage_results tables.",
+  "outputs": "A record_coverage row in lessons_learnt_stage_results for each selected run, holding the counts, a short trace, and a backfilled flag. A console line per run. Runs with no saved result are printed as skipped.",
+  "risks": "Writes to the live database. The insert updates an existing record_coverage row if one is already there, so re-running replaces it. An error from the coverage function stops the loop, and runs already processed stay changed.",
+  "debug": "If a run has no coverage row, check that it has a succeeded resolve_scope row with engine recipe-v3 and a succeeded deck_model row with a saved result. If the script stops partway, rerun with that run's ID. If the database connection fails, check DATABASE_URL.",
+  "summary_hash": "sha256:c62bbfac85d65838f7ee4fd53447e980f3562d6def274d188b53b956b03337a7"
+}

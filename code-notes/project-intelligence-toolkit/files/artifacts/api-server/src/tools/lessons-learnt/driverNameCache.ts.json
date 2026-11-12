@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/driverNameCache.ts",
+  "language": "TypeScript",
+  "lines": 92,
+  "hash": "sha256:e128444ee993028fb5f67f12697dc5e68029575f861193c8144c7a3f8911dca9",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the setup section of 6 was provided, so the read and write logic could not be checked.",
+      "The design reuses an existing cache, which is a sound choice.",
+      "Nothing was run."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Cache",
+      "meaning": "a store of results kept so the same work does not have to be repeated."
+    },
+    {
+      "term": "In-memory copy",
+      "meaning": "data held in the program's working memory, which is faster than the database but lost on restart."
+    },
+    {
+      "term": "TTL",
+      "meaning": "time to live, the number of days a cached entry stays valid."
+    },
+    {
+      "term": "Prefix",
+      "meaning": "a fixed label added to every key so entries from different features do not collide."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "../../db",
+    "@workspace/db",
+    "../../scan/synthesisCache",
+    "../../lib/modelConfig"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/lessons-learnt/deriveDrivers.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ec6fda3653ed5d80",
+      "title": "Cache setup and purpose",
+      "what": "Sets up the cache for model-written driver names, reusing the same table and expiry rules as the wider synthesis cache, under the ll-driver prefix.",
+      "why": "Stated in the comment: a second identical run makes zero model calls.",
+      "watch_out": "The day length and prefix are fixed here, so changing them affects which old entries are still seen."
+    },
+    {
+      "start": 16,
+      "end": 22,
+      "kind": "type",
+      "name": "RawNameOutput",
+      "id": "s2",
+      "hash": "8fa42fee017174f3",
+      "title": "Saved raw model reply",
+      "what": "Describes the exact model reply that was rejected: a name, a rationale and the example ids. It is kept so a later, stricter check can re-judge it without a new model call.",
+      "why": "The comment says a changed validator can re-judge the cached output instead of paying for the cluster again.",
+      "watch_out": "A saved reply is only as trustworthy as the checker that judged it, so rechecks should use the current rules."
+    },
+    {
+      "start": 23,
+      "end": 34,
+      "kind": "type",
+      "name": "DriverNameEntry, l1",
+      "id": "s3",
+      "hash": "181c53c47328a41f",
+      "title": "Three kinds of saved answers",
+      "what": "Defines the three things the cache can hold: an accepted name with its rationale, a rejection with an optional raw reply, or a no-direction marker for imperative style.",
+      "why": "The comments explain that all three are cached so repeat runs make no new model calls.",
+      "watch_out": "Older entries that lack the raw reply are treated as misses and asked again."
+    },
+    {
+      "start": 35,
+      "end": 38,
+      "kind": "function",
+      "name": "rowId",
+      "id": "s4",
+      "hash": "af6957d8cf3fffb2",
+      "title": "Building the database row id",
+      "what": "Adds a fixed prefix to a cache key to make the row id used in the database.",
+      "why": "Likely reason: keeps these entries separate from other cached AI results stored in the same table.",
+      "watch_out": "Changing the prefix makes all existing saved entries unreachable."
+    },
+    {
+      "start": 39,
+      "end": 59,
+      "kind": "function",
+      "name": "getCachedDriverNames",
+      "id": "s5",
+      "hash": "d813356ae904f9b0",
+      "title": "Reading a saved driver name",
+      "what": "Looks for a saved name first in memory, then in the database, ignoring expired rows. It only returns an entry if it has a valid shape, and keeps a copy in memory for later calls.",
+      "why": "Likely reason: saves money and time by avoiding repeated model calls for the same cluster.",
+      "watch_out": "The memory copy never expires while the process runs, so a changed database row may not be seen until a restart."
+    },
+    {
+      "start": 60,
+      "end": 92,
+      "kind": "function",
+      "name": "setCachedDriverNames",
+      "id": "s6",
+      "hash": "91fcf9dce268a4b4",
+      "title": "Saving a driver name",
+      "what": "Stores an answer in memory and in the database, with an expiry set from configuration. If the database write fails, it logs a warning and keeps the memory copy, so the run still continues.",
+      "why": "The comment says a failed cache write must never fail the whole run.",
+      "watch_out": "A failed database write is only logged, so after a restart that answer will have to be asked for again."
+    }
+  ],
+  "explained_at": "2026-11-12T04:32:01+00:00",
+  "explained_by": "haiku",
+  "summary": "A cache that stores model-written driver names so a repeat run does not ask the model again.",
+  "purpose": "Saves cost and time, and keeps names stable between identical runs.",
+  "why": "Stated in the comment: a second identical run makes zero model calls.",
+  "how": "Reuses the existing synthesis cache table and its expiry rules, under a separate prefix so driver names do not clash with other cached results. Two access functions, one to read and one to write, handle a fast in-memory copy and a longer-lived stored copy.",
+  "inputs": "Cache keys built from the driver inputs, and the name results returned by the model.",
+  "outputs": "Previously stored names when the key matches, or nothing when there is no valid entry.",
+  "risks": "Stale names can be reused until they expire. Cache hits may hide changes to the naming rules if the key does not include them.",
+  "debug": "If names do not change after a code change, clear or let expire the cache entries with the ll-driver prefix. If the model is not called on a fresh run, check the key and the expiry days.",
+  "summary_hash": "sha256:e128444ee993028fb5f67f12697dc5e68029575f861193c8144c7a3f8911dca9"
+}

@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/locationEvidence.ts",
+  "language": "TypeScript",
+  "lines": 45,
+  "hash": "sha256:874b6efea1a7279999ef177694cf7cabb4711815ca1a20e60125c92abe4aaaf0",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the imports are visible.",
+      "The test file covers only part of the grounding rule."
+    ]
+  },
+  "terms": [
+    {
+      "term": "geocode",
+      "meaning": "turning a place name into map coordinates"
+    },
+    {
+      "term": "precision",
+      "meaning": "how exact a location is, such as city or country level"
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "./types"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/locationEvidence.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a47098d65623e62b",
+      "title": "Imports for location checks",
+      "what": "Brings in the schema library and the location type used by the checks in this file.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "Only the imports are visible, so the location rules cannot be judged from this section."
+    },
+    {
+      "start": 4,
+      "end": 10,
+      "kind": "value",
+      "name": "locationCandidates, norm",
+      "id": "s2",
+      "hash": "9cacafe86bd7e44c",
+      "title": "Shape of AI location answers and text cleanup",
+      "what": "Defines the exact shape of the location answer the AI must return: up to three places, each with a source ID, a context, and a quote of 25 to 1400 characters. The helper norm standardises text for comparison by normalising characters, lowercasing, and collapsing spaces.",
+      "why": "Likely reason: the answer must be checkable against the source text, and normalising text stops small formatting differences from rejecting real quotes.",
+      "watch_out": "Quote matching depends on norm, so changing it changes which quotes are accepted."
+    },
+    {
+      "start": 11,
+      "end": 16,
+      "kind": "function",
+      "name": "groundedLocation",
+      "id": "s3",
+      "hash": "b72323c082a12616",
+      "title": "Check a place claim against its source",
+      "what": "Accepts a location claim only if its source contains the quote, the quote names the place, and the quote names the context when one is given. Claims that fail any check are not used.",
+      "why": "Likely reason: to stop invented or unsupported places from becoming pins.",
+      "watch_out": "Matching is strict, so a correct but reworded quote will be rejected."
+    },
+    {
+      "start": 17,
+      "end": 26,
+      "kind": "value",
+      "name": "regions, regionForCountry",
+      "id": "s4",
+      "hash": "fa47e61342c022ea",
+      "title": "Broad region lookup for countries",
+      "what": "Builds a table that maps two-letter country codes to broad regions such as Europe or Africa, and returns Other regions for any unknown code. Lookups ignore letter case.",
+      "why": "Reason not stated in the code beyond grouping pins by region for the map.",
+      "watch_out": "The country lists are typed by hand, so a missing country falls into Other regions without warning."
+    },
+    {
+      "start": 27,
+      "end": 30,
+      "kind": "function",
+      "name": "validCoordinates",
+      "id": "s5",
+      "hash": "b4d215dfe3f00a70",
+      "title": "Check coordinates are usable",
+      "what": "Confirms that latitude and longitude are real numbers inside valid ranges and that the exact point 0,0 is not used, since it usually means a missing value.",
+      "why": "Likely reason: 0,0 is a common placeholder value, so treating it as real would put pins in the ocean.",
+      "watch_out": "Latitude comes first here, so callers must pass the values in that order."
+    },
+    {
+      "start": 31,
+      "end": 42,
+      "kind": "function",
+      "name": "uniqueGeocode",
+      "id": "s6",
+      "hash": "e68f9b085c4d1565",
+      "title": "Accept only a clear map match",
+      "what": "From a set of map results, keeps only places whose name matches exactly, whose type is a recognised area, and whose country code is known. It returns a match only if all remaining candidates are in the same area; otherwise it returns nothing.",
+      "why": "The comment states that provider ranking alone cannot separate places that share a name.",
+      "watch_out": "Ambiguous places return nothing, so no pin is placed, and changes to the area key change what counts as ambiguous."
+    },
+    {
+      "start": 43,
+      "end": 45,
+      "kind": "function",
+      "name": "locationPrecision",
+      "id": "s7",
+      "hash": "5fa1086e23b9091b",
+      "title": "Pin precision label",
+      "what": "Turns the map result type into a precision label: country, region, or locality. Country gives country precision, state-type areas give region precision, and everything else gives locality precision.",
+      "why": "Reason not stated in the code beyond telling users how exact a pin is.",
+      "watch_out": "Any unlisted type becomes locality, which can make a rough result look more precise than it is."
+    }
+  ],
+  "explained_at": "2026-11-12T04:54:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that a map location is backed by source text, and provides helpers for region, coordinate and precision decisions.",
+  "purpose": "Keeps map locations tied to their sources and tidy.",
+  "why": "Likely reason: the test file shows that grounding in the source is the key rule.",
+  "how": "1. Collect candidate places from sources. 2. Check that the place, region and quote appear in one document. 3. Map a country to a region. 4. Check coordinates. 5. Resolve a unique map position. 6. Rate how precise a location is.",
+  "inputs": "Candidate location text with a source id and quote, plus the source documents.",
+  "outputs": "Checked locations and their precision ratings.",
+  "risks": "Most functions are not visible here, so their rules cannot be judged from this section.",
+  "debug": "Start with the grounding test for groundedLocation. If a country maps to the wrong region, check the region mapping.",
+  "summary_hash": "sha256:874b6efea1a7279999ef177694cf7cabb4711815ca1a20e60125c92abe4aaaf0"
+}

@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/discovery/extractor.ts",
+  "language": "TypeScript",
+  "lines": 232,
+  "hash": "sha256:4f877ff3c9ddec465dd9dfe546effcd48ec226b323acc7adf91510eb29b78c1c",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in the packet.",
+      "Short country names match inside other words.",
+      "Only the first matching reactor model or number is used, which can pick the wrong one.",
+      "The description text assumes nuclear projects."
+    ]
+  },
+  "terms": [
+    {
+      "term": "pattern",
+      "meaning": "a rule describing text to look for, such as a number followed by MWe"
+    },
+    {
+      "term": "substring",
+      "meaning": "a piece of text found inside a longer piece of text"
+    },
+    {
+      "term": "HTML",
+      "meaning": "the markup language web pages are written in, including tags that are not visible text"
+    },
+    {
+      "term": "HTML entity",
+      "meaning": "a code such as an ampersand code that stands for a symbol"
+    },
+    {
+      "term": "MWe",
+      "meaning": "megawatts of electric output, the usual measure of a power plant's size"
+    },
+    {
+      "term": "confidence",
+      "meaning": "a score from 0 to 100 for how many facts were found for a candidate"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/discovery/interfaces.ts"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/discovery/engine.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 2,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e2ddb5df56df4f34",
+      "title": "Type import for candidates",
+      "what": "Brings in the shape of a project candidate so the extractor builds records the engine can read.",
+      "why": "Reason not stated in the code beyond importing the type.",
+      "watch_out": ""
+    },
+    {
+      "start": 3,
+      "end": 31,
+      "kind": "value",
+      "name": "REACTOR_PATTERNS",
+      "id": "s2",
+      "hash": "2f3bab7493aa63e5",
+      "title": "Known reactor models and their details",
+      "what": "A table of named reactor designs such as AP1000, EPR and VVER-1200, each with a type, designer and generation. When a page mentions one, its details are used for the project.",
+      "why": "Likely reason: a reactor model name often reveals the design and maker even when the page does not say so.",
+      "watch_out": "Matching is plain text containment with the first match winning, so the entry EPR can match text meant as EPR2 because it appears earlier in the table."
+    },
+    {
+      "start": 32,
+      "end": 66,
+      "kind": "value",
+      "name": "COUNTRY_PATTERNS",
+      "id": "s3",
+      "hash": "f03164dbc6bc1cda",
+      "title": "Known country names and nicknames",
+      "what": "A list of countries with the words that identify them, including nationality words such as French or Korean. The extractor scans text against it to guess a project's country.",
+      "why": "Likely reason: pages rarely give a country in a fixed field, so the app looks for names in the text.",
+      "watch_out": "Plain substring matching means short entries such as uk or india also match inside other words, such as Ukraine or Indiana."
+    },
+    {
+      "start": 67,
+      "end": 82,
+      "kind": "function",
+      "name": "extractMW",
+      "id": "s4",
+      "hash": "d21afebcf2137bcd",
+      "title": "Finding a power size in megawatts",
+      "what": "Looks for a number followed by MWe or megawatts of electric capacity, checking the text near the project name first, and accepts only values from 10 to 2000.",
+      "why": "Likely reason: power size is one of the facts pages most often state, and the range screens out unrelated numbers.",
+      "watch_out": "The first matching number wins, so a neighbouring plant's size mentioned nearby can be taken for this project's."
+    },
+    {
+      "start": 83,
+      "end": 98,
+      "kind": "function",
+      "name": "extractDate",
+      "id": "s5",
+      "hash": "1cbb490da73689d9",
+      "title": "Finding dates near a keyword",
+      "what": "Searches close to a keyword such as commercial operation or first concrete for a date: first a full date, then a year only, then a date placed before the keyword.",
+      "why": "Likely reason: dates in prose usually appear next to the milestone they belong to.",
+      "watch_out": "A year-only match is stored as 1 January of that year, which looks more precise than the source was."
+    },
+    {
+      "start": 99,
+      "end": 108,
+      "kind": "function",
+      "name": "detectCountry",
+      "id": "s6",
+      "hash": "47a06fe7e38b1cd0",
+      "title": "Guessing the country of a page",
+      "what": "Scans text against the country list and returns the first country whose name or nationality word appears, or Unknown if none does.",
+      "why": "Likely reason: a first-match scan is the simplest way to get a country from free text.",
+      "watch_out": "Unknown is returned as a real country text, so this placeholder can be stored as if it were a real country."
+    },
+    {
+      "start": 109,
+      "end": 116,
+      "kind": "function",
+      "name": "normalizeProjectName",
+      "id": "s7",
+      "hash": "442279d8e54168dc",
+      "title": "Shortening project names",
+      "what": "Removes the words nuclear power plant or station and the abbreviation NPP from a raw name, then tidies the spacing.",
+      "why": "Likely reason: names read and match better without these generic words.",
+      "watch_out": "The engine applies a different and stricter cleanup before matching, so a name that looks right here can still fail to match there."
+    },
+    {
+      "start": 117,
+      "end": 175,
+      "kind": "class",
+      "name": "DiscoveryExtractor (part 1)",
+      "id": "s8",
+      "hash": "0ce61f1700b2c925",
+      "title": "Finding projects in page text",
+      "what": "Strips the HTML into plain text, then looks for capitalized names followed by Nuclear Plant, Station, Project or Unit, and for reactor model names followed by a site name. Each new name becomes a candidate with its surrounding text.",
+      "why": "Likely reason: company pages describe projects in sentences, so pattern matching is the simplest way to find names.",
+      "watch_out": "Site names must start with a capital letter and use Latin letters, so names with lowercase words or other writing systems are missed."
+    },
+    {
+      "start": 176,
+      "end": 232,
+      "kind": "class",
+      "name": "DiscoveryExtractor (part 2)",
+      "id": "s9",
+      "hash": "491a803de8da9af2",
+      "title": "Building the candidate record and cleaning HTML",
+      "what": "Fills in details for one candidate from nearby text, scores its confidence by counting how many of seven facts were found, and writes its description. A second function removes scripts, styles, navigation and footers from the HTML and decodes a few common codes.",
+      "why": "Likely reason: the score tells the engine how trustworthy a candidate is.",
+      "watch_out": "Name and country count as found from the start, so a candidate with only those scores 29 and passes the engine's threshold of 20."
+    }
+  ],
+  "explained_at": "2026-11-12T03:25:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads a company web page's text and pulls out likely nuclear projects, with what it could find about each: country, power, dates, reactor design and designer.",
+  "purpose": "Supplies the discovery engine with candidates. It makes no database changes itself.",
+  "why": "Likely reason: lets discovery work from company pages without a separate parser for each site.",
+  "how": "First the page is reduced to plain text. Then project names are looked for in sentences and known reactor model names are looked for. For each name, nearby text is read for country, power, dates and design. Finally a confidence score is worked out and the candidate record is built.",
+  "inputs": "A page's HTML, the company id, and the page's web address.",
+  "outputs": "A list of project candidates, each with a name, country, optional details, source address, company role and confidence score.",
+  "risks": "The results come from pattern and keyword guesses, so a wrong country, power or date can be accepted without any warning. Only some HTML codes are decoded. Results can change when a page's layout changes. The description text assumes nuclear projects.",
+  "debug": "If no candidates appear, check whether the page text was cut too far, since footers and navigation are removed, and whether names use Latin capital letters. If a country is wrong, check COUNTRY_PATTERNS for short entries matching inside other words. If power or dates are blank, check the text window around the name (300 characters before and 500 after) and the 60 character limit in date searches.",
+  "summary_hash": "sha256:4f877ff3c9ddec465dd9dfe546effcd48ec226b323acc7adf91510eb29b78c1c"
+}

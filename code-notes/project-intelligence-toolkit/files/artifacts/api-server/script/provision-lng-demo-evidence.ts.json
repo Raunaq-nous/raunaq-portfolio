@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/provision-lng-demo-evidence.ts",
+  "language": "TypeScript",
+  "lines": 164,
+  "hash": "sha256:f28bf0743bf322a0601d92a7cd473f1a907a0f87853cb68c022e0a50969217e5",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test file is shown for this script.",
+      "Load runs in one transaction and rolls back on error, which is a good safeguard.",
+      "Examples without a snapshot key pass verification without an image check."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Fixture",
+      "meaning": "A saved data file kept with the code so the same data can be loaded again."
+    },
+    {
+      "term": "Transaction",
+      "meaning": "A group of database changes that either all succeed or are all undone."
+    },
+    {
+      "term": "Span",
+      "meaning": "An exact range of characters inside a captured source document."
+    },
+    {
+      "term": "Snapshot",
+      "meaning": "A saved picture of a web page showing where a quote appears."
+    },
+    {
+      "term": "Object storage",
+      "meaning": "A cloud file store that holds the snapshot images."
+    },
+    {
+      "term": "409 error",
+      "meaning": "A web response meaning the request conflicts with the current state of the data."
+    }
+  ],
+  "depends_on": [
+    "pg",
+    "node:fs",
+    "node:path",
+    "node:url",
+    "artifacts/api-server/data/lng-demo-evidence.json",
+    "../src/db",
+    "../src/tools/guided-demo/validatedExample",
+    "../src/tools/guided-demo/demoPins",
+    "../src/tools/lessons-learnt/v3Result",
+    "../src/replit_integrations/object_storage/objectStorage"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/guided-demo/demoPins.ts (the pinned demos it checks, per the header comment)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 34,
+      "kind": "setup",
+      "name": "File setup, SNAPSHOT_KEYS",
+      "id": "s1",
+      "hash": "043c794a35ce19ec",
+      "title": "File location and snapshot field list",
+      "what": "Sets where the fixture file lives and lists the five snapshot details that are copied in and out of the database.",
+      "why": "Likely reason: keeping the snapshot field list in one place makes export and load copy the same fields.",
+      "watch_out": "A new snapshot field must also be what the pinned demos read, or the copied data will be ignored."
+    },
+    {
+      "start": 35,
+      "end": 43,
+      "kind": "type",
+      "name": "Fixture, pool",
+      "id": "s2",
+      "hash": "9449b4bda2729cbf",
+      "title": "Fixture file layout",
+      "what": "Describes the shape of the fixture file: its documents, spans and evidence rows with their snapshot details. It also opens the database connection pool.",
+      "why": "Likely reason: stating the expected shape makes the file format clear to anyone editing or loading it.",
+      "watch_out": "Hand edits to the fixture that do not match this shape may break loading."
+    },
+    {
+      "start": 44,
+      "end": 72,
+      "kind": "function",
+      "name": "exportFixture",
+      "id": "s3",
+      "hash": "7c1cf9ee538c6acb",
+      "title": "Export: saving database evidence to file",
+      "what": "Reads LNG evidence rows whose snapshot matched and whose image is recorded, together with their spans and source documents, and writes them into the fixture file.",
+      "why": "Likely reason: this lets the fixture be refreshed from a database that already holds the correct evidence.",
+      "watch_out": "Export replaces the whole committed fixture file, so review the result before committing it."
+    },
+    {
+      "start": 73,
+      "end": 116,
+      "kind": "function",
+      "name": "load",
+      "id": "s4",
+      "hash": "d4988f27df55fc2b",
+      "title": "Load: writing evidence into the database",
+      "what": "In one transaction, adds each captured document that is not already present, then for each evidence row whose stored text still matches the fixture, adds its spans and snapshot details. Rows whose text differs are skipped and reported.",
+      "why": "Likely reason: rolling back on error and skipping mismatched text keeps the database from being partly written or pointing at the wrong text.",
+      "watch_out": "A skipped row means that demo will still fail, so read the printed skip lines after every load."
+    },
+    {
+      "start": 117,
+      "end": 164,
+      "kind": "function",
+      "name": "verify",
+      "id": "s5",
+      "hash": "f1e27b05dd56a6f1",
+      "title": "Verify: checking each pinned demo",
+      "what": "For the Scan and Lessons Learnt demos, lists the usable LNG evidence examples. For Lessons it keeps only examples used by the saved result, then confirms each example's image exists, and passes only if each demo has at least one usable example.",
+      "why": "Likely reason: the demos refuse to load without a usable example, so this checks for that problem before the demo is opened.",
+      "watch_out": "An example without a snapshot key passes without an image check, so a missing picture can still be reported as usable."
+    }
+  ],
+  "explained_at": "2026-11-12T03:07:42+00:00",
+  "explained_by": "haiku",
+  "summary": "Loads, checks or exports the saved LNG evidence that the two pinned demos need, so the demos do not return a 409 error on a fresh database.",
+  "purpose": "The Reality Scan and Lessons Learnt demos refuse to load unless an LNG quote has an exact text span in a captured source and a matching snapshot image. This script keeps that evidence in a committed fixture file and copies it into any database that holds the same Yard evidence.",
+  "why": "The file header says database rows do not travel with the code, so the evidence is stored as a fixture that can be loaded again.",
+  "how": "In load mode, it reads the fixture, then in one transaction adds any missing documents, adds spans and snapshot details for quotes whose stored text still matches, and skips the rest with a message. It then checks that each demo has at least one usable example whose image exists in object storage. Export mode does the reverse, rewriting the fixture from the database.",
+  "inputs": "The DATABASE_URL setting for the database, the PRIVATE_OBJECT_DIR setting for image storage, the fixture file at artifacts/api-server/data/lng-demo-evidence.json, and an optional mode flag: none for load and verify, --check for verify only, or --export to rewrite the fixture.",
+  "outputs": "Rows added to the source document, source span and evidence tables in load mode, a rewritten fixture file in export mode, and printed counts. The process exits with code 1 when either pinned demo would still lack a usable example.",
+  "risks": "Load mode writes to a shared database. Export mode overwrites the committed fixture completely. An example with no snapshot key is counted as usable without checking any image, so a missing picture can still pass.",
+  "debug": "Run with --check first to see the current state without writing. Lines starting with skip show evidence rows whose text no longer matches the fixture. A line saying the snapshot image is missing means object storage does not hold that PNG, and an unset PRIVATE_OBJECT_DIR makes every image look missing. Confirm DATABASE_URL points to the intended database.",
+  "summary_hash": "sha256:f28bf0743bf322a0601d92a7cd473f1a907a0f87853cb68c022e0a50969217e5"
+}

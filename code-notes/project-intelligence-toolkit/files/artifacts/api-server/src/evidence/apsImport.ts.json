@@ -1,0 +1,347 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/evidence/apsImport.ts",
+  "language": "TypeScript",
+  "lines": 633,
+  "hash": "sha256:2f052137fbb8a46d8952098da2481bb10c2356ad4dceedd3012ef46d677b4d5a",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only 18 of 22 sections are visible, so the dry-run abort and file end are not checked.",
+      "No test is visible in the packet.",
+      "Name and state matching decides which plant receives evidence, and a mistake there is hard to see.",
+      "Deck names, footnotes and label mappings are typed by hand and must match the source exactly.",
+      "Images are uploaded outside the transaction, so a failure can leave orphaned images."
+    ]
+  },
+  "terms": [
+    {
+      "term": "transaction",
+      "meaning": "a group of database changes that either all succeed or are all cancelled together"
+    },
+    {
+      "term": "content fingerprint",
+      "meaning": "a short code computed from a file's bytes, so the same image always gets the same name and is stored once"
+    },
+    {
+      "term": "Yard project",
+      "meaning": "the app's own project record, which is what the code means by the term"
+    },
+    {
+      "term": "deck",
+      "meaning": "the slide table the APS presentation used, as the code refers to it"
+    },
+    {
+      "term": "retired code",
+      "meaning": "a source id dropped during review, kept for history but never shown or cited"
+    },
+    {
+      "term": "basis",
+      "meaning": "the assumptions a money figure is stated on, such as which share or what stage it covers"
+    },
+    {
+      "term": "derived metric",
+      "meaning": "a number the app calculates from other values, stored with the inputs it was calculated from"
+    },
+    {
+      "term": "vetting",
+      "meaning": "a reviewer's verdict on whether a source really shows the stated fact"
+    },
+    {
+      "term": "capture",
+      "meaning": "a recorded check of a source, with its result and any screenshot taken"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/db.ts",
+    "@workspace/db",
+    "artifacts/api-server/src/evidence/identity",
+    "artifacts/api-server/src/evidence/dateRules",
+    "artifacts/api-server/src/evidence/dateConventions",
+    "artifacts/api-server/src/evidence/metrics",
+    "artifacts/api-server/src/evidence/store",
+    "artifacts/api-server/src/evidence/apsPack",
+    "artifacts/api-server/src/evidence/captureStorage"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 39,
+      "kind": "setup",
+      "name": "File setup, Tx",
+      "id": "s1",
+      "hash": "9375d65e6e7ec991",
+      "title": "Purpose, input rules and imports",
+      "what": "Explains what the import takes in (a pack file, workbench and slide HTML, and two check result files) and the rules it follows, then loads the database and helper code. It also declares a transaction type used to group database changes.",
+      "why": "The header states the Stage 1 review rules directly: nothing is overwritten, and only genuine screenshots are stored.",
+      "watch_out": "These rules are the contract for this import, and a change that breaks one, such as writing over an existing value, can silently corrupt the benchmark data."
+    },
+    {
+      "start": 40,
+      "end": 56,
+      "kind": "type",
+      "name": "ApsPack",
+      "id": "s2",
+      "hash": "d075e3b62366e71c",
+      "title": "Shape of the APS pack file",
+      "what": "Describes the benchmark data file's structure: sources with quotes, alternative links, PDF list, per-project tables, deck rows, durations, unit costs, projects, context values and retired sources.",
+      "why": "Reason not stated beyond describing the data format; the field names suggest they mirror the benchmark's own tables.",
+      "watch_out": "The file is produced by the extraction script named in the header, so any change to a field here must match that script."
+    },
+    {
+      "start": 57,
+      "end": 65,
+      "kind": "type",
+      "name": "ApsInputs",
+      "id": "s3",
+      "hash": "f0487981d2c3848f",
+      "title": "Shape of the import inputs",
+      "what": "Groups the five inputs the import reads: the pack, the workbench data, the slide data, the validation results and the remote text checks. It also sets a label for captures taken on the corporate network.",
+      "why": "Likely reason: one object holds everything the import needs, passed in one call.",
+      "watch_out": "These types are checked only when the code is built, so a malformed file read from disk is not caught by them at run time."
+    },
+    {
+      "start": 66,
+      "end": 70,
+      "kind": "value",
+      "name": "US_STATES",
+      "id": "s4",
+      "hash": "b359776d4036807d",
+      "title": "State code to state name table",
+      "what": "Maps twenty-one US state codes to full state names, used to confirm that a project's recorded location is in the state the pack gives.",
+      "why": "Likely reason: a location may spell out the state while the pack uses the two-letter code.",
+      "watch_out": "States missing from this table can only match by their two-letter code, so their location checks are weaker."
+    },
+    {
+      "start": 71,
+      "end": 74,
+      "kind": "value",
+      "name": "TIER",
+      "id": "s5",
+      "hash": "11bed5f411fbc9ca",
+      "title": "Source quality tier map",
+      "what": "Maps each source quality label to a tier: primary, secondary or wiki.",
+      "why": "Likely reason: tiers let the app rank how much weight a source carries.",
+      "watch_out": "A quality label not in this map gets no tier at all, and nothing warns about it."
+    },
+    {
+      "start": 75,
+      "end": 87,
+      "kind": "value",
+      "name": "DECK_FOOTNOTES, slug",
+      "id": "s6",
+      "hash": "255f480e7b9b600f",
+      "title": "Deck footnotes and text key helper",
+      "what": "Holds three footnotes printed under the slide deck table, each able to change the metric or date stated for a named row. A helper turns text into a plain lowercase key with dashes.",
+      "why": "The comment states that footnotes are part of what the deck says, so they must set the meaning of the figure they mark.",
+      "watch_out": "Footnotes match on the exact row name, so renaming a deck row silently drops its footnote."
+    },
+    {
+      "start": 88,
+      "end": 96,
+      "kind": "function",
+      "name": "milestoneMetric",
+      "id": "s7",
+      "hash": "2d9f3ad5bff20070",
+      "title": "Timeline label to milestone name",
+      "what": "Converts timeline labels such as commercial operation or construction start into standard metric names, separately for planned and actual dates. Labels with no match get a generic milestone name.",
+      "why": "Likely reason: standard names let the app compare the same milestone across projects.",
+      "watch_out": "Only exact phrases match, so a wording change such as commercial operation date falls to the generic name and is not compared."
+    },
+    {
+      "start": 97,
+      "end": 107,
+      "kind": "function",
+      "name": "costMetric",
+      "id": "s8",
+      "hash": "fb9f8d1b3fe266bd",
+      "title": "Budget label to cost metric",
+      "what": "Converts budget row labels into standard cost metrics such as budget at approval, budget at application, final cost or spend to date. It also tags rows marked as Duke's share.",
+      "why": "Likely reason: the same kind of figure is labelled in different ways across sources, so the code maps them to one name.",
+      "watch_out": "Spend rows are recognized only when the label begins with spent by, and other wordings fall into generic cost names."
+    },
+    {
+      "start": 108,
+      "end": 116,
+      "kind": "function",
+      "name": "cell, isEmptyText",
+      "id": "s9",
+      "hash": "7559b7f189f1d52f",
+      "title": "Reading table cells and empty values",
+      "what": "Reads a table cell that may hold a plain value or a value with its source codes, and decides whether the text means no data, such as not disclosed, TBD, n/a, a dash or in progress.",
+      "why": "Likely reason: the benchmark uses many placeholder words for missing figures, and these must not be stored as values.",
+      "watch_out": "In progress counts as empty, so a project still underway will not have that value recorded."
+    },
+    {
+      "start": 117,
+      "end": 130,
+      "kind": "type",
+      "name": "ApsReport",
+      "id": "s10",
+      "hash": "8e4ca87edf1fc46c",
+      "title": "Summary report shape",
+      "what": "Defines the report returned after a run: counts of sources, captures, images, vetting records, projects matched, created and held, values and refusals, plus the explanations of each match.",
+      "why": "Likely reason: the caller needs a record of what the run changed and what it left out.",
+      "watch_out": "Projects in the held list were not imported, so a person needs to decide them after every run."
+    },
+    {
+      "start": 131,
+      "end": 171,
+      "kind": "function",
+      "name": "importApsBenchmark (part 1)",
+      "id": "s11",
+      "hash": "7c1021d21fff0d2a",
+      "title": "Storing genuine screenshots first",
+      "what": "Starts the import: sets up an empty report, loads date rules, and keeps only genuine screenshots, named by their content fingerprint. When the commit flag is on, it uploads those images before the database work begins.",
+      "why": "Likely reason: images sit outside the database transaction and are named by content, so re-running the import does no harm.",
+      "watch_out": "Images can be uploaded even if the database part later fails, so some stored images may have no record pointing to them."
+    },
+    {
+      "start": 172,
+      "end": 211,
+      "kind": "method",
+      "name": "importApsBenchmark: for",
+      "id": "s12",
+      "hash": "874e7d33e25588d0",
+      "title": "Recording sources from the APS register",
+      "what": "Saves each register entry that has a quote as an evidence source, with its web address, type, quality tier and anchors. Retired entries are stored as retired with their reason and any successor, but never linked or cited. A helper looks up source ids and notes any codes that are missing.",
+      "why": "Likely reason: sources are the base that every value and screenshot refers to, so they are stored first.",
+      "watch_out": "A register entry without a quote is skipped and only listed as missing, so everything that depends on it drops out."
+    },
+    {
+      "start": 212,
+      "end": 271,
+      "kind": "method",
+      "name": "importApsBenchmark: for",
+      "id": "s13",
+      "hash": "ca5ae32819a7af50",
+      "title": "Linking alternative sources and starting captures",
+      "what": "Records each alternative link for a source with a reason: blocked domain, not found, forbidden, or open alternative. It then starts saving capture records for each validation attempt and screenshot, matching a workbench figure where one exists.",
+      "why": "Likely reason: keeps a record of why a link could not be checked directly, so reviewers can follow an alternative.",
+      "watch_out": "The blocked reason depends on the corporate blocked domain table, so an outdated table gives the wrong reason."
+    },
+    {
+      "start": 272,
+      "end": 307,
+      "kind": "function",
+      "name": "importApsBenchmark (part 4)",
+      "id": "s14",
+      "hash": "62edc01abc286c66",
+      "title": "Remaining captures and verdict setup",
+      "what": "Finishes the capture records: unmatched figures that have genuine images, and remote text checks. Then prepares reviewer verdict saving by noting which sources have a timed verdict and finding each source's latest genuine capture.",
+      "why": "Likely reason: a verdict should point to the most recent genuine screenshot, and timed verdicts take precedence over untimed ones.",
+      "watch_out": "A figure with no matching check is kept only if it has a genuine image, so uncaptured figures leave no trace in the database."
+    },
+    {
+      "start": 308,
+      "end": 367,
+      "kind": "method",
+      "name": "importApsBenchmark: for",
+      "id": "s15",
+      "hash": "ab5887787a2531de",
+      "title": "Saving verdicts and matching benchmark projects",
+      "what": "Saves each reviewer verdict once, skipping untimed duplicates. Then matches each pack project to an existing gas-power project: a curated name pattern must find exactly one project, a plain name must match exactly, and the state must agree. Projects that fail a pattern or state check are held for review rather than created.",
+      "why": "Likely reason: a wrong match would attach evidence to the wrong plant, so matching is strict.",
+      "watch_out": "A plain name with no match creates a new project, but a curated pattern with no match is held instead, so the two rules can give different outcomes."
+    },
+    {
+      "start": 368,
+      "end": 427,
+      "kind": "function",
+      "name": "importApsBenchmark (part 6)",
+      "id": "s16",
+      "hash": "db2fa561ccd9cdba",
+      "title": "Storing values with their sources and basis",
+      "what": "Keeps a snapshot of inputs for each published calculation, so later edits cannot change a published figure. A shared helper stores each value with its basis, reads it as a number or a date, links its sources, and records any value it refuses to read.",
+      "why": "The comment states the reason: a later edit to a date rule must not change a published percentage.",
+      "watch_out": "A value that cannot be read is listed as a refusal rather than guessed, so the refusal list must be checked after each run."
+    },
+    {
+      "start": 428,
+      "end": 472,
+      "kind": "function",
+      "name": "importApsBenchmark (part 7)",
+      "id": "s17",
+      "hash": "9413bb9a16e39d91",
+      "title": "Storing values from the slide deck rows",
+      "what": "Goes through the rows of the APS slide tables and stores each project's capacity, planned and realized budget, and planned and actual commercial operation dates. Footnotes can change how a budget is read.",
+      "why": "Likely reason: the deck holds the figures the APS presentation actually used, so they are stored as their own values.",
+      "watch_out": "Deck rows match projects only by exact display name in the pack, and unmatched rows are held rather than stored."
+    },
+    {
+      "start": 473,
+      "end": 528,
+      "kind": "method",
+      "name": "importApsBenchmark: for",
+      "id": "s18",
+      "hash": "0ef934eb5ae31137",
+      "title": "Timeline, budget, context and duration values",
+      "what": "Reads each project's timeline and budget tables into values, stores context facts, and records construction durations as calculations. Each duration keeps the start and completion values it was based on.",
+      "why": "Likely reason: keeps the benchmark's full project history, and records the calculation so its inputs can be seen.",
+      "watch_out": "Durations are stored as the months the pack published, not recalculated, so they will not update if the underlying dates change."
+    },
+    {
+      "start": 529,
+      "end": 561,
+      "kind": "method",
+      "name": "importApsBenchmark: for",
+      "id": "s19",
+      "hash": "44dd36cc47513f53",
+      "title": "Filling empty project fields from APS",
+      "what": "After an import, goes through each project this import created (or that already carries an APS benchmark marker) and copies APS values into fields that are still empty. Existing non-empty values are left alone, and a capacity of zero counts as empty. Each copied value is also recorded in the project's valueLayer so its source can be traced.",
+      "why": "The header comment says empty fields are filled and never overwritten. The code gives no further reason.",
+      "watch_out": "The comment says a matched Yard project is never touched, but the check lets through any project that already has an APS benchmark marker, so the comment and the code do not fully agree."
+    },
+    {
+      "start": 562,
+      "end": 611,
+      "kind": "method",
+      "name": "importApsBenchmark: for",
+      "id": "s20",
+      "hash": "7d50262ec30ef9c5",
+      "title": "Building benchmark profiles and scores",
+      "what": "Creates two benchmark profiles, one for the Desert Sun and one for the Cholla project, then scores each candidate project. Each score is a weighted average of its attributes, scaled to a percentage, and candidates are sorted from highest to lowest and saved with a rank.",
+      "why": "Reason not stated in the code. The profile notes say the weights are the default weights from the APS workbench explorer.",
+      "watch_out": "If all criteria weights add up to zero, the score is stored as null, so any screen that sorts or displays scores must handle null."
+    },
+    {
+      "start": 612,
+      "end": 630,
+      "kind": "method",
+      "name": "importApsBenchmark: for",
+      "id": "s21",
+      "hash": "b7cb6f28f95cf8b6",
+      "title": "Saving published unit costs",
+      "what": "Saves the unit costs printed in the APS deck, for the completed set and the 2025 set, as derived metrics attached to the Desert Sun profile. Each value is shown in US dollars per kilowatt.",
+      "why": "Reason not stated in the code. The formula text records that these are the figures as the deck published them, not recalculated values.",
+      "watch_out": "The duplicate check uses the year, megawatts and cost together, so two different rows with identical values would be treated as one."
+    },
+    {
+      "start": 631,
+      "end": 633,
+      "kind": "class",
+      "name": "DryRunAbort",
+      "id": "s22",
+      "hash": "cb0a06826bb50a9b",
+      "title": "Dry-run stop signal",
+      "what": "Defines a special error used to end a dry run. The surrounding transaction catches it and rolls the work back, so the report is still returned but nothing is kept.",
+      "why": "Likely reason: a dry run needs to roll back every change while still producing the report, and throwing this error is the way to force the rollback.",
+      "watch_out": "Only this error is swallowed. Any other failure inside the transaction is re-thrown, so real errors still surface."
+    }
+  ],
+  "explained_at": "2026-11-12T03:27:36+00:00",
+  "explained_by": "haiku",
+  "summary": "Brings the APS Reality Scan benchmark's sources, captures, reviewer verdicts, project values and calculations into the database, without overwriting values already there.",
+  "purpose": "Lets the gas-power benchmark figures be checked against their source evidence inside the app.",
+  "why": "The header states the rules from a Stage 1 review: existing project fields are never overwritten, and only genuine screenshots are stored.",
+  "how": "The steps as far as they are visible: load date conventions; keep genuine screenshots and upload them when the commit flag is on; open one database transaction; record sources from the register and retired entries; link alternatives and capture records; save reviewer verdicts; match or create gas-power projects; store values from the deck rows, timelines, budgets and context; store construction durations; return a report. The outline names a final section, DryRunAbort, that is not in this packet, so whether a dry run rolls back the database work cannot be confirmed here.",
+  "inputs": "The benchmark pack file, the workbench HTML with screenshots, the slide HTML, the validation results file, the remote results file, a commit flag, and an optional log function.",
+  "outputs": "Rows in the evidence source, capture, alternative source, vetting, project, value and derived metric tables; uploaded images when committing; and a report listing what was matched, created, held and refused.",
+  "risks": "Name-based matching can attach evidence to the wrong plant. Images can be uploaded before the database work, so a failed run can leave images with no record. Exact-name matching on deck rows silently holds rows that were renamed. Only 18 of the file's 22 sections are in this packet, so the end of the file cannot be checked.",
+  "debug": "Run with the commit flag off first and read the report: projectsHeld, valueRefusals, missingCodes, retiredCodes and newValues show most problems. The log line that starts with images shows how many genuine images were found and uploaded. If values are missing, check the code lists on the register entries. If projects are not matched, check the state text on the Yard project and the name pattern.",
+  "summary_hash": "sha256:2f052137fbb8a46d8952098da2481bb10c2356ad4dceedd3012ef46d677b4d5a"
+}

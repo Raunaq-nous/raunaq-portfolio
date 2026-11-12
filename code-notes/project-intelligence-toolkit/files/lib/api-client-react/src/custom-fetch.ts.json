@@ -1,0 +1,379 @@
+{
+  "schema_version": 1,
+  "path": "lib/api-client-react/src/custom-fetch.ts",
+  "language": "TypeScript",
+  "lines": 371,
+  "hash": "sha256:3a5605ea89571cca7ea9412a230a40954e3a3f1d94d7a566271480165bf5e03c",
+  "area": "lib-api-client-react",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test file is visible in the packet.",
+      "Error handling for empty, odd, and non-JSON replies is thorough and documented in comments."
+    ]
+  },
+  "terms": [
+    {
+      "term": "fetch",
+      "meaning": "the built-in browser or app function that sends a web request"
+    },
+    {
+      "term": "bearer token",
+      "meaning": "a secret string sent with a request to prove who is asking"
+    },
+    {
+      "term": "base URL",
+      "meaning": "a server address placed in front of short paths so the app can reach a remote server"
+    },
+    {
+      "term": "React Native",
+      "meaning": "a framework for building phone apps with JavaScript, which has some differences from browsers"
+    },
+    {
+      "term": "blob",
+      "meaning": "raw binary data, such as a file or image"
+    },
+    {
+      "term": "ApiError",
+      "meaning": "the error the client throws when the server answers with a failure status, carrying the status and the reply"
+    },
+    {
+      "term": "JSON",
+      "meaning": "a common text format for structured data"
+    }
+  ],
+  "depends_on": [
+    "The runtime's built-in fetch function"
+  ],
+  "used_by": [
+    "lib/api-client-react/src/index.ts",
+    "Generated API files (not shown in the packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "type",
+      "name": "CustomFetchOptions, ErrorType, BodyType, AuthTokenGetter",
+      "id": "s1",
+      "hash": "28644498e431ea2f",
+      "title": "Option and type shapes for requests",
+      "what": "Defines the options a caller can pass to a request, including how to read the reply, and the shape of a function that supplies a login token.",
+      "why": "Likely reason: gives callers typed, predictable options.",
+      "watch_out": "The response type defaults to automatic detection, so setting it to JSON forces JSON reading even for other replies."
+    },
+    {
+      "start": 11,
+      "end": 20,
+      "kind": "value",
+      "name": "NO_BODY_STATUS",
+      "id": "s2",
+      "hash": "b9573eb57f3114db",
+      "title": "Status codes that carry no body",
+      "what": "Lists the status codes that never include content, such as 204 and 304.",
+      "why": "Likely reason: those codes have no body, so trying to read one would fail or wait.",
+      "watch_out": ""
+    },
+    {
+      "start": 21,
+      "end": 31,
+      "kind": "function",
+      "name": "setBaseUrl",
+      "id": "s3",
+      "hash": "6e1c2fc64498b230",
+      "title": "Setting the server address prefix",
+      "what": "Sets a server address that is placed in front of short paths starting with a slash. Passing null turns it off.",
+      "why": "The comment says it is for Expo bundles that must call a remote API server.",
+      "watch_out": "The setting is global, so it affects every request after it is set, and trailing slashes are removed."
+    },
+    {
+      "start": 32,
+      "end": 46,
+      "kind": "function",
+      "name": "setAuthTokenGetter",
+      "id": "s4",
+      "hash": "745f543f8b4f4210",
+      "title": "Setting how login tokens are supplied",
+      "what": "Registers a function that gives the current login token. Once set, each request gets an authorization header unless one was already provided.",
+      "why": "The comment says it is for Expo apps making calls that need a token.",
+      "watch_out": "The comment warns never to use it in web apps where browser cookies already handle login."
+    },
+    {
+      "start": 47,
+      "end": 50,
+      "kind": "function",
+      "name": "isRequest",
+      "id": "s5",
+      "hash": "c6dae7245f341702",
+      "title": "Checking for a full request object",
+      "what": "Tells whether the input to a request is a full request object rather than a plain address.",
+      "why": "Likely reason: fetch accepts several kinds of input, and the code must handle each one.",
+      "watch_out": "Returns false when the request type is missing, which is a safe fallback."
+    },
+    {
+      "start": 51,
+      "end": 56,
+      "kind": "function",
+      "name": "resolveMethod",
+      "id": "s6",
+      "hash": "26124964a002fd4a",
+      "title": "Working out the request method",
+      "what": "Picks the HTTP method from the explicit option, else from the request object, else defaults to GET.",
+      "why": "Likely reason: later checks depend on knowing the method.",
+      "watch_out": "The method is converted to uppercase, so lowercase input is accepted."
+    },
+    {
+      "start": 57,
+      "end": 62,
+      "kind": "function",
+      "name": "isUrl",
+      "id": "s7",
+      "hash": "850fe1e7a5b74069",
+      "title": "Loose check for a URL",
+      "what": "Checks whether an input is a URL object without relying on strict type matching.",
+      "why": "The comment says some runtimes provide URL objects differently, so a strict check can fail.",
+      "watch_out": "This check is deliberately loose. Replacing it with a strict type check would break some runtimes."
+    },
+    {
+      "start": 63,
+      "end": 74,
+      "kind": "function",
+      "name": "applyBaseUrl",
+      "id": "s8",
+      "hash": "5df037699038c965",
+      "title": "Adding the server address to short paths",
+      "what": "Places the base address in front of paths that start with a slash, and returns the rewritten input.",
+      "why": "Likely reason: lets calls use short paths while still reaching a remote server.",
+      "watch_out": "Full addresses and paths without a leading slash are left alone."
+    },
+    {
+      "start": 75,
+      "end": 80,
+      "kind": "function",
+      "name": "resolveUrl",
+      "id": "s9",
+      "hash": "d5cdeb189eaf855d",
+      "title": "Getting address text from any input",
+      "what": "Turns a string, a URL object, or a request object into a plain address string.",
+      "why": "Likely reason: simplifies the later checks on the address.",
+      "watch_out": ""
+    },
+    {
+      "start": 81,
+      "end": 93,
+      "kind": "function",
+      "name": "mergeHeaders",
+      "id": "s10",
+      "hash": "651fe72411243737",
+      "title": "Combining header lists",
+      "what": "Joins several header sources into one set. When names repeat, later sources replace earlier ones.",
+      "why": "Likely reason: caller-supplied headers override the defaults.",
+      "watch_out": "A later value replaces an earlier one rather than adding to it."
+    },
+    {
+      "start": 94,
+      "end": 98,
+      "kind": "function",
+      "name": "getMediaType",
+      "id": "s11",
+      "hash": "864819c89a6926ba",
+      "title": "Reading the content type",
+      "what": "Pulls the main content type out of a reply's content-type header, in lowercase and without extra settings.",
+      "why": "Likely reason: the content type decides how the body is read.",
+      "watch_out": "Returns nothing when the header is missing."
+    },
+    {
+      "start": 99,
+      "end": 102,
+      "kind": "function",
+      "name": "isJsonMediaType",
+      "id": "s12",
+      "hash": "e025a9fbde0177e4",
+      "title": "Checking for JSON content",
+      "what": "Says whether a content type is JSON, including the variants that end in plus json.",
+      "why": "Likely reason: JSON must be parsed, so the code needs to recognise it.",
+      "watch_out": ""
+    },
+    {
+      "start": 103,
+      "end": 113,
+      "kind": "function",
+      "name": "isTextMediaType",
+      "id": "s13",
+      "hash": "3b63631c5af25cd3",
+      "title": "Checking for text content",
+      "what": "Says whether a content type is text-like, such as plain text, XML, or form data.",
+      "why": "Likely reason: text can be read directly as a string.",
+      "watch_out": "Unknown content types are not treated as text, so they are handled as binary."
+    },
+    {
+      "start": 114,
+      "end": 127,
+      "kind": "function",
+      "name": "hasNoBody",
+      "id": "s14",
+      "hash": "28b2145eece35712",
+      "title": "Deciding whether a reply is empty",
+      "what": "Returns true for HEAD requests, for codes that carry no body, for a zero length, or when the body is missing.",
+      "why": "The comment says the check must be strict because React Native reports every body as undefined, which a loose check would read as empty.",
+      "watch_out": "Keep the strict check. A loose check would treat every React Native reply as empty."
+    },
+    {
+      "start": 128,
+      "end": 131,
+      "kind": "function",
+      "name": "stripBom",
+      "id": "s15",
+      "hash": "d8a666f76efa85e3",
+      "title": "Removing the hidden start marker",
+      "what": "Removes an invisible byte-order marker that some text begins with.",
+      "why": "Likely reason: the marker would make JSON parsing fail.",
+      "watch_out": "Only the very first character is checked."
+    },
+    {
+      "start": 132,
+      "end": 136,
+      "kind": "function",
+      "name": "looksLikeJson",
+      "id": "s16",
+      "hash": "d6abf5461a8e6a26",
+      "title": "Guessing whether text is JSON",
+      "what": "Checks whether text begins with a brace or a square bracket.",
+      "why": "Likely reason: a fallback for replies that give no content type.",
+      "watch_out": "This is only a guess. Invalid JSON still fails later when parsed."
+    },
+    {
+      "start": 137,
+      "end": 146,
+      "kind": "function",
+      "name": "getStringField",
+      "id": "s17",
+      "hash": "c77cff596262ebfa",
+      "title": "Safely reading a text field",
+      "what": "Pulls a trimmed, non-empty text value from an object, or returns nothing.",
+      "why": "Likely reason: error replies can have any shape, so reading must be safe.",
+      "watch_out": "Empty or blank strings are treated as missing."
+    },
+    {
+      "start": 147,
+      "end": 150,
+      "kind": "function",
+      "name": "truncate",
+      "id": "s18",
+      "hash": "7ee11e5e9913f940",
+      "title": "Shortening long text",
+      "what": "Cuts text to a maximum length, by default 300 characters, and adds an ellipsis.",
+      "why": "Likely reason: keeps error messages readable.",
+      "watch_out": "The ellipsis counts toward the length limit."
+    },
+    {
+      "start": 151,
+      "end": 173,
+      "kind": "function",
+      "name": "buildErrorMessage",
+      "id": "s19",
+      "hash": "fd7e46147b6d7025",
+      "title": "Building a readable error message",
+      "what": "Creates the error text from the status line and any title, detail, or message found in the reply.",
+      "why": "Likely reason: so the error explains what went wrong in plain words.",
+      "watch_out": "Replies often lack these fields, so the message may fall back to the status line alone."
+    },
+    {
+      "start": 174,
+      "end": 201,
+      "kind": "class",
+      "name": "ApiError",
+      "id": "s20",
+      "hash": "4c1450cbad8c8dfe",
+      "title": "Error for failed requests",
+      "what": "The error thrown when the server answers with a failure. It carries the status, the reply body, the headers, the method, and the address.",
+      "why": "Likely reason: callers can inspect the details, not just read a message.",
+      "watch_out": "The data can be null, so callers must check it before reading fields."
+    },
+    {
+      "start": 202,
+      "end": 235,
+      "kind": "class",
+      "name": "ResponseParseError",
+      "id": "s21",
+      "hash": "6c3b9eaf58367db0",
+      "title": "Error for unreadable JSON",
+      "what": "The error thrown when a reply claims to be JSON but cannot be parsed. It keeps the raw text.",
+      "why": "Likely reason: the raw text is kept so the bad reply can be inspected.",
+      "watch_out": "The raw text can be large."
+    },
+    {
+      "start": 236,
+      "end": 253,
+      "kind": "function",
+      "name": "parseJsonBody",
+      "id": "s22",
+      "hash": "83ad813f0c65f804",
+      "title": "Reading a JSON reply",
+      "what": "Reads the text of a reply, removes the hidden marker, returns nothing if it is empty, and otherwise parses it.",
+      "why": "Likely reason: an empty JSON reply should not crash the app.",
+      "watch_out": "A malformed body throws a ResponseParseError."
+    },
+    {
+      "start": 254,
+      "end": 284,
+      "kind": "function",
+      "name": "parseErrorBody",
+      "id": "s23",
+      "hash": "2841f8188f8fddbd",
+      "title": "Reading an error reply",
+      "what": "Reads the body of a failed response. Returns nothing when empty, parsed JSON when possible, and raw text or a blob otherwise.",
+      "why": "Likely reason: an odd error reply should never stop the ApiError from being thrown.",
+      "watch_out": "Invalid JSON falls back silently to raw text, so a broken error body is not reported as such."
+    },
+    {
+      "start": 285,
+      "end": 292,
+      "kind": "function",
+      "name": "inferResponseType",
+      "id": "s24",
+      "hash": "639ebd28487f5af6",
+      "title": "Guessing how to read a reply",
+      "what": "Chooses JSON, text, or blob based on the content type. Unknown or missing types are read as text.",
+      "why": "Likely reason: the default when the caller does not say how to read the reply.",
+      "watch_out": "Binary types become blobs, which some runtimes cannot read."
+    },
+    {
+      "start": 293,
+      "end": 324,
+      "kind": "function",
+      "name": "parseSuccessBody",
+      "id": "s25",
+      "hash": "8b3b456cdaa58b93",
+      "title": "Reading a successful reply",
+      "what": "Reads a successful reply in the chosen form: JSON, text, or blob. Returns nothing when empty.",
+      "why": "Likely reason: callers receive data in the form they asked for.",
+      "watch_out": "Asking for a blob in a runtime without blob support throws a TypeError."
+    },
+    {
+      "start": 325,
+      "end": 371,
+      "kind": "function",
+      "name": "customFetch",
+      "id": "s26",
+      "hash": "2c252135f0ae5918",
+      "title": "Sending a request and returning data",
+      "what": "The main function other code calls. It sends a request to the API and returns the parsed reply, or throws an error if the request failed.",
+      "why": "Likely reason: all the shared rules are applied in one place.",
+      "watch_out": "A body on a GET or HEAD request throws immediately. The token getter runs on every call, so a slow getter slows every request."
+    }
+  ],
+  "explained_at": "2026-11-12T06:50:35+00:00",
+  "explained_by": "haiku",
+  "summary": "The single place where the app sends requests to its API and turns the replies into usable data or clear errors.",
+  "purpose": "Wraps the built-in fetch call with shared rules for addresses, login tokens, headers, and reading replies.",
+  "why": "The comments say it must work in React Native as well as in browsers, which is why it reads empty bodies and checks types loosely.",
+  "how": "Adds the base address when one is set. Refuses a body on GET or HEAD requests. Merges headers and sets a JSON content type if needed. Attaches a bearer token when a token getter is set and no authorization header was given. Sends the request. If the status is an error, reads the error body and throws an ApiError. Otherwise reads the body in the requested form and returns it.",
+  "inputs": "The request address, options such as method, body, headers, and response type, plus the module settings for base address and token getter.",
+  "outputs": "The parsed reply as JSON, text, or a blob, or a thrown ApiError or ResponseParseError.",
+  "risks": "Using the token getter in a web app where login cookies already work can attach an unneeded token. A base address is added to every path that starts with a slash. Blob replies fail in some runtimes.",
+  "debug": "For an unexpected error, read the status and data on the ApiError. For a parse error, read rawBody on the ResponseParseError. If requests lack a token, check that setAuthTokenGetter was called and that the getter returns a value. If paths go to the wrong server, check the base URL setting.",
+  "summary_hash": "sha256:3a5605ea89571cca7ea9412a230a40954e3a3f1d94d7a566271480165bf5e03c"
+}

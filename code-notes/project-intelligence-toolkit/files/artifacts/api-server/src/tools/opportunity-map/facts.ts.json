@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/facts.ts",
+  "language": "TypeScript",
+  "lines": 163,
+  "hash": "sha256:0897a661ce144dab9b8f1a21642d546e84684e939304aabaaf69ba11be7c3132",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The rule that numbers must come from exact text is a strong design choice.",
+      "Parser and megaproject rules have tests, but this file's research step is partly not visible.",
+      "No direct test of this file is visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "exchange rate",
+      "meaning": "the price of one currency in another, used to compare amounts"
+    },
+    {
+      "term": "lower bound",
+      "meaning": "the smallest figure in a range"
+    },
+    {
+      "term": "sentence fallback",
+      "meaning": "reading an amount from a full sentence when the short form cannot be read"
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "zod",
+    "../../lib/portkeyOpenAI",
+    "../../lib/modelConfig",
+    "../../lib/researchSources",
+    "../../lib/money",
+    "../../scan/budgetUnits",
+    "../../lib/fx",
+    "./store",
+    "./types"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/facts.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 11,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ff18f284c5b0db0a",
+      "title": "Imports for facts reading",
+      "what": "Brings in database access, the AI chat connection and model choice, the research source registry, the money finder, the budget unit converter, the exchange rate tools and the storage helper.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The file depends on several shared helpers, so changes there alter capex results."
+    },
+    {
+      "start": 12,
+      "end": 18,
+      "kind": "type",
+      "name": "CapexScope",
+      "id": "s2",
+      "hash": "062ab3ae2aa1a21a",
+      "title": "Scope types for capex amounts",
+      "what": "Defines the three scopes an amount can have: a single project, a programme, or a company plan.",
+      "why": "The header says amounts are reported by sources and the scope affects how they are counted.",
+      "watch_out": "The model schema also accepts a scope called other, which this type does not include, so it must be mapped before use."
+    },
+    {
+      "start": 19,
+      "end": 24,
+      "kind": "type",
+      "name": "SignalCapex",
+      "id": "s3",
+      "hash": "c0d6e6b5cfd61e4a",
+      "title": "Stored capex record",
+      "what": "Defines one stored capex figure: the text as written, currency, low and high amounts in millions, US dollar equivalents, whether the conversion is approximate, scope, subject, the quote and source link, where it came from, and when it was checked.",
+      "why": "The header says nothing is estimated, so each amount keeps its evidence.",
+      "watch_out": "A figure taken from a Yard project has an empty source link, so it cannot be traced to a web source."
+    },
+    {
+      "start": 25,
+      "end": 32,
+      "kind": "type",
+      "name": "SignalAnnouncement, FactsResearch, HAS_RATE",
+      "id": "s4",
+      "hash": "01257654198450eb",
+      "title": "Announcement and research status types, currency check",
+      "what": "Defines the stored announcement record (new project, expansion or approval) with its name and quote, and the research status record (complete or failed, with notes). Also a check that a currency has an exchange rate on hand, which is always true for US dollars.",
+      "why": "Likely reason: a currency is converted only when a rate is held, so unknown currencies are not guessed.",
+      "watch_out": "The currency check depends on the exchange rate helper, so a missing rate quietly stops that currency from being read."
+    },
+    {
+      "start": 33,
+      "end": 40,
+      "kind": "value",
+      "name": "SYMBOLS",
+      "id": "s5",
+      "hash": "6403a52b24953c8b",
+      "title": "Currency symbol and code recognition",
+      "what": "Maps currency signs and codes such as US$, A$, euro, pound and rupee signs to standard three-letter codes. The patterns are checked in order, with a bare dollar sign as the last resort.",
+      "why": "Likely reason: money is written in many styles, so each must be read as the right currency.",
+      "watch_out": "Order matters, because the more specific forms are checked first; reordering the list can misread a dollar sign."
+    },
+    {
+      "start": 41,
+      "end": 46,
+      "kind": "value",
+      "name": "SCALE, num",
+      "id": "s6",
+      "hash": "3bfdf9614b86f13f",
+      "title": "Size words and number reader",
+      "what": "Maps size words such as billion, million, crore and lakh to their size in millions, and provides a helper that reads a number that may contain commas.",
+      "why": "Likely reason: converts stated size words into one common unit of millions.",
+      "watch_out": "The Indian crore and lakh factors are easy to get wrong when edited."
+    },
+    {
+      "start": 47,
+      "end": 66,
+      "kind": "function",
+      "name": "parseMoney",
+      "id": "s7",
+      "hash": "568b592051136082",
+      "title": "Reading a money amount into millions",
+      "what": "Reads text such as US$450-500 million or 2bn in euros into a currency and a low and high amount in millions. Falls back to sentence reading if the short form fails. Rejects anything under one million.",
+      "why": "The header says the parser, not the model, turns text into numbers, and small figures such as share prices are excluded.",
+      "watch_out": "A bare number with no currency or size word is read as dollars in single units, so an unlabelled figure like 500 is rejected as too small rather than guessed."
+    },
+    {
+      "start": 67,
+      "end": 76,
+      "kind": "function",
+      "name": "fromSentence",
+      "id": "s8",
+      "hash": "b612cbc186e88012",
+      "title": "Fallback reader for sentences",
+      "what": "When the short form fails, looks for exactly one currency-marked amount in a sentence. Returns nothing if there are zero or several different amounts, or if the currency has no rate.",
+      "why": "The header says the fallback never reads a year as an amount.",
+      "watch_out": "Two different amounts in one sentence cause the reading to be rejected, which is safe but drops some valid figures."
+    },
+    {
+      "start": 77,
+      "end": 82,
+      "kind": "function",
+      "name": "toUsd",
+      "id": "s9",
+      "hash": "91a0b50a55cc467b",
+      "title": "Converting millions to US dollars",
+      "what": "Converts an amount in a given currency to US dollar millions, using the exchange rate for the given year, or the latest rate when no year is given. Returns nothing if no rate is held.",
+      "why": "Likely reason: costs are compared in one currency, and the rate year is matched to the source date where known.",
+      "watch_out": "Without a year, the latest rate is used, which may not match the figure's date."
+    },
+    {
+      "start": 83,
+      "end": 86,
+      "kind": "function",
+      "name": "isMegaproject, norm",
+      "id": "s10",
+      "hash": "60b3148127c72176",
+      "title": "Megaproject test and text cleanup",
+      "what": "Decides whether a capex record is a megaproject: a single project or programme whose lower bound is at least one billion US dollars, excluding company plans. Also a helper that lower cases and tidies text.",
+      "why": "The comment states the rule: megaprojects need a US one billion lower bound and exclude company plans.",
+      "watch_out": "Only the lower bound is tested, so a range that runs from below to above one billion does not count."
+    },
+    {
+      "start": 87,
+      "end": 98,
+      "kind": "value",
+      "name": "factsSchema",
+      "id": "s11",
+      "hash": "057ecd54c3f4a869",
+      "title": "Format for the model's facts reply",
+      "what": "Defines the format the model must follow when reporting capex and announcement facts. Each must point to a source and include a quote of at least 20 characters. Capex scope may be single project, programme, company plan or other.",
+      "why": "Likely reason: every claim must be tied to a source quote so it can be checked.",
+      "watch_out": "The scope other is accepted here but not in the capex type, so code using these results must handle it."
+    },
+    {
+      "start": 99,
+      "end": 117,
+      "kind": "function",
+      "name": "linkedCapex",
+      "id": "s12",
+      "hash": "045bd99f03a793ea",
+      "title": "Capex from a linked Yard project",
+      "what": "For a signal linked to Yard projects, reads each project's budget columns and returns the largest figure as the capex record. The record is marked as coming from the Yard and not rechecked against a source.",
+      "why": "The comment says Yard budget columns are already in US dollar millions, so the code does not convert them again.",
+      "watch_out": "The budget currency column is deliberately not applied, so a budget stored in another currency must already be converted in the Yard."
+    },
+    {
+      "start": 118,
+      "end": 163,
+      "kind": "function",
+      "name": "researchSignalFacts",
+      "id": "s13",
+      "hash": "735dcafd2b06b2e5",
+      "title": "Capex and announcement facts from sources",
+      "what": "Reads the saved source passages with an AI model and pulls out two things: the stated capital cost of one project or programme, and whether the signal reports a new, expanded, or approved project. If the linked Yard project record already holds a capex figure, that figure is used first. Any amount or announcement whose quote cannot be found in the source text is dropped, and a note explains why.",
+      "why": "Likely reason: the model is allowed to report only what the sources say, and the quote check keeps invented numbers out. The withheld and unknown notes are written so a reader can see what was left out.",
+      "watch_out": "Currency conversion uses an approximate yearly rate, and missing capex is stored as unknown rather than zero, so changing either rule changes what users see as fact."
+    }
+  ],
+  "explained_at": "2026-11-12T04:54:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads money amounts and new project announcements from source quotes, only when the exact text is present, and converts amounts to US dollars for comparison.",
+  "purpose": "Gives the app sourced capex and announcement facts that are never estimated.",
+  "why": "The header says an amount is kept only if its exact text appears in a quote or a linked Yard record, and the parser, not the model, turns text into a number.",
+  "how": "1. Accept a model facts reply that matches the schema. 2. Read each amount text with the money parser. 3. Convert to US dollars using the rate for the relevant year. 4. Use a linked Yard budget when one exists. 5. Mark megaprojects by their lower bound.",
+  "inputs": "A signal with its sources and linked project ids, and the model facts replies.",
+  "outputs": "Capex records, announcement records, megaproject flags and a research status.",
+  "risks": "Exchange rates are approximate and may be missing for some years. The sentence fallback could read the wrong figure. Yard budgets are trusted without a re-check against the source.",
+  "debug": "If amounts are missing, run the parser on the exact quote text and check whether the currency has a rate. If a dollar value looks wrong, check the year passed to toUsd. If a Yard figure looks wrong, check the project budget columns.",
+  "summary_hash": "sha256:0897a661ce144dab9b8f1a21642d546e84684e939304aabaaf69ba11be7c3132"
+}

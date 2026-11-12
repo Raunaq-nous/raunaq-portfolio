@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/yardResearch/companies.ts",
+  "language": "TypeScript",
+  "lines": 89,
+  "hash": "sha256:c4f92b2fe9494f5baf8cf7cfd29e0bd762d22fa5ea351636e8f49c7fafa52529",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Matching uses heuristic rules that can merge or split names unexpectedly.",
+      "No test is visible for this file.",
+      "The database is read in full for each claim, which may be slow."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Deterministic ID",
+      "meaning": "An ID built from fixed text, so the same input always gives the same ID and a re-run finds the same row."
+    },
+    {
+      "term": "Claim",
+      "meaning": "One fact from a research reply, here used for a company mention."
+    },
+    {
+      "term": "Held",
+      "meaning": "Set aside without being written, because the match was unclear."
+    },
+    {
+      "term": "Alias",
+      "meaning": "An alternative name for the same organisation."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/ingest/wind/participants",
+    "artifacts/api-server/src/ingest/yardResearch/plan",
+    "pg"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup, uuid",
+      "id": "s1",
+      "hash": "498ade57dabc9f46",
+      "title": "Setup and fixed ID maker",
+      "what": "Brings in the database connection type, the alias and group phrase lists, and a helper that builds the same ID from the same text every time. Nothing is shown to users directly.",
+      "why": "Likely reason: fixed IDs let a re-run find the rows the earlier run created, so it does not duplicate them.",
+      "watch_out": "Changing the ID recipe would make re-runs create duplicate companies."
+    },
+    {
+      "start": 15,
+      "end": 17,
+      "kind": "function",
+      "name": "norm",
+      "id": "s2",
+      "hash": "3447e90d4e203fa5",
+      "title": "Making names comparable",
+      "what": "Reduces a name to plain lowercase letters and digits by removing accents and punctuation, while keeping letters from other scripts.",
+      "why": "The comment says that removing non-Latin letters would make all Chinese names match each other.",
+      "watch_out": "Removing accents means two spellings can compare equal, so this rule must stay in step with the alias list."
+    },
+    {
+      "start": 18,
+      "end": 21,
+      "kind": "function",
+      "name": "loose",
+      "id": "s3",
+      "hash": "9b816e15b1317dc3",
+      "title": "Matching names and spotting group phrases",
+      "what": "Makes names comparable after removing trailing legal words such as Ltd, AS or GmbH. It also defines a pattern that spots group phrases such as banks, lenders or buyers, which describe several organisations rather than one.",
+      "why": "Likely reason: so that Equinor ASA and Equinor count as the same company. The comment says group descriptions stay as cited text only.",
+      "watch_out": "The group pattern matches common words anywhere in an entry, so a real company whose name contains one of them would be held instead of linked."
+    },
+    {
+      "start": 22,
+      "end": 27,
+      "kind": "value",
+      "name": "COMPANY_TYPE",
+      "id": "s4",
+      "hash": "c1b65c1040a3eccd",
+      "title": "Mapping roles to company types",
+      "what": "Translates each reported role, such as operator, contractor, equipment supplier or regulator, into the company type stored in the database.",
+      "why": "Research uses different wording for the same role, so this table gives one set of types.",
+      "watch_out": "Any role not in this table becomes OTHER without a message, so a new role word silently loses its meaning."
+    },
+    {
+      "start": 28,
+      "end": 32,
+      "kind": "function",
+      "name": "companyType, CompanyCounts",
+      "id": "s5",
+      "hash": "2ab30b98e29d9b6d",
+      "title": "Deciding company type and counting results",
+      "what": "Decides a company's type. A contractor whose stated work is design, survey or investigation only is typed as OTHER rather than as a construction contractor. It also defines the three counters for companies created, links added and entries held.",
+      "why": "The comment says a contractor doing design or survey is not an installation contractor.",
+      "watch_out": "The check reads the scope text, so vague wording such as design and build could be typed as OTHER by mistake."
+    },
+    {
+      "start": 33,
+      "end": 89,
+      "kind": "function",
+      "name": "linkCompanies",
+      "id": "s6",
+      "hash": "62420864a9e8ff24",
+      "title": "Linking companies to a project",
+      "what": "For each company claim on a project, splits entries that name several companies, cleans each name, skips group descriptions, and looks for an existing company by name or alias. It holds the entry if several companies match, creates a company if none matches, and adds the link to the project. It returns the held entries and the names of the new companies.",
+      "why": "The header comment says ambiguous matches are held and never guessed.",
+      "watch_out": "The whole company and alias list is read on every call, which may be slow on a large database. The description text in the packet is cut off here, so check the file directly for that wording."
+    }
+  ],
+  "explained_at": "2026-11-12T03:38:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Links companies to imported yard-research projects. It splits combined entries, skips group descriptions, and creates a new company only when no existing match is found.",
+  "purpose": "Company linking for research imports, shared by the full-record importer and the closure importer.",
+  "why": "The header says ambiguous matches are held and never guessed. That is the main reason for the matching rules.",
+  "how": "Reads the company claims for a project. Works out each company's role. Splits entries that name several companies at top-level semicolons. Skips group descriptions. Removes bracketed notes, renaming notes and consortium labels. Looks for an existing company by name or alias. Holds the entry if more than one company matches. Creates a company if none matches. Adds the project link and counts the results.",
+  "inputs": "The list of claims, the project's ID and name, the batch name, a set of counters, and a database connection.",
+  "outputs": "A list of held entries with reasons, a list of newly created company names, and updated counters. It also writes to the companies and company project links tables.",
+  "risks": "Loose matching drops legal endings, so two different companies could be treated as the same. The company list is read in full on every call, which may be slow on a large database. The company description text in the packet is cut off, so check the file directly before judging that part.",
+  "debug": "Look at the held list first, since it gives the reason for each held entry. Look for companies with unexpected names. If a company type looks wrong, check the scope text, since the type rule reads it.",
+  "summary_hash": "sha256:c4f92b2fe9494f5baf8cf7cfd29e0bd762d22fa5ea351636e8f49c7fafa52529"
+}

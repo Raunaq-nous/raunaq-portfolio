@@ -1,0 +1,217 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/yardResearch/replayLedger.ts",
+  "language": "TypeScript",
+  "lines": 141,
+  "hash": "sha256:bafd79b3285298d30450f98fd68c06b6ee3b990b5282d35302bd7cfd421b4ed1",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in the packet.",
+      "Validation rules are explicit and their error messages are clear, which is good."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Replay ledger",
+      "meaning": "A record file listing approved research batches in the order they should be loaded."
+    },
+    {
+      "term": "Plan digest",
+      "meaning": "A fingerprint of the plan a run would write, used to check that a replay is the same plan that was approved."
+    },
+    {
+      "term": "Marker",
+      "meaning": "A batch name stored on each project row, so the importer can tell which batch wrote it."
+    },
+    {
+      "term": "Change log",
+      "meaning": "A database table that records every change, with its source and time."
+    },
+    {
+      "term": "Importer",
+      "meaning": "The program that loads research replies into the database; here either the population or the closure importer."
+    }
+  ],
+  "depends_on": [
+    "quoteChecks.ts (folder paths)",
+    "populationIndustries.ts (manifest lookup)",
+    "pg (database client package)"
+  ],
+  "used_by": [
+    "toolCatchup.ts",
+    "script/replay-yard-research.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup, LedgerImporter",
+      "id": "s1",
+      "hash": "b18500d473dff4b1",
+      "title": "File header and types",
+      "what": "Explains what the ledger is for, why it exists and where its guide lives. Introduces the two importer types.",
+      "why": "The header explains the reason the ledger is needed when task copies are merged.",
+      "watch_out": "Tools that act per industry must group ledgers by industry, not by folder."
+    },
+    {
+      "start": 20,
+      "end": 39,
+      "kind": "type",
+      "name": "LedgerEntry",
+      "id": "s2",
+      "hash": "463494666ca2f6cf",
+      "title": "One approved batch entry",
+      "what": "Describes the fields of one approved batch: load order, batch name, importer, input files, plan fingerprint, review fingerprint, report, markers and project ids.",
+      "why": "Records everything needed to check that a replay is the same approved work.",
+      "watch_out": "A replay whose plan differs is not loaded, and a changed input file breaks the replay."
+    },
+    {
+      "start": 40,
+      "end": 52,
+      "kind": "type",
+      "name": "Ledger, ledgerFolder, ledgerPath",
+      "id": "s3",
+      "hash": "6dbca44035a52a12",
+      "title": "Whole ledger and file path",
+      "what": "Defines the full ledger shape and gives the folder name and the file path for a ledger.",
+      "why": "Second manifests for the same industry need their own folder, recorded as the population.",
+      "watch_out": "The folder name is the population key whenever it differs from the industry."
+    },
+    {
+      "start": 53,
+      "end": 57,
+      "kind": "function",
+      "name": "markerKey",
+      "id": "s4",
+      "hash": "3ae7409dbf3d228a",
+      "title": "Marker field name",
+      "what": "Returns the name of the database field that holds batch markers for an entry: a fixed name for closure batches, and the manifest's source key with a suffix for population batches.",
+      "why": "Closure and population imports stamp rows in different places.",
+      "watch_out": "The population branch needs the manifest to load, so a missing manifest fails here."
+    },
+    {
+      "start": 58,
+      "end": 66,
+      "kind": "function",
+      "name": "readLedger",
+      "id": "s5",
+      "hash": "68d90f9af90fd1a2",
+      "title": "Reading a ledger",
+      "what": "Reads a folder's ledger, validates it, or returns an empty ledger when none exists yet.",
+      "why": "A new industry can start with no ledger and still work.",
+      "watch_out": "The industry defaults to the folder name, so a wrong default could point the batches at the wrong industry."
+    },
+    {
+      "start": 67,
+      "end": 85,
+      "kind": "function",
+      "name": "validateLedger",
+      "id": "s6",
+      "hash": "bd5e09f1c64ea45b",
+      "title": "Checking a ledger",
+      "what": "Checks the schema, names, industry and population rules, unique order and batch numbers, importer type, file lists, the fingerprint format and marker and project lists.",
+      "why": "Catches a bad ledger before any replay trusts it.",
+      "watch_out": "A population value equal to the industry name is rejected, so the two must always differ."
+    },
+    {
+      "start": 86,
+      "end": 91,
+      "kind": "function",
+      "name": "writeLedger",
+      "id": "s7",
+      "hash": "e244d71c578b90d5",
+      "title": "Saving a ledger",
+      "what": "Sorts the batches by order, validates the result and saves the file.",
+      "why": "Keeps the file in load order every time it is written.",
+      "watch_out": "The file is written straight over the old one with no backup."
+    },
+    {
+      "start": 92,
+      "end": 98,
+      "kind": "function",
+      "name": "ledgerFolders",
+      "id": "s8",
+      "hash": "2fdafe4b15264d10",
+      "title": "Listing ledger folders",
+      "what": "Finds every folder in the research data area that has a ledger file, sorted by name.",
+      "why": "Lets tools discover all ledgers without a fixed list.",
+      "watch_out": "An old name is kept for existing callers, but it returns folders, not industries."
+    },
+    {
+      "start": 99,
+      "end": 103,
+      "kind": "function",
+      "name": "ledgerIndustryOf",
+      "id": "s9",
+      "hash": "cadf883763061851",
+      "title": "Finding a folder's industry",
+      "what": "Returns the industry that a folder's batches write into.",
+      "why": "A folder and an industry are not always the same name.",
+      "watch_out": "Each call reads and validates the file again, so it is slower in loops."
+    },
+    {
+      "start": 104,
+      "end": 110,
+      "kind": "function",
+      "name": "ledgerFoldersByIndustry",
+      "id": "s10",
+      "hash": "47a57ec6a0f2d644",
+      "title": "Grouping folders by industry",
+      "what": "Groups the ledger folders by the industry they write to.",
+      "why": "Post-merge tools run once per industry, so they need this grouping.",
+      "watch_out": "An industry with two folders must have both folders processed."
+    },
+    {
+      "start": 111,
+      "end": 123,
+      "kind": "function",
+      "name": "entryFromCommitReport, BatchLoadState",
+      "id": "s11",
+      "hash": "977b31ee1ac38052",
+      "title": "Making an entry from an approved report",
+      "what": "Builds a ledger entry from an approved commit report. Refuses a report that is not a commit, has no plan fingerprint, or belongs to a different folder.",
+      "why": "Only approved and committed work can enter the ledger.",
+      "watch_out": "An older report without a plan fingerprint must be re-run as a dry run before it can be registered."
+    },
+    {
+      "start": 124,
+      "end": 131,
+      "kind": "function",
+      "name": "batchLoadState",
+      "id": "s12",
+      "hash": "3436b0a802ebb1c6",
+      "title": "Checking whether a batch is loaded",
+      "what": "Counts how many of an entry's project rows carry one of its markers, and returns loaded, pending, partial or nothing to load.",
+      "why": "Tells a replay which batches are missing from the database.",
+      "watch_out": "A partial state means some rows are missing a marker, which needs investigation rather than a simple reload."
+    },
+    {
+      "start": 132,
+      "end": 141,
+      "kind": "function",
+      "name": "batchLoadedAt",
+      "id": "s13",
+      "hash": "1678577f40fb5079",
+      "title": "When a batch was loaded",
+      "what": "Finds the most recent time a batch was written, using the change log.",
+      "why": "Used to judge how fresh the data is.",
+      "watch_out": "Returns nothing when no change was logged, so a missing time does not mean the batch is absent."
+    }
+  ],
+  "explained_at": "2026-11-12T03:47:54+00:00",
+  "explained_by": "haiku",
+  "summary": "Keeps a per-folder list of approved research batches, in load order, so they can be loaded into another database after a task merges only its files.",
+  "purpose": "Lets a later setup step find out which approved batches a database is missing and load them in the right order.",
+  "why": "The header explains that task agents work on their own database copy, and only files come back after a merge, so approvals must be recorded in a file.",
+  "how": "1. Stores each approved batch with its order, importer type, input files, plan fingerprint and the project ids it writes. 2. Validates the ledger when reading or writing it. 3. Lists ledger folders and groups them by the industry they write. 4. Builds a new entry from an approved commit report, refusing reports that are dry runs or have no plan fingerprint. 5. Checks the loaded state of each entry in a database, and the time it was loaded.",
+  "inputs": "Approved commit reports, folder names, the ledger files and a database connection.",
+  "outputs": "Ledger files at data/yard-research/<folder>/replay-ledger.json, load-state results (loaded, pending, partial or nothing to load), and load times.",
+  "risks": "A plan change or a changed input file means a batch is not loaded on replay. Writing a ledger overwrites the file without a backup. A folder is not always an industry, so grouping by folder can give wrong results.",
+  "debug": "If a batch is not loaded on replay, compare its plan fingerprint with the commit report. If a load state is partial, some project rows are missing a marker, which needs investigation. If a ledger is rejected, read the message: it names the file and the rule broken. Check the folder name matches the industry or population key.",
+  "summary_hash": "sha256:bafd79b3285298d30450f98fd68c06b6ee3b990b5282d35302bd7cfd421b4ed1"
+}

@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/reconcile-scan-evidence.ts",
+  "language": "TypeScript",
+  "lines": 223,
+  "hash": "sha256:3455cf68e1d66518bb8435c37b68c48f184b60ff9747c975b1461acd3d6597e4",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test file is shown for this script.",
+      "Patches are applied without an overall rollback, so a mid-run error leaves a partial change.",
+      "The project and quote values are hardcoded and were not checked by this script itself."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Patch",
+      "meaning": "A partial update that changes only the fields it names and leaves the rest alone."
+    },
+    {
+      "term": "Evidence quote",
+      "meaning": "A sentence copied from a source, stored with the web address and publisher so the figure can be checked."
+    },
+    {
+      "term": "Variance",
+      "meaning": "A stored record of how far a project has moved from its plan, such as its schedule delay."
+    },
+    {
+      "term": "Transaction",
+      "meaning": "A group of database changes that either all succeed or are all undone."
+    }
+  ],
+  "depends_on": [
+    "../src/db",
+    "../src/storage",
+    "../src/shared/schema"
+  ],
+  "used_by": [
+    "Run by hand; no other code in this excerpt calls it."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup, ProjectPatch",
+      "id": "s1",
+      "hash": "bcb1b550947f9e6c",
+      "title": "Imports and patch type",
+      "what": "Brings in the database, storage and schema types, and defines what a partial project update can contain.",
+      "why": "Likely reason: a partial type lets each patch name only the fields it changes.",
+      "watch_out": "The types come from the schema file, so a renamed field there will break this script."
+    },
+    {
+      "start": 7,
+      "end": 47,
+      "kind": "value",
+      "name": "projectPatches (part 1)",
+      "id": "s2",
+      "hash": "b8deb73480f2e14d",
+      "title": "Project corrections, part one",
+      "what": "Lists project IDs and the fields to clear for each, mainly unsupported budgets and delay months. One Olkiluoto entry removes only the delay and keeps its published budget.",
+      "why": "The comments say these figures are estimates, forecasts, or refer to different milestones rather than final actual costs.",
+      "watch_out": "Setting a value to null deletes the stored figure, and this file keeps no copy of what was removed."
+    },
+    {
+      "start": 48,
+      "end": 83,
+      "kind": "value",
+      "name": "projectPatches (part 2)",
+      "id": "s3",
+      "hash": "fd0f3ee1d2d43d5f",
+      "title": "Project corrections, part two",
+      "what": "Sets dairy plant dates and a delay with an approximate flag, sets a Fonterra budget in New Zealand dollars, clears unsupported values for several plants, and sets the Belview planned budget in euros.",
+      "why": "The comment says these are source figures converted back to their reported units and currency.",
+      "watch_out": "The Fonterra and Belview values are in NZD and EUR, so they must be compared with their currency field, not with US dollars."
+    },
+    {
+      "start": 84,
+      "end": 143,
+      "kind": "value",
+      "name": "evidenceSeeds (part 1)",
+      "id": "s4",
+      "hash": "de62ba041747890b",
+      "title": "Evidence quotes, part one",
+      "what": "Lists quotes that tie specific figures to an exact sentence, web address and publisher, covering nuclear projects and the Darigold plant.",
+      "why": "Likely reason: each kept figure needs a checkable source, and these entries provide that link.",
+      "watch_out": "A quote only proves a figure while the source page still says the same thing, and some dates are recorded as n.d., meaning no date."
+    },
+    {
+      "start": 144,
+      "end": 176,
+      "kind": "value",
+      "name": "evidenceSeeds (part 2)",
+      "id": "s5",
+      "hash": "3a395df6834805fa",
+      "title": "Evidence quotes, part two",
+      "what": "Finishes the list with the Fonterra, Great Lakes and Belview quotes.",
+      "why": "Likely reason: the same reason as the earlier quotes, one source per kept figure.",
+      "watch_out": "The Fonterra quote says $360m while the stored currency is NZD, so check the source before trusting the currency."
+    },
+    {
+      "start": 177,
+      "end": 187,
+      "kind": "function",
+      "name": "ensureEvidence",
+      "id": "s6",
+      "hash": "010cd7cb41e514ec",
+      "title": "Adding each quote only once",
+      "what": "Adds a quote unless an identical active quote already exists for the same project, field, web address and text.",
+      "why": "Likely reason: this stops duplicate evidence rows when the script is run again.",
+      "watch_out": "The match is exact on the text, so a small edit to a quote creates a second row instead of updating the first."
+    },
+    {
+      "start": 188,
+      "end": 223,
+      "kind": "function",
+      "name": "main",
+      "id": "s7",
+      "hash": "214616ad57d1b8ea",
+      "title": "Main run and Leprino fix",
+      "what": "Applies each project patch, clears the schedule delay in the variance record too, adds the quotes, moves one Leprino citation from actual cost to budget context, then prints the counts and closes the database.",
+      "why": "The Leprino comment says that citation describes a planned investment, not a final actual cost.",
+      "watch_out": "If a project is missing partway through, the run stops with earlier patches already saved, and the database is still closed afterward."
+    }
+  ],
+  "explained_at": "2026-11-12T03:07:42+00:00",
+  "explained_by": "haiku",
+  "summary": "A one-time cleanup script that corrects a set of Scan project records by clearing figures the sources do not support, fixing one currency, and attaching sourced evidence quotes.",
+  "purpose": "It removes budget and delay figures that the cited sources do not establish, keeps the figures that are sourced, and adds the quotes that link each figure to its publisher.",
+  "why": "Each entry carries a comment giving the reason, such as an estimate that is not an actual cost, or a source that refers to a different milestone.",
+  "how": "First it applies each project patch, clearing schedule delay in the variance record when a delay is removed. Then it adds each evidence quote unless an identical active one already exists. Last, it moves one Leprino citation from actual cost to general budget context and prints the counts.",
+  "inputs": "The hardcoded project IDs, patch values, and quote texts and web addresses in this file. It reads and writes project and evidence records through the storage layer. No command line options are used.",
+  "outputs": "Updated project rows, new evidence quote rows, a moved evidence label, and one console line with the counts.",
+  "risks": "Project patches are applied one at a time with no overall transaction, so an error part way through leaves earlier changes saved. Setting a value to null removes that stored figure.",
+  "debug": "If the run stops with a missing project message, check that the project ID still exists. For a surprising value, find its entry in the comments of the patch list and open the source address. The code shown does not write its own change log entries.",
+  "summary_hash": "sha256:3455cf68e1d66518bb8435c37b68c48f184b60ff9747c975b1461acd3d6597e4"
+}

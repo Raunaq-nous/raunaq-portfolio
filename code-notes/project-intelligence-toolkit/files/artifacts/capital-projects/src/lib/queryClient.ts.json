@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/capital-projects/src/lib/queryClient.ts",
+  "language": "TypeScript",
+  "lines": 71,
+  "hash": "sha256:1e71c76451a9d209f4f7886086cc9aec9b5a4bc9675f79e87a36c401e2c5baa6",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible for this file.",
+      "The login redirect runs inside a shared helper, so individual calls cannot opt out.",
+      "Data never going stale is a risky default, and the code gives no stated reason for it."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Cache",
+      "meaning": "A stored copy of server data kept in the browser so pages do not fetch it again each time."
+    },
+    {
+      "term": "Token",
+      "meaning": "A secret string that proves the user is logged in."
+    },
+    {
+      "term": "401 response",
+      "meaning": "The server's reply meaning the request was not made by a logged-in user."
+    },
+    {
+      "term": "Stale",
+      "meaning": "Old data that may no longer match the server."
+    },
+    {
+      "term": "Retry",
+      "meaning": "Sending a failed request again automatically."
+    }
+  ],
+  "depends_on": [
+    "@tanstack/react-query",
+    "@/hooks/useAuth"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6932c2b656d6c9da",
+      "title": "Imports for the data client",
+      "what": "Brings in the data caching library and the function that supplies the login token.",
+      "why": "Likely reason: the shared data layer needs both to work.",
+      "watch_out": "The token comes from the login hook, so moving or renaming that hook breaks every request."
+    },
+    {
+      "start": 4,
+      "end": 8,
+      "kind": "function",
+      "name": "authHeaders",
+      "id": "s2",
+      "hash": "1517c59e5c802ec7",
+      "title": "Attaching the login token to requests",
+      "what": "Builds the authorization header from the stored login token, or an empty header when the visitor is not logged in.",
+      "why": "Likely reason: the server checks this token on each request.",
+      "watch_out": "The token is read at the moment each request is made, so logging out takes effect on the next request."
+    },
+    {
+      "start": 9,
+      "end": 21,
+      "kind": "function",
+      "name": "throwIfResNotOk",
+      "id": "s3",
+      "hash": "17738dee6d238d43",
+      "title": "Turning failed requests into errors",
+      "what": "Throws an error for any failed response. For a 401 it also sends the visitor to the login page unless they are already there. The error text includes the status code and the server message.",
+      "why": "Likely reason: a failed call should stop normal processing and let the page show a problem.",
+      "watch_out": "The redirect and the error both happen, so code that catches the error may still run while the page is leaving."
+    },
+    {
+      "start": 22,
+      "end": 39,
+      "kind": "function",
+      "name": "apiRequest",
+      "id": "s4",
+      "hash": "56f46a9f40f81bad",
+      "title": "Sending a request that changes data",
+      "what": "Sends a request with a chosen method, such as POST or PUT, and an optional body. It adds the login token, throws on failure, and returns the response on success.",
+      "why": "Likely reason: one helper for create, update and delete calls, so each call does not repeat the header and error code.",
+      "watch_out": "A body that is zero or empty text is skipped and not sent, and the successful response body is left for the caller to read."
+    },
+    {
+      "start": 40,
+      "end": 57,
+      "kind": "type",
+      "name": "UnauthorizedBehavior",
+      "id": "s5",
+      "hash": "3fdff8e1cf7065e2",
+      "title": "Fetching data for the cache",
+      "what": "Defines how the cache fetches data for a key: it joins the key parts into a web address, sends the token, and returns the parsed data. On a 401 it either returns nothing or throws, depending on the setting.",
+      "why": "Likely reason: some pages should show empty content when logged out, while others should show an error.",
+      "watch_out": "Key parts are joined with slashes to form the address, so a key part that already contains a slash or is an object builds a wrong address."
+    },
+    {
+      "start": 58,
+      "end": 71,
+      "kind": "value",
+      "name": "queryClient",
+      "id": "s6",
+      "hash": "e5b00a3b4c9531c8",
+      "title": "Shared default settings for data fetching",
+      "what": "Creates the shared cache with its defaults: fetch from the address in the key, never refetch on a timer or when the window regains focus, treat data as fresh forever, and do not retry. Changes also do not retry.",
+      "why": "Reason not stated in the code. The defaults look aimed at fewer server calls.",
+      "watch_out": "Data never goes stale, so a page can keep showing old numbers until it is reloaded or the cache is refreshed by hand."
+    }
+  ],
+  "explained_at": "2026-11-12T06:06:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Sets up the shared data cache and the helper that sends requests with the login token.",
+  "purpose": "Lets every page load and change data the same way, including login handling.",
+  "why": "Likely reason: one place for default data behavior. The code gives few stated reasons for its defaults.",
+  "how": "1. Adds the login token to each request. 2. Turns failed responses into errors. 3. Sends the visitor to the login page on a 401 response. 4. Sets cache defaults: data is treated as fresh forever, no automatic refetch, no retries.",
+  "inputs": "Requests from pages, the login token from the login hook, and server responses.",
+  "outputs": "Parsed data for the cache, errors for failed calls, and redirects to the login page.",
+  "risks": "Data never refreshes on its own, so old numbers can stay on screen. A 401 response redirects the page and can interrupt work. Failed requests are never retried, so a brief network drop shows an error.",
+  "debug": "If a page shows old data, check whether it refreshes the cache after saving. If visitors are sent to login unexpectedly, check the login token and the 401 response. If a request fails, read the status and text in the error message.",
+  "summary_hash": "sha256:1e71c76451a9d209f4f7886086cc9aec9b5a4bc9675f79e87a36c401e2c5baa6"
+}

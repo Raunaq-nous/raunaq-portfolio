@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/best-effort-yard-budgets.ts",
+  "language": "TypeScript",
+  "lines": 232,
+  "hash": "sha256:784bced4e4a7e629144a2dabdf571d0b62035d102a1b28c748fef79b003d6655",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible for the conversions or the decisions.",
+      "Every figure is a hand-made judgment written into the code.",
+      "One entry for a Korean plant appears cut off in the copy provided, so its ending could not be checked.",
+      "The script can write to the live database when run with the commit flag. The default is a safe dry run."
+    ]
+  },
+  "terms": [
+    {
+      "term": "US dollar figure",
+      "meaning": "a budget converted to US dollars so projects can be compared across countries."
+    },
+    {
+      "term": "Midpoint, ceiling, floor",
+      "meaning": "ways of turning a range or limit into one figure: the middle, the upper limit, or the lower limit."
+    },
+    {
+      "term": "Transaction",
+      "meaning": "a set of database changes applied together, or not at all if one step fails."
+    },
+    {
+      "term": "Row lock",
+      "meaning": "a hold on one database row so that no other change can alter it while this script works on it."
+    },
+    {
+      "term": "Dry run",
+      "meaning": "a trial run that does everything except keep the changes."
+    },
+    {
+      "term": "Change log",
+      "meaning": "a record of who changed what and when, kept for review."
+    },
+    {
+      "term": "Evidence quote",
+      "meaning": "a passage copied from a source that backs up a figure."
+    }
+  ],
+  "depends_on": [
+    "pg",
+    "node:fs",
+    "node:path",
+    "artifacts/api-server/src/lib/fx",
+    "DATABASE_URL environment setting"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 26,
+      "kind": "setup",
+      "name": "File setup, Field, Method",
+      "id": "s1",
+      "hash": "cfdb2a915579d611",
+      "title": "Purpose, flags and output paths",
+      "what": "Explains why the script exists and what it does: it sets best-estimate US dollar figures for refused budgets, with reasoning. Sets the mode, the fixed date and label, and the names of the output files.",
+      "why": "The header records that the user asked for a best effort, with the caveat and logic for each figure.",
+      "watch_out": "The date and label are fixed in the code, so every change it logs carries the same label."
+    },
+    {
+      "start": 27,
+      "end": 38,
+      "kind": "type",
+      "name": "Decision, COL, APPROX",
+      "id": "s2",
+      "hash": "8ceb8580706044ed",
+      "title": "Shape of one decision",
+      "what": "Defines what one decision holds: the project, the budget field, the method, the amounts and currency, the year, the caveat and the quote to search for.",
+      "why": "Likely reason: a single shape lets every hand-made decision be applied the same way.",
+      "watch_out": "The method names form a fixed list. A new method has to be added in more than one place, including the report labels."
+    },
+    {
+      "start": 39,
+      "end": 95,
+      "kind": "value",
+      "name": "D, pool (part 1)",
+      "id": "s3",
+      "hash": "2ca717d5bb6ac1df",
+      "title": "Hand-written decisions, first group",
+      "what": "Holds the first group of manual decisions, covering dairy, gas power, lithium and mining metals. Each entry gives the figure used, how it was reached, and a caveat.",
+      "why": "Reason not stated in the code beyond the entries and their caveats.",
+      "watch_out": "One entry for a Korean plant appears cut off in the copy provided, so its ending could not be checked."
+    },
+    {
+      "start": 96,
+      "end": 155,
+      "kind": "value",
+      "name": "D, pool (part 2)",
+      "id": "s4",
+      "hash": "5f935ee1aa01d723",
+      "title": "Hand-written decisions, second group",
+      "what": "Holds the second group of manual decisions, covering nuclear, renewables and solar. Several entries are limits rather than spend, and their caveats say so.",
+      "why": "Reason not stated in the code beyond the entries and their caveats.",
+      "watch_out": "Ceiling and floor figures are stored as if they were the budget, so readers must rely on the caveat to know they are limits."
+    },
+    {
+      "start": 156,
+      "end": 159,
+      "kind": "value",
+      "name": "D, pool (part 3)",
+      "id": "s5",
+      "hash": "8e83ca4f4170a77f",
+      "title": "End of list and database connection",
+      "what": "Closes the decision list and opens one database connection for the work.",
+      "why": "Likely reason: the connection is needed before any project row can be locked or changed.",
+      "watch_out": "The connection uses the DATABASE_URL setting, so a missing setting makes this step fail."
+    },
+    {
+      "start": 160,
+      "end": 219,
+      "kind": "value",
+      "name": "report (part 1)",
+      "id": "s6",
+      "hash": "c1dace5c33e57619",
+      "title": "Working out each project's figures",
+      "what": "Locks each affected project and works out its new figures from the decisions. Converts amounts, combines parts where needed, and saves the figure and its reasoning. Updates the value and logs the change only when the figure differs from the stored one. Copies the supporting quote onto the matching field when a quote is found.",
+      "why": "Likely reason: the row lock stops anything else changing the project during this work. The change log keeps a record of the edit.",
+      "watch_out": "If no matching quote is found, the figure is still applied, and the project appears in the no-quote list in the report."
+    },
+    {
+      "start": 220,
+      "end": 232,
+      "kind": "value",
+      "name": "report (part 2)",
+      "id": "s7",
+      "hash": "276a4f7b58660db3",
+      "title": "Saving the backup and the report",
+      "what": "Writes a backup of each project's old values, then commits or rolls back the transaction. Writes a report file and prints one table line per decision and a count of decisions with no matching quote.",
+      "why": "Likely reason: the backup and report let someone review or undo the change.",
+      "watch_out": "The backup is written before the commit. If the commit fails, the backup file stays on disk even though nothing changed."
+    }
+  ],
+  "explained_at": "2026-11-12T02:51:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Sets best-estimate US dollar figures for project budgets that the earlier normalization step could not convert, and records the reasoning next to each figure.",
+  "purpose": "Gives the project pages a usable US dollar budget for projects whose stored figures were refused, with the method and caveat shown beside each one.",
+  "why": "The header says the user asked for a best effort on 2026-10-28, with the caveat and reasoning for each figure. The records are written so the normalization script does not re-read them.",
+  "how": "Holds a hand-written list of decisions, one per project and budget field. For each affected project, locks its row and takes a backup of its current values. Converts each decision to US dollars, combining parts where needed, and saves the figure, its reasoning and its method to the project's attributes. Updates the budget value if it changed, logs the change, and copies the supporting quote onto that field's evidence. Then writes a backup file and commits or rolls back, depending on the flag. Finally writes a report file and prints a table.",
+  "inputs": "The --commit flag, which decides whether to save or roll back. The hand-written decision list. The database, through DATABASE_URL, with the projects, evidence_quotes and change_log tables. The currency conversion function from the shared fx module.",
+  "outputs": "Without the flag, a dry run: changes are rolled back, but a backup file and a report file are still written to the repairs folder. With the flag, the changes are saved. Either way, a console table of decisions and a count of decisions with no matching quote.",
+  "risks": "With the flag, it changes live project budgets, evidence and the change log. The figures are judgment calls. The backup file is written before the commit, so a failed commit can leave a backup with no changes. The decision list is written into the code, so a source correction needs a code edit.",
+  "debug": "If no changes appear, check whether the run was a dry run. If a project is not found, check the project's ID in the list. If a quote is missing, the report says so under no matching quote, so check the evidence on that project. If the conversion fails, the error names the project and field. Compare the backup file with the report to see what changed.",
+  "summary_hash": "sha256:784bced4e4a7e629144a2dabdf571d0b62035d102a1b28c748fef79b003d6655"
+}

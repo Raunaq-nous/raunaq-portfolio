@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/evidence/dateConventions.ts",
+  "language": "TypeScript",
+  "lines": 165,
+  "hash": "sha256:0171ae6fee31c13cc95c3f610023dfd47b9e66ca23ed1cb9a6e2e4d9140d4f39",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only lines 1 to 120 of 165 were in the packet, so the end of setCalculationDate was not reviewed.",
+      "No tests are visible for this file.",
+      "The rollback path depends on the database transaction behaving as expected, which I could not check here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "convention",
+      "meaning": "a stored rule that says which months a wording such as 'early 2016' covers and which month's last day to use."
+    },
+    {
+      "term": "calculation date",
+      "meaning": "the single day the app uses in its numbers for a stated date that may be vague."
+    },
+    {
+      "term": "transaction",
+      "meaning": "a group of database changes that either all succeed or all get undone together."
+    },
+    {
+      "term": "value point",
+      "meaning": "one stated figure from a source, with its date, kept as its own record."
+    },
+    {
+      "term": "vetting",
+      "meaning": "a human check that a value is correct before it is trusted."
+    },
+    {
+      "term": "Yard field",
+      "meaning": "the project's own stored field that the rest of the app displays."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/evidence/dateRules.ts",
+    "artifacts/api-server/src/evidence/metrics.ts",
+    "artifacts/api-server/src/db.ts",
+    "@workspace/db",
+    "drizzle-orm"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup, Exec, MONTH",
+      "id": "s1",
+      "hash": "0b1c74a4d3ec4c88",
+      "title": "Setup, transaction type and month names",
+      "what": "Imports the database tools and the rules module, defines a type that lets the same functions run either directly or inside a transaction, and holds a list of month abbreviations for error messages.",
+      "why": "Likely reason: the same functions need to run inside a larger database change, so they accept either a plain database handle or a transaction handle. Reason for the month list is not stated beyond its use in messages.",
+      "watch_out": "The month list is indexed by month number with an empty first slot, so that empty slot must stay."
+    },
+    {
+      "start": 24,
+      "end": 36,
+      "kind": "function",
+      "name": "loadDateConventions",
+      "id": "s2",
+      "hash": "527b5945b64c10e0",
+      "title": "Loading conventions from the database",
+      "what": "Adds any missing default conventions to the database without overwriting edited ones, then reads all conventions and passes them to the rules module. Returns the active list.",
+      "why": "Keeps the app's active conventions in step with what is stored, so edits made by reviewers take effect.",
+      "watch_out": "Defaults are re-added on every load if a row is missing, so deleting a row brings the default back."
+    },
+    {
+      "start": 37,
+      "end": 40,
+      "kind": "function",
+      "name": "ruleText",
+      "id": "s3",
+      "hash": "064eec7f384e5029",
+      "title": "Building the rule text",
+      "what": "Builds the text stored beside each resolved date, starting with the name of the rule set.",
+      "why": "Records which rule set produced each date so later readers can tell where it came from.",
+      "watch_out": "The re-work step compares this text, so changing the rule set name makes every rule-based value look changed on the next edit."
+    },
+    {
+      "start": 41,
+      "end": 77,
+      "kind": "function",
+      "name": "reresolve, ConventionEditRefused",
+      "id": "s4",
+      "hash": "5bd184c63df9c5a4",
+      "title": "Re-working values after a convention edit",
+      "what": "Recalculates every value that a given convention produced. If the date moved and a Yard field shows that value, the value is flagged for vetting and the field is left alone. If the date can no longer be resolved, the value is marked not current and flagged. The refusal error class for convention edits is defined here too.",
+      "why": "Keeps figures already shown to readers from changing without a human check, as the file header states.",
+      "watch_out": "Reviewer-set dates are excluded from the query, so a convention edit never moves them."
+    },
+    {
+      "start": 78,
+      "end": 115,
+      "kind": "function",
+      "name": "editDateConvention, DateOverrideRefused",
+      "id": "s5",
+      "hash": "115d380b49c5da89",
+      "title": "Editing a convention",
+      "what": "Saves a change to one convention's months or definition inside a transaction, after checking that a reason was given, the months are 1 to 12, and the calculation month sits inside the span. A span that crosses the year end is refused when it has a calculation month. The change is logged, the dependent values are re-worked, and any failure reloads the stored conventions. The override refusal error class is defined here too.",
+      "why": "Stops a bad edit from being saved and makes every change traceable to a reason and a person.",
+      "watch_out": "Clearing the calculation month marks the convention as refused, so its dates stop resolving."
+    },
+    {
+      "start": 116,
+      "end": 142,
+      "kind": "function",
+      "name": "setCalculationDate",
+      "id": "s6",
+      "hash": "89e8845b153fb800",
+      "title": "Setting a reviewer's calculation date",
+      "what": "Lets a reviewer set the date used in calculations for one stated date, such as a range. The visible start checks for a note and that the date is a real calendar day in YYYY-MM-DD form. The rest of the function was not in the packet.",
+      "why": "Lets a reviewer correct a vague date while the rule-derived date is kept, as the file header describes.",
+      "watch_out": "Clearing the override should restore the rule-derived date. That behaviour was not visible in the packet, so I could not confirm it."
+    },
+    {
+      "start": 143,
+      "end": 162,
+      "kind": "function",
+      "name": "clearCalculationDate",
+      "id": "s7",
+      "hash": "2c5a58a2299e9080",
+      "title": "Undoing a reviewer's calculation date",
+      "what": "Removes a reviewer-chosen date and puts back the date the convention rules give. It also restores the earlier vetting state and conflict note.",
+      "why": "Likely reason: a reviewer may change their mind, so the rule-based date must always be recoverable.",
+      "watch_out": "If the rules still cannot resolve the stated text, the value is switched off as current and marked for vetting."
+    },
+    {
+      "start": 163,
+      "end": 165,
+      "kind": "function",
+      "name": "conventionHistory",
+      "id": "s8",
+      "hash": "2b5abdc42e7dc934",
+      "title": "Recent convention history",
+      "what": "Returns the latest 200 recorded changes to the date conventions, newest first, so someone can see who changed what and why.",
+      "why": "Likely reason: the history supports review and audit of changes made in editDateConvention.",
+      "watch_out": "The list is capped at 200, so older changes are not returned."
+    }
+  ],
+  "explained_at": "2026-11-12T03:31:30+00:00",
+  "explained_by": "haiku",
+  "summary": "Stores the date conventions in the database, lets a reviewer edit them with a recorded reason, and re-works the saved dates that depend on an edited convention.",
+  "purpose": "Turns vague date wording such as 'early 2016' into a usable calculation date, and keeps that mapping as editable data rather than fixed code.",
+  "why": "The file header says an edit re-works every value whose date came from that convention, except dates a reviewer set by hand. It also says a figure shown in a Yard field only changes when a vetted value is promoted, so a convention edit flags the mismatch instead of overwriting the field.",
+  "how": "1. On load, add any missing default conventions to the database without overwriting edited ones, then read them all and hand them to the rules module. 2. On an edit, check that a note was given, the months are valid, and the calculation month falls inside the span. 3. Save the change, reload, re-work the dependent values, and write a history row. Any error rolls the save back and reloads the stored conventions. 4. A reviewer can set the calculation date for one stated date, with a note and a real calendar day.",
+  "inputs": "For an edit: the convention key, new span and calculation months, an optional new definition, a required written reason, and the name of the person making the change. For a date override: the value point id, the date as YYYY-MM-DD, and a required note.",
+  "outputs": "Updated convention rows, a history row in the convention change table, counts of values re-worked and values flagged for vetting, and the active convention list held in memory. A date override changes the calculation date of one value point.",
+  "risks": "One convention edit can move many dates at once. Flagged values stay unresolved until someone vets them. A wrong span can shift many figures without an obvious error. Edits to the rule set name also affect how changes are detected.",
+  "debug": "Check the date convention table for the stored values and the convention change table for the history. If a date did not move, check whether it was set by a reviewer, since those are skipped by design. If an edit is refused, read the message, which names the rule broken. If the app shows old conventions, check that the load step ran and that the active list was replaced.",
+  "summary_hash": "sha256:0171ae6fee31c13cc95c3f610023dfd47b9e66ca23ed1cb9a6e2e4d9140d4f39"
+}

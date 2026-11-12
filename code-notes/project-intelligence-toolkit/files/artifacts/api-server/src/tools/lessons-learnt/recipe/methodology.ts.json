@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/recipe/methodology.ts",
+  "language": "TypeScript",
+  "lines": 192,
+  "hash": "sha256:261b9a97d2dedc2740e75d3d11446747b37ebfffb8e27ac5e255b365a7b48cdf",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Each channel's failures are caught and logged, and an error is raised when nothing is captured.",
+      "Depends on several outside services, and no test for the network parts was shown.",
+      "The step that pulls benchmarks and checks quotes, extractMethodItems, is not in the packet, so it could not be confirmed."
+    ]
+  },
+  "terms": [
+    {
+      "term": "scholarly",
+      "meaning": "academic research papers and their abstracts."
+    },
+    {
+      "term": "OpenAlex",
+      "meaning": "a free online index of academic works, used here to search for papers."
+    },
+    {
+      "term": "tier",
+      "meaning": "a trust rank given by the source policy. This file does not say which end of the scale is strongest."
+    },
+    {
+      "term": "register",
+      "meaning": "a short, hand-picked list of public documents that every run starts from."
+    },
+    {
+      "term": "provider health",
+      "meaning": "a check of whether each search service is currently working."
+    },
+    {
+      "term": "user agent",
+      "meaning": "the name a program sends when it fetches a web page, so the site can see who is asking."
+    }
+  ],
+  "depends_on": [
+    "../../../lib/portkeyOpenAI",
+    "../../../lib/modelConfig",
+    "../../../lib/searchProviderLiveCheck",
+    "../../../search/createRouter",
+    "../../research-contract/verifyFacts",
+    "../../research-contract/sourcePolicy",
+    "./text",
+    "./types"
+  ],
+  "used_by": [
+    "Not visible in the packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "633f2d3bb448bd83",
+      "title": "Purpose, sources and imports",
+      "what": "Describes the research step and its three channels in order of preference: web search, scholarly works, and a curated register. Loads the tools it needs for search, page capture, source policy and parsing.",
+      "why": "The header says every extracted item must quote its captured source verbatim, which is why sources are captured as text.",
+      "watch_out": "Items whose quote is not on the captured page are rejected, so changes to how pages are captured can reduce the number of items kept."
+    },
+    {
+      "start": 24,
+      "end": 37,
+      "kind": "value",
+      "name": "REGISTER",
+      "id": "s2",
+      "hash": "01846b73c6638112",
+      "title": "Built-in list of public documents",
+      "what": "A hand-picked list of public methodology documents, some used by every run and some by one industry, such as nuclear or gas power. The run fetches these directly.",
+      "why": "Likely reason: gives every run trusted starting points even when search services are weak or down.",
+      "watch_out": "Each link is fixed in the code, so a moved or removed page fails to capture and the run carries on with fewer sources."
+    },
+    {
+      "start": 38,
+      "end": 43,
+      "kind": "function",
+      "name": "getJson",
+      "id": "s3",
+      "hash": "4a58622b7039a1a1",
+      "title": "Fetching data from a web address",
+      "what": "Asks a web address for structured data and returns the parsed result. Gives up after 20 seconds and fails on any error status.",
+      "why": "Likely reason: the scholarly search returns structured data, and the time limit stops one slow service from holding up the whole run.",
+      "watch_out": "The error carries only the status number, which makes the cause harder to read in logs."
+    },
+    {
+      "start": 44,
+      "end": 52,
+      "kind": "function",
+      "name": "abstractFrom, sid",
+      "id": "s4",
+      "hash": "475d0f0f8b46232d",
+      "title": "Rebuilding abstracts and naming sources",
+      "what": "Turns OpenAlex's word-position index back into a readable abstract. Gives each source a short id made by hashing its address, so the same address always gets the same id.",
+      "why": "Likely reason: OpenAlex stores abstracts as word positions, and a stable id lets the same source be matched again later.",
+      "watch_out": "Changing how the id is built would change every stored source id and break links to earlier runs."
+    },
+    {
+      "start": 53,
+      "end": 62,
+      "kind": "function",
+      "name": "methodQueries",
+      "id": "s5",
+      "hash": "4eb97bd10f5500b4",
+      "title": "Building search phrases for each industry",
+      "what": "Creates two search phrases per industry, one on cost overrun and schedule delay and one on delivery success factors, plus one general planning phrase about cost forecasting.",
+      "why": "Likely reason: the phrases target the two questions the lessons need answered, why projects overrun and what makes them succeed.",
+      "watch_out": "The phrases are sent to outside search services, so changing an industry label changes what gets searched."
+    },
+    {
+      "start": 63,
+      "end": 107,
+      "kind": "function",
+      "name": "researchMethodology (part 1)",
+      "id": "s6",
+      "hash": "1ea265edb1160309",
+      "title": "Searching web, scholarly works and the register",
+      "what": "Checks which web search providers are working, runs each search phrase through them, and takes up to four abstracts of at least 400 characters per phrase from OpenAlex. Adds the register links, logging each search's result count.",
+      "why": "Likely reason: several channels are used so one failing service does not leave the run with nothing.",
+      "watch_out": "Abstracts shorter than 400 characters are skipped without any message, which can drop brief but useful papers."
+    },
+    {
+      "start": 108,
+      "end": 128,
+      "kind": "function",
+      "name": "researchMethodology (part 2)",
+      "id": "s7",
+      "hash": "fc3acd6d08984d20",
+      "title": "Tiering sources and fetching their text",
+      "what": "Gives each source a trust tier and marks any that the policy excludes, such as wikis and encyclopedias, so they are never fetched. Fetches the rest, up to six at a time, and keeps up to 60,000 characters of text from each. Fails if nothing was captured.",
+      "why": "The comments say encyclopedias, wikis and low-tier journals are never used, so the policy is applied before any fetching happens.",
+      "watch_out": "Only sources not excluded by the policy are fetched, so tightening the policy also shrinks the evidence available to later steps."
+    },
+    {
+      "start": 129,
+      "end": 140,
+      "kind": "function",
+      "name": "windowFor",
+      "id": "s8",
+      "hash": "da0819f56c8ce3cf",
+      "title": "Picking the relevant part of a long text",
+      "what": "When a document is longer than 5,000 characters, slides a window across it and keeps the part with the most words about overruns, delays, risk, contracts and similar topics.",
+      "why": "Likely reason: the extractor reads a limited amount of text, so the most relevant section is passed to it.",
+      "watch_out": "Only the section with the most matching keywords is kept, so a relevant passage without those words can be missed."
+    },
+    {
+      "start": 141,
+      "end": 155,
+      "kind": "value",
+      "name": "SECTOR_TERMS",
+      "id": "s9",
+      "hash": "1a59b26ce48a121b",
+      "title": "Sector words that signal another industry",
+      "what": "A list of words such as nuclear, rail, dam, Olympic and defence, each linked to the industries where it is allowed. A sentence that uses one of these words for an industry not in the run is dropped.",
+      "why": "The header says an LNG deck must not carry nuclear overrun statistics or Olympic examples, so this list keeps off-topic examples out.",
+      "watch_out": "Common words such as road, dam or reactor can match text about unrelated topics, so a valid sentence can be dropped by mistake."
+    },
+    {
+      "start": 156,
+      "end": 163,
+      "kind": "function",
+      "name": "offSectorTerm",
+      "id": "s10",
+      "hash": "ced170c3495e1f27",
+      "title": "Finding an off-sector word in text",
+      "what": "Checks a sentence against the sector list and returns the first off-sector word it finds, or nothing if the sentence fits this run.",
+      "why": "Likely reason: used to decide whether a benchmark sentence should be dropped, and the test file checks this function directly.",
+      "watch_out": "Only the first matching word in list order is returned, so the reported word may not be the most important one in the sentence."
+    },
+    {
+      "start": 164,
+      "end": 192,
+      "kind": "function",
+      "name": "extractMethodItems",
+      "id": "s11",
+      "hash": "69b7a1a169084dda",
+      "title": "Extracting quoted methodology evidence",
+      "what": "Sends up to 24 of the most trusted captured source pages to a language model and asks it for methodology items: benchmarks, assessment frameworks and delivery practices. It keeps only items whose quote appears word for word on the source page and whose kind is benchmark, framework or practice. It also drops items about other sectors and keeps the summary statements that cite kept items.",
+      "why": "Likely reason: the quote check stops the model from inventing evidence, so every kept item can be traced to a real page. Reason for the sector filter not stated in the code beyond its name.",
+      "watch_out": "Only the 24 highest-trust sources reach the model, so a useful source ranked lower is silently ignored."
+    }
+  ],
+  "explained_at": "2026-11-12T04:40:51+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the methodology research step: finds sources through web search, scholarly works and a short curated list, captures their text, and tags each one with a trust tier and any excluded status.",
+  "purpose": "Gather trustworthy sources on how large projects are delivered, so later steps can pull benchmarks from them. The code for pulling out the benchmarks is not in the packet.",
+  "why": "The header says every extracted benchmark must quote its captured source verbatim, and wikis and encyclopedias are excluded. Reasons for the choice of specific register links are not stated.",
+  "how": "1. Build search phrases for each industry and one general planning phrase. 2. Check which web search providers are healthy. 3. If any are healthy, run web searches. 4. Search OpenAlex for scholarly abstracts of at least 400 characters. 5. Add the curated register links. 6. Tier every source and mark excluded ones. 7. Fetch the remaining sources, six at a time, and store up to 60,000 characters of text from each. 8. Fail if nothing was captured.",
+  "inputs": "A list of industry names, a map of readable labels for each industry, and a progress logger.",
+  "outputs": "A log of each search, the sources with their status, text and tier, the provider health results, and notes on anything that limited the research.",
+  "risks": "Relies on outside services such as search providers, OpenAlex and public websites, whose results and timing change. Pages that cannot be fetched are kept as not captured. Source text is capped, so later parts of long documents are not available.",
+  "debug": "If the run fails with no sources captured, read the trace lines for each channel. If web search is missing, check the provider health results and the qualification note. If OpenAlex fails, look for its warning in the trace. If a source is excluded unexpectedly, check its tier in the source policy.",
+  "summary_hash": "sha256:261b9a97d2dedc2740e75d3d11446747b37ebfffb8e27ac5e255b365a7b48cdf"
+}

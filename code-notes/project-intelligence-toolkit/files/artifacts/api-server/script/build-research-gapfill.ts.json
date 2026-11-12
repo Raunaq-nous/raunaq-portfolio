@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/build-research-gapfill.ts",
+  "language": "TypeScript",
+  "lines": 151,
+  "hash": "sha256:2f6dde737f157ab54a9e60191967429efde3478b1c787a38b61d26fba184a58c",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or sample output are visible.",
+      "Clears the output folder on every run.",
+      "Loads all projects of an industry into memory at once.",
+      "Currency is assumed to be USD when not recorded."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Post-FID",
+      "meaning": "After final investment decision, meaning the owners have committed the money to build."
+    },
+    {
+      "term": "Scan-ready",
+      "meaning": "Holding enough sourced cost and schedule facts for the Reality Scan check to run."
+    },
+    {
+      "term": "Tier",
+      "meaning": "A grade from one to four showing how much research a project needs, with one the least."
+    },
+    {
+      "term": "Outturn",
+      "meaning": "The final actual cost of a finished project."
+    },
+    {
+      "term": "Evidence path",
+      "meaning": "The stored label that says which kind of fact an evidence quote supports."
+    },
+    {
+      "term": "Live industry",
+      "meaning": "An industry marked as active in the industry list, so it is included in the run."
+    }
+  ],
+  "depends_on": [
+    "src/shared/industries",
+    "src/storage",
+    "src/scan/scanFields",
+    "node:fs",
+    "node:path"
+  ],
+  "used_by": [
+    "docs/research-prompts/gap-fill/worklists (JSON files read by researchers)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 22,
+      "kind": "setup",
+      "name": "File setup, FIELD",
+      "id": "s1",
+      "hash": "6d9d7632e13f1fb7",
+      "title": "Purpose, imports and field lookup",
+      "what": "The header explains that research is spent only where it can make a project ready for Reality Scan. The code sets the output folder, the batch size of 12, and a lookup that returns a scan field definition by name and stops the script if the name is missing.",
+      "why": "The header states the goal. The lookup keeps the field names used here in step with the scan's own field list.",
+      "watch_out": "If a scan field is renamed, the lookup fails and the script stops, so the rename must be checked here as well."
+    },
+    {
+      "start": 23,
+      "end": 30,
+      "kind": "function",
+      "name": "field, year, Need",
+      "id": "s2",
+      "hash": "071aaf67775cad6c",
+      "title": "Stage groups and year reader",
+      "what": "Defines the stage patterns for finished projects and for unfinished post-FID projects. It also defines a helper that reads the first four-digit year from a date-like value, and the shape of a research need.",
+      "why": "The header says only post-FID projects can have a sanctioned budget, an outturn and a delay. The year helper gives the completion year used to exclude very old projects.",
+      "watch_out": "The finished pattern matches RAMP or FIRST PRODUCTION anywhere in the stage text, while the unfinished pattern must match the whole stage, so the two are not checked the same way."
+    },
+    {
+      "start": 31,
+      "end": 37,
+      "kind": "type",
+      "name": "Item",
+      "id": "s3",
+      "hash": "676753b144616cfa",
+      "title": "Shape of one worklist entry",
+      "what": "Defines the record for one project in a worklist: its id, name, industry, segment, country, technology, capacity, stage, what Yard already holds, its needs and its tier.",
+      "why": "A fixed shape lets researchers and the importer read every worklist the same way.",
+      "watch_out": "The tier is limited to the numbers one to four, so any new tier needs this definition and the tier names to change together."
+    },
+    {
+      "start": 38,
+      "end": 96,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s4",
+      "hash": "65efd8d2c6d27787",
+      "title": "Scanning each live industry for gaps",
+      "what": "Loops over every live industry and reads all its projects and active evidence. For each project it decides whether the stage is finished or unfinished, checks which of the planned budget, actual cost and delay are present and sourced, adds the missing or unsourced items as needs, and assigns a tier. It counts the projects it leaves out and the reason for each.",
+      "why": "The header says research only where it helps. Tiers order the work so projects that need the least research come first.",
+      "watch_out": "The 2006 cutoff for completed projects with no values is written directly in the code, so changing that rule means editing this line and the matching index text."
+    },
+    {
+      "start": 97,
+      "end": 151,
+      "kind": "function",
+      "name": "main (part 2)",
+      "id": "s5",
+      "hash": "96307e5e02e8991e",
+      "title": "Writing worklist files and index",
+      "what": "Clears the worklists folder, groups projects by tier and industry, and splits each group into files of 12 projects sorted by name. It writes each JSON file, writes INDEX.md with a tier table, file list and excluded reasons, then prints a summary line and exits.",
+      "why": "The tiers set the order of work and the index tells the team where to start.",
+      "watch_out": "Batches are formed from projects sorted by name, so adding or removing a project shifts the contents of every later batch in that group."
+    }
+  ],
+  "explained_at": "2026-11-12T02:54:43+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds research worklists that list only the cost and schedule fields still missing or unsourced for each post-FID project, grouped into four tiers from least to most research needed.",
+  "purpose": "Spends research only on fields that would make a project ready for the Reality Scan check. Projects that research cannot help are listed separately with the reason.",
+  "why": "The header says research should be spent only where it can make a project scan-ready. The tiers put the cheapest work first.",
+  "how": "Loops over each live industry and reads all its projects and their active evidence. For each project it checks the planned budget, final or latest cost, and delay, and whether each has a source. It leaves out projects that are not post-FID or are old with no values, and counts them by reason. It assigns each remaining project a tier from one to four by how many of the three items are missing. It then deletes and rebuilds the worklists folder, writes JSON files in batches of 12 by tier and industry, writes an INDEX.md summary, and prints a count line.",
+  "inputs": "Live industry list and the storage layer that reads projects and active evidence. Scan field definitions from scanFields, which give field names and evidence paths.",
+  "outputs": "JSON worklists in docs/research-prompts/gap-fill/worklists, and docs/research-prompts/gap-fill/INDEX.md with the tier table, file list and excluded reasons.",
+  "risks": "The whole worklists folder is cleared on each run. The script stops if a project read is incomplete. A missing currency is treated as US dollars, although the worklist text says so. The 2006 cutoff for completed projects is written directly in the code.",
+  "debug": "Read INDEX.md for tier counts and excluded reasons. If a project appears in the wrong tier, check its stage and its evidence field paths against the scan field definitions. If counts are zero, check the live industry list and the stage patterns.",
+  "summary_hash": "sha256:2f6dde737f157ab54a9e60191967429efde3478b1c787a38b61d26fba184a58c"
+}

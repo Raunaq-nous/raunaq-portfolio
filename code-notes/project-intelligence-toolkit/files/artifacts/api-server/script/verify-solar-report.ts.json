@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/verify-solar-report.ts",
+  "language": "TypeScript",
+  "lines": 88,
+  "hash": "sha256:28c574487c1feaeeb601bb7cc7070e2093ddbd49a6c17a94a2b9d463cbc82799",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Hard-coded counts and project identifiers will break on legitimate change",
+      "Some values written to the output file are constants rather than measured results",
+      "Depends on a live server and database",
+      "Has a clear error when the secret is missing"
+    ]
+  },
+  "terms": [
+    {
+      "term": "protected project",
+      "meaning": "an existing project that the import must not change"
+    },
+    {
+      "term": "rerun",
+      "meaning": "a second run of the same import, which should change nothing"
+    },
+    {
+      "term": "canonical form",
+      "meaning": "a standard text form used to compare two records fairly"
+    },
+    {
+      "term": "MW",
+      "meaning": "megawatts, a measure of power capacity"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/db",
+    "@workspace/db",
+    "artifacts/api-server/src/lib/canonicalize",
+    "artifacts/api-server/src/ingest/solarReport/manifest",
+    "artifacts/capital-projects/src/lib/projectDisplay",
+    "jsonwebtoken",
+    "drizzle-orm"
+  ],
+  "used_by": [
+    "Not visible in the packet; appears to be a manual check run after the solar import"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d1226fe2cfb535bd",
+      "title": "Loads saved results and protects other projects",
+      "what": "Loads the committed and rerun import files, checks the rerun made no changes, and compares protected projects and changed fields against their saved states. It also makes a short-lived admin token and sets the server address.",
+      "why": "Ensures the import did not disturb records it should leave alone.",
+      "watch_out": "The rerun summary numbers are fixed, so they must be updated for each new import."
+    },
+    {
+      "start": 31,
+      "end": 43,
+      "kind": "function",
+      "name": "get",
+      "id": "s2",
+      "hash": "11347874897e7f13",
+      "title": "Small request helper",
+      "what": "Calls the live API with the admin token and requires a 200 response.",
+      "why": "Keeps every live check short and makes any failed call stop the run.",
+      "watch_out": "A single non-200 response stops the whole script."
+    },
+    {
+      "start": 44,
+      "end": 81,
+      "kind": "value",
+      "name": "detailChecks",
+      "id": "s3",
+      "hash": "2b184c771a3d58c1",
+      "title": "Live list, dashboard and per-project checks",
+      "what": "Checks the solar list has 21 projects and excludes the offshore project. Checks the dashboard total and project count match the database. For each imported project, checks its provenance, capacity and evidence fields, and that each evidence row matches the report. Checks the evidence rows in the database and the offshore project's country and capacity.",
+      "why": "Confirms the live site shows the same results the database and report contain, and that no evidence is attached to the wrong fact.",
+      "watch_out": "These checks depend on the report manifest. If the manifest changes, the expected evidence sets change too."
+    },
+    {
+      "start": 82,
+      "end": 88,
+      "kind": "value",
+      "name": "output",
+      "id": "s4",
+      "hash": "1fe6c9a4a0b205c5",
+      "title": "Summary output",
+      "what": "Builds a summary of the checks and writes it to verification.json, then prints it and exits.",
+      "why": "Gives a saved record of what was checked.",
+      "watch_out": "Some values written here are constants, such as the count of existing fields that were unchanged and the count of live excerpts checked, so they do not prove anything on their own."
+    }
+  ],
+  "explained_at": "2026-11-12T03:17:48+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that the solar report import saved correctly, left protected projects alone, and shows the right solar figures on the live API.",
+  "purpose": "Confirms the solar import is correct, repeatable, and does not disturb other projects.",
+  "why": "Likely reason: the import touches shared records, so the script checks both the new rows and the protected ones. Reason not further stated in the code.",
+  "how": "Loads the committed import and rerun summaries and checks the rerun made no changes. Compares protected projects and changed fields with their saved state. Then calls the live API for the solar list, the home dashboard and each imported project, checking evidence, provenance and that insert rows have no likelihood or budget. Finally checks the evidence rows in the database and a specific offshore project, then writes a verification file.",
+  "inputs": "Saved committed.json and rerun-commit.json files from the solar data folder. Database access. The REPLIT_DEV_DOMAIN address. A JWT_SECRET or SESSION_SECRET environment variable.",
+  "outputs": "A verification.json file in the solar data folder and the summary printed to the console.",
+  "risks": "Several values are fixed in code, such as 21 projects, 8248 MW and a specific offshore project. The output section writes some constants, such as existingScalarsUnchanged 2 and liveCheckedExcerpts 1, that this section does not compute. The dashboard total mixes reported bases, and the reason is not stated in the code.",
+  "debug": "If the rerun summary check fails, the rerun was not clean. If the API check fails, the message gives the path and status. If the MW total fails, compare the dashboard value with the sum of reported MW.",
+  "summary_hash": "sha256:28c574487c1feaeeb601bb7cc7070e2093ddbd49a6c17a94a2b9d463cbc82799"
+}

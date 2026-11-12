@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/build-gapfill-cohorts.ts",
+  "language": "TypeScript",
+  "lines": 64,
+  "hash": "sha256:ddd83a7628a769eacd75c5fb7028ea41cc9b7802ce5bd9f1b1b951d466dbd03f",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or sample output are visible.",
+      "A missing exclusion file is silently treated as an empty list.",
+      "Database connection is not closed if an error happens partway through.",
+      "Regular expression for eligible stages matches only the start of the stage text, so new stage names may be included without review."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Cohort",
+      "meaning": "A chosen group of projects for one research task, listed in priority order."
+    },
+    {
+      "term": "Gap-fill",
+      "meaning": "Research done to find facts that are missing from the database."
+    },
+    {
+      "term": "Post-FID",
+      "meaning": "After final investment decision, meaning the owners have committed the money to build."
+    },
+    {
+      "term": "Lifecycle stage",
+      "meaning": "The project's current phase, such as operating, under construction or cancelled."
+    },
+    {
+      "term": "Yard",
+      "meaning": "The internal name for the main project database and its record ids, as used in this code."
+    },
+    {
+      "term": "Evidence quote",
+      "meaning": "A sentence taken from a source that supports a fact in the database."
+    }
+  ],
+  "depends_on": [
+    "pg (PostgreSQL client library)",
+    "node:fs",
+    "node:path",
+    "docs/research-prompts/lng-demo/cohort.txt",
+    "projects and evidence_quotes database tables"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f368be134c29a011",
+      "title": "Header rules and eligible stages",
+      "what": "The header explains what the script does and which industries it leaves out. Below it, the code loads the database library and sets a pattern that lists the lifecycle stages counted as eligible.",
+      "why": "The header records the selection rules so a reader can judge the output without reading the logic. The stage pattern is the gate that decides which projects can have a cost or schedule outcome.",
+      "watch_out": "The stage pattern is matched from the start of the stage text and ignores case, so any new stage name that begins with a listed word is included without anyone deciding so."
+    },
+    {
+      "start": 24,
+      "end": 28,
+      "kind": "function",
+      "name": "read",
+      "id": "s2",
+      "hash": "806d39a879c16ada",
+      "title": "Id-file reader and nuclear reference list",
+      "what": "A small helper reads a text file of project ids, one per line, ignoring comment lines and keeping only the first word of each line. It returns an empty list if the file does not exist. Below it, a fixed list of eight named nuclear reference projects is defined.",
+      "why": "Reading id files lets one research list be excluded from another. The named nuclear list drives the ranking, so those projects are checked first.",
+      "watch_out": "A missing id file produces an empty list with no warning, so an exclusion can silently do nothing. The nuclear names must match database names exactly, so a renamed project quietly loses its top ranking."
+    },
+    {
+      "start": 29,
+      "end": 39,
+      "kind": "value",
+      "name": "PACKS",
+      "id": "s3",
+      "hash": "4e0d5246b3534013",
+      "title": "Eight industry packs to build",
+      "what": "Defines the eight industry packs, each with an industry name, output folder name, readable title and optional extra rules. Nuclear puts the reference projects first, LNG excludes the demo cohort, and renewables skips offshore wind. The other packs use no extra rules.",
+      "why": "Each pack gets its own folder so each research team sees only its own list. The extra rules apply the exclusions described in the header.",
+      "watch_out": "The renewables rule is a raw database query fragment inserted into the query text, so it must stay a fixed string. Changing a folder name also changes where researchers find the file."
+    },
+    {
+      "start": 40,
+      "end": 64,
+      "kind": "value",
+      "name": "pool",
+      "id": "s4",
+      "hash": "10b2eb9076f429b4",
+      "title": "Query, rank and write each pack",
+      "what": "Connects to the database and runs one query per pack. For each project it works out the most recent year among its start, completion and updated completion dates, keeps only eligible stages dated 2000 or later (or undated), and sorts the list. It then writes cohort.txt with a header and one line per project, and prints the kept and total counts.",
+      "why": "The header states the rules: finished or post-FID projects dated 2000 or later, in priority order. The sort puts the most valuable projects first so worklist 01 is the most useful.",
+      "watch_out": "The database connection closes only after every pack is processed, so an error partway through leaves some files updated and others not."
+    }
+  ],
+  "explained_at": "2026-11-12T02:54:43+00:00",
+  "explained_by": "haiku",
+  "summary": "Writes a priority-ordered list of projects for each industry's gap-fill research pack, using the database read-only.",
+  "purpose": "Produces one cohort.txt file per industry pack under docs/research-prompts, so researchers work on the most valuable projects first. It also leaves out industries that other research tasks already cover.",
+  "why": "The header says research effort should go to projects that can have a cost or schedule outcome, ranked by value. It states that gas-power, power grid, metro, the LNG demo cohort and offshore wind are excluded because other tasks own them.",
+  "how": "Connects to the database using DATABASE_URL. For each industry pack it loads matching projects and their count of active evidence quotes, works out a single year per project, keeps only finished or post-FID projects dated 2000 or later (or undated), and sorts them: named reference projects first, then larger planned budget, then more evidence, then name. It writes cohort.txt with a header line giving the count and date, one line per project, and prints a count line per pack.",
+  "inputs": "The DATABASE_URL environment setting. The projects and evidence_quotes tables. The LNG demo cohort file at docs/research-prompts/lng-demo/cohort.txt, used as an exclusion list.",
+  "outputs": "A cohort.txt file in docs/research-prompts for each of the eight packs: nuclear, lng-wider, renewables-other, lithium-mining, oil-gas, mining-metals, real-estate and dairy. A console line per pack showing kept and total project counts.",
+  "risks": "If the LNG demo cohort file is missing, the exclusion list is empty and no error is shown, so demo projects can appear twice. The database connection is closed only after all packs finish, so a failure partway through leaves some files updated and others not. The nuclear reference list matches exact project names, so a renamed project silently loses its top ranking.",
+  "debug": "Check that DATABASE_URL is set and the database is reachable. Compare the printed kept and total counts with expectations. Confirm that the LNG demo cohort file exists and lists the expected ids. If a project is missing from a cohort, check its lifecycle_stage value and its construction, completion and updated completion dates.",
+  "summary_hash": "sha256:ddd83a7628a769eacd75c5fb7028ea41cc9b7802ce5bd9f1b1b951d466dbd03f"
+}

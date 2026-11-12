@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/scan/scanFields.ts",
+  "language": "TypeScript",
+  "lines": 93,
+  "hash": "sha256:52b2634021586c38bf0154675a78041e1ebcd44d8aad629c799c243316e87125",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet.",
+      "The evidence helper pickEvidence is not in the packet, so the link between labels and evidence is not verified here.",
+      "Region always returns null, which may be intended or may be a gap."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Descriptor",
+      "meaning": "a short written description of one field: its name, group, reader, and evidence labels"
+    },
+    {
+      "term": "Evidence label",
+      "meaning": "the name stored with an evidence row that says which field the quote supports"
+    },
+    {
+      "term": "Attributes",
+      "meaning": "a flexible extra-details field stored with each project"
+    },
+    {
+      "term": "Locator",
+      "meaning": "a pointer to where in a source a quote appears"
+    },
+    {
+      "term": "Non-null assertion",
+      "meaning": "a shortcut that tells the code a value is never missing, without checking it"
+    }
+  ],
+  "depends_on": [
+    "@workspace/db",
+    "../mappers/toProjectDetailDTO",
+    "./budgetUnits"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/scan/scanData.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup, ScanGroup",
+      "id": "s1",
+      "hash": "a4af39303325fc28",
+      "title": "Imports and shared-source rules",
+      "what": "Brings in the project and evidence types, the label normalizer, and the budget converter. It also defines the group names used to categorize fields.",
+      "why": "Likely reason: the header states that this file is the single source for field definitions.",
+      "watch_out": "Renaming a group changes any code that sorts fields by group, so that code must be updated too."
+    },
+    {
+      "start": 14,
+      "end": 22,
+      "kind": "type",
+      "name": "ScanFieldDescriptor",
+      "id": "s2",
+      "hash": "fa1301ded4930b6c",
+      "title": "Shape of one field definition",
+      "what": "Defines what each field entry must hold: a key, a group, a way to read its value, and the evidence labels that can back it.",
+      "why": "Likely reason: a fixed shape keeps every field entry consistent.",
+      "watch_out": "Evidence labels must match the exact labels stored with evidence rows, or the field silently has no sources."
+    },
+    {
+      "start": 23,
+      "end": 35,
+      "kind": "function",
+      "name": "attrStr",
+      "id": "s3",
+      "hash": "1f1624b1f4047c66",
+      "title": "Reads text from attributes safely",
+      "what": "Reads the first non-empty text value found under the given keys in the project's attributes data, trims spaces, and returns null if none exist.",
+      "why": "Likely reason: location and site type are not regular columns, so they are read from the flexible attributes field.",
+      "watch_out": "Only the first matching key is used, so the order of keys decides which value wins."
+    },
+    {
+      "start": 36,
+      "end": 61,
+      "kind": "value",
+      "name": "SCAN_FIELDS",
+      "id": "s4",
+      "hash": "766393c354c34ef1",
+      "title": "The full list of scan fields",
+      "what": "Lists every field the scan reads, grouped as cost, schedule, capacity, or top-level, with how each value is read and which evidence labels back it.",
+      "why": "Likely reason: one list keeps the readers and evidence links in one place.",
+      "watch_out": "Region always returns null, so the scan never shows a region value taken from the project."
+    },
+    {
+      "start": 62,
+      "end": 65,
+      "kind": "function",
+      "name": "scanFieldValueEmpty",
+      "id": "s5",
+      "hash": "f0645abd732c82c1",
+      "title": "Checks if a value is missing",
+      "what": "Says whether a value counts as missing: null, undefined, or empty text.",
+      "why": "Likely reason: the field builder uses this to decide when a field is empty.",
+      "watch_out": "Zero counts as a real value, so a stored zero is kept rather than hidden."
+    },
+    {
+      "start": 66,
+      "end": 74,
+      "kind": "function",
+      "name": "toLocator",
+      "id": "s6",
+      "hash": "e05335f857c4d989",
+      "title": "Converts stored source keys to a locator",
+      "what": "Accepts stored source keys and returns a locator only when they contain a type text. Anything else becomes null.",
+      "why": "Likely reason: matches how the project detail view reads locators, so both views agree.",
+      "watch_out": "Source keys without a type text are dropped silently, so a quote can appear with no locator."
+    },
+    {
+      "start": 75,
+      "end": 93,
+      "kind": "function",
+      "name": "pickEvidence",
+      "id": "s7",
+      "hash": "649b68c047020ce4",
+      "title": "Choosing the best supporting evidence row",
+      "what": "Picks one piece of supporting evidence for a single data field from a project's evidence list. It ignores inactive rows, prefers rows that have a web link, then the newest dated row, then a fixed id order so the answer does not change between runs. If nothing matches, it returns nothing.",
+      "why": "Likely reason: the tie-break rules make sure the same data gives the same evidence on every run, as the comment above the function states.",
+      "watch_out": "The newest-date rule compares dates as plain text, so a date written in a different format could sort in the wrong order."
+    }
+  ],
+  "explained_at": "2026-11-12T04:12:18+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the single list of fields the Benchmark Scan needs, with how each value is read and which evidence labels back it.",
+  "purpose": "Defines the field list once, so the scan data builder and the scan readiness check read the same fields in the same way.",
+  "why": "The file header says this keeps both users identical. Likely reason: it prevents two copies from drifting apart.",
+  "how": "It defines group names and the shape of a field entry. It includes a helper that reads text from the attributes data. The main list gives each field a key, a group, a reader, and its evidence labels. Small helpers check whether a value is empty and convert stored source keys into a locator. The helper that picks evidence is not included in this packet.",
+  "inputs": "A project record with its columns and variance data, its attributes data, and evidence rows with their labels.",
+  "outputs": "A list of field descriptions, plus helper results: an empty check, a locator, and text read from attributes.",
+  "risks": "Region is always read as null, so no region value ever comes from the project. Budget fields change units by industry, so a wrong industry name shifts every budget. Reason fields fall back from cost to schedule notes.",
+  "debug": "If a field is always empty, check its reader and its evidence label list. If budgets look off by a factor of one million, check the industry name passed to the budget conversion. If a locator is missing, check that the stored source keys contain a type text.",
+  "summary_hash": "sha256:52b2634021586c38bf0154675a78041e1ebcd44d8aad629c799c243316e87125"
+}

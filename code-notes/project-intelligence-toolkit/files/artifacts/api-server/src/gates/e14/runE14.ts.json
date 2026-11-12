@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/gates/e14/runE14.ts",
+  "language": "TypeScript",
+  "lines": 99,
+  "hash": "sha256:8cd0bf32670189bb11656202b416fc671fd941ae569bce92b184d93713b0b11d",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible for this file.",
+      "The save step uses a raw database statement that relies on a uniqueness rule named in the code, which was not in the packet.",
+      "Errors from the corpus step are not caught here, so the caller must handle them."
+    ]
+  },
+  "terms": [
+    {
+      "term": "computation record",
+      "meaning": "a saved row of the arithmetic behind a result, kept so the result can be traced."
+    },
+    {
+      "term": "parameters",
+      "meaning": "the settings numbers that a verdict depends on, such as the minimum effect and the significance level."
+    },
+    {
+      "term": "corpus",
+      "meaning": "the collected set of facts for one industry, grouped by project."
+    },
+    {
+      "term": "pure function",
+      "meaning": "a function that only uses its inputs and does no database or file work, so the same inputs always give the same output."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/gates/e14/observations.ts",
+    "artifacts/api-server/src/gates/e14/validator.ts",
+    "artifacts/api-server/src/gates/e14/types.ts",
+    "artifacts/api-server/src/db.ts",
+    "drizzle-orm"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "248b779e56fa9e1e",
+      "title": "Overview and imports",
+      "what": "Describes the runner's steps in order and imports the database tools, the observation builder, the validator and the shared types.",
+      "why": "The header states the design: input and output here, with the arithmetic kept in pure modules.",
+      "watch_out": "The default settings are imported here, so changing them changes every run that does not pass its own."
+    },
+    {
+      "start": 24,
+      "end": 31,
+      "kind": "type",
+      "name": "RunE14Options",
+      "id": "s2",
+      "hash": "df164deabc8162f2",
+      "title": "Options for a run",
+      "what": "Defines the optional settings: custom parameters, a flag to skip saving, and a ready corpus to reuse.",
+      "why": "Lets tests and dry runs avoid writing to the database or querying it again.",
+      "watch_out": "Skipping the save means no audit row is written, so the run leaves no trace."
+    },
+    {
+      "start": 32,
+      "end": 50,
+      "kind": "function",
+      "name": "runE14",
+      "id": "s3",
+      "hash": "9b914c05fb116763",
+      "title": "The main run",
+      "what": "Gets the corpus, turns the facts into states under the chosen definition, runs the validator, saves the record unless skipped, and returns the report with the corpus.",
+      "why": "Gives callers one entry point that runs every step in order.",
+      "watch_out": "A supplied corpus is trusted without a check that it matches the industry named."
+    },
+    {
+      "start": 51,
+      "end": 99,
+      "kind": "function",
+      "name": "writeGateComputationRecord",
+      "id": "s4",
+      "hash": "08137154caab3256",
+      "title": "Saving the audit record",
+      "what": "Writes one row to the computation record table with the share of criteria that discriminate, the full settings, the inputs and a readable summary. A repeat run for the same industry and definition updates that row.",
+      "why": "So a later reader can tell whether a changed result came from new data or from changed settings, as the header says.",
+      "watch_out": "The repeat update overwrites the stored settings, so the earlier settings are lost unless someone copies them first."
+    }
+  ],
+  "explained_at": "2026-11-12T03:31:30+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the E14 check for one industry and one definition: gathers the facts, computes the results, saves an audit record, and returns the report.",
+  "purpose": "Tests whether the criteria separate projects that overran from projects that were delivered, and records the result so it can be traced later.",
+  "why": "The header says the runner only does input and output, so the arithmetic stays in pure modules. It also says the saved record includes every setting, so a changed number can be traced to new data or a changed threshold.",
+  "how": "1. Use the supplied corpus, or build one from the database. 2. Turn the facts into met, not met or unknown under the chosen definition. 3. Run the validator. 4. Save one record unless skipping is requested. 5. Return the report and the corpus.",
+  "inputs": "The industry name, the definition (presence or salience), optional settings, an optional ready corpus, and a flag to skip saving.",
+  "outputs": "A report with a verdict per criterion, and the corpus. Unless skipped, one row in the computation record table.",
+  "risks": "Each run writes to the database by default. A repeat run for the same industry and definition overwrites the earlier saved row. The default settings are used silently when none are given.",
+  "debug": "If the run stops with a 'No projects' message, check the spelling of the industry in the projects table. If it stops with 'Insufficient evidence', check that evidence quotes exist for that industry. To audit a run, look for the saved row whose field path names the industry and definition, and compare its parameters with the current default settings.",
+  "summary_hash": "sha256:8cd0bf32670189bb11656202b416fc671fd941ae569bce92b184d93713b0b11d"
+}

@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/evidence/metrics.ts",
+  "language": "TypeScript",
+  "lines": 160,
+  "hash": "sha256:ff6cb9c7cceff4cb524f3dbd4104a27c08d77eadb714ad31fc1058fd0d1e702c",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Basis tags are tested in the evidence rules test file, but parseStatedValue for money and capacity has no test shown in the packet.",
+      "Behaviour for unknown keys is implicit, so a typo creates a new measure silently."
+    ]
+  },
+  "terms": [
+    {
+      "term": "basis tag",
+      "meaning": "a short label recording what a figure includes or excludes, such as financing or transmission"
+    },
+    {
+      "term": "basis key",
+      "meaning": "a single text key made from sorted basis tags, so the same mix of tags always matches"
+    },
+    {
+      "term": "AFUDC",
+      "meaning": "interest and financing costs capitalised into a project's cost during construction"
+    },
+    {
+      "term": "capacity",
+      "meaning": "the size of a plant, usually in megawatts"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/lib/money.ts",
+    "artifacts/api-server/src/evidence/dateRules.ts"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/evidence/store.ts",
+    "artifacts/api-server/src/evidence/evidenceRules.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup, MetricKind",
+      "id": "s1",
+      "hash": "92fe8aaa55b3ffec",
+      "title": "Setup and kinds of measure",
+      "what": "Imports the shared money parser and the date rules, and defines the three kinds of measure: money, date and capacity.",
+      "why": "Likely reason: every other part of the file depends on these kinds and the parsers.",
+      "watch_out": "Adding a new kind needs changes in parseStatedValue, or values of that kind will be refused."
+    },
+    {
+      "start": 9,
+      "end": 20,
+      "kind": "type",
+      "name": "MetricDef",
+      "id": "s2",
+      "hash": "224ad8bcfa154bb7",
+      "title": "Shape of one measure definition",
+      "what": "Describes one measure: its key, label, kind, the project column it mirrors, the evidence paths that support it, and the date assumption keys it uses.",
+      "why": "Likely reason: one shape lets the importers, the viewer and the promotion rules read every measure the same way.",
+      "watch_out": "The fixed list relies on these optional fields being filled in correctly."
+    },
+    {
+      "start": 21,
+      "end": 51,
+      "kind": "value",
+      "name": "METRICS, METRIC_BY_KEY",
+      "id": "s3",
+      "hash": "cb880afc1858ef8c",
+      "title": "The fixed list of measures",
+      "what": "Lists the standard measures, such as budget at approval, latest cost estimate, final cost, approval date, construction start, planned and actual commercial operation, first grid connection and capacity. Each names the project column it mirrors and the evidence it may be supported by.",
+      "why": "Likely reason: these are the measures the benchmark uses, and the table lets all screens refer to them the same way.",
+      "watch_out": "The nuclear first grid connection is stored in the planned commercial date column by design, so a change here affects nuclear projects."
+    },
+    {
+      "start": 52,
+      "end": 71,
+      "kind": "function",
+      "name": "metricDef",
+      "id": "s4",
+      "hash": "57dbdacc13f9647a",
+      "title": "Looking up a measure by key",
+      "what": "Returns the definition for a measure key. Fixed keys come from the list; keys starting with milestone or cost get a generated definition with a readable label; anything else is treated as money with no evidence paths.",
+      "why": "Likely reason: some measures are added by users and cannot all be fixed in advance.",
+      "watch_out": "An unknown key is treated as money, so a date measure with a mistyped key will be read as money."
+    },
+    {
+      "start": 72,
+      "end": 80,
+      "kind": "function",
+      "name": "columnMetricsFor",
+      "id": "s5",
+      "hash": "d4c097f3027d8215",
+      "title": "Measures that mirror project columns",
+      "what": "Lists the measures that copy a project column, leaving out nuclear projects' commercial dates because those columns hold a different date for them.",
+      "why": "Likely reason: the nuclear exception is recorded in the code as a deliberate design choice.",
+      "watch_out": "Changing the nuclear exception changes which dates are synced for nuclear projects."
+    },
+    {
+      "start": 81,
+      "end": 86,
+      "kind": "value",
+      "name": "BASIS_TAGS",
+      "id": "s6",
+      "hash": "6ec107a60cd3488b",
+      "title": "Basis tags the system recognises",
+      "what": "Lists the basis tags allowed on a value, such as excluding or including AFUDC or transmission, financing, owner share, and whether a figure is nominal or real.",
+      "why": "Likely reason: only these tags are recognised, so values can be compared on a known set of bases.",
+      "watch_out": "A tag not on this list cannot be stored as a basis tag."
+    },
+    {
+      "start": 87,
+      "end": 110,
+      "kind": "function",
+      "name": "statedBasisTags",
+      "id": "s7",
+      "hash": "035e75007abe3fd2",
+      "title": "Reading basis tags from stated text",
+      "what": "Reads which basis tags a stated text actually says. It splits the text into clauses, skips any clause that says something is not established or is unknown, and tags only what the words state. For example, it does not tag a figure as including AFUDC because a document says it is unclear.",
+      "why": "Likely reason: the system must never assume a basis, so tags come only from what is written.",
+      "watch_out": "Clause splitting and negation words are pattern-based, so new wording may be missed or wrongly skipped."
+    },
+    {
+      "start": 111,
+      "end": 114,
+      "kind": "function",
+      "name": "basisKeyOf",
+      "id": "s8",
+      "hash": "e12959227eb3af2b",
+      "title": "Turning basis tags into a key",
+      "what": "Turns a list of basis tags into one text key by removing duplicates, sorting and joining them.",
+      "why": "Likely reason: values with the same set of tags must share one key to be compared.",
+      "watch_out": "An empty list gives an empty key, which is the key used for values with no stated basis."
+    },
+    {
+      "start": 115,
+      "end": 128,
+      "kind": "type",
+      "name": "ParsedValue",
+      "id": "s9",
+      "hash": "4a81f29afffe16da",
+      "title": "Shape of a parsed value",
+      "what": "Describes the result of reading a stated value: its number, original text, unit, currency, USD amount, whether it is approximate, its resolved date, the reason it was refused, and any unit taken from a column heading.",
+      "why": "Likely reason: every stored value carries the original text next to its reading, so people can check the reading.",
+      "watch_out": "A refused value keeps its text but has no number, so downstream code must check the refusal first."
+    },
+    {
+      "start": 129,
+      "end": 160,
+      "kind": "function",
+      "name": "parseStatedValue",
+      "id": "s10",
+      "hash": "738441f9051794c4",
+      "title": "Reading one stated value",
+      "what": "Reads a stated value by its kind. Dates go to the date rules. Capacity needs one MW or GW figure and refuses per-unit figures. Money uses the shared amount parser, converts billions and millions, and records a bare number under a heading in US$ millions as a hint. Text that is not a number is kept and refused.",
+      "why": "Likely reason: stated values arrive in many forms, and each kind needs its own rule to avoid guessing.",
+      "watch_out": "Text marked as approximate is accepted with a flag rather than refused, so approximate figures can be compared as if exact."
+    }
+  ],
+  "explained_at": "2026-11-12T03:29:11+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the list of benchmark measures a value can hold, such as budget, cost, dates and capacity, and reads the stated text of each value into a number, a date or a basis tag.",
+  "purpose": "Gives every value one shared definition, so the import, the promotion rules and the value viewer all agree on what each measure means.",
+  "why": "Likely reason: one table avoids mismatched definitions across the importers and the review screens.",
+  "how": "It lists the fixed measures with their kind (money, date or capacity), the project column they mirror and the evidence paths that support them. Measures outside the list get a namespaced key. It reads basis tags from stated text while skipping clauses that say something is not established. It parses each value by kind: money by a shared parser, dates by the date rules and capacity by a single MW figure.",
+  "inputs": "A measure key, a stated text value, a column unit hint, and the text that describes the basis.",
+  "outputs": "Measure definitions, a list of basis tags, a combined basis key, and a parsed value with its number, text, unit, currency, approximate flag, date and reason for refusal.",
+  "risks": "Basis tags are read from text with patterns, so a wording change can add or drop a tag. Several strings must stay in step with the database and the importers.",
+  "debug": "If a value is refused, read its refusal reason in the parsed result. If a basis tag is missing, check the clause split and the negation words in statedBasisTags. If a measure has no column, check the fixed list.",
+  "summary_hash": "sha256:ff6cb9c7cceff4cb524f3dbd4104a27c08d77eadb714ad31fc1058fd0d1e702c"
+}

@@ -1,0 +1,522 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/deriveDrivers.ts",
+  "language": "TypeScript",
+  "lines": 1118,
+  "hash": "sha256:d248d9a6c8e40be626da3f95681e6b0d87317e21f7c2cc345944119624868a7e",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only 21 of 37 sections were provided, so the final naming and assembly sections could not be checked.",
+      "The design is careful and well commented, with validation and reporting in place.",
+      "No test for this file was shown, and nothing was run."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Driver",
+      "meaning": "a sub-topic inside a pillar, given a name and its own evidence."
+    },
+    {
+      "term": "Pillar",
+      "meaning": "one of the main topic areas of the deck."
+    },
+    {
+      "term": "Term frequency weighting",
+      "meaning": "a score that ranks words higher when they appear often in one group but rarely across all facts."
+    },
+    {
+      "term": "Bigram",
+      "meaning": "a pair of neighbouring words, such as two words in a row."
+    },
+    {
+      "term": "Blacklist",
+      "meaning": "a list of words or pairs too common across the facts to tell groups apart."
+    },
+    {
+      "term": "Seed",
+      "meaning": "the starting category a group grows from."
+    },
+    {
+      "term": "Residual",
+      "meaning": "a catch-all group for facts that did not fit any named group."
+    },
+    {
+      "term": "Deterministic",
+      "meaning": "always produces the same output for the same input, with no randomness or model calls."
+    },
+    {
+      "term": "Anchor",
+      "meaning": "the word or word pair used to split a group."
+    }
+  ],
+  "depends_on": [
+    "crypto",
+    "./recipeResult",
+    "../../lib/portkeyOpenAI",
+    "./properNounGuard",
+    "../../lib/modelConfig",
+    "./driverNameCache"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 44,
+      "kind": "setup",
+      "name": "File setup (part 1)",
+      "id": "s1",
+      "hash": "8fc6f65c3c2288fa",
+      "title": "Overview and imports for driver derivation",
+      "what": "Explains the three steps of driver derivation: grouping by fixed rules, optional model naming, and fixed fallback names. Also brings in the hashing tool, model client, proper-noun guard, model settings and name cache.",
+      "why": "Stated in the comment: the model only names groups and never creates, splits or merges them.",
+      "watch_out": "Only the naming step uses the model. The grouping decides the output, so it must stay deterministic."
+    },
+    {
+      "start": 45,
+      "end": 70,
+      "kind": "setup",
+      "name": "File setup (part 2)",
+      "id": "s2",
+      "hash": "11c0537584394a62",
+      "title": "Tuning numbers for grouping",
+      "what": "Sets the thresholds used in grouping: minimum facts and projects per driver, split size, the cap of twelve named drivers, anchor word limits, and the cutoffs for the risk and lesson checks.",
+      "why": "Stated in the comment: these are reported, not enforced.",
+      "watch_out": "Changing these numbers changes which groups form and how many drivers each pillar gets."
+    },
+    {
+      "start": 71,
+      "end": 82,
+      "kind": "value",
+      "name": "PRODUCT_TERMS",
+      "id": "s3",
+      "hash": "fe6a2acbede75bec",
+      "title": "Product words to avoid in names",
+      "what": "A list of product and chemical words, such as lithium and concentrate, used only to avoid naming drivers after products when better words exist.",
+      "why": "Stated in the comment: a name made only of product words reads as a thing rather than a lesson.",
+      "watch_out": "The list is fixed and specific to this domain, so it needs updating when new product words appear."
+    },
+    {
+      "start": 83,
+      "end": 93,
+      "kind": "function",
+      "name": "stemOf, NamingMode",
+      "id": "s4",
+      "hash": "828e881f21b937fc",
+      "title": "Reducing words to a base form",
+      "what": "Removes possessive endings and a trailing s so that similar words count as the same word. Also defines the two naming modes, deterministic and model.",
+      "why": "Stated in the comment: so possessive and plural forms do not count as separate words.",
+      "watch_out": "A simple rule, so some words that end in s are cut in odd ways and may merge."
+    },
+    {
+      "start": 94,
+      "end": 98,
+      "kind": "function",
+      "name": "resolveNamingMode",
+      "id": "s5",
+      "hash": "a15f2fb975f6ae46",
+      "title": "Choosing the naming mode",
+      "what": "Reads an environment setting. Only the exact value model turns on model naming. Any other value keeps fixed naming.",
+      "why": "Stated in the comment: the dry run stays deterministic unless the setting is switched on.",
+      "watch_out": "A typo in the setting silently keeps fixed naming, with no error."
+    },
+    {
+      "start": 99,
+      "end": 112,
+      "kind": "value",
+      "name": "STOPWORDS",
+      "id": "s6",
+      "hash": "1a3e3cc6cc1fa06e",
+      "title": "Common words ignored in analysis",
+      "what": "A list of common English words, plus the words company and project, that are ignored when comparing facts.",
+      "why": "Stated in the comment: removes filler words but keeps domain words so word pairs stay meaningful.",
+      "watch_out": "Company and project are always ignored, so they can never appear in a driver name."
+    },
+    {
+      "start": 113,
+      "end": 121,
+      "kind": "function",
+      "name": "termsOf",
+      "id": "s7",
+      "hash": "399cac87aad9cb02",
+      "title": "Splitting text into useful words",
+      "what": "Turns a fact's text into lowercase words of at least three characters, leaving out the common words.",
+      "why": "Likely reason: grouping compares words, so only meaningful words are kept.",
+      "watch_out": "Each word must start with a letter, so bare numbers are ignored and do not count as terms."
+    },
+    {
+      "start": 122,
+      "end": 127,
+      "kind": "function",
+      "name": "bigramsOf",
+      "id": "s8",
+      "hash": "74bfcde56c86d1f4",
+      "title": "Making two-word pairs",
+      "what": "Turns a list of words into neighbouring pairs, so that phrases can be compared as units.",
+      "why": "Likely reason: a word pair is more specific than a single word when naming a group.",
+      "watch_out": "Pairs are formed from the flattened text, so a pair can join words across a sentence boundary."
+    },
+    {
+      "start": 128,
+      "end": 131,
+      "kind": "function",
+      "name": "titleCase",
+      "id": "s9",
+      "hash": "23911b2cb3a2991e",
+      "title": "Capitalising words for display",
+      "what": "Capitalises the first letter of each word for display names.",
+      "why": "Likely reason: names shown on slides look neater.",
+      "watch_out": "Letters after an apostrophe are also capitalised, so a possessive can look like Futuro'S."
+    },
+    {
+      "start": 132,
+      "end": 137,
+      "kind": "function",
+      "name": "topN",
+      "id": "s10",
+      "hash": "9f1d033180b777b4",
+      "title": "Picking the most frequent items",
+      "what": "Sorts a count table from highest to lowest and returns the top entries, breaking ties alphabetically.",
+      "why": "Stated by the alphabetical tie-break: the output stays the same from run to run.",
+      "watch_out": "Ties always favour alphabetically earlier words, which can shape which names win."
+    },
+    {
+      "start": 138,
+      "end": 141,
+      "kind": "function",
+      "name": "countInto",
+      "id": "s11",
+      "hash": "c2a858d39479adb4",
+      "title": "Counting facts that contain each item",
+      "what": "Adds one to a count for each unique item in a list, so each fact is counted once per item.",
+      "why": "Likely reason: the grouping needs to know how many facts contain each word.",
+      "watch_out": "Counts facts containing a word, not total occurrences, so repeated words in one fact count once."
+    },
+    {
+      "start": 142,
+      "end": 174,
+      "kind": "type",
+      "name": "DerivedCluster",
+      "id": "s12",
+      "hash": "bc60d8ac58e75ea0",
+      "title": "Shape of one driver group",
+      "what": "Describes one derived group: its id, pillar, seed category, anchor word, risk flag, facts and projects, ranked terms, example quotes, naming result and any review flags.",
+      "why": "Stated in the comment: it holds everything needed to name and check a group.",
+      "watch_out": "Name and rationale are filled in later, so read them alongside the naming outcome field."
+    },
+    {
+      "start": 175,
+      "end": 204,
+      "kind": "type",
+      "name": "PillarDriverDerivation",
+      "id": "s13",
+      "hash": "36f04b51e9fd7e8d",
+      "title": "Summary of one pillar's grouping",
+      "what": "Holds results for one pillar: fact and project counts, the natural number of groups, the basis used (lessons or descriptions), risk split details, merge counts and field evidence counts.",
+      "why": "Stated in the comment: the natural count is reported separately from the cap.",
+      "watch_out": "A high share of facts in the generic group signals weak naming for that pillar."
+    },
+    {
+      "start": 205,
+      "end": 251,
+      "kind": "type",
+      "name": "DriverDerivationResult",
+      "id": "s14",
+      "hash": "b5d7b4b84c6f4ff0",
+      "title": "Full result of a derivation run",
+      "what": "The whole report: naming mode, per-pillar results, overall metrics, model calls, cache hits, token usage, rejected names, and optional statistics and comparisons for imperative naming.",
+      "why": "Stated in the comment: metrics ride in the stage summary, so the database schema does not change.",
+      "watch_out": "A non-zero fabricated URL count means a problem that should be investigated, not ignored."
+    },
+    {
+      "start": 252,
+      "end": 262,
+      "kind": "type",
+      "name": "PillarStats",
+      "id": "s15",
+      "hash": "7af47f0ad6522575",
+      "title": "Word statistics for one pillar",
+      "what": "Holds the word lists and counts for all facts in one pillar, including which words and pairs are too common to help with grouping.",
+      "why": "Likely reason: calculated once per pillar and reused by every grouping step.",
+      "watch_out": "Calculated from the pillar's facts at one moment, so later changes to facts need a recalculation."
+    },
+    {
+      "start": 263,
+      "end": 286,
+      "kind": "function",
+      "name": "buildPillarStats",
+      "id": "s16",
+      "hash": "8a9614af57a68ee9",
+      "title": "Computing pillar word statistics",
+      "what": "Goes through each fact in a pillar, extracts its words and word pairs, counts how many facts contain each, and marks any word or pair found in more than 40 percent of facts as too common.",
+      "why": "Stated in the comment: a term in nearly every fact cannot tell groups apart.",
+      "watch_out": "With few facts, a single word can cross the 40 percent cutoff and be excluded from naming."
+    },
+    {
+      "start": 287,
+      "end": 294,
+      "kind": "type",
+      "name": "WorkCluster",
+      "id": "s17",
+      "hash": "8038a4ab01581b0b",
+      "title": "Temporary group during grouping",
+      "what": "A working group used while facts are being sorted: its seed category, optional anchor word or pair, whether it is a risk group, and its fact ids.",
+      "why": "Likely reason: a light shape used before the full group record is built.",
+      "watch_out": "Only the fact ids are kept at this stage, so the full text must be looked up later."
+    },
+    {
+      "start": 295,
+      "end": 333,
+      "kind": "function",
+      "name": "termSplit",
+      "id": "s18",
+      "hash": "dd69a459a4f58044",
+      "title": "Splitting a large group by one word",
+      "what": "For a group that is too big, finds a single word shared by some but not all its facts, ranks candidate words by how distinctive they are, and sorts facts by their first matching word.",
+      "why": "Stated in the docstring: single-word anchors are used for groups that word pairs could not split.",
+      "watch_out": "Facts matching no anchor go to a remainder group. If no word works, the group stays unsplit and is flagged."
+    },
+    {
+      "start": 334,
+      "end": 391,
+      "kind": "function",
+      "name": "clusterFacts (part 1)",
+      "id": "s19",
+      "hash": "71a203173113d05f",
+      "title": "Building the first-pass groups",
+      "what": "Groups facts by category first. Where a category is too large, it is split by its most distinctive word pairs. Facts with no category go into a field evidence group.",
+      "why": "Stated in the comment: category is the starting spine for grouping.",
+      "watch_out": "Ranking uses word counts across the whole pillar, so one pillar's groups depend on all its facts."
+    },
+    {
+      "start": 392,
+      "end": 410,
+      "kind": "method",
+      "name": "clusterFacts: if",
+      "id": "s20",
+      "hash": "818cac35af326325",
+      "title": "Splitting any group still too large",
+      "what": "Any group still above the size threshold after the first pass gets split by a single distinctive word. Groups that cannot be split are kept as they are, and the review flags report them.",
+      "why": "Stated in the comment: when no word separates the facts, the result is reported honestly.",
+      "watch_out": "The remainder group keeps the old anchor label, which may describe a different set of facts than its name suggests."
+    },
+    {
+      "start": 411,
+      "end": 416,
+      "kind": "function",
+      "name": "isLessonFact",
+      "id": "s21",
+      "hash": "79c6db07ffcab226",
+      "title": "Telling lesson facts from descriptions",
+      "what": "Decides whether a fact is a lesson or only a description. It uses the stored evidence kind when present, and otherwise checks whether the field path begins with fact.",
+      "why": "Stated in the comment: a fallback for facts saved before the evidence kind existed.",
+      "watch_out": "Older facts depend on the field path prefix, so changing that prefix would turn lessons into descriptions."
+    },
+    {
+      "start": 417,
+      "end": 475,
+      "kind": "function",
+      "name": "deriveDriversDeterministic (part 1)",
+      "id": "s22",
+      "hash": "9c7e9782d1a35666",
+      "title": "Setting up driver clustering per pillar",
+      "what": "Starts the main function that groups each pillar's facts into drivers without using AI. For each pillar it normally uses only lesson facts, computes word statistics, and checks whether facts from overrun or cautionary projects form a separate group.",
+      "why": "The comments say drivers come from lesson facts only, and the fallback to all facts keeps descriptive-only industries working.",
+      "watch_out": "The fallback to descriptive facts happens quietly when a pillar has too few lesson facts, so check the driverBasis value in the results."
+    },
+    {
+      "start": 476,
+      "end": 528,
+      "kind": "method",
+      "name": "deriveDriversDeterministic: if",
+      "id": "s23",
+      "hash": "f2efc914a322bfdf",
+      "title": "Splitting out risk-project facts",
+      "what": "Decides whether facts from overrun or cautionary projects are clustered separately. It splits only when both groups are big enough and their top terms differ enough. It then keeps only clusters that are large and span enough projects, ranks them by size, and caps how many named drivers a pillar gets.",
+      "why": "The comment says the split should happen only where the outcome really changes the topic.",
+      "watch_out": "The overlap threshold, minimum counts and cap decide the drivers for every industry, so small changes here reshape many results."
+    },
+    {
+      "start": 529,
+      "end": 566,
+      "kind": "method",
+      "name": "deriveDriversDeterministic: for",
+      "id": "s24",
+      "hash": "d1466d1e0db34530",
+      "title": "Folding small clusters into neighbours",
+      "what": "Each small or overflow cluster is merged into the named cluster with the most similar top terms. If no term overlaps at all, it goes into a catch-all residual group. The code counts merges of each kind.",
+      "why": "The comments say undersized clusters fold into the nearest neighbour, and anything left over goes to the generic residual so no fact is dropped.",
+      "watch_out": "A merge is judged on term overlap alone, so a weak match can be absorbed into a neighbour without any warning."
+    },
+    {
+      "start": 567,
+      "end": 626,
+      "kind": "function",
+      "name": "deriveDriversDeterministic (part 4)",
+      "id": "s25",
+      "hash": "a138d092b05dc10a",
+      "title": "Building terms, examples and name pool",
+      "what": "For each named cluster, ranks its terms and two-word phrases by how distinctive they are across the pillar and keeps up to a few example facts with their links and project names. It also builds the list of candidate names used in the next step.",
+      "why": "Ranking by distinctiveness is meant to give names that set one driver apart from the others in the same pillar, not names that describe the whole pillar.",
+      "watch_out": "The example facts are simply the first facts in the cluster, not the most representative ones."
+    },
+    {
+      "start": 627,
+      "end": 670,
+      "kind": "function",
+      "name": "deriveDriversDeterministic (part 5)",
+      "id": "s26",
+      "hash": "c3131937428fadaa",
+      "title": "Choosing a plain name from terms",
+      "what": "For each named cluster, picks up to two phrases, or up to three single terms, to form the label. It avoids company, place and project names, prefers phrases with a non-product word, and adds extra words when a name would duplicate another driver's. If no clean candidate exists it uses the top terms and marks the cluster as entity-named.",
+      "why": "The comments say the label should describe the mechanism, and when nothing clean exists it should say so openly rather than hide it.",
+      "watch_out": "Duplicate avoidance appends words with a separator, so names can grow long, and entity-named labels can still show a company or place name."
+    },
+    {
+      "start": 671,
+      "end": 725,
+      "kind": "function",
+      "name": "deriveDriversDeterministic (part 6)",
+      "id": "s27",
+      "hash": "0e160bd3b3c6e89f",
+      "title": "Adding review flags and the final record",
+      "what": "Builds the finished record for each cluster, including its ids, sizes, facts, projects, terms, examples, name and rationale. It also adds review flags for very large clusters, clusters spanning too many projects, and names built from words that appear in most of the pillar.",
+      "why": "The comment says flags are reported for a human to read, never enforced.",
+      "watch_out": "Flagged clusters are still shipped as they are, so someone must read the flags to act on them."
+    },
+    {
+      "start": 726,
+      "end": 754,
+      "kind": "method",
+      "name": "deriveDriversDeterministic: for",
+      "id": "s28",
+      "hash": "763b57825a756161",
+      "title": "Recording counts for each pillar",
+      "what": "Adds one summary entry per pillar with its fact counts, cluster counts, merge counts, excluded terms, and how many category-less field facts ended up in named versus catch-all clusters.",
+      "why": "The comment on the field-evidence check suggests this is there so reviewers can see whether field-level facts are hidden in the catch-all group. The exact reason is not stated.",
+      "watch_out": "The field-evidence counts cover only facts with no category, so facts that have a category are not counted there."
+    },
+    {
+      "start": 755,
+      "end": 761,
+      "kind": "function",
+      "name": "NAME_MODEL",
+      "id": "s29",
+      "hash": "a0e21290f351ecf6",
+      "title": "Choosing the model for naming",
+      "what": "Selects which AI model names the clusters, using a configured role. Changing this model invalidates every saved name, so all clusters are named and billed again on the next run.",
+      "why": "The comment says a name must be traceable to the model that produced it, so a model change deliberately forces renaming.",
+      "watch_out": "Changing the configured model triggers a full re-naming cost, and the cache key is built from this value."
+    },
+    {
+      "start": 762,
+      "end": 765,
+      "kind": "function",
+      "name": "normalizeLabel",
+      "id": "s30",
+      "hash": "3cef900c99f77b24",
+      "title": "Simplifying a label for comparison",
+      "what": "Turns a label into lowercase words separated by spaces, with punctuation removed. It is used to compare a generated name against the category name.",
+      "why": "Likely reason: to catch a generated name that only repeats the category label.",
+      "watch_out": "Only plain English letters and digits are kept, so accented or non-Latin letters are dropped in the comparison."
+    },
+    {
+      "start": 766,
+      "end": 812,
+      "kind": "function",
+      "name": "validateModelName, NamingStyle",
+      "id": "s31",
+      "hash": "5a3fdbdc1aaf4443",
+      "title": "Checking model names for fabrication",
+      "what": "Checks a model-written name and rationale. The example ids it echoes must match exactly, every link, number and named entity must appear in the cluster's own material, and the name cannot just repeat the category. It returns the reason for a failure or nothing if the name passes. It also defines the two naming styles, topic and imperative.",
+      "why": "The comments say invented numbers, links and entities must be rejected, which is the main protection against made-up content.",
+      "watch_out": "The id check is exact, so a shortened or reordered id fails, and entity checks depend on how the material text is written."
+    },
+    {
+      "start": 813,
+      "end": 864,
+      "kind": "function",
+      "name": "nameClusterWithModel (part 1)",
+      "id": "s32",
+      "hash": "ac5a6ac46c6ee186",
+      "title": "Asking the model to name a cluster",
+      "what": "Sends the cluster's terms and example facts to the AI with strict rules: use only that material, copy ids exactly, and use sentence case. In imperative style, it may state a lesson only if the examples show a clear pattern. It then reads the reply and rejects anything that is not valid JSON or lacks a name or rationale.",
+      "why": "The rules are written to stop the model from inventing facts, and the reply is checked afterwards in case it ignores them.",
+      "watch_out": "A reply that is not valid JSON is rejected outright and not retried, so that cluster falls back to its plain name."
+    },
+    {
+      "start": 865,
+      "end": 881,
+      "kind": "method",
+      "name": "nameClusterWithModel: if",
+      "id": "s33",
+      "hash": "60930447dc4b18a4",
+      "title": "Handling no-direction and missing fields",
+      "what": "If imperative style finds no directional pattern, it returns a neutral no-direction result. Otherwise it trims the name and rationale, checks the ids, runs the validator, and returns the raw reply together with any rejection so it can be re-checked later.",
+      "why": "The comments say a no-direction answer is kept as an ordinary topic label, and the raw reply is saved so a later, stricter validator can judge it again.",
+      "watch_out": "A no-direction answer is not counted as a rejection, so it can hide how often imperative naming fails."
+    },
+    {
+      "start": 882,
+      "end": 941,
+      "kind": "function",
+      "name": "deriveDrivers (part 1)",
+      "id": "s34",
+      "hash": "633adfd36b1b7135",
+      "title": "Starting the AI naming step",
+      "what": "Starts the main async function. It first builds the plain groups, then, if naming mode is model and the AI is configured, prepares the counters and cache keys. It also defines the helper that checks saved answers before asking the model. If the AI is not configured, the run keeps plain names and reports not_configured.",
+      "why": "The comment says the system should degrade and never make up names when the AI is unavailable.",
+      "watch_out": "Without the AI setting the run still succeeds with plain names, so a missing configuration is easy to miss unless the driverNaming field is checked."
+    },
+    {
+      "start": 942,
+      "end": 1001,
+      "kind": "function",
+      "name": "deriveDrivers (part 2)",
+      "id": "s35",
+      "hash": "4b3db211ca906edf",
+      "title": "Applying names with fallbacks",
+      "what": "The helper returns a saved name if one exists, or asks the model and saves the result. A saved rejection is re-checked with the current validator, so fixing the validator can release old rejections without a new model call. The main loop then names each non-residual cluster, uses imperative style for risk clusters, falls back to topic style when there is no direction, and records rejections with their reasons.",
+      "why": "The comments say risk clusters carry a real failure pattern and so get imperative names, while other clusters keep topic names.",
+      "watch_out": "Saved answers from before a change can keep their old wording until they expire, and older entries without raw output are asked again."
+    },
+    {
+      "start": 1002,
+      "end": 1058,
+      "kind": "function",
+      "name": "deriveDrivers (part 3)",
+      "id": "s36",
+      "hash": "0fd1c89d0b494dd3",
+      "title": "Side-by-side comparison and failure handling",
+      "what": "For the pillars listed in the comparison setting, it asks for an imperative version of each non-risk cluster, for reporting only, and records the result without changing the deck name. Any failure in that step is recorded, not thrown. If naming a cluster fails, the failure is logged, the cluster is marked as a fallback, and its plain name is kept.",
+      "why": "The comments say the comparison is report-only, so it can be reviewed without changing what the deck shows.",
+      "watch_out": "Each pillar in the comparison setting adds an extra model call for every non-risk cluster, so costs rise quickly."
+    },
+    {
+      "start": 1059,
+      "end": 1118,
+      "kind": "method",
+      "name": "deriveDrivers: for",
+      "id": "s37",
+      "hash": "f618bc517c54fb0f",
+      "title": "Computing report metrics",
+      "what": "Builds the report figures: counts of named and generic clusters, the share of catch-all facts per pillar, risk splits, link checks and totals for lesson and descriptive facts. It returns the full result, including model calls, cache hits, token usage, rejections and any comparison data.",
+      "why": "The comment says these figures are reported and not used to block a run.",
+      "watch_out": "The link count checks only the example facts against stored facts, not links inside the generated names, which are checked separately, so a zero here does not prove the names are clean."
+    }
+  ],
+  "explained_at": "2026-11-12T04:32:01+00:00",
+  "explained_by": "haiku",
+  "summary": "Groups a pillar's facts into named driver topics using word statistics, then optionally lets a model suggest names that are checked against the facts.",
+  "purpose": "Turns a flat list of facts into a readable set of drivers for each pillar slide, with the grouping kept honest and traceable.",
+  "why": "Stated in the file comment: the grouping is deterministic and every fact lands in exactly one group, while the model only names groups and never adds evidence.",
+  "how": "Step A groups facts by category, splits oversized groups by distinctive word pairs and then single words, merges tiny groups into neighbours or a residual group, and records results. Step B optionally asks the model for names, validates each name against the group's own terms and quotes, and falls back to a word-based name if it fails. The rest of the file keeps the statistics, the tunable thresholds and the final assembly of results.",
+  "inputs": "Recipe facts and projects grouped by pillar, optional model configuration, an environment setting for naming mode, and the name cache.",
+  "outputs": "A derivation result with per-pillar groups, names, rationale, metrics, rejected names and model usage counts.",
+  "risks": "Thresholds are reported, not enforced, so bad groupings are flagged rather than blocked. Model names are checked by rules that may reject good names. Only 21 of 37 sections were visible, so parts of the final assembly were not reviewed.",
+  "debug": "Start with the metrics in DriverDerivationResult. A high generic residual share suggests weak naming or grouping. Check validationRejections for why names fell back. Check the mode and driverNaming values to see whether the model ran. For odd names, check the dominantTerms and dominantBigrams on the group.",
+  "summary_hash": "sha256:d248d9a6c8e40be626da3f95681e6b0d87317e21f7c2cc345944119624868a7e"
+}

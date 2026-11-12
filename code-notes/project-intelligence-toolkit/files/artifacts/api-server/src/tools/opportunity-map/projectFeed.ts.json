@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/projectFeed.ts",
+  "language": "TypeScript",
+  "lines": 178,
+  "hash": "sha256:94e5635e4286539824558399bf379474d323597cd94618f931a2fd34c3e9b5d9",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only seven of the eleven sections that need notes were provided, so the remaining logic was not reviewed.",
+      "No tests are visible in the packet.",
+      "The date and keyword rules look sensible but are maintained by hand."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Yard",
+      "meaning": "the project database the app reads from; the name used in the code."
+    },
+    {
+      "term": "Milestone",
+      "meaning": "a dated step in a project, such as a permit, contract award, or first power."
+    },
+    {
+      "term": "FID",
+      "meaning": "final investment decision: the point at which a project is formally approved to be built."
+    },
+    {
+      "term": "Megaproject",
+      "meaning": "a very large project; the key list uses this as one of its criteria."
+    },
+    {
+      "term": "Capex",
+      "meaning": "capital expenditure: money spent to build a long-lived asset such as a plant."
+    },
+    {
+      "term": "Evidence ID",
+      "meaning": "the reference number of a stored source record, used to fetch its full quote."
+    },
+    {
+      "term": "ISO code",
+      "meaning": "the standard short code for a country, such as US or DE."
+    },
+    {
+      "term": "Centroid",
+      "meaning": "a rough central point for a country, used when no site location exists."
+    },
+    {
+      "term": "Event-dated",
+      "meaning": "sorted by when something actually happened, not when it was reported."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "./store",
+    "../../lib/countryCentroids",
+    "./locationEvidence",
+    "../../scan/budgetUnits",
+    "../../shared/industries",
+    "./branding"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/index.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 24,
+      "kind": "setup",
+      "name": "File setup, ACTIVE, FACT_ORDER, KeyCriterion, FeedSource",
+      "id": "s1",
+      "hash": "a0ada5e96556f5ed",
+      "title": "Header rules and shared settings",
+      "what": "Explains the file's purpose and rules in its header, then sets the 18-month news window, the list of active project stages, the order of fact categories, the criteria type for key projects, and the shape of a source.",
+      "why": "The header states the rules: news dates come from events, and key projects must meet a stated criterion.",
+      "watch_out": "Stages missing from the active list are treated as not active, so a new stage name can drop projects from the key list."
+    },
+    {
+      "start": 25,
+      "end": 28,
+      "kind": "type",
+      "name": "NewsItem",
+      "id": "s2",
+      "hash": "b730c614210d2d6d",
+      "title": "Dated news item shape",
+      "what": "Defines what one news entry contains: the project, event date, whether it is upcoming, its kind, headline, origin (a Yard milestone, a Yard development, or an Opportunity Map signal), and its source.",
+      "why": "Reason not stated in the code; the origin field keeps it visible where each item came from.",
+      "watch_out": "Precision and kind are free text rather than fixed lists, so a typo creates a new category."
+    },
+    {
+      "start": 29,
+      "end": 32,
+      "kind": "type",
+      "name": "FeedProject",
+      "id": "s3",
+      "hash": "aceffc203f0aba8d",
+      "title": "Basic project summary shape",
+      "what": "Defines the summary used for each project in the feed: ID, name, industry and its readable name, segment, country, region, and stage.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The country code can be empty, so region results depend on the fallback handling."
+    },
+    {
+      "start": 33,
+      "end": 43,
+      "kind": "type",
+      "name": "ProjectProfile",
+      "id": "s4",
+      "hash": "deef6bd6ae98c948",
+      "title": "Full key-project profile shape",
+      "what": "Extends the summary with the criteria the project meets, capacity, technology, description, planned and actual capex, key dates, delay in months, companies with roles, reported figures, sourced facts, and an evidence count.",
+      "why": "The header says criteria are returned with each profile so the page can explain why a project is included.",
+      "watch_out": "Delay months can be missing or approximate, so check the approximate flag before presenting the figure as exact."
+    },
+    {
+      "start": 44,
+      "end": 54,
+      "kind": "value",
+      "name": "REPORTED_LABEL, isoDate, cleanDate, keyOf, lite, sourceOf",
+      "id": "s5",
+      "hash": "cfa8677b08c17cb4",
+      "title": "Small helpers for labels, dates, and sources",
+      "what": "Turns internal field names into readable reported labels, reduces dates to a year, year-month, or full date, shortens quotes to 240 characters for lists, and converts stored evidence records into the source shape.",
+      "why": "The comment on the short-quote helper explains that the full quote is fetched separately when someone opens it.",
+      "watch_out": "Shortened quotes end with an ellipsis after 239 characters, and some dates are kept as partial years only, so do not assume a day is known."
+    },
+    {
+      "start": 55,
+      "end": 61,
+      "kind": "function",
+      "name": "KIND",
+      "id": "s6",
+      "hash": "71532c7917003cd4",
+      "title": "Milestone type from its name",
+      "what": "Sorts a milestone name into a type such as cancellation, first power, completion, commissioning, financing, permit, contract award, construction, FID, ownership change, tender, or a general milestone, by checking keywords in a fixed order.",
+      "why": "Reason not stated in the code; likely to group milestones so the page can label them consistently.",
+      "watch_out": "The order matters: the first matching group wins, and loose words such as order or round can misclassify a milestone."
+    },
+    {
+      "start": 62,
+      "end": 72,
+      "kind": "value",
+      "name": "EXTRA_CODES, AFRICA_EXTRA",
+      "id": "s7",
+      "hash": "6a24e5dda0cb471a",
+      "title": "Country codes the centroid table lacks",
+      "what": "A hand-kept table that gives two-letter codes and names for countries the main centre table does not cover, plus a small set of African codes kept separately.",
+      "why": "The comment says the centroid table lacks these names, and the region lookup needs a standard code.",
+      "watch_out": "The reason for the separate African set is not stated in the code, and a missing country falls into Other regions."
+    },
+    {
+      "start": 73,
+      "end": 84,
+      "kind": "function",
+      "name": "place",
+      "id": "s8",
+      "hash": "dc355fc2fb348b28",
+      "title": "Turns a country name into a standard place",
+      "what": "Takes the country text from a project record and returns a standard country code, a display name and a region such as Africa, Europe or Global. Multi-country text keeps its full wording, and the region comes from the first country listed. Blank input becomes 'Country unspecified'.",
+      "why": "Likely reason: the feed groups and filters projects by region, so every project needs a predictable region label even when the source text is messy.",
+      "watch_out": "Special cases for the codes AZ and UK are hard-coded here, so a new special case needs the same care."
+    },
+    {
+      "start": 85,
+      "end": 93,
+      "kind": "function",
+      "name": "parseMilestone",
+      "id": "s9",
+      "hash": "ad7057e340e3d587",
+      "title": "Reads a dated milestone sentence",
+      "what": "Reads a sentence such as a fully operational milestone with a stated actual or planned date, and returns the milestone name, whether it is planned, a full date and how precise the date is. Quarter and half-year dates become the first month of that period. Sentences without a date return nothing.",
+      "why": "Likely reason: sources report dates in several shapes, and this normalises them so the feed can sort and filter them.",
+      "watch_out": "Sentences in an unexpected format are skipped silently, so a new report style needs its pattern added here."
+    },
+    {
+      "start": 94,
+      "end": 146,
+      "kind": "function",
+      "name": "projectFeed (part 1)",
+      "id": "s10",
+      "hash": "760508fa7ddf993f",
+      "title": "Loads data and builds the dated news list",
+      "what": "Reads projects, sourced evidence, company links and opportunity signals together, then builds a list of dated news items from milestones, developments and signals. Only items inside the news window are kept, newest first. Planned dates that have already passed are dropped, and signals without a project or a web link are skipped.",
+      "why": "Likely reason: keeps the news list limited to recent, sourced items tied to a known project.",
+      "watch_out": "Only evidence with a web address is loaded, so sourced evidence without a web address never reaches the news list."
+    },
+    {
+      "start": 147,
+      "end": 178,
+      "kind": "method",
+      "name": "projectFeed: for",
+      "id": "s11",
+      "hash": "99b9f4b3ed37d5cb",
+      "title": "Builds the profile for each active project",
+      "what": "For each project, decides whether it qualifies: an active stage, a megaproject (a cost of at least 1,000 million US dollars), or recent news. Qualifying projects get a profile with place, capacity, budget, key dates, delay, companies, up to eight facts (one per category first) and up to twenty reported values. The function returns the news list and the profiles together.",
+      "why": "Likely reason: keeps the page focused on projects that are active, very large or recently in the news.",
+      "watch_out": "Budget columns are read as US dollar millions, so a budget entered in another unit would wrongly qualify a project as a megaproject."
+    }
+  ],
+  "explained_at": "2026-11-12T04:57:09+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the project news list and key-project profiles for the projects page from dated Yard records and linked signals.",
+  "purpose": "Show what has happened on each project, by the date of the event, and explain why each key project is included.",
+  "why": "The header states that a source page's publish date is never treated as the event date, and that each key project must meet at least one stated criterion. The 240-character limit is explained in a comment: list views stay light, and the full quote is fetched separately.",
+  "how": "Only the first seven of eleven sections were reviewed. The visible part defines the project types, the list of active stages, the 18-month news window, the keyword rules that name milestone types, the country and region lookups, and the helpers that shape evidence. The main project feed logic was not visible, so its steps are not described here.",
+  "inputs": "Rows from the Yard project database (projects, milestones, developments, and evidence records) and linked Opportunity Map signals. Also country names and capex amounts.",
+  "outputs": "News items sorted by event date and project profiles that include criteria, capex, key dates, delay, companies, reported values, and sourced facts.",
+  "risks": "Only part of the file was reviewed. Keyword rules can misfile milestones. Countries missing from the code table fall to Other regions. Delay figures may be approximate. The active-stage list must be kept current or projects drop out of the key list.",
+  "debug": "If a project is missing from the key list, compare its stage with the active list and its criteria. If a milestone has the wrong kind, check the order of the keyword rules. If a country shows in the wrong region, check the code table. To read a full quote, use the evidence ID.",
+  "summary_hash": "sha256:94e5635e4286539824558399bf379474d323597cd94618f931a2fd34c3e9b5d9"
+}

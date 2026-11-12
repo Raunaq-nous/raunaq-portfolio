@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/fieldSemantics.ts",
+  "language": "TypeScript",
+  "lines": 138,
+  "hash": "sha256:cf199264ad5e17726f91786237a9e68380f6f9c9a4c7de5c48a9478a1b073a44",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only 3 of the 12 sections that need notes are visible.",
+      "It is tested indirectly through evidence.test.ts.",
+      "The full rule set could not be read in this packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "normalise",
+      "meaning": "convert text to a standard form so it can be compared fairly"
+    },
+    {
+      "term": "NFKC",
+      "meaning": "a standard Unicode form that makes look-alike characters identical"
+    },
+    {
+      "term": "role words",
+      "meaning": "lists of words that signal a role such as baseline budget, final cost or estimate"
+    },
+    {
+      "term": "currency conversion",
+      "meaning": "turning an amount in one currency into US dollars using a stated rate"
+    },
+    {
+      "term": "sanctioned",
+      "meaning": "formally approved, as in the original approved budget"
+    }
+  ],
+  "depends_on": [
+    "../../lib/money",
+    "./roleWords"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/research-contract/evidence.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 1,
+      "kind": "function",
+      "name": "canonical",
+      "id": "s1",
+      "hash": "bb76d93fe01458b7",
+      "title": "Normalise text for comparison",
+      "what": "Converts text to a standard form before comparing it: look-alike characters are unified, case is lowered, commas are removed and extra spaces are collapsed.",
+      "why": "Likely reason: so that numbers written with and without commas compare as equal. The code does not state this.",
+      "watch_out": "Removing commas makes a decimal comma and a thousands separator look the same, so number format must be checked separately."
+    },
+    {
+      "start": 2,
+      "end": 6,
+      "kind": "function",
+      "name": "escape",
+      "id": "s2",
+      "hash": "23113747d738105e",
+      "title": "Escape special characters for matching",
+      "what": "Adds backslashes before characters that have special meaning in pattern matching, so a name is matched literally.",
+      "why": "Likely reason: names contain characters such as dots and brackets that would otherwise change the match. The code does not state this.",
+      "watch_out": "The same escaping is written out again in evidence.ts, so a fix in one place must be repeated in the other."
+    },
+    {
+      "start": 7,
+      "end": 9,
+      "kind": "type",
+      "name": "BudgetConversion",
+      "id": "s3",
+      "hash": "5019358990d1fe37",
+      "title": "Budget conversion record shape",
+      "what": "Describes how a local-currency budget was converted to US dollars: the currency, the original amount, the converted amount, the source's own converted figure if stated, and an optional note.",
+      "why": "The comment says this is the record of how a budget column was converted to US dollars.",
+      "watch_out": "The note is free text and is not checked, so it cannot be relied on for correctness."
+    },
+    {
+      "start": 10,
+      "end": 63,
+      "kind": "function",
+      "name": "fieldSemanticSupport, MONTHS",
+      "id": "s4",
+      "hash": "c3b84d14bd207cfa",
+      "title": "Checks one recorded value against its passage",
+      "what": "Decides whether a recorded project value (budget, date, delay, status, name or number) is backed by the source passage that the value came from. Returns yes or no with a plain reason. Budgets need a matching cost role and a reported amount, and forecasts or estimates never count as final costs.",
+      "why": "Likely reason: the tool should report only facts that a source actually states, so each field type gets its own check.",
+      "watch_out": "The checks are deliberately strict, so a correct value can be rejected when the source wording is unusual; read the reason text before deciding the data is wrong."
+    },
+    {
+      "start": 64,
+      "end": 66,
+      "kind": "value",
+      "name": "CONVENTION_DAYS",
+      "id": "s5",
+      "hash": "faebd4f5ae114114",
+      "title": "Standard days for approximate dates",
+      "what": "Lists the three calendar days (end of March, end of June, end of December) that the tool uses to store year-only or season-only dates.",
+      "why": "The comment says approximate dates are stored on these days by convention.",
+      "watch_out": "Changing these days changes how approximate dates are matched, so existing records may stop matching."
+    },
+    {
+      "start": 67,
+      "end": 83,
+      "kind": "function",
+      "name": "dateSupport",
+      "id": "s6",
+      "hash": "b122bcfc919333e4",
+      "title": "Checks that a stored date is written in the source",
+      "what": "Accepts a stored date only when the passage states the same year, and the same month unless the stored day is a standard approximate day. Accepts month names in English or the source language, and day.month numeric forms.",
+      "why": "Stored dates are exact ISO strings but sources write dates in prose, so this check bridges the two.",
+      "watch_out": "Month abbreviations are matched on their first three letters, so an unrelated word could match in rare cases."
+    },
+    {
+      "start": 84,
+      "end": 93,
+      "kind": "value",
+      "name": "STATUS_FAMILIES",
+      "id": "s7",
+      "hash": "bb63d38e835ac652",
+      "title": "Lifecycle words for each status",
+      "what": "Maps each stored status family (operating, under construction, cancelled, suspended, planned, retired) to the words a source must use to state that status.",
+      "why": "Likely reason: a status such as operating should be accepted only when the source uses words that say so.",
+      "watch_out": "Schedule judgements need the literal word, so a status family match alone does not prove a schedule outcome."
+    },
+    {
+      "start": 94,
+      "end": 100,
+      "kind": "function",
+      "name": "statusSupport, NAME_KEYS",
+      "id": "s8",
+      "hash": "f6438c7cf966b2e4",
+      "title": "Checks a status and names against the source",
+      "what": "Finds the status family of the stored status and checks that the passage uses matching words, quoting the status in the reason. Also defines which fields are treated as names (operator, EPC contractor, vendor, ecosystem, technology, country) and checked by name rather than exact text.",
+      "why": "Likely reason: statuses and names are written in many ways, so they need word-based checks instead of exact matching.",
+      "watch_out": "A status with no matching family is rejected by default, so a new status label needs a family added here."
+    },
+    {
+      "start": 101,
+      "end": 103,
+      "kind": "value",
+      "name": "NAME_NOISE",
+      "id": "s9",
+      "hash": "bfef5a79a0795fc2",
+      "title": "Filler words skipped when matching names",
+      "what": "A list of company suffixes and common filler words (such as Ltd, Inc, group, the and of) that are ignored when checking names, because they do not identify a company.",
+      "why": "Likely reason: legal suffixes appear in many unrelated names and would cause false matches.",
+      "watch_out": "Adding a distinctive word to this list would make names match too easily."
+    },
+    {
+      "start": 104,
+      "end": 112,
+      "kind": "function",
+      "name": "nameSupport",
+      "id": "s10",
+      "hash": "e1134cdb591776e6",
+      "title": "Checks a company or technology name in the passage",
+      "what": "Splits the stored name into distinctive words, drops the filler words, and requires every remaining word to appear in the passage. Rejects a name that has no distinctive words left.",
+      "why": "The comment says every distinctive word must appear, so a name is not accepted from a partial match.",
+      "watch_out": "Requiring every word means a name the source shortens or reorders will be rejected."
+    },
+    {
+      "start": 113,
+      "end": 118,
+      "kind": "function",
+      "name": "compatiblePriceBasis",
+      "id": "s11",
+      "hash": "736a52c169ea8c4a",
+      "title": "Checks two price bases agree",
+      "what": "Reads each price text as either nominal or a fixed year of prices, and returns the shared basis only when both match. Returns nothing when they differ or cannot be read.",
+      "why": "Likely reason: costs stated in different price bases must not be compared directly.",
+      "watch_out": "Only the word nominal and a fixed year pattern are recognised, so other wording produces no basis at all."
+    },
+    {
+      "start": 119,
+      "end": 138,
+      "kind": "function",
+      "name": "convertedSupport",
+      "id": "s12",
+      "hash": "a7be4a76ed3ef2e6",
+      "title": "Checks a converted foreign currency cost",
+      "what": "Accepts a budget given in a foreign currency only when the passage states the same amount in that currency, or the source's own US dollar figure, within a small tolerance. Rejects a passage that names several competing cost amounts.",
+      "why": "Converted values come from a published annual rate, so the original reported figure must appear in the passage to justify them.",
+      "watch_out": "A passage that mentions another cost alongside the target cost is rejected, which can hide a correct value."
+    }
+  ],
+  "explained_at": "2026-11-12T05:10:33+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks whether a quoted value and its wording support a structured field, such as a planned budget, a date, a status or an operator name, and whether a budget conversion record is valid.",
+  "purpose": "Stops a number, date or name from being accepted just because it appears in a quote.",
+  "why": "Likely reason: the test file checks many meanings, such as sanctioned versus forecast cost and date wording, so this file enforces them. This is inferred from the tests and not stated in the code.",
+  "how": "Helper functions normalise text and escape characters for matching. The file imports a money finder and lists of role words. It defines a budget conversion record. The remaining functions carry out the checks but are not visible in this packet.",
+  "inputs": "A field name, a value, the quote text, and optionally a budget conversion record.",
+  "outputs": "A result with a supported flag and reasons. The exact shape is not visible.",
+  "risks": "Removing commas during comparison means a decimal comma can match a thousands-separated number. Most of the rule logic is not visible, so behaviour cannot be fully checked.",
+  "debug": "Start with the field name and the quote used in the failing test in evidence.test.ts. If numbers match when they should not, check the normalise helper first.",
+  "summary_hash": "sha256:cf199264ad5e17726f91786237a9e68380f6f9c9a4c7de5c48a9478a1b073a44"
+}

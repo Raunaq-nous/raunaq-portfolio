@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/cache.ts",
+  "language": "TypeScript",
+  "lines": 54,
+  "hash": "sha256:9229b12c1a734b36b3877d160fcedba9514e7d2a1cca4e8211406570d173cfa6",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "Expired entries are removed only when they are read, so memory use is not capped.",
+      "The cache has no failure path of its own, which keeps it simple."
+    ]
+  },
+  "terms": [
+    {
+      "term": "In-memory",
+      "meaning": "stored in the program's working memory, so it is lost when the program restarts"
+    },
+    {
+      "term": "TTL (time to live)",
+      "meaning": "how long a stored value may be used before it expires"
+    },
+    {
+      "term": "Key prefix",
+      "meaning": "the start of a text key, used to clear a whole group of related keys at once"
+    }
+  ],
+  "depends_on": [
+    "Node.js process environment (no imports)"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "type",
+      "name": "CacheEntry",
+      "id": "s1",
+      "hash": "4fd12d514bf4b8e0",
+      "title": "Shape of a cached item",
+      "what": "Defines what one cache entry holds: the stored value and the time it stops being valid. A user does not see this directly. It is the building block for the cache below.",
+      "why": "Needed so the cache can tell when a stored value is too old to use. The code does not state any other reason.",
+      "watch_out": ""
+    },
+    {
+      "start": 6,
+      "end": 48,
+      "kind": "class",
+      "name": "TTLCache, cache",
+      "id": "s2",
+      "hash": "2872cdad2b98f969",
+      "title": "In-memory store with expiry",
+      "what": "Keeps recently fetched results in the server's memory so repeated requests for the same data are answered faster. Each item expires after a set time and is removed when it is next read after that time. The cache can be turned off with the CACHE_ENABLED setting, and it can clear one group of keys by prefix or clear everything.",
+      "why": "Likely reason: to lower the load on the database for data that does not change often. Reason not stated in the code.",
+      "watch_out": "Items that expire but are never read again stay in memory until the server restarts, so memory use can grow over time."
+    },
+    {
+      "start": 49,
+      "end": 54,
+      "kind": "value",
+      "name": "TTL",
+      "id": "s3",
+      "hash": "e085fdf69093fd16",
+      "title": "How long each kind of data is kept",
+      "what": "Sets how many milliseconds each kind of data stays cached: the project list and the dashboard for 60 seconds, a single project's details for 30 seconds, and the glossary for 0, which means it is effectively never kept and is always fetched fresh.",
+      "why": "Likely reason: lists and dashboards can be a minute out of date without harm, while the glossary should always be current. Reason not stated in the code.",
+      "watch_out": "The numbers are in milliseconds, so changing 60_000 to 60 would make the cache expire in 60 milliseconds."
+    }
+  ],
+  "explained_at": "2026-11-12T03:22:30+00:00",
+  "explained_by": "haiku",
+  "summary": "A simple in-memory cache that keeps recently fetched results for a short time so the server can answer repeat requests faster.",
+  "purpose": "Reduces repeated work for the project list, project details and the dashboard.",
+  "why": "Likely reason: avoid repeating slow lookups for data that does not change every second. Reason not stated in the code.",
+  "how": "At startup it reads the CACHE_ENABLED setting. Each stored value gets an expiry time. When a value is read after it has expired, it is removed and treated as missing. Entries can be cleared by key prefix or all at once. A single shared instance is exported, along with a table of how long each kind of data should last.",
+  "inputs": "Text keys, values of any type, and a time to live in milliseconds. The CACHE_ENABLED environment setting.",
+  "outputs": "The stored value or nothing, a count of stored items, and the TTL table.",
+  "risks": "Expired items that are never read again stay in memory until the server restarts. The cache lives in one server process, so separate server copies do not share it. Users can see outdated data for up to the TTL period after a change.",
+  "debug": "If results look outdated, check the TTL table and whether the cache is cleared after changes. To rule the cache out, set CACHE_ENABLED to false and retry. If memory keeps growing, look at the size value.",
+  "summary_hash": "sha256:9229b12c1a734b36b3877d160fcedba9514e7d2a1cca4e8211406570d173cfa6"
+}

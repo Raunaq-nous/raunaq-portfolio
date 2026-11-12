@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/diagnose-search-urls.ts",
+  "language": "TypeScript",
+  "lines": 109,
+  "hash": "sha256:3091de79d6f70a82388954ce408057a996854976f2640339670b75135f91043e",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Diagnostic tool with no test",
+      "Only the top-level error handler catches failures; a non-JSON reply would stop the run",
+      "Depends on search provider behavior that can change"
+    ]
+  },
+  "terms": [
+    {
+      "term": "Redirect wrapper",
+      "meaning": "a Google link that points to a page through an encoded address rather than the direct address"
+    },
+    {
+      "term": "API key",
+      "meaning": "a secret password-like code that lets the program use a paid service"
+    },
+    {
+      "term": "Query string",
+      "meaning": "the part of a web address after the question mark that carries parameters"
+    },
+    {
+      "term": "Organic result",
+      "meaning": "an ordinary search hit, as opposed to ads or special boxes"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/storage",
+    "Tavily search service",
+    "SearchAPI service",
+    "SerpAPI service"
+  ],
+  "used_by": [
+    "Not visible in the code"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "52a6eac556301683",
+      "title": "Setup and default search",
+      "what": "Loads the storage module, which the code does not explain, and sets the search query from the command line or a default about NuScale investor relations.",
+      "why": "Likely reason: the storage import is needed for setup side effects, but the code does not say what.",
+      "watch_out": "Loading storage may open a database connection, and the reason is not stated in the code."
+    },
+    {
+      "start": 16,
+      "end": 33,
+      "kind": "function",
+      "name": "decodeGoto",
+      "id": "s2",
+      "hash": "616fbd37a6c326da",
+      "title": "Decoding Google redirect links",
+      "what": "Tries to recover a direct web address from an encoded Google redirect link. Returns the address if it finds one, a note that nothing was found, or a note that decoding failed.",
+      "why": "The header says the redirect may embed the real address as plain text, so decoding is the cheapest test for a usable link.",
+      "watch_out": "A recovered address is printed but never checked against the live web, so treat it as a lead, not a confirmed page."
+    },
+    {
+      "start": 34,
+      "end": 52,
+      "kind": "function",
+      "name": "report",
+      "id": "s3",
+      "hash": "2bf8eabe75f04a26",
+      "title": "Printing one provider's results",
+      "what": "Prints the first six results from one provider, marking each link as a wrapper or direct, showing related link fields, and ending with a count of wrapper links.",
+      "why": "Gives a short per-provider summary so the owner can compare providers.",
+      "watch_out": "Only the first six results are inspected, so the count describes a sample, not every result."
+    },
+    {
+      "start": 53,
+      "end": 109,
+      "kind": "function",
+      "name": "main",
+      "id": "s4",
+      "hash": "15ba8e3950997595",
+      "title": "Calling each search provider",
+      "what": "Sends the query to Tavily, SearchAPI and SerpAPI, each only if its key is set. Tavily addresses are printed directly. For the other two, the results go to the printing step. Errors print the status and a short part of the reply.",
+      "why": "Skipping any provider without a key lets the tool run with whichever services are configured.",
+      "watch_out": "Each call costs a search and waits on the network; a reply that is not valid JSON stops the whole script at the final error handler."
+    }
+  ],
+  "explained_at": "2026-11-12T03:01:24+00:00",
+  "explained_by": "haiku",
+  "summary": "A diagnostic script that prints the raw results from up to three search providers, so the owner can see whether the links are usable web addresses or Google redirect wrappers.",
+  "purpose": "Find out exactly what the search providers return, especially the redirect links that cannot be fetched, before changing the retrieval code.",
+  "why": "The header says the retrieval step has never fetched a corporate investor relations page and that stored links include relative redirect paths, so this tool shows the raw data.",
+  "how": "The script reads a search query from the command line or uses a default. It loads the storage module. For each provider whose key is set in the environment, it sends the query and prints the response. For SearchAPI and SerpAPI, it checks the first six results, marks each link as a wrapper or direct, tries to decode the real target from wrapper links, and prints a summary count. Tavily results are printed as plain addresses.",
+  "inputs": "An optional search query typed on the command line. Environment settings TAVILY_API_KEY, SEARCHAPI_KEY and SERPAPI_KEY, each optional.",
+  "outputs": "Console text only: the query, each provider's status, the links, wrapper flags, decoded targets and a summary. The script writes no files.",
+  "risks": "Each run calls paid search services, which can cost money. Two providers take the key in the web address, so any log that records full request addresses would expose the key; this script does not print those addresses. Printed web content is untrusted text.",
+  "debug": "If there is no output, no key is set. If a provider returns an error status, the printed body usually gives the reason, often a bad key or a quota limit. If a decoded target says no URL was found, the wrapper is opaque and cannot be used.",
+  "summary_hash": "sha256:3091de79d6f70a82388954ce408057a996854976f2640339670b75135f91043e"
+}

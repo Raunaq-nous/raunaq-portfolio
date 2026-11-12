@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/import-real-estate-report.ts",
+  "language": "TypeScript",
+  "lines": 150,
+  "hash": "sha256:626121de34312d3b6e82fa1ceec0991ffd3dbdaa4709d5e0e36c999d29be7b3c",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The participant and assessment text is typed by hand.",
+      "Some functions are very long, which makes review difficult.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Insert-only",
+      "meaning": "Only adds new rows and never changes existing ones."
+    },
+    {
+      "term": "Advisory lock",
+      "meaning": "A marker that stops two imports from running at the same time."
+    },
+    {
+      "term": "Replay",
+      "meaning": "Running the same import again to check that the data is already in place."
+    },
+    {
+      "term": "Digest",
+      "meaning": "A fingerprint of the exact plan, so a commit can only run on the version that was reviewed."
+    }
+  ],
+  "depends_on": [
+    "@workspace/db",
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/storage",
+    "artifacts/api-server/src/shared/ingest/conform",
+    "artifacts/api-server/src/shared/classify",
+    "artifacts/api-server/src/ingest/runFileIngest",
+    "artifacts/api-server/src/ingest/realEstateReport",
+    "artifacts/api-server/src/ingest/realEstateAssociations",
+    "attached_assets/real_estate_enriched_1784144508434.json"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 24,
+      "kind": "setup",
+      "name": "File setup, norm, escape",
+      "id": "s1",
+      "hash": "bbaba9f7ab0882f7",
+      "title": "Header, imports and helpers",
+      "what": "Documents the import rules and sets up the imports. Defines small helpers for matching names and for making text safe to place in HTML.",
+      "why": "The header states the import is insert-only. The HTML escaping is needed because report text is placed into a web page.",
+      "watch_out": "The script changes the working folder when it starts, so any relative path used later depends on that change."
+    },
+    {
+      "start": 25,
+      "end": 36,
+      "kind": "value",
+      "name": "participants",
+      "id": "s2",
+      "hash": "f8f6d273ebc21514",
+      "title": "Named participants by project",
+      "what": "Lists, for each project code, which companies hold which role, such as owner, developer, or operator. Some projects are intentionally left empty.",
+      "why": "A code comment says a prospective owner is not recorded as a present owner, so it is left out.",
+      "watch_out": "These entries are typed by hand, so a wrong name or role goes straight into the company links at commit."
+    },
+    {
+      "start": 37,
+      "end": 96,
+      "kind": "function",
+      "name": "run (part 1)",
+      "id": "s3",
+      "hash": "b72f3c5cc95ea24e",
+      "title": "Plan each project",
+      "what": "For each project in the report, finds matching existing records, plans values and company links, collects conflicts and unknown values, and computes the digest. Then, in dry run, writes preview files and a public copy of the report and stops.",
+      "why": "A preview is needed before any write. The public copy notes that the report is not an independent verification.",
+      "watch_out": "Name matching is loose, so a wrong match is caught only if it appears in the conflicts list."
+    },
+    {
+      "start": 97,
+      "end": 150,
+      "kind": "function",
+      "name": "run (part 2)",
+      "id": "s4",
+      "hash": "fa003b09ee1082ff",
+      "title": "Commit or replay the plan",
+      "what": "In commit mode only, checks the digest and that there are no conflicts, locks the tables, confirms existing data is unchanged, inserts new projects with their links, sources, milestones, and evidence, and checks the totals. Otherwise it only verifies existing rows, then writes a result file.",
+      "why": "The locks and checks stop anything from changing between the preview and the commit.",
+      "watch_out": "The whole commit is in one transaction, so a failure undoes everything. Companies created in the same run are not separately listed."
+    }
+  ],
+  "explained_at": "2026-11-12T03:03:37+00:00",
+  "explained_by": "haiku",
+  "summary": "A reviewed, insert-only importer for one real-estate research report. It adds new projects with their company links, sources, milestones, and evidence, and never overwrites existing data.",
+  "purpose": "Add the projects from a reviewed real-estate report to the database.",
+  "why": "The header says the import is reviewed, insert-only, and that a replay checks existing rows without enriching or overwriting them.",
+  "how": "Loads the report manifest and existing projects, then matches each report project to existing records and plans its company links. Computes a digest of the plan. In dry run it writes preview files and a public copy of the report, then stops. In commit mode it checks the digest and that nothing has changed since the preview, locks the tables, inserts new rows, checks the results, and writes a result file. If the project already exists unchanged, it only verifies it.",
+  "inputs": "Existing projects, companies, and company aliases in the database. The report manifest. An older attachment file. The approved digest passed with --reviewed.",
+  "outputs": "Preview and result files in the output folder (dry-run.json, manifest.json, commit.json or replay.json), a public HTML copy of the report, and database inserts when committed.",
+  "risks": "A commit writes to the database. Name matching is loose for long names, so a wrong match is possible. The participant table is typed by hand. The report's text is partly cut off in the code shown, so some wording could not be checked here.",
+  "debug": "Start with a dry run and read the digest and warnings. If the commit refuses the digest, run the dry run again. A held or conflicting project is listed in the preview. The replay result file shows whether existing rows still match.",
+  "summary_hash": "sha256:626121de34312d3b6e82fa1ceec0991ffd3dbdaa4709d5e0e36c999d29be7b3c"
+}

@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/recipe/coverage.ts",
+  "language": "TypeScript",
+  "lines": 146,
+  "hash": "sha256:fd739608a059c3532dc77fb5ab76a1ff353c8488e9e9f79ee43186f3ae01608c",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Only three of seven sections are in the packet.",
+      "No test file is visible in the packet.",
+      "Slide references for projects depend on exact name matching."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ledger",
+      "meaning": "a running record of entries, here a record of every item a run used"
+    },
+    {
+      "term": "Yard",
+      "meaning": "the app's main project database that holds facts and sources"
+    },
+    {
+      "term": "deck",
+      "meaning": "the set of slides a run produces"
+    },
+    {
+      "term": "methodology source",
+      "meaning": "a document that describes how the study was done"
+    },
+    {
+      "term": "row",
+      "meaning": "one record in a database table"
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "artifacts/api-server/src/db",
+    "@workspace/db",
+    "artifacts/api-server/src/tools/research-contract/sourcePolicy",
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/types"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 20,
+      "kind": "setup",
+      "name": "File setup, SlideRef, Row",
+      "id": "s1",
+      "hash": "7a274df3c1e45fcd",
+      "title": "Purpose and record shapes",
+      "what": "Explains that the coverage ledger records every item a run used, where it went, and which slides show it. Methodology sources are also registered in the Yard. Defines the shapes used for slide references and ledger rows.",
+      "why": "The header says the ledger is written from the saved result and never recomputed, so it matches what the run actually produced.",
+      "watch_out": "Because the ledger is not recomputed, a later change to the logic does not update the records of older runs."
+    },
+    {
+      "start": 21,
+      "end": 42,
+      "kind": "function",
+      "name": "slideIndex",
+      "id": "s2",
+      "hash": "6635cdb3f120e33b",
+      "title": "Map each item to its slides",
+      "what": "Builds a lookup from each item ID to the slides that cite it or list it. It scans each slide's citation lists and any ID-bearing field inside the slide.",
+      "why": "Likely reason: lets each ledger row show which slide numbers use the item.",
+      "watch_out": "Any field named id or projectId inside a slide adds a slide reference, which can overstate how much an item was used."
+    },
+    {
+      "start": 43,
+      "end": 56,
+      "kind": "function",
+      "name": "projectSlides, methodSourceYardId",
+      "id": "s3",
+      "hash": "733dd47b44224dba",
+      "title": "Find slides that name a project, and source IDs",
+      "what": "Finds tabular slides (matrix, universe, glossaries, performance and programmes) that mention a project by its exact quoted name. Also gives each methodology source a stable Yard identity by adding a fixed prefix to its ID.",
+      "why": "Likely reason: tables show project names rather than citation IDs, so name matching is needed. The prefix keeps methodology sources distinct in the Yard.",
+      "watch_out": "Name matching is exact, so a project spelled differently in a table is missed and its slides are not listed."
+    },
+    {
+      "start": 57,
+      "end": 115,
+      "kind": "function",
+      "name": "recordCoverage (part 1)",
+      "id": "s4",
+      "hash": "e81edbe7aaa5cb15",
+      "title": "Recording projects, facts and findings in the ledger",
+      "what": "Builds one ledger row for each project, research fact, analyst finding and commentary item in a run. Each row records whether it was admitted, why it was held back if not, and which slides it appears on, so a reader can trace what was used and what was left out.",
+      "why": "Likely reason: an audit trail. Held items carry a plain reason so the omission is visible rather than silent.",
+      "watch_out": "Method sources also update a shared source record through an insert with conflict update, so changes here affect data outside this run."
+    },
+    {
+      "start": 116,
+      "end": 133,
+      "kind": "method",
+      "name": "recordCoverage: for",
+      "id": "s5",
+      "hash": "d088e7a5e7150041",
+      "title": "Replacing the run ledger and returning counts",
+      "what": "Adds a row for each methodology item, then in one database transaction deletes this run's earlier ledger rows and inserts the new rows in batches of 500. It returns how many rows exist for each item type.",
+      "why": "Likely reason: rerunning a run should replace its ledger rather than add duplicates, and the transaction keeps the swap all or nothing.",
+      "watch_out": "Rerunning a run removes its earlier ledger rows first, so any previous ledger for that run is lost."
+    },
+    {
+      "start": 134,
+      "end": 142,
+      "kind": "function",
+      "name": "runCoverageSummary",
+      "id": "s6",
+      "hash": "095b1d7a231f0654",
+      "title": "Counting coverage for the API",
+      "what": "Returns totals per item type for a run: total rows, admitted rows, rows that appear on slides, and rows assigned to a pillar. The API uses these figures to show coverage.",
+      "why": "Likely reason: lets the API show a summary without loading every ledger row.",
+      "watch_out": "The counts come from a raw SQL text query, so renaming a column in the ledger table breaks this without a compile error."
+    },
+    {
+      "start": 143,
+      "end": 146,
+      "kind": "function",
+      "name": "hasCoverage",
+      "id": "s7",
+      "hash": "b8b64661293a116a",
+      "title": "Checking whether a run has ledger rows",
+      "what": "Answers yes or no to whether a run has any coverage rows saved. It stops after finding the first row.",
+      "why": "Likely reason: a fast existence check so the app can tell whether a ledger was ever recorded for a run.",
+      "watch_out": "It only proves that some rows exist, not that the ledger is complete."
+    }
+  ],
+  "explained_at": "2026-11-12T04:38:54+00:00",
+  "explained_by": "haiku",
+  "summary": "Writes a permanent record in the Yard of every item a lessons run used, where each item went, and which deck slides show it.",
+  "purpose": "Let a reader trace any fact, finding or source from a run to the pillar and slide where it appears.",
+  "why": "The header says the ledger describes what the run actually produced, and is written from the saved result rather than recalculated.",
+  "how": "First, read the saved result. Second, build a map from each item to the slides that cite it. Third, find tabular slides that name each project. Fourth, the header says rows are then built for facts, findings, commentary, methodology items and sources, with pillar, sub-driver, route, admission and slide details. Fifth, rows are saved to the coverage table. Sixth, methodology sources are registered in the Yard sources table. Steps four to six are described in the header but their code is not in this packet.",
+  "inputs": "The saved recipe result for a run, including its deck slides and facts.",
+  "outputs": "Rows for the coverage table, registered source identities, and lookup maps used by other code.",
+  "risks": "Only three of seven sections are visible, so the writing logic is not reviewed. Name-based matching can miss slides. Records are fixed when written, so later fixes do not update them.",
+  "debug": "If a row shows no slide, check whether the item ID appears in a slide's citation list. For projects, check that the name in the table matches the project name exactly. If methodology sources are missing, check the prefix rule in methodSourceYardId and the Yard sources table.",
+  "summary_hash": "sha256:fd739608a059c3532dc77fb5ab76a1ff353c8488e9e9f79ee43186f3ae01608c"
+}

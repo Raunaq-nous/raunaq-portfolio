@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/shared/ingest/conform.ts",
+  "language": "TypeScript",
+  "lines": 525,
+  "hash": "sha256:c14d168d7a1f78e6742e81190f8535ce55fedf756dc43af3b0be0c8e643c0045",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the setup and the issue level type are visible, so the conforming logic cannot be judged.",
+      "No tests are visible in the section provided."
+    ]
+  },
+  "terms": [
+    {
+      "term": "ingestion",
+      "meaning": "the step where outside data is loaded into the app"
+    },
+    {
+      "term": "conform",
+      "meaning": "to reshape a record so it follows the app's standard names and units"
+    },
+    {
+      "term": "lifecycle stage",
+      "meaning": "the phase a project is in, such as planning or construction"
+    },
+    {
+      "term": "classifier",
+      "meaning": "a rule that assigns a record to its correct sub-industry"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/shared/industries.ts",
+    "artifacts/api-server/src/shared/industryConfig.ts",
+    "artifacts/api-server/src/shared/classify/index.ts",
+    "artifacts/api-server/src/shared/lifecycle",
+    "artifacts/api-server/src/lib/fx"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup, IssueLevel",
+      "id": "s1",
+      "hash": "cae7f4af5c90ce81",
+      "title": "Imports and issue levels",
+      "what": "Brings in the industry data, settings, classification functions, lifecycle stage list, and currency and year helpers. It also defines that each problem found is either an error or a warning.",
+      "why": "The comments say the lifecycle stage list is reused from its owning file instead of being written again, so the valid values come from one place.",
+      "watch_out": "Errors and warnings are treated differently later in the file, but that difference is not visible in this section."
+    },
+    {
+      "start": 18,
+      "end": 23,
+      "kind": "type",
+      "name": "ConformIssue",
+      "id": "s2",
+      "hash": "9559826a3119ea13",
+      "title": "One problem noted during conversion",
+      "what": "Describes one problem or note that conversion can attach to a record, with a level, the field it concerns and a message.",
+      "why": "Reason not stated in the code. Likely reason: lets a bad value be flagged without stopping the whole conversion.",
+      "watch_out": "The field is a free text name, so a misspelled field name will not match the field it is meant to flag."
+    },
+    {
+      "start": 24,
+      "end": 62,
+      "kind": "type",
+      "name": "ConformedRecord",
+      "id": "s3",
+      "hash": "30def462d4ae4983",
+      "title": "The standard shape of one project",
+      "what": "Defines every field a converted project can have, such as name, country, capacity, stage, dates, budget and delay reasons. Anything specific to one industry goes into a flexible attributes group rather than a fixed field.",
+      "why": "The comment states the purpose: industry facts stay out of fixed columns, and the old budget column is never written.",
+      "watch_out": "Budgets must be stored as numbers in the planned and actual budget fields, and the old float budget field must not be written to."
+    },
+    {
+      "start": 63,
+      "end": 76,
+      "kind": "type",
+      "name": "ConformedEvidence",
+      "id": "s4",
+      "hash": "524f17de40c6a7b2",
+      "title": "One evidence item attached to a record",
+      "what": "Describes the evidence triplet for a project: the exact text, who published it and the date, plus optional link and location. Items missing the required text, publisher or date are dropped.",
+      "why": "The comment states the purpose: the shape mirrors earlier evidence formats and the database's required columns.",
+      "watch_out": "Items missing a required field are counted as skipped rather than saved, so check the skipped count when evidence seems short."
+    },
+    {
+      "start": 77,
+      "end": 87,
+      "kind": "type",
+      "name": "ConformResult, LIFECYCLE_SET",
+      "id": "s5",
+      "hash": "4f4de1e91a916ecb",
+      "title": "Output bundle and allowed lifecycle stages",
+      "what": "Defines what conversion returns: the converted project, its issues, its evidence list and how many evidence items were dropped. It also builds a lookup set of allowed lifecycle stages from a list defined elsewhere.",
+      "why": "The comments explain the skipped count. The reason for the lookup set is likely fast checking, but this is not stated in the code.",
+      "watch_out": "The allowed stages come from an imported list that is not shown here, so changing that list changes what this file accepts."
+    },
+    {
+      "start": 88,
+      "end": 124,
+      "kind": "value",
+      "name": "LIFECYCLE_SYNONYMS",
+      "id": "s6",
+      "hash": "656d56811c0e6065",
+      "title": "Alternative stage names mapped to standard ones",
+      "what": "Maps common alternative words for a project's stage, such as commissioned or grid connected, onto the standard stage names the app uses. Operational is treated as operating, as the comment says the app already does elsewhere.",
+      "why": "The comment gives the reason: a documented equivalence across industries, and matching dashboard counts.",
+      "watch_out": "Every target must be a real stage name, and canceled and abandoned both map to the one standard cancelled stage, so keep the spelling consistent."
+    },
+    {
+      "start": 125,
+      "end": 132,
+      "kind": "function",
+      "name": "normStage",
+      "id": "s7",
+      "hash": "b4f312e48c4a9c68",
+      "title": "Tidy a stage name for matching",
+      "what": "Cleans up a stage name by trimming it, making it uppercase, and turning each run of characters that are not letters or digits into a single underscore, with stray underscores at the ends removed. So a stage written in mixed case or with spaces becomes one matching key.",
+      "why": "Likely reason: lets variants such as 'Under Construction' and 'under-construction' match the same stage.",
+      "watch_out": "Non-English letters count as separators and are removed, so a stage written in another alphabet will not match."
+    },
+    {
+      "start": 133,
+      "end": 141,
+      "kind": "function",
+      "name": "coerceLifecycle",
+      "id": "s8",
+      "hash": "0984eae0c52a3769",
+      "title": "Turn messy stage text into a stage",
+      "what": "Takes free text for a stage and returns a standard stage name, checking the synonym list first and then the allowed list, or nothing if neither matches. Blank or non-text values return nothing.",
+      "why": "Likely reason: source files use inconsistent wording, and an unknown stage should be flagged rather than guessed.",
+      "watch_out": "A nothing result means the stage was not recognised, and the caller must decide what to record, which this part of the file does not show."
+    },
+    {
+      "start": 142,
+      "end": 148,
+      "kind": "function",
+      "name": "num",
+      "id": "s9",
+      "hash": "f5f87aec1751822b",
+      "title": "Read a number from messy text",
+      "what": "Turns a value into a number after removing commas and spaces, and returns nothing for blank or non-number values. Probably used for numeric fields such as budgets and capacities, though the calling code is not shown.",
+      "why": "Likely reason: source spreadsheets write numbers with thousands separators, so removing them lets those values load.",
+      "watch_out": "Commas are removed rather than read as decimal points, so a European style value such as 1,5 becomes 15."
+    },
+    {
+      "start": 149,
+      "end": 154,
+      "kind": "function",
+      "name": "str",
+      "id": "s10",
+      "hash": "f1c210043b72487d",
+      "title": "Trim text and blank to null",
+      "what": "Turns any value into trimmed text, or null when the value is missing or empty after trimming. Every text field in an ingest record passes through this step, so blank cells are treated as absent.",
+      "why": "Likely reason: keeps blank spreadsheet cells from being saved as empty text.",
+      "watch_out": "Non-text values such as numbers are converted to text first, so a zero becomes the text 0."
+    },
+    {
+      "start": 155,
+      "end": 188,
+      "kind": "function",
+      "name": "blankRecord",
+      "id": "s11",
+      "hash": "144d48ff8b77595b",
+      "title": "Empty project template",
+      "what": "Builds a project record with every field set to empty, with an empty attributes set. It is used as the placeholder result when a record cannot be processed, such as when the industry is unknown.",
+      "why": "Likely reason: gives callers a complete result shape even when the input is unusable.",
+      "watch_out": "Any new field added to the project record must also be added here, or the placeholder will be incomplete."
+    },
+    {
+      "start": 189,
+      "end": 242,
+      "kind": "function",
+      "name": "parseEvidence",
+      "id": "s12",
+      "hash": "0a25fd5d038d2107",
+      "title": "Check and keep source quotes",
+      "what": "Reads the optional evidence list on a record and keeps only items that have a verbatim quote, a publisher, and a date. Items missing any of these are skipped with a warning and never filled in.",
+      "why": "The code comment states the rule: evidence is never made up or defaulted.",
+      "watch_out": "A skipped item only adds a warning and a count, so the record still saves without that evidence."
+    },
+    {
+      "start": 243,
+      "end": 258,
+      "kind": "type",
+      "name": "ConformOptions",
+      "id": "s13",
+      "hash": "625bfc48575b3319",
+      "title": "Optional list of known segments",
+      "what": "Lets the caller pass the set of segment names already known for an industry. A segment outside that set triggers a warning that a new segment will be created.",
+      "why": "The comment says the default is the industry's built-in taxonomy, so simple scripts keep working without a database lookup.",
+      "watch_out": "An incomplete set passed by a caller will cause false new-segment warnings for valid segments."
+    },
+    {
+      "start": 259,
+      "end": 316,
+      "kind": "function",
+      "name": "conformRecord (part 1)",
+      "id": "s14",
+      "hash": "16322732d1973695",
+      "title": "Check industry, name, stage and attributes",
+      "what": "Starts the conversion of one raw record. An unknown industry stops the record with an error, and a missing name or lifecycle stage is also an error. Attributes are kept only if the industry declares them, and other keys are dropped with a warning.",
+      "why": "The comments say errors make a record not eligible to save, while warnings flag dropped or changed data but still allow saving.",
+      "watch_out": "The lifecycle stage is read from three possible field names, so a record using some other name fails with a missing-stage error."
+    },
+    {
+      "start": 317,
+      "end": 370,
+      "kind": "method",
+      "name": "conformRecord: if",
+      "id": "s15",
+      "hash": "ca1a3c4fe2d59284",
+      "title": "Validate each declared attribute value",
+      "what": "Checks each declared attribute against its type. Numbers must parse, enum values must be on the allowed list, and booleans accept true, 1 or yes. Bad values are dropped with a warning. It also accepts a location from several field names and fills in the default capacity unit when none is given.",
+      "why": "Likely reason: lets bulk data be loaded without failing on small formatting problems.",
+      "watch_out": "Any boolean text other than true, 1 or yes is silently stored as false, with no warning."
+    },
+    {
+      "start": 371,
+      "end": 413,
+      "kind": "function",
+      "name": "conformRecord (part 3)",
+      "id": "s16",
+      "hash": "0e8650efa6fcb96b",
+      "title": "Set subsector using industry rules",
+      "what": "Chooses the subIndustry value in one of two ways. For data-driven industries, the supplied segment is kept as given and a warning is raised the first time a new segment appears. For strict industries such as nuclear, a valid supplied leaf wins and a classifier is used when the input is missing.",
+      "why": "The code comments say the difference is intentional: data-driven industries trust the data, and strict industries trust the classifier.",
+      "watch_out": "Data-driven industries never clear a segment, even a misspelled one, so a typo becomes a new segment unless someone reviews the warning."
+    },
+    {
+      "start": 414,
+      "end": 469,
+      "kind": "method",
+      "name": "conformRecord: if",
+      "id": "s17",
+      "hash": "a1e4a004e78fc370",
+      "title": "Strict subsector decision and money setup",
+      "what": "For strict industries, decides the subsector from the supplied value and the classifier, and warns when they disagree or when nothing matches. It then reads the budget figures and sets up the currency conversion step.",
+      "why": "Likely reason: the comment says this nuclear behaviour was kept exactly as it was before.",
+      "watch_out": "Currency conversion is skipped when a budgetUsd value exists, so a wrong budgetUsd is trusted without any check."
+    },
+    {
+      "start": 470,
+      "end": 525,
+      "kind": "method",
+      "name": "conformRecord: for",
+      "id": "s18",
+      "hash": "c9566f7b99181cc2",
+      "title": "Convert foreign budgets to US millions",
+      "what": "For planned and actual budgets in a non-US currency, converts the figure to US dollars in millions using the rate for the closest known date, and records the conversion in attributes. If no conversion is possible, the figure is dropped and kept only as text. The record is then assembled and returned together with its evidence.",
+      "why": "The comment says budget columns are always US millions, so other currencies must be converted or removed.",
+      "watch_out": "The conversion stamp uses today's date, while the rate year comes from the first date found, so a backdated figure may use a rate from a different year than expected."
+    }
+  ],
+  "explained_at": "2026-11-12T04:17:23+00:00",
+  "explained_by": "haiku",
+  "summary": "This file takes raw project records from data sources and reshapes them into the app's standard format, noting any problems it finds.",
+  "purpose": "It makes incoming records match the standard vocabulary and units so the rest of the app can trust them. It uses the industry data, the classification rules, the lifecycle stage list, and currency and year helpers.",
+  "why": "The file's comments say the lifecycle stage list is imported from its owning file rather than written again here, so the app never invents a stage name.",
+  "how": "The setup section brings in the industry data, the industry settings, the classification functions, the lifecycle stage list, and the currency and year helpers. It then defines the two issue levels. The rest of the conforming steps are not shown in the section provided.",
+  "inputs": "Raw records from ingestion, plus options. The exact shape is defined in later sections that were not provided.",
+  "outputs": "Conformed records and a list of issues. The names of the result and issue types suggest this, but the later sections are needed to confirm it.",
+  "risks": "Incorrect lifecycle or classification mapping would place records in the wrong stage or category. Currency and year conversion could be wrong if the helper's rules are misread.",
+  "debug": "Start with the issue list for a record, since it should explain what was changed or rejected. If a stage or industry value looks wrong, check the lifecycle stage list and the classifier for that industry.",
+  "summary_hash": "sha256:c14d168d7a1f78e6742e81190f8535ce55fedf756dc43af3b0be0c8e643c0045"
+}

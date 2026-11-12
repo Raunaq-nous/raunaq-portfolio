@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/reality-scan/scope.ts",
+  "language": "TypeScript",
+  "lines": 216,
+  "hash": "sha256:0fdca5fe5b56618e09e85efc7b705f05245a3d4b63cb7d021db5af8c06f9a0cc",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The code validates input and records modes clearly.",
+      "No test for this file is visible in the packet.",
+      "Correct behaviour depends on helper modules (industries, segments, companyScope) that are not shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Scope",
+      "meaning": "The set of industries, segments, projects and companies a user chose for one run."
+    },
+    {
+      "term": "Enrich",
+      "meaning": "A selection part that already has projects in the Yard, so its data can be improved."
+    },
+    {
+      "term": "Scratch",
+      "meaning": "A selection part with no projects in the Yard yet, so it must be built from nothing."
+    },
+    {
+      "term": "Peer",
+      "meaning": "A project that shares a segment, or technology, with a project the user picked."
+    },
+    {
+      "term": "Segment",
+      "meaning": "A sub-group inside an industry, such as a type of plant within one sector."
+    },
+    {
+      "term": "ScopeValidationError",
+      "meaning": "An error raised when the user's selection is invalid, carrying a message fit to show."
+    },
+    {
+      "term": "Drizzle ORM",
+      "meaning": "A library the code uses to ask the database questions in a structured way."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "../../db",
+    "@workspace/db",
+    "../../shared/industries",
+    "../../shared/segments",
+    "./companyScope"
+  ],
+  "used_by": [
+    "precheck route (path not shown)",
+    "resolve_mode stage (path not shown)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "56390fee6c851ba1",
+      "title": "Module setup and purpose",
+      "what": "Loads the database and the helper modules this file needs. The header explains that a selection is turned into a live project list and each item is tagged enrich or scratch.",
+      "why": "Reason stated in the header comment: both callers must agree on mode, so one module does the work for both.",
+      "watch_out": "Both callers must keep using this one module, or their modes can drift apart."
+    },
+    {
+      "start": 18,
+      "end": 26,
+      "kind": "class",
+      "name": "ScopeValidationError, ScopeItemMode",
+      "id": "s2",
+      "hash": "a912170cca309680",
+      "title": "Scope error and item mode types",
+      "what": "Defines the error raised for an invalid selection, which carries a message the user can read, and the two allowed item modes, enrich and scratch.",
+      "why": "Likely reason: a separate error type lets callers tell bad user input apart from system faults.",
+      "watch_out": ""
+    },
+    {
+      "start": 27,
+      "end": 36,
+      "kind": "type",
+      "name": "ResolvedScopeItem",
+      "id": "s3",
+      "hash": "1745f0f45a8ecd5f",
+      "title": "Shape of one resolved item",
+      "what": "Describes one line of the resolved selection: its kind (industry, segment, project or company), its label, its industry, its project count, and its mode.",
+      "why": "Reason stated in the code: modes are recorded per item, so one selection can hold both kinds.",
+      "watch_out": ""
+    },
+    {
+      "start": 37,
+      "end": 45,
+      "kind": "type",
+      "name": "ResolvedScope",
+      "id": "s4",
+      "hash": "8ad152ee3e0e67de",
+      "title": "Shape of the whole resolved scope",
+      "what": "Describes the full result: the items, the project IDs, the total count, the count per industry, the scope kind and the overall mode.",
+      "why": "Reason not stated in the code beyond field names; this is the shape callers receive.",
+      "watch_out": "The overall mode becomes mixed whenever the items differ, so callers must handle that value."
+    },
+    {
+      "start": 46,
+      "end": 58,
+      "kind": "function",
+      "name": "deriveScopeKind",
+      "id": "s5",
+      "hash": "a38209a66cd1da96",
+      "title": "Labelling the kind of selection",
+      "what": "Labels the selection as industries, segments or projects when only one kind is used, and as mixed when several kinds are combined.",
+      "why": "Reason stated in the header comment: the label tells the user what kind of selection was made.",
+      "watch_out": "Companies count as a project kind, so companies plus picked projects is labelled mixed even though both are projects."
+    },
+    {
+      "start": 59,
+      "end": 62,
+      "kind": "function",
+      "name": "dedupe",
+      "id": "s6",
+      "hash": "3d1ee02f9237994e",
+      "title": "Removing repeated values",
+      "what": "Removes repeated values from a list and keeps the first occurrence of each.",
+      "why": "Likely reason: a repeated pick or industry would otherwise be counted twice.",
+      "watch_out": ""
+    },
+    {
+      "start": 63,
+      "end": 117,
+      "kind": "function",
+      "name": "resolveScope (part 1)",
+      "id": "s7",
+      "hash": "802b746385a7d4cd",
+      "title": "Validating and resolving companies",
+      "what": "Rejects an empty selection and any unknown industry or segment, then resolves each company to its projects. An unknown company or one with no projects stops the resolution with an error. Repeated segments are removed.",
+      "why": "Reason stated in the code: explicit segments narrow their parent industry rather than adding the whole industry back in.",
+      "watch_out": "A company with no Yard projects stops the entire resolution, not just that company."
+    },
+    {
+      "start": 118,
+      "end": 170,
+      "kind": "method",
+      "name": "resolveScope: if",
+      "id": "s8",
+      "hash": "624c052d5e0ef036",
+      "title": "Adding industries, segments and picked projects",
+      "what": "Adds whole industries, marking any with zero Yard projects as scratch. Adds segments the same way. For picked projects, fetches their details and stops with an error if any ID is missing. Peer lookup runs only in automatic mode unless peers are turned off.",
+      "why": "Likely reason: an industry or segment with no Yard projects still needs building, so it is shown as scratch rather than hidden.",
+      "watch_out": "Peers are looked up only when automatic selection is on and includePeers is not false, so the same selection can give different counts in different modes."
+    },
+    {
+      "start": 171,
+      "end": 216,
+      "kind": "method",
+      "name": "resolveScope: for",
+      "id": "s9",
+      "hash": "0edc12a711e4514e",
+      "title": "Picking peers and final totals",
+      "what": "For each picked project, finds peers in the same segment, or with the same technology when no segment is set, and records each picked project as an enrich item. It then counts projects per industry, sets the overall mode, and returns the resolved scope.",
+      "why": "Reason stated in the code: picked projects exist in the Yard by definition, so they are always enrich.",
+      "watch_out": "With peers on, one picked project can add many more projects than the user chose, and the item label names the peer rule used."
+    }
+  ],
+  "explained_at": "2026-11-12T05:04:07+00:00",
+  "explained_by": "haiku",
+  "summary": "Works out exactly which Yard projects a Reality Scan selection covers, and whether each part is an enrich item (already in the Yard) or a scratch item (none in the Yard yet).",
+  "purpose": "Turns the user's selection of industries, segments, projects and companies into one concrete list of project IDs, with a mode recorded for each part of the selection.",
+  "why": "The header comment says the precheck route and the resolve_mode stage must never disagree about mode, and a mixed selection must not be forced into one value.",
+  "how": "First rejects an empty selection and any unknown industry, segment or company. Resolves companies to their projects. Adds whole industries (in automatic mode, a segment narrows its parent industry instead). Adds segments by their expanded names. Adds picked projects, optionally with peers that share their segment or technology. Collects unique project IDs and counts per industry, then derives the scope kind and overall mode.",
+  "inputs": "A RealityScanScope object with industries, segments, projects, optional companies and an optional includePeers flag, plus an automaticSelection flag that turns on narrowing and peers.",
+  "outputs": "A ResolvedScope with items, projectIds, totalProjects, byIndustry, scopeKind and mode. Bad input throws ScopeValidationError with a readable message.",
+  "risks": "Peers can pull in many more projects than the user picked. A company plus picked projects is labelled mixed even though both are projects. Narrowing behaves differently depending on automaticSelection, so callers must pass the right flag.",
+  "debug": "Read the ScopeValidationError message first. Check that industry and segment names exist. If the count is unexpected, check whether peers were on and whether automaticSelection was set. Compare byIndustry against items.",
+  "summary_hash": "sha256:0fdca5fe5b56618e09e85efc7b705f05245a3d4b63cb7d021db5af8c06f9a0cc"
+}

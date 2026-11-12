@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/jobs/steps/commit.ts",
+  "language": "TypeScript",
+  "lines": 430,
+  "hash": "sha256:5b434c1197c0bad61c7fd9b07ac8cacd717a1465a43517686ef439dd0c45a861",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The comment on the documents input says quotes still get written without pages, but the code refuses any new quote with no captured page.",
+      "The changesApplied count includes changes that were only sent to review.",
+      "Hard-field protection depends on a hand-kept list of field names.",
+      "Company links are written even at the lowest confidence and have no review step.",
+      "No tests or proof of correct behavior are visible in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Change log",
+      "meaning": "A record of every proposed or made change to a project field, with who or what made it and whether it was approved."
+    },
+    {
+      "term": "Review state",
+      "meaning": "Whether a change was approved automatically or is waiting for a person to check it."
+    },
+    {
+      "term": "Hard field",
+      "meaning": "A figure such as a budget, megawatt rating or key date, which needs stronger proof before it changes automatically."
+    },
+    {
+      "term": "Corroboration",
+      "meaning": "Support for a value from more than one separate website or from a top-trust source."
+    },
+    {
+      "term": "Canonical URL",
+      "meaning": "A standard form of a web address, used so two spellings of the same page match."
+    },
+    {
+      "term": "Transaction",
+      "meaning": "A group of database writes that all succeed or all fail together."
+    },
+    {
+      "term": "Anomaly",
+      "meaning": "A value the validation step flagged as suspicious, which is logged for review rather than applied."
+    }
+  ],
+  "depends_on": [
+    "../../storage",
+    "../interfaces",
+    "./validation",
+    "../../lib/canonicalize",
+    "../../cache",
+    "@workspace/db",
+    "../../db",
+    "../../lib/spanAnchor"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "971622121c6829df",
+      "title": "Imports",
+      "what": "Loads the storage and database tools, the value comparison helper, the cache, the validation types, and the document and quote locating tools.",
+      "why": "Reason not stated in the code. The imports are needed by the rest of the file.",
+      "watch_out": ""
+    },
+    {
+      "start": 18,
+      "end": 31,
+      "kind": "function",
+      "name": "normalizeUrl",
+      "id": "s2",
+      "hash": "29c6f0a405eadfcd",
+      "title": "Standardizing web addresses",
+      "what": "Makes two spellings of the same page match by removing the page-marker part, common tracking tags and a final slash. It is used when checking whether an update already exists.",
+      "why": "Likely reason: it prevents the same article from being saved twice under slightly different links.",
+      "watch_out": "Only the listed tracking tags are removed, so other differing parameters still count as different pages."
+    },
+    {
+      "start": 32,
+      "end": 39,
+      "kind": "function",
+      "name": "extractDomain",
+      "id": "s3",
+      "hash": "be5a29ad8aa6abb0",
+      "title": "Getting the site name from an address",
+      "what": "Returns the host name of an address without its www prefix, or empty text if the address cannot be read. It is used to match a quote's source to a known trusted source.",
+      "why": "Likely reason: trust tiers are stored by domain name.",
+      "watch_out": "An unreadable address gives an empty domain, which matches nothing and so gets no trust tier."
+    },
+    {
+      "start": 40,
+      "end": 64,
+      "kind": "type",
+      "name": "CommitInput",
+      "id": "s4",
+      "hash": "83cdb4de3cb4d717",
+      "title": "What the commit step is given",
+      "what": "Lists the inputs: the project and job ids, who triggered the job, the extraction and validation outputs, and optionally the full pages fetched in the job. The pages let each quote be located in its full document.",
+      "why": "Comment: passing the pages lets each quote be located while its page is still in hand.",
+      "watch_out": "The comment says callers without documents still get evidence written, but the code refuses every new quote that has no captured page, so omitting documents saves no new quotes."
+    },
+    {
+      "start": 65,
+      "end": 70,
+      "kind": "value",
+      "name": "COMPANY_FIELD_TO_ROLE",
+      "id": "s5",
+      "hash": "77f56209b400c9bc",
+      "title": "Mapping company fields to roles",
+      "what": "Connects three company fields to project roles: contractor, technology provider and owner-operator. A company name found in one of these fields is linked to the project under the matching role.",
+      "why": "Reason not stated in the code beyond the mapping itself.",
+      "watch_out": "Renaming one of these fields in the project record without updating this map silently stops company links from being made."
+    },
+    {
+      "start": 71,
+      "end": 121,
+      "kind": "function",
+      "name": "runCommit (part 1)",
+      "id": "s6",
+      "hash": "e0d218d1f9d3ed55",
+      "title": "Setting up trust checks",
+      "what": "Reads all known sources once and builds a lookup from domain to trust tier. Defines helpers that find the most trusted tier among the pages behind a field, where a lower number means more trusted. Matching also accepts a subdomain of a known domain.",
+      "why": "Likely reason: trust tiers decide how much a change is believed and whether it is approved automatically.",
+      "watch_out": "If reading the sources fails, the error is silently ignored, so every change is judged with no trust tier."
+    },
+    {
+      "start": 122,
+      "end": 174,
+      "kind": "method",
+      "name": "runCommit: for",
+      "id": "s7",
+      "hash": "3878bebe691533d4",
+      "title": "Deciding review state for each field change",
+      "what": "For each field from validation, compares the old and new value. If they differ, it chooses a review state. Soft fields are approved automatically. Hard fields such as budgets, megawatts and dates are approved only if two separate domains or a top-tier source back them, and otherwise wait for review. A change record is written for each field.",
+      "why": "Likely reason: important figures are protected from automatic changes without proof from more than one place.",
+      "watch_out": "Protection applies only to the field names in the hard list, so a new important field not added there is approved automatically."
+    },
+    {
+      "start": 175,
+      "end": 219,
+      "kind": "function",
+      "name": "runCommit (part 3)",
+      "id": "s8",
+      "hash": "dc75fbe4d2d5151b",
+      "title": "Applying approved changes and logging anomalies",
+      "what": "Writes each approved new value onto the project and counts it. Each anomaly, meaning a value flagged as suspicious, is logged as needing review and is not applied.",
+      "why": "Likely reason: flagged values stay out of the project until a person has checked them.",
+      "watch_out": "The changesApplied count includes fields sent for review, so it is not a count of values actually written."
+    },
+    {
+      "start": 220,
+      "end": 275,
+      "kind": "method",
+      "name": "runCommit: if",
+      "id": "s9",
+      "hash": "a17368c7dc803218",
+      "title": "Linking companies to the project",
+      "what": "For each company field that is new or changed, sets a link confidence: 0.9 when a top-tier source names the company, 0.85 when two domains do, and 0.6 otherwise. Finds or creates the company and links it to the project under its role. Failures are logged and skipped.",
+      "why": "Likely reason: the confidence numbers rank how sure the system is about each link.",
+      "watch_out": "Links are written even at 0.6, and no review step is visible, so one weak source can create a company link."
+    },
+    {
+      "start": 276,
+      "end": 317,
+      "kind": "method",
+      "name": "runCommit: for",
+      "id": "s10",
+      "hash": "2acf640072fef712",
+      "title": "Saving new quotes, with a page check",
+      "what": "Quotes that already exist are kept active and marked as seen in this job, matched by exact text. Each new quote is kept only if its source page was captured in this job. Others are refused and a warning is logged.",
+      "why": "Comment: a quote without a stored document cannot be audited, so it is refused rather than saved without one.",
+      "watch_out": "A quote is refused if its address does not match a captured page after standardizing, so a small address difference silently loses the quote."
+    },
+    {
+      "start": 318,
+      "end": 370,
+      "kind": "method",
+      "name": "runCommit: if",
+      "id": "s11",
+      "hash": "f7d91d867432699e",
+      "title": "Saving pages and quotes together",
+      "what": "In one database transaction, saves each source page used by the new quotes, then saves each quote linked to its page and job, with its validation marker. Afterward, outside the transaction, locates each saved quote within its page. A locating failure is logged and does not undo the save.",
+      "why": "Comment: a span is only a locator, so a locating failure should not roll back an auditable quote.",
+      "watch_out": "The transaction is all or nothing, so one failed save undoes the whole batch and the commit step fails."
+    },
+    {
+      "start": 371,
+      "end": 430,
+      "kind": "method",
+      "name": "runCommit: for",
+      "id": "s12",
+      "hash": "3913440b6ed633c5",
+      "title": "Retiring old quotes and adding new updates",
+      "what": "Marks quotes from earlier jobs as inactive when this job no longer contains them. Then saves each new update unless its address or its date and headline already exist. Each added update is logged as approved. Finally, stamps the project's last research time, clears cached project and company data, and returns the counts.",
+      "why": "Likely reason: the duplicate check keeps the same news item from appearing twice on the project.",
+      "watch_out": "The duplicate check compares headlines in lower case, so a headline the model reworded slightly is saved as a new update."
+    }
+  ],
+  "explained_at": "2026-11-12T03:52:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Writes a finished job's approved changes, evidence quotes, source pages, company links and new updates into the project's records, and records where each quote sits in its source page.",
+  "purpose": "Turns the checked output of a research job into saved project data, while keeping the rules for which changes are approved and which need a person to review them.",
+  "why": "Likely reason: this is the only step that writes to the project, so every safety rule is applied here, after validation has finished.",
+  "how": "Reads every source and builds a trust lookup. For each changed field, decides a review state based on the field type and the trust of its sources, then records a change entry. Approved changes are written to the project. Anomalies are logged for review. Company names are linked to the project by role. New quotes are saved with their pages in one transaction, then located in their pages. Old quotes from earlier jobs are deactivated when no longer found, and new updates are added unless they already exist.",
+  "inputs": "The project id, job id, who triggered the job, the extraction output, the validation output and the list of pages fetched in the job. The storage layer and the database.",
+  "outputs": "Change log entries with review states, updated project fields, company links, evidence and page records, new project updates, cache clearing, and a summary with counts and anchoring statistics.",
+  "risks": "Only the hard field list protects important figures such as budgets and dates. The changesApplied count includes fields sent for review, not only those written. A quote whose address does not match a captured page is refused and lost.",
+  "debug": "Look for console lines that begin with commit. Lines containing REFUSED explain quotes that were dropped and why. The change log table shows each field's review state and rule. If a company is missing, check the company lines for its field and confidence.",
+  "summary_hash": "sha256:5b434c1197c0bad61c7fd9b07ac8cacd717a1465a43517686ef439dd0c45a861"
+}

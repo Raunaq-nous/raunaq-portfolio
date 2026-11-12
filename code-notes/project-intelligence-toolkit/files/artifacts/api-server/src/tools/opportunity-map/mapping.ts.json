@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/mapping.ts",
+  "language": "TypeScript",
+  "lines": 100,
+  "hash": "sha256:f8ebfe2ffa87634746b2d662370d1e724cfb124cd2070a2a569e66c5d1ec5a27",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Clear rules and matching tests exist in mapping.test.ts, but test results are not visible here.",
+      "Quote checks are case-sensitive, which can drop valid figures.",
+      "The digital tool list and blocked main offers are typed by hand here, so they can drift away from the catalog."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Triage",
+      "meaning": "sorting opportunities into priority bands so people know what to look at first; the score is a judgement aid, not a sales forecast."
+    },
+    {
+      "term": "Tier",
+      "meaning": "a priority band, where tier 1 is the highest."
+    },
+    {
+      "term": "Evidence confidence",
+      "meaning": "a grade of how well the sources support a claim, from C1 (strongest) to C4 (weakest)."
+    },
+    {
+      "term": "Trigger library",
+      "meaning": "the list of named causes, such as schedule slippage, that the app uses to describe why a project may need help."
+    },
+    {
+      "term": "Digital enabler",
+      "meaning": "a named software or data tool the company might offer a client, such as ALICE."
+    },
+    {
+      "term": "Official source",
+      "meaning": "a web page published by the company itself, as defined in the catalog."
+    },
+    {
+      "term": "Schema",
+      "meaning": "a set of rules that checks data has the right shape and allowed values before it is used."
+    },
+    {
+      "term": "Legacy and provisional",
+      "meaning": "legacy means older saved news; provisional means a placeholder result that needs research to confirm."
+    },
+    {
+      "term": "Decision window",
+      "meaning": "the time frame in which a decision on the project is expected."
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "./catalog",
+    "./types",
+    "./tiers"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/mapping.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup, dimension",
+      "id": "s1",
+      "hash": "abdb56477133b9ce",
+      "title": "Imports and score scale",
+      "what": "Brings in the validation library, catalog data and matching functions, and defines the rule that each score must be a whole number from 1 to 5.",
+      "why": "Setup code; the 1 to 5 scale is the basis of every score in the file.",
+      "watch_out": ""
+    },
+    {
+      "start": 7,
+      "end": 24,
+      "kind": "value",
+      "name": "mappingInputSchema, MappingInput",
+      "id": "s2",
+      "hash": "073a5d0db4621ba0",
+      "title": "Allowed input shape for AI proposals",
+      "what": "Defines exactly what a valid mapping proposal looks like: stage, project name, trigger family and tags, main and supporting solutions, allowed digital tools, confidence grade, free-text fields, and five scores. Anything outside these lists is rejected.",
+      "why": "Likely reason: keep the AI's output within the catalog so that no made-up categories reach users.",
+      "watch_out": "The digital tool list is hard-coded here, so any new tool must be added here as well as in the catalog."
+    },
+    {
+      "start": 25,
+      "end": 32,
+      "kind": "type",
+      "name": "Mapping, accessIndicator",
+      "id": "s3",
+      "hash": "4b88046a2bd51870",
+      "title": "Final mapping shape and access indicator",
+      "what": "Defines the finished mapping, which adds tier, origin, and score details. The access indicator gives 3 when any matched account has a known partner route recorded on the server, and 1 otherwise.",
+      "why": "The comment says relationship breadth alone does not prove access, so only a conservative indicator is used.",
+      "watch_out": "Partner details are server-only; any change that exposes them to the public feed would break the rule the tests check."
+    },
+    {
+      "start": 33,
+      "end": 66,
+      "kind": "function",
+      "name": "finalizeMapping",
+      "id": "s4",
+      "hash": "637a9ebfdc8442c5",
+      "title": "Final checks and scoring",
+      "what": "Lowers evidence confidence for non-official or hypothesis sources, removes stated values and decision dates that are not in the source quotes, sets value to 1 when missing, caps urgency at 3 without a decision date, removes the ALICE tool when permits, funding, governance, or data readiness are doubtful, and turns unknown-stage distress solutions into a less alarming one. It then computes a weighted total from 25% value, 20% severity, 15% urgency, 15% solution fit, 10% access, 10% ability to act, and 5% evidence, and sets a tier.",
+      "why": "The comments and explanation text state the reasons: triage is a heuristic, and normal stage news should not be read as distress or a technology sale.",
+      "watch_out": "The explanation text repeats the weights by hand, so editing a weight without updating it leaves users with wrong information."
+    },
+    {
+      "start": 67,
+      "end": 88,
+      "kind": "function",
+      "name": "legacyMapping",
+      "id": "s5",
+      "hash": "4770fdde239b4801",
+      "title": "Provisional labels for old news",
+      "what": "Builds a mapping for old saved news by matching words in its title, summary, and quotes against the trigger library. It takes the first matched family, maps it to a solution from a fixed table, and labels the result as a phrase match that needs re-research. Returns nothing if no trigger matches.",
+      "why": "The comment says old news stays usable but must not be relabelled as freshly researched.",
+      "watch_out": "Only the first matched family decides the solution, and a family missing from the table falls back to CPA-13."
+    },
+    {
+      "start": 89,
+      "end": 100,
+      "kind": "function",
+      "name": "provisionalMapping",
+      "id": "s6",
+      "hash": "a3ddbc888c45ea0d",
+      "title": "Placeholder mapping built from rules",
+      "what": "Builds a low-confidence placeholder mapping, with stage unknown, no value or dates, and low scores, then runs it through the final checks with the origin marked as legacy rules.",
+      "why": "The comment says this is used when rules or the codebook classifier, rather than research, place a signal.",
+      "watch_out": "Its low default scores make these items rank low, so any new caller that treats them as real findings would mislead users."
+    }
+  ],
+  "explained_at": "2026-11-12T04:54:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks the AI's proposed opportunity mapping against the evidence and rules, then scores it and assigns a triage tier.",
+  "purpose": "Keep unsupported dollar figures, dates, and high-urgency claims out of the results, and give every opportunity a repeatable score.",
+  "why": "The comments say the score is a heuristic, not proof of value or a mandate, and that old or provisional items must not be presented as freshly researched.",
+  "how": "1. Validate the input against the allowed lists. 2. Lower evidence confidence where the source is not official or the signal is only a hypothesis. 3. Drop any stated value or decision date that does not appear in the source quotes. 4. Set a missing value to 1 and cap urgency at 3 when no decision date exists. 5. Remove the ALICE digital tool when permits, funding, governance, or data readiness are doubtful. 6. Calculate the weighted total and then the tier with computeTier. 7. Attach an explanation of the weights. Old saved news goes through legacyMapping and provisionalMapping.",
+  "inputs": "A mapping proposal from the AI (or from rules, for old news), the source list with publish dates, the signal kind, and the account IDs that matched.",
+  "outputs": "A finished mapping with tier, origin, checked fields, and a score object holding evidence, total, and explanation. legacyMapping returns nothing when no trigger matches.",
+  "risks": "Quote checks are exact and case-sensitive, so a correct figure with different capitals is dropped. Changing any weight changes every tier. Trigger families missing from the legacy solution table fall back to a default solution. Scores are subjective judgements.",
+  "debug": "If a value disappears, compare it exactly with the source quote. If a tier looks wrong, check the evidence level, decision window, and total. If the digital tool list looks wrong, check the trigger tags and the readiness text against the filter words. If nothing appears at all, check whether the input passed the schema.",
+  "summary_hash": "sha256:f8ebfe2ffa87634746b2d662370d1e724cfb124cd2070a2a569e66c5d1ec5a27"
+}

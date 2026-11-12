@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/recipe/synthesis.ts",
+  "language": "TypeScript",
+  "lines": 197,
+  "hash": "sha256:7db17ea80da1945d085aa2a74cd3bd4eab296a5731ac7a0f77c6104b108dc983",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in the code shown.",
+      "Dropped sentences are counted but not kept for review.",
+      "The text depends on a model's output, which is checked only for citations and not for accuracy.",
+      "Only six of seven sections were shown, so the executive summary and return value could not be checked."
+    ]
+  },
+  "terms": [
+    {
+      "term": "LLM (large language model)",
+      "meaning": "an AI model that writes text from a prompt"
+    },
+    {
+      "term": "JSON",
+      "meaning": "a structured text format for data, here used for the model's replies"
+    },
+    {
+      "term": "Alias",
+      "meaning": "a short label such as F1 used in place of a long internal id"
+    },
+    {
+      "term": "Hash",
+      "meaning": "a fixed-length fingerprint of some text, here used as a cache key"
+    },
+    {
+      "term": "Cache",
+      "meaning": "saved earlier results that are reused when the same request comes again"
+    },
+    {
+      "term": "Citation id",
+      "meaning": "the internal id of the fact or finding a sentence rests on"
+    }
+  ],
+  "depends_on": [
+    "./framework",
+    "node:crypto",
+    "../../../lib/portkeyOpenAI (model call helper)",
+    "../../../lib/modelConfig (model choice)",
+    "./text",
+    "./types"
+  ],
+  "used_by": [
+    "Callers are not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup, Memo",
+      "id": "s1",
+      "hash": "ce55d9535b253bdc",
+      "title": "File purpose and imports",
+      "what": "Explains the job of the file: the model writes pillar and sub-driver profiles, cautionary tales, case summaries and an executive summary, using only admitted evidence. Every sentence must cite ids, and uncited or wrongly attributed sentences are dropped and counted.",
+      "why": "The header states the rule so readers know unsupported text is removed rather than shown.",
+      "watch_out": "The citation rule is enforced only by the checks later in this file, so loosening those checks would let unsupported text through."
+    },
+    {
+      "start": 19,
+      "end": 32,
+      "kind": "class",
+      "name": "Aliases, rank",
+      "id": "s2",
+      "hash": "3a81a2e8855dbe40",
+      "title": "Short labels for evidence and ranking facts",
+      "what": "The Aliases class gives each real evidence id a short label such as F1 or G2, so the model sees short codes and results can be translated back. The rank function scores facts: verified ones first, then partly verified, then the rest, with longer text ranking higher within each group.",
+      "why": "Likely reason: short labels save space in the prompt and keep real ids out of the model's view, and ranking picks the strongest evidence when there is too much.",
+      "watch_out": "Fact text length adds to the score only up to 400 characters, so very long facts gain no extra weight."
+    },
+    {
+      "start": 33,
+      "end": 43,
+      "kind": "function",
+      "name": "llm",
+      "id": "s3",
+      "hash": "19ea16e03c0ad731",
+      "title": "Sending a request to the language model",
+      "what": "Sends a prompt to the model chosen for reasoning tasks, asks for a JSON reply, allows up to five minutes, retries on failure, and parses the reply. The system message tells the model to write plainly, invent nothing, and cite ids.",
+      "why": "Likely reason: keeping all model calls in one place keeps the rules and time limits consistent.",
+      "watch_out": "If the reply is not valid JSON or the request fails, the error goes back to the caller, so one bad batch can stop the step unless the caller catches it."
+    },
+    {
+      "start": 44,
+      "end": 80,
+      "kind": "function",
+      "name": "synthesize (part 1)",
+      "id": "s4",
+      "hash": "df03df39af94b4a1",
+      "title": "Setting up the synthesis run and citation checks",
+      "what": "Starts the synthesis function. It builds the alias tables and lookups, then defines the checks every model sentence must pass: each cited id must be one the prompt allowed and must belong to the right project. Sentences that fail are counted as dropped.",
+      "why": "The module header explains the rule, and these checks enforce it.",
+      "watch_out": "A sentence is dropped when even one of its citations fails, so a mostly good sentence can disappear completely."
+    },
+    {
+      "start": 81,
+      "end": 126,
+      "kind": "function",
+      "name": "synthesize (part 2)",
+      "id": "s5",
+      "hash": "73351d226ef035e1",
+      "title": "Writing pillar profiles",
+      "what": "For each pillar, up to three at a time, builds a prompt from its sub-drivers, its strongest and riskiest findings, and facts that matched no sub-driver. It asks the model for an overview, practices, implications and a profile for each sub-driver, then keeps only sentences whose citations pass the checks. A hash of the prompt is the cache key, so unchanged inputs reuse the saved answer.",
+      "why": "Likely reason: facts that fit no sub-driver are kept so the profile does not lose evidence.",
+      "watch_out": "Only the top thirty-six facts per sub-driver and the first forty findings per list reach the model, so weaker evidence is left out of the profile."
+    },
+    {
+      "start": 127,
+      "end": 159,
+      "kind": "function",
+      "name": "synthesize (part 3)",
+      "id": "s6",
+      "hash": "76fc1b2899a42263",
+      "title": "Writing case summaries",
+      "what": "Groups the projects used in the profiles into batches of five. For each batch it asks the model for a one-sentence headline and takeaways for each pillar, each tied to that project's own findings and facts. Inline markers such as [F12] in a takeaway are read as citations.",
+      "why": "Likely reason: the summaries feed the case pages in the deck, and batches of five keep each request small.",
+      "watch_out": "A takeaway with an unknown pillar id or empty text is dropped and counted, and the count is what the deck's gaps slide reports."
+    },
+    {
+      "start": 160,
+      "end": 197,
+      "kind": "function",
+      "name": "synthesize (part 4)",
+      "id": "s7",
+      "hash": "2bf47397f6e213de",
+      "title": "Final assembly of the synthesis result",
+      "what": "Asks the model for the executive summary, a cross-case comparison of delivered and troubled projects, and notes on learning systems. It then returns the full written conclusions, with claims whose citations do not match approved source IDs removed and counted.",
+      "why": "Likely reason: the model writes free prose, so each claim is checked against the evidence it was given before it can reach the report.",
+      "watch_out": "Model results are cached by a hash of the prompt, so changing the wording of the prompt causes a fresh and billed model call."
+    }
+  ],
+  "explained_at": "2026-11-12T04:46:42+00:00",
+  "explained_by": "haiku",
+  "summary": "Asks an AI model to write the narrative parts of the lessons study, then keeps only the sentences that cite real evidence.",
+  "purpose": "Turns checked evidence into readable pillar profiles and case summaries, while making every claim traceable to a source id.",
+  "why": "The file header says uncited or mis-attributed sentences are dropped and counted, so the study stays tied to its evidence and its gaps stay visible.",
+  "how": "1. Gives short labels to the facts and findings it will show the model. 2. Writes pillar profiles, several pillars at a time, each from its own evidence, then checks every citation. 3. Groups the projects used in the profiles into batches of five and writes a case summary for each. 4. Caches each model answer by a hash of its prompt so unchanged inputs reuse the saved answer. 5. The executive summary and the return value are in the part of the file not shown here.",
+  "inputs": "The framework, the assessment, methodology items, projects, facts, findings and commentary, plus a memo cache function and a trace logger.",
+  "outputs": "A `Synthesis` object with pillar profiles and case summaries, plus a count of dropped sentences. The exact return shape is in the part of the file not shown.",
+  "risks": "A valid citation id does not prove the sentence matches its source. A sentence is dropped if any one of its citations fails, so a mostly sound sentence can disappear. Up to three model calls run at once, which may hit provider limits. Each call allows five minutes.",
+  "debug": "Check the trace messages for each pillar and case batch. If a pillar has little text, look at the dropped count and whether the model returned the right project's ids. If old answers keep returning after an input change, check the cache key, which is a hash of the prompt.",
+  "summary_hash": "sha256:7db17ea80da1945d085aa2a74cd3bd4eab296a5731ac7a0f77c6104b108dc983"
+}

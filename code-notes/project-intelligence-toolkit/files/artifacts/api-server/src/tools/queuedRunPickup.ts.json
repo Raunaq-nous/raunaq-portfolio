@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/queuedRunPickup.ts",
+  "language": "TypeScript",
+  "lines": 51,
+  "hash": "sha256:30cf1efa887cf53739f6f2a699b36480462efa6841e2050b41174338c3f8e149",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the setup section is in the packet, so the pickup logic cannot be checked.",
+      "The header comment describes intent but its claims are not verified here.",
+      "No test is visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Orphaned run",
+      "meaning": "a run that was queued but has no process working on it"
+    },
+    {
+      "term": "Advisory lock",
+      "meaning": "a database lock that stops two processes starting the same run"
+    },
+    {
+      "term": "Runner",
+      "meaning": "the code that carries out a Reality Scan or Lessons Learnt run"
+    },
+    {
+      "term": "Catch-up script",
+      "meaning": "a one-off program run after a code merge to import research that was missed"
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "artifacts/api-server/src/db.ts",
+    "artifacts/api-server/src/tools/reality-scan/runner.ts",
+    "artifacts/api-server/src/tools/lessons-learnt/runner.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "d83e728dc3a746de",
+      "title": "Imports and pickup rules",
+      "what": "Loads the database connection and the two start functions, one each for Reality Scan and Lessons Learnt. The header comment explains the job: start runs that were queued but never began, leave out runs queued more than two days ago, and only take runs that have waited at least a minute. It also defines the two-day window and the one-minute threshold.",
+      "why": "The header comment says interactive runs start immediately, so a run still queued after a minute has no owner.",
+      "watch_out": "The two-day window must match the matching window in the catch-up tool, so changing one without the other causes a mismatch."
+    },
+    {
+      "start": 16,
+      "end": 21,
+      "kind": "function",
+      "name": "sel",
+      "id": "s2",
+      "hash": "b184680b9938b404",
+      "title": "Sets the pickup start functions",
+      "what": "Only the import lines are visible here. The start functions for the two run types are imported under the names used by this file.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 22,
+      "end": 45,
+      "kind": "function",
+      "name": "pickUpQueuedRuns",
+      "id": "s3",
+      "hash": "3fb32756542ced7a",
+      "title": "Starting waiting analysis runs",
+      "what": "Each pass looks for queued reality-scan and lessons-learnt runs that have waited briefly and restarts them. A queued run is skipped while another run of the same scope is still running, which is checked with database locks. Each restart is logged, and any error is logged without stopping the server.",
+      "why": "The code comment says a run waits behind a live run of the same scope so the same analysis never runs twice at once.",
+      "watch_out": "A guard flag stops overlapping passes. If one pass hangs, no later pass runs until it returns."
+    },
+    {
+      "start": 46,
+      "end": 51,
+      "kind": "function",
+      "name": "startQueuedRunPickup",
+      "id": "s4",
+      "hash": "e6dfaa7f3d47b238",
+      "title": "Scheduling the pickup checks",
+      "what": "Starts a timer that runs the pickup pass every minute, plus one pass about 15 seconds after startup. Calling it again has no effect.",
+      "why": "Likely reason: runs queued while the server was down or busy are picked up soon after the server is available, without a user action.",
+      "watch_out": "The timers are marked so they do not keep the process alive, which is only harmless because the server keeps running."
+    }
+  ],
+  "explained_at": "2026-11-12T05:00:14+00:00",
+  "explained_by": "haiku",
+  "summary": "Starts Reality Scan and Lessons Learnt runs that were queued but never started, so no run waits forever without an owner.",
+  "purpose": "Picks up orphaned queued runs, for example after a catch-up script or a restart.",
+  "why": "The header comment says interactive runs start the moment they are created, so a run still queued after a minute has no owner. Old runs are ignored so they do not spend budget unasked.",
+  "how": "Per the header comment: 1. Looks for runs queued between one minute and two days ago. 2. Starts each one with its module's start function. 3. Relies on the start function's lock so a run is never started twice. The code that does these steps is not in the packet.",
+  "inputs": "Queued run rows from the database and the two runner modules.",
+  "outputs": "Runs started in the background.",
+  "risks": "The two-day window stops old runs from spending budget. The header says another file uses the same window, so changing one without the other causes a mismatch. The minute threshold is defined but its use is not visible in the packet.",
+  "debug": "Check runs with a queued status and their created time. If a queued run is not picked up, confirm it is older than one minute and newer than two days. Check whether the runner lock is held by another process.",
+  "summary_hash": "sha256:30cf1efa887cf53739f6f2a699b36480462efa6841e2050b41174338c3f8e149"
+}

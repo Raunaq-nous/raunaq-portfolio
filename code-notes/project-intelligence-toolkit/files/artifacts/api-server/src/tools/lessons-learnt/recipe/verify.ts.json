@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/recipe/verify.ts",
+  "language": "TypeScript",
+  "lines": 78,
+  "hash": "sha256:2f4704a0f0e05041910ccf3d5d9cb295c4d58d43ccc784520db8c3abf78a552d",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test file was shown for the matching rules.",
+      "Errors from the capture step are not caught in this file.",
+      "Reusing a stored page is silent, so an old copy can be trusted without any notice."
+    ]
+  },
+  "terms": [
+    {
+      "term": "verification",
+      "meaning": "the check of whether a cited web page actually supports a fact."
+    },
+    {
+      "term": "key terms",
+      "meaning": "the meaningful words in a fact after common words are removed."
+    },
+    {
+      "term": "stem",
+      "meaning": "the base form of a word, so that different endings of the same word count as a match."
+    },
+    {
+      "term": "coverage",
+      "meaning": "the share of a fact's key terms or numbers that were found on the page."
+    },
+    {
+      "term": "passage",
+      "meaning": "a short run of one to three consecutive sentences from the page."
+    },
+    {
+      "term": "source document",
+      "meaning": "a stored copy of a web page's text, kept so it does not have to be fetched again."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/tools/research-contract/verifyFacts",
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/text",
+    "artifacts/api-server/src/tools/lessons-learnt/recipe/types",
+    "drizzle-orm"
+  ],
+  "used_by": [
+    "None visible in this packet. Likely called by the recipe pipeline stage that checks facts."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup, PageRecord",
+      "id": "s1",
+      "hash": "8be6e027067d4268",
+      "title": "Header and the page record shape",
+      "what": "Explains the purpose of this file: it checks that each recipe fact is backed by one tight passage on the cited page. Declares the shape of the result for a checked page: whether it passed, which document it matched, and the reason if it failed.",
+      "why": "The header comment says it is a stricter version of an older skill script, and that loose word overlap on a whole page is only partial support.",
+      "watch_out": "Loosening the single-passage rule would weaken the source check that the rest of the recipe relies on."
+    },
+    {
+      "start": 16,
+      "end": 25,
+      "kind": "function",
+      "name": "loadPage",
+      "id": "s2",
+      "hash": "2ca1d48b780a74bf",
+      "title": "Loading a stored or fresh page",
+      "what": "Looks for an earlier stored copy of the same web address with enough text, and reuses it. If none exists, it fetches the page. Returns nothing if the page cannot be read.",
+      "why": "Likely reason: avoids fetching the same page many times across runs.",
+      "watch_out": "A stored copy from an older run is reused without checking whether the live page has changed."
+    },
+    {
+      "start": 26,
+      "end": 32,
+      "kind": "function",
+      "name": "loadStoredText, PreparedPage",
+      "id": "s3",
+      "hash": "5c9afa67a01c6475",
+      "title": "Reading stored page text",
+      "what": "Fetches the stored text for one document ID, or returns nothing if it is not stored.",
+      "why": "Likely reason: lets a later step re-check a fact against the exact text captured earlier.",
+      "watch_out": "Returns nothing when the document is missing, so the caller must treat that as unreachable rather than as unverified."
+    },
+    {
+      "start": 33,
+      "end": 40,
+      "kind": "function",
+      "name": "preparePage",
+      "id": "s4",
+      "hash": "dccbd17f249930c6",
+      "title": "Preparing a page for matching",
+      "what": "Splits the page into sentences, and records the key terms and numbers for each sentence and for the whole page.",
+      "why": "Likely reason: preparing once lets many facts be checked against the same page quickly.",
+      "watch_out": "Only the first 400,000 characters of the page are read, so anything further down is never checked."
+    },
+    {
+      "start": 41,
+      "end": 72,
+      "kind": "function",
+      "name": "scoreAgainstPage",
+      "id": "s5",
+      "hash": "536c323c819a1a73",
+      "title": "Scoring a fact against a page",
+      "what": "Finds the best run of one to three sentences for a fact, measures how many key terms and numbers it carries, and assigns verified, partial or unverified. Returns the passage when the result is verified or partial.",
+      "why": "The header says verified needs one passage carrying most terms and the numbers, so the search is confined to short passages.",
+      "watch_out": "A fact with no key terms is always unverified, so very short or generic facts cannot be verified this way."
+    },
+    {
+      "start": 73,
+      "end": 78,
+      "kind": "function",
+      "name": "applyVerification",
+      "id": "s6",
+      "hash": "fafc73ff537b3b2b",
+      "title": "Writing the result onto a fact",
+      "what": "Sets a fact's verification to unsourced when it has no address, unreachable when no page was read, and otherwise the score from the matching step, with the document ID.",
+      "why": "Likely reason: every fact must end with a clear status, so none is left blank.",
+      "watch_out": "The unsourced status is set purely from the missing address, so a fact with a bad address is shown the same way as one with no source at all."
+    }
+  ],
+  "explained_at": "2026-11-12T04:49:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks whether each fact's cited web page actually supports the fact's wording and numbers, then labels the fact accordingly.",
+  "purpose": "Keeps the report honest by giving every fact a verification result: verified, partial, unverified, unreachable or unsourced.",
+  "why": "The file header says this check is stricter than the earlier skill it was ported from. A verified fact needs one passage of up to three consecutive sentences that carries most key terms and all or most numbers. Overlap across the whole page only counts as partial.",
+  "how": "First, the code reuses a stored copy of the page if one exists for the same address, or otherwise fetches it. Then it splits the page into sentences and records its terms and numbers. For each fact, it tries passages of one to three sentences, scores how many key terms and numbers each passage contains, and assigns the status. Finally, it writes the result onto the fact.",
+  "inputs": "A fact with its text and source address, and the page text, taken from the stored source copy or from a new capture.",
+  "outputs": "An updated verification block on the fact: its status, term and number coverage, the best matching passage (up to 700 characters), and the stored document ID. The page loader also reports whether the page was usable.",
+  "risks": "Depends on the database and the web capture service. A page that blocks bots is marked unreachable, which says nothing about the fact itself. A stored copy from an earlier run may be reused even if the live page has since changed. Matching works on words, so a fact that is correct but paraphrased can score low.",
+  "debug": "If many facts show unreachable, check whether the address opens and whether a stored copy exists in the source document table. If a fact shows unverified despite a visible match, compare its key terms and numbers, since differently formatted numbers may not match. The cut-off values inside scoreAgainstPage control the verified and partial labels.",
+  "summary_hash": "sha256:2f4704a0f0e05041910ccf3d5d9cb295c4d58d43ccc784520db8c3abf78a552d"
+}

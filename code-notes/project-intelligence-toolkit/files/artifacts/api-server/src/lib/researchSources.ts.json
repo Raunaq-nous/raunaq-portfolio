@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/lib/researchSources.ts",
+  "language": "TypeScript",
+  "lines": 32,
+  "hash": "sha256:5d0bd71ad14094153288cb9a41d0614296568c7ecd7539e7321d57e1d58a4b51",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "Reads cast the database row to a loose type, so a wrong field name would fail quietly."
+    ]
+  },
+  "terms": [
+    {
+      "term": "hash",
+      "meaning": "a fixed-length fingerprint computed from the input"
+    },
+    {
+      "term": "citation",
+      "meaning": "a record of where a fact came from, such as a web address and quote"
+    },
+    {
+      "term": "evidence",
+      "meaning": "the stored quote and source details that back a fact"
+    }
+  ],
+  "depends_on": [
+    "node:crypto",
+    "drizzle-orm",
+    "../db",
+    "@workspace/db"
+  ],
+  "used_by": [
+    "Not visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "setup",
+      "name": "File setup, ResearchSourceInput",
+      "id": "s1",
+      "hash": "2d097576761a06c3",
+      "title": "Imports and source record shape",
+      "what": "Loads the database tools and defines the fields a research source must provide.",
+      "why": "The comment states research must not silently edit project facts.",
+      "watch_out": "The URL and quote fields are required, and blank values pass through without a check."
+    },
+    {
+      "start": 8,
+      "end": 13,
+      "kind": "function",
+      "name": "researchSourceId",
+      "id": "s2",
+      "hash": "cdbafc7ac9469257",
+      "title": "Stable source ID",
+      "what": "Makes an ID from the URL, quote, capture time and optional claim, so the same capture always gets the same ID.",
+      "why": "The comment states older citations must keep their date and identity.",
+      "watch_out": "Changing the capture time or any input creates a new ID, so older links no longer match."
+    },
+    {
+      "start": 14,
+      "end": 21,
+      "kind": "function",
+      "name": "registerResearchSource",
+      "id": "s3",
+      "hash": "4f239f0c053c447f",
+      "title": "Saving a source",
+      "what": "Saves a source record if it is new, then returns it with its ID. Saving the same source again changes nothing.",
+      "why": "The SQL states insert, and ignore if the ID already exists.",
+      "watch_out": "Only the first saved copy is kept. Later changes to the same ID are ignored."
+    },
+    {
+      "start": 22,
+      "end": 29,
+      "kind": "function",
+      "name": "getResearchEvidence",
+      "id": "s4",
+      "hash": "2b46cbb41068eba6",
+      "title": "Reading a source back",
+      "what": "Looks up a saved source by ID and turns it into the evidence format the rest of the app uses.",
+      "why": "Likely reason: other code expects the evidence shape.",
+      "watch_out": "Missing fields become empty text or a default field path, which can hide missing data."
+    },
+    {
+      "start": 30,
+      "end": 32,
+      "kind": "function",
+      "name": "mergeResearchSourceKeys",
+      "id": "s5",
+      "hash": "5c49666290fa420c",
+      "title": "Adding source tags",
+      "what": "Adds extra key-value tags to an existing saved source.",
+      "why": "Likely reason: adds labels without changing the main record.",
+      "watch_out": "If the ID does not exist, nothing is changed and no error is raised."
+    }
+  ],
+  "explained_at": "2026-11-12T03:57:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Stores where each research quote came from and gives it a stable ID, while keeping that record separate from the project's facts.",
+  "purpose": "Keep a citation for every research quote so it can be traced later.",
+  "why": "The header states that research never silently edits project facts, so sources live in their own record.",
+  "how": "Builds an ID from the URL, quote, capture time, and optional claim. Saves the record if the ID is new. Reads a record back in the evidence format. Adds extra key tags to an existing record.",
+  "inputs": "A source record with URL, title, quote, publisher, check date, and optional claim, project, and field names.",
+  "outputs": "A stored record with its ID, or an evidence object read back by ID.",
+  "risks": "The same source captured on a different date gets a different ID, which can orphan older links. Deleting rows would break citations. Reads are loosely typed.",
+  "debug": "Look up the research_sources row by ID. If a lookup returns undefined, the ID may have changed because the capture date changed. Compare checkedAt values.",
+  "summary_hash": "sha256:5d0bd71ad14094153288cb9a41d0614296568c7ecd7539e7321d57e1d58a4b51"
+}

@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/yardResearch/populationIndustries.ts",
+  "language": "TypeScript",
+  "lines": 56,
+  "hash": "sha256:565cff891e27b03f9419c0fd622ce41d69d1cdd0bbf8ea78243971b291fdfa67",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in the packet.",
+      "The error messages are clear and point to the fix, which is good."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Manifest",
+      "meaning": "A configuration file that lists the projects of one population and their details."
+    },
+    {
+      "term": "Population key",
+      "meaning": "The name that identifies one population, normally the industry name unless a separate name is given."
+    },
+    {
+      "term": "Project key",
+      "meaning": "A fixed code given to one project in the batch prompt, used to match a reply to a project."
+    },
+    {
+      "term": "Cache",
+      "meaning": "A saved copy of a result kept in memory so it does not need to be rebuilt each time."
+    }
+  ],
+  "depends_on": [
+    "populationConfig.ts",
+    "Node file system and path modules"
+  ],
+  "used_by": [
+    "replayLedger.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "ed7a9c5b03b31de8",
+      "title": "File header and setup",
+      "what": "Explains how manifests are discovered and sets up the file and path tools the code needs.",
+      "why": "Explains the design choice that a new industry needs only one new file.",
+      "watch_out": "The code only runs in scripts, not in the bundled server, so it cannot be used by the live app."
+    },
+    {
+      "start": 16,
+      "end": 36,
+      "kind": "function",
+      "name": "populationIndustries",
+      "id": "s2",
+      "hash": "df81ff96b85ae95b",
+      "title": "Loading all population manifests",
+      "what": "Reads each matching manifest file once, checks its name, rejects any project key that appears in two manifests, and returns the complete list.",
+      "why": "Prevents two rows being created for one project under different ids.",
+      "watch_out": "The result is kept for the rest of the process, so a new manifest needs a restart to be seen."
+    },
+    {
+      "start": 37,
+      "end": 44,
+      "kind": "function",
+      "name": "populationConfig",
+      "id": "s3",
+      "hash": "1adad8271df18535",
+      "title": "Getting one manifest by name",
+      "what": "Returns the configuration for one population. If the name is unknown, it stops with a message listing the known names and how to add a new one.",
+      "why": "Gives a clear message when a population name is mistyped or missing.",
+      "watch_out": "For an industry with one manifest, the population name is the industry name."
+    },
+    {
+      "start": 45,
+      "end": 56,
+      "kind": "function",
+      "name": "populationOfKeys",
+      "id": "s4",
+      "hash": "c3f1e0dddb0544e5",
+      "title": "Finding the manifest for a set of project keys",
+      "what": "Finds which single manifest holds all the given project keys. Refuses if a key is in no manifest or the keys span more than one.",
+      "why": "Stops one reply file from mixing projects from two populations.",
+      "watch_out": "Callers must check one set of files at a time, as the error message says."
+    }
+  ],
+  "explained_at": "2026-11-12T03:47:54+00:00",
+  "explained_by": "haiku",
+  "summary": "Finds all population manifest files automatically, loads them once, and makes sure no project key appears in two of them.",
+  "purpose": "Lets the importer find the right configuration for each population without a shared list that everyone must edit.",
+  "why": "The header says adding a manifest is one new file, so parallel industry tasks do not edit the same list.",
+  "how": "1. Scans this folder for files named identities-<population>.ts. 2. Loads each file that exports the population configuration. 3. Checks that the population key matches the file name. 4. Checks that no project key appears in two manifests. 5. Caches the result for the rest of the process. Other helpers look up one manifest or find which manifest owns a set of keys.",
+  "inputs": "The identity manifest files in this folder and the population configuration each one exports.",
+  "outputs": "A map from population key to configuration, a single configuration on request, or the one population key that owns a list of project keys.",
+  "risks": "A mismatch in names or a duplicated key stops the importer before any work starts, which is a safe failure. The cache means a manifest added while the process runs is not seen until restart.",
+  "debug": "If a population is reported as unknown, check that the file is named identities-<population>.ts and exports POPULATION_CONFIG. If a key is reported in two manifests, search the manifests for that key. If a name mismatch error appears, compare the file name with the population key inside the file.",
+  "summary_hash": "sha256:565cff891e27b03f9419c0fd622ce41d69d1cdd0bbf8ea78243971b291fdfa67"
+}

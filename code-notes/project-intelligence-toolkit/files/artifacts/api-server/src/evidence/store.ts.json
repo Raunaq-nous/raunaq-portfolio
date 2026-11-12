@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/evidence/store.ts",
+  "language": "TypeScript",
+  "lines": 412,
+  "hash": "sha256:7db6b891fc4f7160f453c0bc6df743912bfec54b21375411c6d83483c6dba27d",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The visible parts handle duplicates and unresolved values, but the promotion and revert steps are not in the packet.",
+      "No test for the store logic is shown; the evidence rules test covers only the comparison and date parts used here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "value point",
+      "meaning": "one stored reading of a project measure, such as a budget or a date, with its source and status"
+    },
+    {
+      "term": "origin key",
+      "meaning": "a unique label for where a value came from, used to stop importing the same value twice"
+    },
+    {
+      "term": "basis key",
+      "meaning": "a text key for the basis tags on a value, so values on different bases are kept apart"
+    },
+    {
+      "term": "vetting",
+      "meaning": "a person checking a value and its source before it is used"
+    },
+    {
+      "term": "upsert",
+      "meaning": "insert a row, or update it if it already exists"
+    },
+    {
+      "term": "transaction",
+      "meaning": "a group of database changes that all succeed or all fail together"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/evidence/identity.ts",
+    "artifacts/api-server/src/evidence/metrics.ts",
+    "artifacts/api-server/src/evidence/dateRules.ts",
+    "@workspace/db",
+    "drizzle-orm"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/evidence/runEvents.ts",
+    "artifacts/api-server/src/evidence/evidenceRules.test.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup, Db, Tx, Exec",
+      "id": "s1",
+      "hash": "966555a9419f4c75",
+      "title": "Store setup and rules at a glance",
+      "what": "Explains the three main rules: a source is one page and one quote; a project field is mirrored into value points without overwriting; a project field changes only through promotion after vetting.",
+      "why": "Likely reason: the file's rules are central to trust in the data, so they are stated first.",
+      "watch_out": "Changing one rule without the others can let silent overwrites back in."
+    },
+    {
+      "start": 24,
+      "end": 40,
+      "kind": "type",
+      "name": "SourceInput",
+      "id": "s2",
+      "hash": "4c43397489df4ccc",
+      "title": "Shape of a source",
+      "what": "Describes what is stored for a source: the web address, the quote, and optional details such as publisher, title, date, quality tier, anchors and origin.",
+      "why": "Likely reason: each source needs enough detail to be trusted and found again.",
+      "watch_out": "Fields are optional, so a source can be saved with little detail."
+    },
+    {
+      "start": 41,
+      "end": 73,
+      "kind": "function",
+      "name": "upsertSource",
+      "id": "s3",
+      "hash": "20e3e2cf5c0fa7a0",
+      "title": "Saving a source without overwriting",
+      "what": "Finds or creates a source by its normalised address and quote hash. When it already exists, it only fills in details that are still empty, so an earlier import is never replaced.",
+      "why": "Likely reason: earlier imports may hold corrected details that a later import should not undo.",
+      "watch_out": "A blank field can be filled later by any import, so the first non-empty value is kept permanently."
+    },
+    {
+      "start": 74,
+      "end": 85,
+      "kind": "function",
+      "name": "linkValueSource",
+      "id": "s4",
+      "hash": "428b50a44bdd4c95",
+      "title": "Attaching a source to a value",
+      "what": "Links a value point to a source with its rank, role (primary, corroborating or alternative), mapping and extraction details. A repeat link does nothing.",
+      "why": "Likely reason: one value can have several supporting sources, and each link must be stored once.",
+      "watch_out": "The mapping text records how the value was read from the source, so it should be kept in step with the rules."
+    },
+    {
+      "start": 86,
+      "end": 94,
+      "kind": "function",
+      "name": "valueFingerprint, Comparable",
+      "id": "s5",
+      "hash": "cda61d922f3d698e",
+      "title": "Fingerprint of a value",
+      "what": "Creates a text fingerprint of what a value says: its resolved date, its rounded number and unit, or its text. It ignores where the value came from.",
+      "why": "Likely reason: two values that say the same thing from different sources should have the same fingerprint.",
+      "watch_out": "Numbers are rounded to three decimal places, so very small differences are treated as equal in the fingerprint."
+    },
+    {
+      "start": 95,
+      "end": 113,
+      "kind": "function",
+      "name": "statedStep",
+      "id": "s6",
+      "hash": "a2f54067848830e1",
+      "title": "Rounding step of a stated figure",
+      "what": "Works out the rounding step a figure was stated to, from its text when the text carries the number, or else from its stored number. It is ignored if the text does not scale to the stored value.",
+      "why": "Likely reason: 1.3 billion and 1,231.7 million are only the same to the precision the source states, so the step is needed.",
+      "watch_out": "Figures stated with no decimals are treated as exact to the last digit when the text is not used."
+    },
+    {
+      "start": 114,
+      "end": 134,
+      "kind": "function",
+      "name": "sameValue",
+      "id": "s7",
+      "hash": "dd91686e07b02e71",
+      "title": "Checking whether two readings agree",
+      "what": "Decides whether two readings say the same thing. Dates must match exactly. Figures must share a unit and lie within half the coarser rounding step. Basis is not compared here, because values on different bases are kept apart earlier.",
+      "why": "Likely reason: sources round figures differently, so exact matching would flag false conflicts.",
+      "watch_out": "Figures with no unit match only when their numbers agree, so a missing unit can hide a real difference."
+    },
+    {
+      "start": 135,
+      "end": 140,
+      "kind": "function",
+      "name": "describeValue",
+      "id": "s8",
+      "hash": "fd01315f5c13fcdf",
+      "title": "Describing a value for people",
+      "what": "Makes a short readable description of a value, showing the stated date with its resolved date, a number with its unit, or the text.",
+      "why": "Likely reason: conflict notes and the viewer need one readable form of each value.",
+      "watch_out": "An unresolved date shows the word unresolved, so a reader must notice that."
+    },
+    {
+      "start": 141,
+      "end": 180,
+      "kind": "function",
+      "name": "addValuePoint, ProjectRow",
+      "id": "s9",
+      "hash": "fb8f3762a9d5173f",
+      "title": "Adding a value without overwriting",
+      "what": "Adds a value point without overwriting anything. A repeat import does nothing; a value matching the current one attaches to it; a first value becomes current; an unresolved value is kept for vetting but never used; a different value is kept beside the current one with a conflict note.",
+      "why": "Likely reason: nothing may change silently, so every new reading is stored for a person to decide.",
+      "watch_out": "Only the same basis is compared, so a value on a different basis is stored as a separate current value."
+    },
+    {
+      "start": 181,
+      "end": 191,
+      "kind": "function",
+      "name": "dateAssumption",
+      "id": "s10",
+      "hash": "3941595600f619c3",
+      "title": "Reading an approved assumption on a date",
+      "what": "Looks in the project's saved date assumptions for a note of the form approximate with a stated date and a rule, and returns that stated text and rule for the matching measure.",
+      "why": "Likely reason: some dates were approximated earlier and the project records how.",
+      "watch_out": "The note must match an exact text pattern, so a differently worded note is not found."
+    },
+    {
+      "start": 192,
+      "end": 197,
+      "kind": "function",
+      "name": "promotedMirror",
+      "id": "s11",
+      "hash": "b0ad1b5c01849618",
+      "title": "Reading which value a project column mirrors",
+      "what": "Returns the id of the value point that a project column was last set from, as recorded when it was promoted.",
+      "why": "Likely reason: the system needs to know which value is behind each project field.",
+      "watch_out": "Missing records return nothing, so a field with no record looks as if it was never promoted."
+    },
+    {
+      "start": 198,
+      "end": 201,
+      "kind": "function",
+      "name": "yardBudgetBasisTags",
+      "id": "s12",
+      "hash": "09f6323b6af40818",
+      "title": "Basis tags of a budget",
+      "what": "Returns the basis tags stated in a project's budget text, using the same reading rules as the metrics file.",
+      "why": "Likely reason: the Yard's budget text is the usual source of a budget's basis.",
+      "watch_out": "Only the budget text is read, so a basis stated elsewhere is not picked up."
+    },
+    {
+      "start": 202,
+      "end": 235,
+      "kind": "function",
+      "name": "columnValue, SyncReport",
+      "id": "s13",
+      "hash": "253ee74907e7f1cd",
+      "title": "Turning a project field into a value point",
+      "what": "Takes one yard project field (money, capacity, or a date) and turns it into a stored value record that notes its unit, its stated date wording, and any basis tags from the budget text. It also defines the report shape that counts created, matched, and conflicting values.",
+      "why": "Likely reason: a stored value needs to carry where it came from and in what unit, so it can be compared and checked later.",
+      "watch_out": "Money is stored in US$M, and a capacity of zero is treated as 'not reported' and replaced with the project's own MW value."
+    },
+    {
+      "start": 236,
+      "end": 280,
+      "kind": "function",
+      "name": "syncValuePointsFromProject",
+      "id": "s14",
+      "hash": "36a9f81c10bc417d",
+      "title": "Copying one project's values and quotes",
+      "what": "For one project, copies its benchmark fields into value points, links each to its quoted source text, and returns counts of what was created, matched, or conflicted.",
+      "why": "The code comment says it is idempotent, meaning running it again should not create duplicates.",
+      "watch_out": "A value that a promotion has set is kept only while it still matches. If the project field changes, a new value point is created and may be marked as a conflict."
+    },
+    {
+      "start": 281,
+      "end": 285,
+      "kind": "class",
+      "name": "PromotionRefused, fmtField",
+      "id": "s15",
+      "hash": "df13026112388416",
+      "title": "Refusal error and text formatter",
+      "what": "Defines a special error type used when a promotion is refused for a stated reason, and a small helper that turns a field value into plain text for the change log.",
+      "why": "Reason not stated in the code. A separate error type lets callers tell a deliberate refusal from an unexpected crash.",
+      "watch_out": "Code that checks for refusals depends on this exact error type name."
+    },
+    {
+      "start": 286,
+      "end": 345,
+      "kind": "function",
+      "name": "promoteVettedValue (part 1)",
+      "id": "s16",
+      "hash": "1b6d39728f6d4bdc",
+      "title": "Making a vetted value current",
+      "what": "Makes a vetted value the current one for its project, metric, and basis. If asked, it also writes the value into the project field. Every change is logged with what it replaced. It refuses unless the latest vetting record says vetted.",
+      "why": "The code comment says every promotion is logged so it can be reverted later.",
+      "watch_out": "Money promotions are refused when the value has no US$ amount, so a value that only has a local-currency figure cannot be written to a money field."
+    },
+    {
+      "start": 346,
+      "end": 346,
+      "kind": "function",
+      "name": "promoteVettedValue (part 2)",
+      "id": "s17",
+      "hash": "da39a3ee5e6b4b0d",
+      "title": "Continuation of the promotion function",
+      "what": "This part has no code of its own. The promotion function continues in the section before it and closes there.",
+      "why": "Reason not stated in the code. It appears to be a split point in the file.",
+      "watch_out": ""
+    },
+    {
+      "start": 347,
+      "end": 403,
+      "kind": "function",
+      "name": "revertPromotion",
+      "id": "s18",
+      "hash": "776934ccf337e47b",
+      "title": "Undoing a promotion",
+      "what": "Reverses one logged promotion. It restores the old field value only if nothing has changed the field since, and makes the previously current value current again. The original log entry is kept and marked as reverted, and a new log entry records the revert with a note.",
+      "why": "The code comment says the original record is kept and a new one is added, so the history stays complete.",
+      "watch_out": "The revert is refused if the field has changed since the promotion, or if a later promotion now owns that field. The user must give a written reason, or the revert is refused."
+    },
+    {
+      "start": 404,
+      "end": 409,
+      "kind": "function",
+      "name": "openPromotions",
+      "id": "s19",
+      "hash": "7d2056c53c4dadab",
+      "title": "Listing promotions not yet undone",
+      "what": "Returns the promotions of one value that have not been reverted, newest first, so a person can see what could still be undone.",
+      "why": "Likely reason: it supports the revert step by showing which promotions are still open.",
+      "watch_out": "It finds promotions by matching text in the change log source. Changing that wording breaks the search."
+    },
+    {
+      "start": 410,
+      "end": 412,
+      "kind": "function",
+      "name": "METRICS_BY_COLUMN",
+      "id": "s20",
+      "hash": "8dbf79e483a4be54",
+      "title": "Finding a metric by its field name",
+      "what": "Looks up the metric definition whose project field name matches a given column name. Revert uses it to know whether a field holds money, capacity, or a date.",
+      "why": "Likely reason: a revert must restore the field in the right form, and the metric kind decides that.",
+      "watch_out": "It returns nothing when no metric matches, so any caller must handle a missing result."
+    }
+  ],
+  "explained_at": "2026-11-12T03:33:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Stores sources and value points, compares values, and keeps project fields in step with them without overwriting anything silently.",
+  "purpose": "Keeps the evidence record of every project value honest: each value has a source, each change is recorded for vetting, and project fields change only after review.",
+  "why": "Likely reason: the review process depends on nothing being overwritten silently, so new readings are added beside the current one for vetting.",
+  "how": "It finds or creates a source by its address and quote, attaches sources to value points, and compares new readings with the current one using rounding rules. A new reading that matches the current one is not stored again. A different reading is stored beside the current value for vetting, and an unresolved reading is kept but never used. Project fields are mirrored into value points, and a field changes only through promoteVettedValue after vetting.",
+  "inputs": "Source details, value readings with their basis and dates, project rows and their attributes, and reviewer decisions.",
+  "outputs": "Stored sources, value points and links, and outcome labels such as same as current, inserted as current, inserted as conflict, or already imported.",
+  "risks": "Several rules depend on exact stored values and text, so a schema change can break them. Only part of the file is visible in the packet, so the promotion and revert steps cannot be fully checked here.",
+  "debug": "If a value is missing, check its origin key, which blocks a second import of the same value. If a value is wrongly flagged as a conflict, check sameValue and the basis key. If a project field did not change, check that the value has a passing vetting record.",
+  "summary_hash": "sha256:7db6b891fc4f7160f453c0bc6df743912bfec54b21375411c6d83483c6dba27d"
+}

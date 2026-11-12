@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/jobs/enrichment.ts",
+  "language": "TypeScript",
+  "lines": 498,
+  "hash": "sha256:7086084b06b9798510775c9638295e3ec9599037ef0129ff7ab25ecfef1a608d",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Several failures are caught and ignored, for example when fetching a page.",
+      "No test is visible in the file.",
+      "If no AI provider is configured, a stub extractor is used, which can make a run look successful with no real results.",
+      "The enriched flag is set through a type workaround, which hides a typing problem."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Extractor",
+      "meaning": "the part that reads page text and pulls out facts, using an AI model when one is available"
+    },
+    {
+      "term": "Verbatim gate",
+      "meaning": "a check that each quoted phrase appears word for word in the text the model was shown"
+    },
+    {
+      "term": "Research job",
+      "meaning": "a saved record of one enrichment attempt for one project"
+    },
+    {
+      "term": "Dry run",
+      "meaning": "a trial that reports what would change without saving anything"
+    },
+    {
+      "term": "Concurrency",
+      "meaning": "how many projects are processed at the same time"
+    },
+    {
+      "term": "Priority fields",
+      "meaning": "key project fields the job counts as missing when choosing which projects to research first"
+    },
+    {
+      "term": "Review state",
+      "meaning": "the status of a proposed change, such as approved or flagged as needs review"
+    },
+    {
+      "term": "Stub extractor",
+      "meaning": "a placeholder extractor used when no AI model provider is configured"
+    }
+  ],
+  "depends_on": [
+    "../db",
+    "../storage",
+    "./interfaces",
+    "../search/interfaces",
+    "../search/createRouter",
+    "../models/llmExtractor",
+    "./steps/extraction",
+    "../models/router",
+    "./steps/validation",
+    "./steps/verbatimGate",
+    "./steps/commit",
+    "../cache",
+    "../lib/safeFetch",
+    "./industrySearchProfiles",
+    "drizzle-orm",
+    "crypto (Node built-in)"
+  ],
+  "used_by": [
+    "None visible in the packet; the job runner is likely the caller."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e0a6599b7c7641a7",
+      "title": "Imports the parts the job needs",
+      "what": "Brings in the database, storage, search, AI model, web fetching, validation, and save steps, plus the industry search profiles. A comment says nuclear-specific search terms used to be here and now live in the industry profiles.",
+      "why": "The comment explains the move: nuclear terms were applied to every industry.",
+      "watch_out": "Industry search terms are no longer in this file, so editing here will not change search phrases."
+    },
+    {
+      "start": 26,
+      "end": 35,
+      "kind": "value",
+      "name": "ENRICHABLE_FIELDS",
+      "id": "s2",
+      "hash": "12c985268b903990",
+      "title": "Fields the job may fill",
+      "what": "Lists the project fields that enrichment is allowed to fill, such as budget, dates, technology, operator, and status.",
+      "why": "Reason not stated in the code beyond the list itself.",
+      "watch_out": "A field not on this list is never considered, even when it is blank."
+    },
+    {
+      "start": 36,
+      "end": 43,
+      "kind": "value",
+      "name": "PICK_PRIORITY_FIELDS, ZERO_VALID_PRIORITY",
+      "id": "s3",
+      "hash": "27d626e3b77b6401",
+      "title": "Fields that decide which projects come first",
+      "what": "Lists the key fields the job counts as missing when choosing projects to research first. It also lists the fields where zero is a real value, which for now is delay months.",
+      "why": "Reason not stated in the code beyond how the lists are used.",
+      "watch_out": "Changing this list changes which projects are chosen first."
+    },
+    {
+      "start": 44,
+      "end": 49,
+      "kind": "function",
+      "name": "isPriorityFieldMissing",
+      "id": "s4",
+      "hash": "252696600b22e5e3",
+      "title": "Decides if a key field is empty",
+      "what": "Treats empty, blank, and zero values as missing, except for fields where zero is a valid answer.",
+      "why": "Likely reason: a delay of zero months is a real answer and should not count as missing.",
+      "watch_out": "Any other field where zero is valid would be treated as missing and researched again."
+    },
+    {
+      "start": 50,
+      "end": 58,
+      "kind": "type",
+      "name": "EnrichmentOptions",
+      "id": "s5",
+      "hash": "b448175d41ca8495",
+      "title": "Settings the caller can pass in",
+      "what": "Lists the optional settings for one batch: which projects, how many, whether to overwrite, results per search, dry run, and parallel workers.",
+      "why": "Reason stated by the setting names.",
+      "watch_out": "The default values are set in the batch function, not here."
+    },
+    {
+      "start": 59,
+      "end": 78,
+      "kind": "type",
+      "name": "EnrichmentReport",
+      "id": "s6",
+      "hash": "f55c4f9f1b2c5842",
+      "title": "Shape of the batch summary",
+      "what": "Describes the summary returned after a batch: counts processed, enriched, fields updated, and fields needing review, a list of errors, and details for each project.",
+      "why": "Reason stated: the caller reads results from this shape.",
+      "watch_out": "The enriched count is not part of this type, so it is tracked through a workaround."
+    },
+    {
+      "start": 79,
+      "end": 121,
+      "kind": "function",
+      "name": "buildEnrichmentQueries",
+      "id": "s7",
+      "hash": "caf40d56c37ca374",
+      "title": "Builds the search phrases for one project",
+      "what": "Creates search phrases from the project name: shared field phrases, industry-specific phrases, a site search on the country's regulator, a local-language phrase, and site searches on the top trusted sites.",
+      "why": "The doc comment says field phrases are shared and asset-type vocabulary comes from the industry profile.",
+      "watch_out": "A missing or generic project name can make these phrases return unrelated pages."
+    },
+    {
+      "start": 122,
+      "end": 139,
+      "kind": "function",
+      "name": "extractTextContent",
+      "id": "s8",
+      "hash": "c182d2dc39320451",
+      "title": "Turns a web page into plain text",
+      "what": "Removes scripts, styles, navigation, headers, footers, and all other tags, then keeps up to 15,000 characters. PDFs get only whitespace cleanup and are kept up to 20,000 characters.",
+      "why": "Likely reason: the extractor only needs readable text, and the length cap limits cost.",
+      "watch_out": "Text beyond the cap is cut off without a warning, so facts near the end of a long page can be missed."
+    },
+    {
+      "start": 140,
+      "end": 149,
+      "kind": "function",
+      "name": "getNullFields",
+      "id": "s9",
+      "hash": "12cc834a82e5fb18",
+      "title": "Lists which fields are still empty",
+      "what": "Returns the enrichable fields that are null, blank, or zero for one project.",
+      "why": "Reason stated: this decides what the job looks for and what it may fill.",
+      "watch_out": "Zero counts as empty for every field here, even where zero is a real answer."
+    },
+    {
+      "start": 150,
+      "end": 187,
+      "kind": "function",
+      "name": "runEnrichmentBatch (part 1)",
+      "id": "s10",
+      "hash": "4516c5cc94b69497",
+      "title": "Chooses which projects to process",
+      "what": "Starts a batch with a unique id, prepares the search tool, page fetcher, and extractor, then either loads the named projects or picks the top projects with the most missing key fields.",
+      "why": "Likely reason: the job focuses effort on the projects with the most gaps. The reason for the 500 project cap is not stated.",
+      "watch_out": "Without project ids, only the first 500 projects are considered, so later projects are never picked."
+    },
+    {
+      "start": 188,
+      "end": 218,
+      "kind": "method",
+      "name": "runEnrichmentBatch: if",
+      "id": "s11",
+      "hash": "0ed41965930b0540",
+      "title": "Sets up the batch report",
+      "what": "Logs the chosen projects, creates an empty report, and sets the number of parallel workers, defaulting to 3. It also defines the routine that handles one project.",
+      "why": "Reason stated only by the code itself.",
+      "watch_out": "A concurrency of zero is treated as 3, so there is no way to request zero workers."
+    },
+    {
+      "start": 219,
+      "end": 271,
+      "kind": "method",
+      "name": "runEnrichmentBatch: if",
+      "id": "s12",
+      "hash": "2ac9ad7371162f71",
+      "title": "Searches and fetches pages for one project",
+      "what": "Skips the project unless forced and it has missing fields. Otherwise it creates a research job record, runs each search phrase with a short pause, removes duplicate addresses, and records the retrieval step.",
+      "why": "The skip rule matches the default behavior of filling only blanks.",
+      "watch_out": "A failed search is logged and skipped, so a bad search provider can leave a project with no sources and no visible error in the report."
+    },
+    {
+      "start": 272,
+      "end": 325,
+      "kind": "function",
+      "name": "runEnrichmentBatch (part 4)",
+      "id": "s13",
+      "hash": "601e170ec24408fe",
+      "title": "Downloads pages and prepares text for the AI",
+      "what": "Fetches up to 15 pages in parallel, keeps those with a successful status and more than 100 characters of text, and packages each with its title and snippet. If no page is usable, it marks the job complete and stops.",
+      "why": "Likely reason: pages with almost no text are not useful, and skipping them avoids an empty AI call.",
+      "watch_out": "Fetch failures are ignored silently, so the report shows fewer documents without saying why."
+    },
+    {
+      "start": 326,
+      "end": 384,
+      "kind": "function",
+      "name": "runEnrichmentBatch (part 5)",
+      "id": "s14",
+      "hash": "307cefe116d0aa63",
+      "title": "Asks the AI for facts and checks them",
+      "what": "Sends the packaged pages to the extractor. If that fails, it marks the job failed and stops. It then records the extraction step and runs the verbatim gate, which removes any quote not found word for word in the shown text.",
+      "why": "The comment states the rule: nothing reaches evidence storage unless it is found in the text the model saw.",
+      "watch_out": "If the gate itself fails, every quote is dropped, and the only sign is a log line."
+    },
+    {
+      "start": 385,
+      "end": 441,
+      "kind": "function",
+      "name": "runEnrichmentBatch (part 6)",
+      "id": "s15",
+      "hash": "0b0d0948e5aa88c1",
+      "title": "Keeps only missing fields and saves approved changes",
+      "what": "Unless forced, keeps only fields that were empty before. Then it validates the values against existing updates. In a dry run it lists what would change and stops. Otherwise it saves through the commit step, along with the page text as source documents.",
+      "why": "The comment says source documents were missing before, so enrichment quotes could not be audited.",
+      "watch_out": "A dry run stops before the save step, so it shows proposed values but not what the save step will finally accept."
+    },
+    {
+      "start": 442,
+      "end": 498,
+      "kind": "function",
+      "name": "runEnrichmentBatch (part 7)",
+      "id": "s16",
+      "hash": "b2bfbb761d93d42a",
+      "title": "Reports each project's outcome and runs the batch",
+      "what": "Reads the change log for this job, counting approved changes as updated and flagged changes as needing review. It sets the enriched flag if anything was saved or linked. Then a set of workers pulls projects from one shared queue, collects each result, and prints a final summary. Errors on one project are recorded and do not stop the others.",
+      "why": "The error handling shows that one failed project should not stop the rest of the batch.",
+      "watch_out": "The enriched flag is set through a type workaround, so renaming it would silently stop enriched projects from being counted."
+    }
+  ],
+  "explained_at": "2026-11-12T03:50:09+00:00",
+  "explained_by": "haiku",
+  "summary": "A background job that searches the web for projects with missing fields, reads the pages, asks an AI extractor for facts, checks them, and saves the approved ones.",
+  "purpose": "Fills gaps in project records, such as budget, dates, and operator, using public sources.",
+  "why": "The comments say the verbatim gate makes sure every stored quote appears in the text the model was shown, and that source documents are saved for audit. The job fills only missing fields unless forced, which keeps existing data safe.",
+  "how": "It picks projects, either those named or those with the most missing key fields. For each project it creates a research job record, runs industry-specific searches, removes duplicate addresses, downloads up to 15 pages, and turns them into text. It sends the text to the extractor, runs the verbatim gate, keeps only missing fields unless forced, and validates the results. Unless it is a dry run, it commits the changes and records outcomes. Workers process projects in parallel, then a summary is returned.",
+  "inputs": "Options: project ids, count (default 10), force, results per query, dry run, and concurrency (default 3). It reads projects from storage, search results from the search router, web pages through the fetcher, and the AI model router.",
+  "outputs": "An EnrichmentReport with counts and per-project details, console log lines, research job records, and, unless dry run, saved project changes and change log entries.",
+  "risks": "Without dry run it writes to project data, and wrong facts from web pages can be saved, although the verbatim gate and validation reduce this. Each run fetches many pages and calls the AI model, which costs money. Several failures are caught silently, so some missing data gives no visible error. If no model provider is configured, a stub extractor is used, and its output is not described in the packet, so a run can report success with nothing added.",
+  "debug": "Look for console lines starting with enrichment. Run with dryRun first to see what would change. Check the research job records for the retrieval and extraction step outputs. The validationStats field shows the gate's rejection reasons. If no fields are found, compare the result count and fetched count lines. Read the errors list in the report.",
+  "summary_hash": "sha256:7086084b06b9798510775c9638295e3ec9599037ef0129ff7ab25ecfef1a608d"
+}

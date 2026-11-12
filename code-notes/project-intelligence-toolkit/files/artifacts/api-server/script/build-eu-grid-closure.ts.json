@@ -1,0 +1,302 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/build-eu-grid-closure.ts",
+  "language": "TypeScript",
+  "lines": 429,
+  "hash": "sha256:22f7d25154ca8b778c04677b9e05e85379d2fe027b6ab9c390f97d6f78cf1c5f",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "Several long lines are cut off in the copy provided, so parts of the prompt text could not be checked.",
+      "Some text edits depend on exact wording in PROMPT.md and fail silently when it changes.",
+      "Projects are matched by name, so two projects with the same name would be mixed up."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Reality Scan",
+      "meaning": "the app's check that compares a project's figures against benchmarks and records why each value passed or failed."
+    },
+    {
+      "term": "Benchmark",
+      "meaning": "a reference value, such as original budget or planned completion, used to judge a project's progress."
+    },
+    {
+      "term": "Gap report",
+      "meaning": "a list of what is still missing for each project, written for people to read."
+    },
+    {
+      "term": "Prompt",
+      "meaning": "a written instruction that is pasted into a research tool to ask it for specific facts."
+    },
+    {
+      "term": "Project key",
+      "meaning": "a fixed short ID for each project, used to match research results back to the database."
+    },
+    {
+      "term": "News cutoff",
+      "meaning": "the earliest date for a development to count as recent."
+    },
+    {
+      "term": "Evidence quote",
+      "meaning": "a passage copied from a source that backs up a stored value."
+    }
+  ],
+  "depends_on": [
+    "pg",
+    "node:fs",
+    "node:path",
+    "artifacts/api-server/src/ingest/yardResearch/identities-power-grid-europe",
+    "docs/research-prompts/power-grid-europe/PROMPT.md",
+    "docs/research-prompts/power-grid-europe/ready"
+  ],
+  "used_by": [
+    "docs/research-prompts/power-grid-europe/closure",
+    "docs/research-prompts/power-grid-europe/ready"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "e6982d64b9f97cb6",
+      "title": "Purpose, folders and cutoff date",
+      "what": "Explains that the script writes a gap report and ten prompts for European grid projects. Sets the folders to use and the news cutoff date.",
+      "why": "The header says to rerun it after every import so closed gaps are removed.",
+      "watch_out": "The news cutoff is a fixed date in the code, so changing it changes which developments count as recent."
+    },
+    {
+      "start": 20,
+      "end": 23,
+      "kind": "value",
+      "name": "FACT_CATEGORIES",
+      "id": "s2",
+      "hash": "c1c5f1b26ae5b1c0",
+      "title": "Fact categories and finished stages",
+      "what": "Lists the fourteen kinds of delivery facts the research should cover. Defines which project stages count as finished.",
+      "why": "Likely reason: the list sets the topics every research prompt asks about.",
+      "watch_out": "The finished test looks only at the start of the stage text, so a stage worded differently will not count as finished."
+    },
+    {
+      "start": 24,
+      "end": 46,
+      "kind": "value",
+      "name": "NOT_IN_YARD, EXCLUDED_KEYS, Group",
+      "id": "s3",
+      "hash": "2e683fa4206f8a3f",
+      "title": "Projects kept out of the database",
+      "what": "Records why each listed project is not in the database yet, and names the one project that is excluded from the pack.",
+      "why": "The file says these reasons come from the status notes and import reports.",
+      "watch_out": "A new project added to the list without a reason here stops the script with an error."
+    },
+    {
+      "start": 47,
+      "end": 83,
+      "kind": "value",
+      "name": "GROUPS",
+      "id": "s4",
+      "hash": "74b15bb688a9716f",
+      "title": "Ten research groups",
+      "what": "Splits the projects into ten regional groups. Each group has a suffix, a title, its countries, its project keys and the sources to focus on.",
+      "why": "Likely reason: ten smaller prompts are easier for a research tool to work through than one large one.",
+      "watch_out": "Each project key must appear in exactly one group. The grouping check at the end of the run fails otherwise."
+    },
+    {
+      "start": 84,
+      "end": 131,
+      "kind": "value",
+      "name": "COUNTRY_GUIDE, host",
+      "id": "s5",
+      "hash": "0c8b6d1bf7577cb0",
+      "title": "Where to find sources in each country",
+      "what": "For each country, gives the regulators, parliaments, owners and lenders to search, and the words used in that language for approvals and final costs.",
+      "why": "Likely reason: the research tool may not know local sources, so the guide points it to them.",
+      "watch_out": "The guide names websites the checker cannot read. Those are listed separately in the prompt rules, so both lists need updating together."
+    },
+    {
+      "start": 132,
+      "end": 136,
+      "kind": "value",
+      "name": "BENCH_LABEL",
+      "id": "s6",
+      "hash": "59f562ebecb67b65",
+      "title": "Matching scan labels to benchmark fields",
+      "what": "Maps the wording of each scan source label to one of the benchmark field names, such as original budget or final cost.",
+      "why": "Likely reason: the scan records a label for each source, and this turns that label into the field it checks.",
+      "watch_out": "Matching uses text patterns. A label worded differently in a later scan is dropped without any message."
+    },
+    {
+      "start": 137,
+      "end": 141,
+      "kind": "value",
+      "name": "WORDS",
+      "id": "s7",
+      "hash": "331a2876a97a3379",
+      "title": "Plain names for benchmark fields",
+      "what": "Gives each benchmark field a short plain name for use in the prompts and reports.",
+      "why": "Likely reason: the prompt needs to read naturally for a non-technical reader.",
+      "watch_out": ""
+    },
+    {
+      "start": 142,
+      "end": 148,
+      "kind": "value",
+      "name": "PROFILE",
+      "id": "s8",
+      "hash": "74fb291c5a1ce593",
+      "title": "Plain names for profile fields",
+      "what": "Lists the project profile details, such as capacity, voltage, route length and funding, with the plain name used for each in the prompts.",
+      "why": "Likely reason: lets the prompts say which profile details a project is missing.",
+      "watch_out": "A profile field missing from this list will never be reported as missing."
+    },
+    {
+      "start": 149,
+      "end": 157,
+      "kind": "type",
+      "name": "Gap",
+      "id": "s9",
+      "hash": "163c003832b0121e",
+      "title": "Shape of one project's gap record",
+      "what": "Defines what the script stores for each project: its identity, stage, benchmark results, missing profile fields, fact counts, causes, developments, companies, milestones and notes.",
+      "why": "Likely reason: one shared shape lets the report and the prompts read the same data.",
+      "watch_out": "The main routine fills these fields. A field added here but not filled there will show as empty."
+    },
+    {
+      "start": 158,
+      "end": 165,
+      "kind": "function",
+      "name": "identityLineFor",
+      "id": "s10",
+      "hash": "49c1c53559d40ab1",
+      "title": "Project identity line",
+      "what": "Finds the one-line identity description for a project in an existing ready prompt file. If none is found, builds one from the grid identity list.",
+      "why": "Likely reason: keeps the wording of new prompts the same as the earlier ones.",
+      "watch_out": "It reads the ready folder from disk, so the folder must exist or this step fails."
+    },
+    {
+      "start": 166,
+      "end": 197,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s11",
+      "hash": "5b7cb6ee74e187ee",
+      "title": "Loading database and scan results",
+      "what": "Loads all grid projects, their evidence counts, company and milestone counts, and the latest Reality Scan run. Also builds a count of which web hosts refused the checker during that run.",
+      "why": "Likely reason: the scan's results are needed to say what each benchmark check found.",
+      "watch_out": "Projects are matched to the identity list by name. The step throws an error if no scan feed exists."
+    },
+    {
+      "start": 198,
+      "end": 250,
+      "kind": "method",
+      "name": "main: if",
+      "id": "s12",
+      "hash": "3622283a98898434",
+      "title": "Building each project's gap record",
+      "what": "For each identity: if the project is not in the database, records the reason and marks everything as missing. Otherwise, works out which benchmark values passed, failed or are missing, and counts facts, causes, developments and profile gaps. Then checks that every project appears in exactly one group.",
+      "why": "Likely reason: these lists tell the researcher what to find. Finished projects are checked against final cost and actual completion, and others against the latest estimate and forecast.",
+      "watch_out": "The stage text decides which benchmark fields are checked, so a wrong stage in the database changes the gaps reported."
+    },
+    {
+      "start": 251,
+      "end": 262,
+      "kind": "function",
+      "name": "main (part 3)",
+      "id": "s13",
+      "hash": "60274166c83b93c9",
+      "title": "Writing the data file and prompts",
+      "what": "Writes the combined data file and the gap report to the closure folder. Then writes one ready-to-paste prompt for each of the ten groups.",
+      "why": "Likely reason: the prompts are the working files for research, and the report is for reading.",
+      "watch_out": "The ready folder must already exist for the prompts to be written. The script creates only the closure folder."
+    },
+    {
+      "start": 263,
+      "end": 267,
+      "kind": "function",
+      "name": "stageWord",
+      "id": "s14",
+      "hash": "a6ecd91ed9ad6d85",
+      "title": "Short status label",
+      "what": "Gives each project a short status: not in the database yet, completed, or its current stage.",
+      "why": "Likely reason: each prompt entry needs one status line.",
+      "watch_out": "A project in the database with no stage would show the word null in its status."
+    },
+    {
+      "start": 268,
+      "end": 286,
+      "kind": "function",
+      "name": "projectBlock",
+      "id": "s15",
+      "hash": "e886f1d09c5975fc",
+      "title": "Text block for one project",
+      "what": "Writes a project's entry in a prompt: its key and status, what the database already holds, what is missing, the chart status, the lessons on file and any notes.",
+      "why": "Likely reason: a fixed layout lets the research tool find the key and the needs quickly.",
+      "watch_out": "Notes are cut to 420 characters, so a longer note loses its ending in the prompt."
+    },
+    {
+      "start": 287,
+      "end": 308,
+      "kind": "function",
+      "name": "gapReport",
+      "id": "s16",
+      "hash": "5a221254fec65da9",
+      "title": "Gap report summary",
+      "what": "Writes the human-readable gap report. It gives totals, the reasons values failed the checks with counts, the hosts that refused the checker, and a section for each project.",
+      "why": "Likely reason: lets the owner see the overall picture before running the research.",
+      "watch_out": "Failure reasons are counted by their text with any bracketed host removed, so reasons that differ only in wording are counted separately."
+    },
+    {
+      "start": 309,
+      "end": 367,
+      "kind": "function",
+      "name": "prompt (part 1)",
+      "id": "s17",
+      "hash": "7a018531b6711860",
+      "title": "Building the prompt header",
+      "what": "Reads the shared PROMPT.md template, takes its field and exclusion rules, and changes some numbers for these prompts, such as more facts per project. Writes the opening text with the group title and the list of unreadable sites.",
+      "why": "Likely reason: one template keeps all ten prompts consistent, with a few group-specific changes.",
+      "watch_out": "The number changes match exact text. If PROMPT.md is reworded, the change does nothing and the old numbers stay, with no error. A missing section marker does throw an error."
+    },
+    {
+      "start": 368,
+      "end": 417,
+      "kind": "function",
+      "name": "prompt (part 2)",
+      "id": "s18",
+      "hash": "68545a359f7993c7",
+      "title": "Research rules and source format",
+      "what": "Adds the research rules: which sources are allowed and banned, how figures and quotes must be copied, the sites the checker cannot read, and the layout of each source entry.",
+      "why": "Likely reason: the checker rejects quotes that are not copied exactly, so the rules are spelled out in full.",
+      "watch_out": "Parts of the rule text are cut off in the copy provided, so the full wording could not be checked here."
+    },
+    {
+      "start": 418,
+      "end": 429,
+      "kind": "function",
+      "name": "prompt (part 3)",
+      "id": "s19",
+      "hash": "c7f812c65ff41cf5",
+      "title": "Final checklist and start",
+      "what": "Ends each prompt with a checklist the researcher must confirm before sending results. Starts the main routine and, if it fails, prints the error and exits with failure.",
+      "why": "Likely reason: a final check reduces bad answers reaching the database.",
+      "watch_out": "Files are written at the end of the run, so a failure partway can leave some files updated and others not."
+    }
+  ],
+  "explained_at": "2026-11-12T02:51:46+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds a gap report and ten research prompts for European grid projects, showing what the database still lacks and why earlier values failed the checks.",
+  "purpose": "Tells the owner which European grid projects still need research, and gives the research tools prompts to fill those gaps.",
+  "why": "Likely reason: the research is done in batches by outside research tools, so the script turns the database gaps into ready-to-paste prompts. The header says to rerun it after each import so closed gaps drop out.",
+  "how": "Reads projects, evidence counts, companies, milestones and the latest Reality Scan results. For each planned project, notes whether it is in the database, which benchmark values passed or failed, which profile and fact categories are missing, and any notes on file. Checks that every project is in exactly one group. Writes the data file and the gap report, then writes one prompt per group into the ready folder.",
+  "inputs": "The database through DATABASE_URL. The events of the latest Reality Scan run. The grid identity list from the ingest folder. The existing ready prompt files, for project identity lines. The shared PROMPT.md template.",
+  "outputs": "closure/gaps.json and closure/GAP-REPORT.md, plus ten eu-grid-16 prompt files in the ready folder, all under docs/research-prompts/power-grid-europe.",
+  "risks": "Stops with an error if no scan exists, if a project has no reason for being outside the database, or if the group list does not match the project list. Projects are matched by name, not by key. Writes files directly into the repository and overwrites earlier output.",
+  "debug": "If it says no scan feed exists, run a Reality Scan first. If a project shows as not in the database with an error, add its reason to the not-in-database list. If a prompt reads oddly, check the wording of PROMPT.md. If a grouping error appears, check the group list for duplicate or missing keys.",
+  "summary_hash": "sha256:22f7d25154ca8b778c04677b9e05e85379d2fe027b6ab9c390f97d6f78cf1c5f"
+}

@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/capture-anchor-run.ts",
+  "language": "TypeScript",
+  "lines": 240,
+  "hash": "sha256:f6d8920f8f661bd82642d45856d8769ea6de548d2ef413678550b8f3d4a06797",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Writes to the live database and calls paid services with no dry-run option.",
+      "No tests are visible.",
+      "A round-trip failure does not change the exit code.",
+      "Failed jobs are logged and the run continues."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Span anchoring",
+      "meaning": "Recording the exact start and end positions of a quote inside its source page, so the quote can be checked later."
+    },
+    {
+      "term": "Round trip",
+      "meaning": "Taking the stored positions, slicing the stored page at them, and checking the result equals the stored quote."
+    },
+    {
+      "term": "Evidence quote",
+      "meaning": "A sentence from a source supporting a fact in the database."
+    },
+    {
+      "term": "Retrieval",
+      "meaning": "Searching the web and downloading the pages that research will read."
+    },
+    {
+      "term": "Tavily",
+      "meaning": "An outside web search and page-fetching service used during retrieval."
+    },
+    {
+      "term": "Token",
+      "meaning": "A small unit of text, roughly a word fragment, that language models charge by."
+    },
+    {
+      "term": "Commit step",
+      "meaning": "The final stage of a research job that saves its results to the database."
+    }
+  ],
+  "depends_on": [
+    "pg (PostgreSQL client library)",
+    "src/storage",
+    "src/jobs/runner",
+    "src/lib/portkeyOpenAI",
+    "src/lib/modelConfig",
+    "src/lib/spanAnchor",
+    "PostgreSQL tables evidence_quotes, source_span, source_document and research jobs"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 27,
+      "kind": "setup",
+      "name": "File setup, pool",
+      "id": "s1",
+      "hash": "577691bcec1d05ab",
+      "title": "Purpose, imports and database connection",
+      "what": "The header explains that the run uses the real research pipeline and measures how much of the evidence is anchored. The code brings in the database, storage, job runner, usage tracking, model settings and anchoring rules, then opens a database connection pool.",
+      "why": "The header explains that the acceptance check is done in the database, so the anchor is proven against stored text rather than a code assertion.",
+      "watch_out": "The run writes real evidence into the live database and spends money on model calls, and there is no switch to prevent that."
+    },
+    {
+      "start": 28,
+      "end": 33,
+      "kind": "value",
+      "name": "PRICE_PER_MTOK",
+      "id": "s2",
+      "hash": "cbcdf27662550e57",
+      "title": "Model price table",
+      "what": "Holds the public list price per million input and output tokens for one model. It is used only to estimate spending.",
+      "why": "The comment says the gateway may bill differently, so the figure is an estimate of usage and not an invoice.",
+      "watch_out": "Only one model is priced. Any other model shows its cost as unknown, and the list price may go out of date."
+    },
+    {
+      "start": 34,
+      "end": 40,
+      "kind": "function",
+      "name": "estimateCostUsd",
+      "id": "s3",
+      "hash": "42f08110484431be",
+      "title": "Cost estimate from token counts",
+      "what": "Turns input and output token counts into a dollar estimate for a model. It removes any provider prefix from the model name first, and returns nothing when the model has no price.",
+      "why": "Likely reason: a rough cost per run helps the owner judge whether the run is worth its expense. The code does not state this.",
+      "watch_out": "An unpriced model returns no estimate, which the report shows as unknown rather than zero."
+    },
+    {
+      "start": 41,
+      "end": 92,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s4",
+      "hash": "057a90b213a27756",
+      "title": "Choosing projects and running jobs",
+      "what": "Reads the project count and offset from the command line. Chooses projects with three to thirty existing quotes in a fixed hashed order, prints the list, then creates and runs one full research job per project. After each job it reads the commit step and prints its anchor statistics.",
+      "why": "Projects with existing evidence are chosen because retrieval is known to find sources for them, so the test measures the anchoring step rather than search. The offset avoids re-testing projects a previous run touched.",
+      "watch_out": "A job that throws is logged and the loop continues, so a failed job shows up only in its status line."
+    },
+    {
+      "start": 93,
+      "end": 144,
+      "kind": "method",
+      "name": "main: if",
+      "id": "s5",
+      "hash": "3207a14f01ba301c",
+      "title": "Measurement queries",
+      "what": "Stops if no jobs ran. Otherwise it counts the quotes written, how many are anchored and how many have no class. It groups the match methods, checks every stored position against the stored text in the database, and counts stored documents with their retrieval labels, sizes and methods.",
+      "why": "Each query answers one part of the acceptance question: how many quotes are anchored, and whether the stored positions really point at the quote.",
+      "watch_out": "The document counts include every document created since the run started, which may include activity from other jobs running at the same time."
+    },
+    {
+      "start": 145,
+      "end": 204,
+      "kind": "function",
+      "name": "main (part 3)",
+      "id": "s6",
+      "hash": "f851377fd08e2860",
+      "title": "Anchor misses and strong-match counts",
+      "what": "Lists each written quote with no anchor and gives a reason from the stored text. The reason is one of three: no document stored, the quote is present in the text but was not anchored, or the quote is not present word for word. It then groups match methods into strong matches (excluding numeric-only matches), numeric matches, and other weak matches.",
+      "why": "The header says the reason separates a defect in the anchoring code from an extraction that could not be quoted exactly. The strong-match rule is shared with the anchoring module so the two agree.",
+      "watch_out": "The miss reason uses the newest stored copy of the page for that address, so it may describe a different copy from the one the job actually read."
+    },
+    {
+      "start": 205,
+      "end": 240,
+      "kind": "function",
+      "name": "main (part 4)",
+      "id": "s7",
+      "hash": "4addc6aa161a778a",
+      "title": "Printed per-miss list, usage and exit",
+      "what": "Prints each miss with its field, publisher, address, stored document size, a shortened quote and its reason. Prints the round-trip pass count, a warning when any check fails, then the model name, call counts, token totals and estimated cost. The final wrapper closes the database connection and sets the exit code.",
+      "why": "The header makes the round trip the acceptance test, so its result is printed prominently. Cost is shown so spending on the run is visible.",
+      "watch_out": "A round-trip failure prints a warning but leaves the exit code at zero, so an automated check would still pass. The cost counts only calls that reported usage, so the estimate can be low."
+    }
+  ],
+  "explained_at": "2026-11-12T02:54:43+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the real research pipeline on a few live projects, then measures how many stored evidence quotes are tied to exact positions in their source pages, checking the positions inside the database.",
+  "purpose": "Acceptance test for span anchoring, which links each quote to the exact character positions where it appears in the stored page.",
+  "why": "The header says the test is deliberately not a code assertion. Each position is checked by asking the database to slice the stored page, so the anchor is proven against the stored text.",
+  "how": "Picks projects with three to thirty existing evidence quotes in a fixed hashed order, using a skip offset to avoid repeats. Creates and runs one full research job per project. Reads each job's commit-step statistics, then runs database queries that count anchored quotes, group match methods, check every position against the stored text, count stored documents, and list each unanchored quote with a reason. Finally it prints the model usage and an estimated cost.",
+  "inputs": "Command arguments: project count (default 3) and offset (default 0). DATABASE_URL. The storage layer, job runner, model settings and the anchoring rules. The evidence_quotes, source_span, source_document and research job tables.",
+  "outputs": "Console report only. The run itself writes research jobs, evidence quotes, spans and documents to the database.",
+  "risks": "The run writes live evidence to the database and spends model and retrieval money, with no dry-run option. A round-trip failure prints a warning but does not change the exit code. Document counts include every document created since the run started, not only those from these jobs.",
+  "debug": "If no projects are picked, check the evidence count range of three to thirty. If the round trip fails, the offsets do not match the stored text, so check the storage code. If many misses show the anchorer defect label, inspect the stored text for those quotes. If the cost shows unknown, the model is missing from the price table.",
+  "summary_hash": "sha256:f6d8920f8f661bd82642d45856d8769ea6de548d2ef413678550b8f3d4a06797"
+}

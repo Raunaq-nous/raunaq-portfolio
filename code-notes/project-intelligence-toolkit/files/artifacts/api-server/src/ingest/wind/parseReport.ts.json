@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/ingest/wind/parseReport.ts",
+  "language": "TypeScript",
+  "lines": 104,
+  "hash": "sha256:4fa38096e7f09b6fb62a67de8be208fd6368c4fd7f7111c433a63b028cf10650",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Rows that do not match the expected cell count are skipped silently.",
+      "Completeness checks use fixed numbers that must be updated by hand when the report changes.",
+      "No test is visible for this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Markdown",
+      "meaning": "A plain-text format that uses symbols such as pipes and hashes to show tables and headings."
+    },
+    {
+      "term": "Bibliography",
+      "meaning": "The numbered list of works the report cites."
+    },
+    {
+      "term": "Claim",
+      "meaning": "One fact about a project, with its value, unit, scope, date, references and the report line it came from."
+    },
+    {
+      "term": "Dossier",
+      "meaning": "A detailed per-project section in the report, with its own table of facts."
+    },
+    {
+      "term": "Adapter",
+      "meaning": "A piece of code that converts one data format into another without changing the meaning."
+    }
+  ],
+  "depends_on": [
+    "The markdown wind report text passed in as input"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 7,
+      "kind": "type",
+      "name": "WindReference",
+      "id": "s1",
+      "hash": "17d43df0cefa5478",
+      "title": "Shape of one reference",
+      "what": "Defines what a stored reference holds: its ID, title, publisher, web link, publication date, how the report says it was read, and how it was checked. Its verification label for report references always says they are not independently checked.",
+      "why": "Keeps each reference's details together so later steps can show where a claim came from.",
+      "watch_out": "Downstream code must not treat these references as verified, because the label says they are not."
+    },
+    {
+      "start": 8,
+      "end": 15,
+      "kind": "type",
+      "name": "WindClaim, WindEntry, cells",
+      "id": "s2",
+      "hash": "78993c3e8738690d",
+      "title": "Shape of one claim and one ranked project",
+      "what": "Defines a claim, which is one fact about a project with its value, unit, scope, date, references and the report line it came from. It also defines a ranked project as a group of claims, and includes a helper that splits a table row into cells.",
+      "why": "One structure per fact lets each value keep its own source trail.",
+      "watch_out": "The cell helper assumes each row starts and ends with a pipe character. A row without them will be read wrongly."
+    },
+    {
+      "start": 16,
+      "end": 20,
+      "kind": "function",
+      "name": "refsIn, slug",
+      "id": "s3",
+      "hash": "96128363a29c7f6d",
+      "title": "Finding reference codes and making safe IDs",
+      "what": "Finds reference codes such as source numbers and bracketed bibliography numbers inside a cell of text. It also turns a label into a lowercase ID that uses underscores instead of spaces and symbols.",
+      "why": "Reference codes in the text must be linked to the reference list, and IDs must be safe to store.",
+      "watch_out": "Only bracketed numbers count as bibliography references, so a bare number in the text is ignored."
+    },
+    {
+      "start": 21,
+      "end": 28,
+      "kind": "function",
+      "name": "observationDate",
+      "id": "s4",
+      "hash": "98a739d60b7c8473",
+      "title": "Dates attached to a cited observation",
+      "what": "Finds dates written in brackets next to a citation and returns them. If no such date exists, it returns a fixed note saying the date is not separately given and the value keeps its own dates.",
+      "why": "The comment says a date next to a citation is not the same as a forecast date inside the observation, so the project's investment date must not be copied in.",
+      "watch_out": "Only dates in brackets that also contain a citation code or a 10-Q reference are picked up. Other dates are ignored."
+    },
+    {
+      "start": 29,
+      "end": 87,
+      "kind": "function",
+      "name": "parseWindReport (part 1)",
+      "id": "s5",
+      "hash": "f777c8bba1867c16",
+      "title": "Reading the report line by line",
+      "what": "Goes through each line of the report. It collects reference entries from the source table and the numbered list. It turns each ranked row into claims, one per field. It also reads dossier rows that sit under a project. Rows with the wrong number of cells are dropped without an error.",
+      "why": "Reading line by line keeps every claim tied to the exact report line where it appeared, which helps a reviewer check it.",
+      "watch_out": "A row with the wrong number of cells is silently dropped, so a change to the report's table layout can lose data without any error."
+    },
+    {
+      "start": 88,
+      "end": 104,
+      "kind": "method",
+      "name": "parseWindReport: for",
+      "id": "s6",
+      "hash": "dab68212f57dd613",
+      "title": "Linking references and checking completeness",
+      "what": "Works out how each reference is used: admitted as project evidence, bibliography only, or screening context only. It then checks that there are exactly thirteen ranks and eighty-five bibliography entries, and that every cited reference exists. If any check fails, it stops. It then returns the data plus two text sections cut from fixed positions in the report.",
+      "why": "The checks stop incomplete data from reaching the database.",
+      "watch_out": "The expected counts are hard-coded, so a real change to the report needs these numbers updated too."
+    }
+  ],
+  "explained_at": "2026-11-12T03:38:19+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads the wind research report and turns its ranked project table and project dossiers into structured claims and a list of references, and stops with an error if the report is incomplete.",
+  "purpose": "Converts the markdown wind report into data the rest of the wind import can use, while keeping each claim tied to its report line and its references.",
+  "why": "The file's own comment calls it a lossless adapter. The code keeps source numbers and bibliography numbers in separate groups, so they cannot be mixed up.",
+  "how": "Reads the report line by line. It collects references from the source table and from the numbered bibliography. It reads each ranked row, which must have eighteen cells, and turns each field into a claim. It reads dossier rows, which must have nine cells. It then links each reference to the claims that cite it. It checks that there are thirteen ranks and eighty-five bibliography entries, and that every cited reference exists. It returns the entries, the references, and two text sections from fixed positions in the report.",
+  "inputs": "The full text of the wind report, passed in as one string.",
+  "outputs": "Entries (ranked projects with their claims), references, a context text section, and a methodology text section.",
+  "risks": "Rows with the wrong number of cells are skipped without an error, so a change in the report's table layout can quietly lose data. The context and methodology sections are cut at fixed heading names and a fixed line number, so report edits can change them without warning.",
+  "debug": "If a rank is missing, count the cells in its row in the report. If the error says Incomplete wind report, count the ranks and the bibliography entries. If the methodology text is empty or wrong, check the fixed line number.",
+  "summary_hash": "sha256:4fa38096e7f09b6fb62a67de8be208fd6368c4fd7f7111c433a63b028cf10650"
+}

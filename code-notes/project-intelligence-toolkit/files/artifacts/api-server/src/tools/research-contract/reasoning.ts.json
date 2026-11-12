@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/research-contract/reasoning.ts",
+  "language": "TypeScript",
+  "lines": 111,
+  "hash": "sha256:270f16f825322b90f9252fbd4b6ed39798679d911a119fd99e693991b37c8daf",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated tests were shown for this module.",
+      "Depends on the behaviour of an external language model, which cannot be checked from this file alone.",
+      "The packet cut off part of the instructions sent to the model, so they could not be reviewed."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Batch",
+      "meaning": "A group of 25 facts sent to the model in one request."
+    },
+    {
+      "term": "Pillar",
+      "meaning": "One report theme, grouped with its drivers and evidence."
+    },
+    {
+      "term": "Sub-driver",
+      "meaning": "A specific cause or factor inside a pillar that gets its own rating."
+    },
+    {
+      "term": "Judgement",
+      "meaning": "A rating (supportive, adverse, mixed, ongoing or unassessed) for one project and one driver."
+    },
+    {
+      "term": "Language model",
+      "meaning": "An AI system that writes text from instructions and input data."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/lib/portkeyOpenAI.ts",
+    "artifacts/api-server/src/lib/modelConfig.ts",
+    "artifacts/api-server/src/tools/research-contract/methodology.ts",
+    "artifacts/api-server/src/tools/research-contract/semanticPolicy.ts",
+    "artifacts/api-server/src/tools/lessons-learnt/recipeResult.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a4a763e06eaf9f10",
+      "title": "Imports for reasoning",
+      "what": "Brings in the fingerprint tool, the schema library, the model call, the model choice by role, the result shapes, the methodology shape and the admission check.",
+      "why": "Likely reason: the module asks a language model to write findings, so it needs these pieces to send and check requests.",
+      "watch_out": ""
+    },
+    {
+      "start": 9,
+      "end": 13,
+      "kind": "value",
+      "name": "judgementSchema",
+      "id": "s2",
+      "hash": "4d61f96443259312",
+      "title": "Shape of one criterion rating",
+      "what": "Defines one rating a project gets for one driver: the project, driver name, criterion, rating word, rationale and the supporting fact identifiers.",
+      "why": "Likely reason: every rating must name its evidence so it can be checked.",
+      "watch_out": "The rating words are a fixed list, so a new rating word in the model output will fail the check."
+    },
+    {
+      "start": 14,
+      "end": 28,
+      "kind": "value",
+      "name": "outputSchema, CriterionJudgement",
+      "id": "s3",
+      "hash": "267a68e94b843020",
+      "title": "Shape of the model output",
+      "what": "Defines what the model must return for each batch: pillars with name, principle, rationale, method quotes, supporting facts, sub-drivers, judgements and recommendations, with minimum lengths so empty or vague answers fail.",
+      "why": "Likely reason: the check rejects thin or empty answers before they reach the report.",
+      "watch_out": "Minimum lengths are set in code, so a valid but short answer will be refused."
+    },
+    {
+      "start": 29,
+      "end": 88,
+      "kind": "function",
+      "name": "reasonFromEvidence (part 1)",
+      "id": "s4",
+      "hash": "b2fda36c1eeedf8a",
+      "title": "Batched model reasoning and checks",
+      "what": "Admits project facts, splits them into batches of 25, and sends each batch with method excerpts to the language model. Saves each answer under a fingerprint so reruns reuse it. Rejects any answer that cites facts outside its batch or pillar, invents a method quote, or repeats a judgement. Stops when the run is cancelled or more than 1,000 facts are supplied.",
+      "why": "The comment says outcome labels are kept out of the input, and batching keeps each request a manageable size.",
+      "watch_out": "Any failed check throws an error for the whole run, so one bad batch produces no output rather than partial results."
+    },
+    {
+      "start": 89,
+      "end": 111,
+      "kind": "function",
+      "name": "reasonFromEvidence (part 2)",
+      "id": "s5",
+      "hash": "c2ec9ff9289f2a19",
+      "title": "Turns findings into report pillars",
+      "what": "Converts each approved theme into a numbered pillar with its driver list and counts of supportive and risk ratings per driver. Turns recommendations into labelled proposals that are explicitly not verified outcomes. Returns a note saying themes were found in batches and no fixed number is claimed.",
+      "why": "Likely reason: the report needs stable identifiers, and proposals must not be mistaken for facts.",
+      "watch_out": "Counts come straight from the ratings, so one wrong rating changes the counts directly."
+    }
+  ],
+  "explained_at": "2026-11-12T05:10:33+00:00",
+  "explained_by": "haiku",
+  "summary": "Asks a language model to turn admitted project facts and industry method sources into lessons, themes, ratings and proposals, and rejects any answer that cites evidence it was not given.",
+  "purpose": "Produces the evidence-based findings and report pillars, each tied to its supporting facts.",
+  "why": "Likely reason: the report needs synthesis, but every claim must be traceable, so the code checks the model output strictly.",
+  "how": "Keeps admitted facts and throws an error if none exist or there are over 1,000. Splits the facts into batches of 25 and sends each batch with method excerpts to the model. Saves each answer under a fingerprint so reruns reuse it. Checks every answer for unknown facts, wrong-project evidence, invented quotes and duplicate ratings. Then builds pillars, driver counts and proposals.",
+  "inputs": "Project facts, the methodology register, a cancellation check, and a saved-results store.",
+  "outputs": "Pillars with their drivers and counts, criterion judgements, labelled recommendations, the batch count and a qualification note.",
+  "risks": "Any failed check stops the whole run, so one bad batch yields no output. Model output is not verified beyond these checks. The prompt text in the packet is cut off, so the full instructions could not be reviewed here.",
+  "debug": "Read the error text first, since each check has its own message. Check that the saved results store is not serving old answers, since the key includes a version number. If judgements look wrong, check the rating words and the driver names in the model answer.",
+  "summary_hash": "sha256:270f16f825322b90f9252fbd4b6ed39798679d911a119fd99e693991b37c8daf"
+}

@@ -1,0 +1,356 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/storage.ts",
+  "language": "TypeScript",
+  "lines": 1118,
+  "hash": "sha256:6569b28113f495510a0febcfaa2fd6990f55253cfc4ccc55bf905286f75cb499",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or error handling are visible in the parts shown.",
+      "Several write paths skip type checks.",
+      "The technology detail save reads first and then writes, which can clash under concurrent use.",
+      "Key areas have clear comments, such as the evidence source merge, which explains why it is safe for concurrent writers."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Storage layer",
+      "meaning": "The part of the app that is the only place talking to the database."
+    },
+    {
+      "term": "Interface",
+      "meaning": "A list of operations that must exist, without saying how they work."
+    },
+    {
+      "term": "Query",
+      "meaning": "A request sent to the database to read or change rows."
+    },
+    {
+      "term": "ORM",
+      "meaning": "A helper library that writes database queries in code instead of as raw query text. Here it is called drizzle-orm."
+    },
+    {
+      "term": "Transaction",
+      "meaning": "A group of database changes that either all succeed or all fail together."
+    },
+    {
+      "term": "Upsert",
+      "meaning": "Save as an update if a matching row exists, otherwise insert a new row."
+    },
+    {
+      "term": "JSONB",
+      "meaning": "A database column type that stores structured data, similar to a small document."
+    }
+  ],
+  "depends_on": [
+    "@workspace/db",
+    "./db",
+    "drizzle-orm"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 33,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "dbfe93bafbb18544",
+      "title": "Imports and database connection",
+      "what": "Brings in the table definitions and data types from the shared database package, the database connection, and the query helpers used by the rest of this file.",
+      "why": "Reason not stated in the code, but this is needed so the rest of the file can build queries.",
+      "watch_out": ""
+    },
+    {
+      "start": 34,
+      "end": 54,
+      "kind": "type",
+      "name": "ProjectFilters",
+      "id": "s2",
+      "hash": "a6ea444675f5bf8b",
+      "title": "Project filter options",
+      "what": "Lists the optional filters the project list accepts: status, stage, maturity, country, technology, industry, sub-industry, megawatt range, free text search, sort, paging, date range and the pipeline-only switch.",
+      "why": "Likely reason: gives callers one place to see every way the project list can be narrowed.",
+      "watch_out": ""
+    },
+    {
+      "start": 55,
+      "end": 69,
+      "kind": "value",
+      "name": "WHITELISTED_SORT_COLUMNS",
+      "id": "s3",
+      "hash": "fa39cc8a628adf9d",
+      "title": "Allowed sort columns",
+      "what": "Lists the project fields the project list may be sorted by, such as name, status, megawatts, budget and delay.",
+      "why": "Likely reason: keeps sorting limited to known, safe column names.",
+      "watch_out": "A new sort option only works after it is added to this list."
+    },
+    {
+      "start": 70,
+      "end": 74,
+      "kind": "type",
+      "name": "EvidenceExecutor",
+      "id": "s4",
+      "hash": "8158edbbd0c099ae",
+      "title": "Database or transaction handle",
+      "what": "Defines a type that accepts either the main database connection or a transaction, so evidence can be saved as part of a larger save.",
+      "why": "Stated in the code comment: lets an evidence save commit or roll back together with the project save during file import.",
+      "watch_out": ""
+    },
+    {
+      "start": 75,
+      "end": 128,
+      "kind": "type",
+      "name": "IStorage (part 1)",
+      "id": "s5",
+      "hash": "2efac99235ee06f6",
+      "title": "Storage contract, project and evidence part",
+      "what": "Lists the project and evidence operations the storage must offer, such as getting, creating and updating projects, counting active evidence, and merging evidence source keys.",
+      "why": "Likely reason: lets other code depend on this list instead of on the database details.",
+      "watch_out": ""
+    },
+    {
+      "start": 129,
+      "end": 185,
+      "kind": "type",
+      "name": "IStorage (part 2)",
+      "id": "s6",
+      "hash": "27ec8273a4659596",
+      "title": "Storage contract, planning and research part",
+      "what": "Lists the operations for issues, scorecards, maturity gates, success stories, glossary, milestones, project updates, technology details and SKU mappings.",
+      "why": "Likely reason: same purpose as the first contract section, covering more record types.",
+      "watch_out": ""
+    },
+    {
+      "start": 186,
+      "end": 198,
+      "kind": "type",
+      "name": "IStorage (part 3)",
+      "id": "s7",
+      "hash": "77696f14e8cfb260",
+      "title": "Storage contract, research and sources part",
+      "what": "Lists the operations for research jobs and their steps, change log, schedules, companies, aliases, discovery jobs, sources and research documents.",
+      "why": "Likely reason: same purpose as the earlier contract sections, covering the remaining record types.",
+      "watch_out": ""
+    },
+    {
+      "start": 199,
+      "end": 247,
+      "kind": "class",
+      "name": "DatabaseStorage, storage (part 1)",
+      "id": "s8",
+      "hash": "09f19a411f7f70cc",
+      "title": "Project list: status to size filters",
+      "what": "Starts the project list. It turns comma-separated filter text into conditions for status, stage, maturity, country, technology, industry, sub-industry and megawatt range.",
+      "why": "Likely reason: lets one filter field carry several choices at once, such as a list of countries.",
+      "watch_out": ""
+    },
+    {
+      "start": 248,
+      "end": 306,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: if",
+      "id": "s9",
+      "hash": "bd15de6bbe0398a9",
+      "title": "Project list: search, dates, count and sort",
+      "what": "Adds free text search across name, description and wind aliases, applies the date range, counts the matches, then sorts and pages the results. Results default to 50 per page, sorted by name.",
+      "why": "Likely reason: counting before paging lets the screen show a total alongside each page.",
+      "watch_out": "A date range with no date field chosen checks all three date columns, so one project may match on any of them."
+    },
+    {
+      "start": 307,
+      "end": 352,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: getProject",
+      "id": "s10",
+      "hash": "b260af671b32bf8b",
+      "title": "Basic project and evidence reads and writes",
+      "what": "Gets, creates and updates single projects, lists evidence for a project, counts active evidence per project, and gets one evidence item.",
+      "why": "Reason not stated in the code beyond the obvious purpose of each function.",
+      "watch_out": "Create and update for projects pass data through a type shortcut, so bad data is not caught here."
+    },
+    {
+      "start": 353,
+      "end": 409,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: getEvidenceBySnapshotKey",
+      "id": "s11",
+      "hash": "4e8d8a42e49082e4",
+      "title": "Evidence snapshots, merges and issues",
+      "what": "Finds evidence by a snapshot key, saves new evidence (optionally inside a larger save), updates evidence, merges source keys without overwriting others, and handles issues and scorecard reads.",
+      "why": "Stated in the code comment: the source key merge is atomic so a slow snapshot cannot undo a newer locator update.",
+      "watch_out": "The merge overwrites any existing value that uses the same key name."
+    },
+    {
+      "start": 410,
+      "end": 467,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: getScorecardPillar",
+      "id": "s12",
+      "hash": "c419f4ad8d829a56",
+      "title": "Scorecards, maturity gates and success stories",
+      "what": "Gets, creates and updates scorecard pillars, lists and saves maturity gates for a project, and reads or creates a success story.",
+      "why": "Likely reason: maturity gates are saved as an upsert, so each project and gate pair has one row.",
+      "watch_out": "Every maturity gate save sets the assessed time to now, which overwrites the earlier assessment time."
+    },
+    {
+      "start": 468,
+      "end": 497,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: if",
+      "id": "s13",
+      "hash": "234570d76ced01f3",
+      "title": "Glossary and milestones",
+      "what": "Lists glossary terms, optionally for one industry, creates glossary terms, and gets, creates, lists and updates project milestones.",
+      "why": "Reason not stated in the code beyond the obvious purpose of each function.",
+      "watch_out": "Asking for glossary terms with no industry returns every term from every industry."
+    },
+    {
+      "start": 498,
+      "end": 554,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: getUpdatesByProject",
+      "id": "s14",
+      "hash": "2b2740e929db160e",
+      "title": "Project updates list and save",
+      "what": "Lists a project's updates while hiding those imported from ChatGPT research or bulk imports, and saves new updates with the location data cast to a fixed shape.",
+      "why": "Stated in the code: the hidden sources are excluded from listings so only real updates appear.",
+      "watch_out": "Any update from those excluded sources never appears in the project's list, even if it is needed for review."
+    },
+    {
+      "start": 555,
+      "end": 610,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: getProjectUpdate",
+      "id": "s15",
+      "hash": "02396955701c5b7c",
+      "title": "Single update, technology detail and SKU reads",
+      "what": "Gets and updates one project update, reads technology details for a project, saves them by reading first and then writing or inserting, and handles SKU mapping reads and creates. Also begins the research job reads.",
+      "why": "Likely reason: the read-then-write pattern lets one function create or change the same record.",
+      "watch_out": "The technology detail save is not one atomic step, so two saves at the same moment can clash."
+    },
+    {
+      "start": 611,
+      "end": 669,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: createResearchJob",
+      "id": "s16",
+      "hash": "9a97732f42aa1ea0",
+      "title": "Research job records and change history",
+      "what": "Creates, updates and reads research jobs and their steps, lists jobs by status, finds jobs that have been running too long, and reads a project's change history with an optional field filter.",
+      "why": "Reason not stated in the code beyond the obvious purpose of each function.",
+      "watch_out": "The stale-job search builds its time interval from a raw text value, so the input must stay a plain number."
+    },
+    {
+      "start": 670,
+      "end": 726,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: if",
+      "id": "s17",
+      "hash": "b3fbbc60f27ec626",
+      "title": "Recent changes, pending reviews and schedules",
+      "what": "Lists recent changes across the app, optionally for one industry, counts changes waiting for review, creates and updates change log entries, gets the latest change for a field, and reads and saves project schedules.",
+      "why": "Likely reason: the review counter lets the screen show how much work is waiting without loading every change.",
+      "watch_out": "Recent changes skip bulk imports, so imported changes never appear in that list."
+    },
+    {
+      "start": 727,
+      "end": 782,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: if",
+      "id": "s18",
+      "hash": "7df11de1ffa8281a",
+      "title": "Saving schedules and listing due ones",
+      "what": "Shows the end of a routine that updates a project's schedule when one exists, or creates it otherwise. The same section returns every enabled schedule whose next run time has passed, and inserts new company records.",
+      "why": "Likely reason: the app keeps one schedule per project and needs a list of work that is due now.",
+      "watch_out": "The due check compares against the database server's clock (NOW), so the answer depends on that server's time, not the app's time."
+    },
+    {
+      "start": 783,
+      "end": 840,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: if",
+      "id": "s19",
+      "hash": "fbd6fa67efc9e629",
+      "title": "Listing companies with an industry filter",
+      "what": "Returns all companies sorted by name. When an industry is given, it returns companies tagged with that industry plus companies linked to any project in that industry. It also updates a company record and finds companies by a name matched case-insensitively.",
+      "why": "Likely reason: a company list for an industry should include companies linked through projects, not only those tagged directly.",
+      "watch_out": "Name lookups use a case-insensitive pattern match, so names containing percent or underscore characters can match other companies."
+    },
+    {
+      "start": 841,
+      "end": 891,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: findCompanyByAlias",
+      "id": "s20",
+      "hash": "40bb7ef38c1365a2",
+      "title": "Finding a company by name or alias",
+      "what": "Looks for a company whose name matches the given text, ignoring case, and if none is found checks its alias names. It also lists and creates links between companies and projects, and starts a routine that saves such a link.",
+      "why": "Likely reason: the same company is often written in several ways in source documents, so matching by alias avoids duplicate companies.",
+      "watch_out": "When several companies share a name or alias, the first match is returned and no ambiguity is reported here."
+    },
+    {
+      "start": 892,
+      "end": 948,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: if",
+      "id": "s21",
+      "hash": "8840f61ca61c4f01",
+      "title": "Saving links and resolving company names",
+      "what": "If a company-to-project link already exists, it refreshes the last-seen time and source, and raises the confidence score only when the new score is higher; otherwise it creates the link. The company resolver then either matches an existing company strictly by exact name or alias, or in its normal mode finds or creates a company typed as SUPPLIER and records the name as an alias.",
+      "why": "Likely reason: a link is updated rather than duplicated each time the same source mentions the same company. The strict mode is used by source-only imports, according to the comments.",
+      "watch_out": "Companies created in the normal mode are labelled SUPPLIER without evidence, while strict mode labels new ones UNKNOWN, so the owner should check which label a company has before trusting it."
+    },
+    {
+      "start": 949,
+      "end": 1004,
+      "kind": "class",
+      "name": "DatabaseStorage, storage (part 15)",
+      "id": "s22",
+      "hash": "b6e12f69a7c1e514",
+      "title": "Logging new companies and discovery jobs",
+      "what": "Writes a console log line when a company is created automatically, then returns a company's linked projects with key project details, including whether the project has a wind dossier. It also holds create, read, update and get-latest functions for discovery job records.",
+      "why": "Reason for the log line and project details not stated in the code. The section name in the outline is misleading; it is a mix of company and job functions.",
+      "watch_out": "The log message says confidence 0.5, but the insert never sets a confidence value, so the log can mislead someone debugging."
+    },
+    {
+      "start": 1005,
+      "end": 1063,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: getActiveDiscoveryJob",
+      "id": "s23",
+      "hash": "12a53bf344cf2f0c",
+      "title": "Finding active and stale discovery jobs",
+      "what": "Returns one job that is queued or running, returns jobs that have been queued or running longer than a set number of minutes, and returns recent job history, 20 by default. It also lists sources with optional type, enabled and industry filters, gets one source and creates a source.",
+      "why": "Likely reason: the app avoids starting a second discovery run while one is active, and needs to find runs that got stuck.",
+      "watch_out": "The active-job lookup has no sort order, so if more than one job is active the one returned is not defined. The minutes value is also placed directly into SQL text."
+    },
+    {
+      "start": 1064,
+      "end": 1118,
+      "kind": "method",
+      "name": "DatabaseStorage, storage: updateSource",
+      "id": "s24",
+      "hash": "04edb46b31a9e0b4",
+      "title": "Updating sources and matching by domain",
+      "what": "Updates a source, lists the sources linked to a project, and links a source to a project unless the link already exists. It finds a source whose website matches a given domain, and saves and lists research documents by project or job.",
+      "why": "Likely reason: research documents are stored so a project's sources can be reviewed later. Reason for domain matching not stated in the code.",
+      "watch_out": "Domain matching loads every source and accepts a match when either domain ends with the other, so a broad domain can match an unrelated source."
+    }
+  ],
+  "explained_at": "2026-11-12T04:21:42+00:00",
+  "explained_by": "haiku",
+  "summary": "The main database access layer: it defines every read and write the app can make to its project data and runs them against the database.",
+  "purpose": "Keeps all database work in one place, so other parts of the app ask for data by meaning, such as get a project or save an update, without writing database queries themselves.",
+  "why": "Likely reason: one shared interface with one implementation keeps database rules in one file. The reason for keeping it as one large file is not stated in the code.",
+  "how": "Imports the table definitions and a database connection. Declares an interface that lists every operation. A class implements those operations with queries. The project list builds its filters, counts matches, sorts and pages the results. Most other operations are one short query each. Some operations read a record and then write it back.",
+  "inputs": "Ids, search text, filter choices, sort choices, page size and offset, and full data objects for creating or updating rows, all passed in by callers.",
+  "outputs": "Rows from the database, such as projects, evidence, issues, scorecard pillars, maturity gates, milestones, updates, research jobs, change log entries, companies, sources and schedules. Some lookups return nothing when a row is not found.",
+  "risks": "Several write paths skip type checks with shortcuts. Read-then-write operations can clash if two writers act at the same time. One raw query builds its text from a number, which must stay a number. Some filters override each other, such as the pipeline-only option and the lifecycle stage filter.",
+  "debug": "If a project list is wrong, check the filters in the project list function in order. If a save seems lost, check the matching update function and whether two jobs write the same row. If sorting has no effect, the sort name must appear in the whitelist of sort columns. If a database error appears, check table and column names against the schema package.",
+  "summary_hash": "sha256:6569b28113f495510a0febcfaa2fd6990f55253cfc4ccc55bf905286f75cb499"
+}

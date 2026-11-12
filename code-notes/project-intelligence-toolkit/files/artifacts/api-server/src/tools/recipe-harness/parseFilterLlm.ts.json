@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/recipe-harness/parseFilterLlm.ts",
+  "language": "TypeScript",
+  "lines": 411,
+  "hash": "sha256:bca899435fe5141d305416bbb436526e7d13789471ad1be4c609b9e5347c8126",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The fallback address is a placeholder that will fail if not replaced.",
+      "Certificate checking can be switched off by a setting.",
+      "No test is visible in this file.",
+      "The later parts of the file are not covered by these notes, so their readiness is unknown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Portkey",
+      "meaning": "a gateway service that passes the app's AI requests on to an AI model"
+    },
+    {
+      "term": "Gateway",
+      "meaning": "a middle service that receives requests and forwards them to the real provider"
+    },
+    {
+      "term": "Facet",
+      "meaning": "a value taken from the data, such as the list of countries that actually exist in the yard data"
+    },
+    {
+      "term": "Environment variable",
+      "meaning": "a named setting provided to the program by the system it runs on"
+    },
+    {
+      "term": "Certificate check",
+      "meaning": "the step where a secure connection confirms it is talking to the real server"
+    },
+    {
+      "term": "Timeout",
+      "meaning": "a time limit after which a waiting request is stopped"
+    },
+    {
+      "term": "Token cap",
+      "meaning": "a limit on how long the AI's reply may be"
+    },
+    {
+      "term": "Backup key",
+      "meaning": "a second key used when the main key has been marked as used up"
+    }
+  ],
+  "depends_on": [
+    "fs (Node file access)",
+    "path (Node file path helper)",
+    "https and http (Node web connection helpers)",
+    "zod",
+    "../../lib/modelConfig",
+    "../../lib/keyChain",
+    "../../lib/portkeyOpenAI",
+    "./filterLessons",
+    "recipe_harness/.env"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/recipe-harness/index.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7c3247b6eb64d617",
+      "title": "Imports and folder location",
+      "what": "Loads the web, file, validation, model, key, and lesson helpers, and sets the harness folder location.",
+      "why": "Brings in the shared pieces this feature depends on. Reason beyond that not stated in the code.",
+      "watch_out": "The harness folder path is relative, so it depends on the server start folder."
+    },
+    {
+      "start": 20,
+      "end": 38,
+      "kind": "value",
+      "name": "parseFilterBodySchema, ParseFilterBody",
+      "id": "s2",
+      "hash": "fa3272f2733fec30",
+      "title": "Checking a parse request",
+      "what": "Defines the request limits: a prompt of up to 2000 characters, and up to 200 countries, 20 statuses, and 40 sample projects.",
+      "why": "Keeps request size and AI cost within limits. Likely reason, not stated in the code.",
+      "watch_out": "Raising a limit increases AI cost and wait time."
+    },
+    {
+      "start": 39,
+      "end": 50,
+      "kind": "value",
+      "name": "filterOutSchema",
+      "id": "s3",
+      "hash": "b0ce8a5da8e1b0dc",
+      "title": "Checking the AI's filter reply",
+      "what": "Defines the allowed shape of the AI reply. Status must be all, on-track, delayed, or over-budget, and evidence must be any or completed. Other fields are optional.",
+      "why": "Stops a malformed AI reply from reaching the filters.",
+      "watch_out": "If the AI returns a status word not in this list, the whole reply is rejected, so this list must match the prompt."
+    },
+    {
+      "start": 51,
+      "end": 58,
+      "kind": "type",
+      "name": "HarnessPortkey",
+      "id": "s4",
+      "hash": "e024c5104b41492b",
+      "title": "Connection settings shape",
+      "what": "Defines the connection details: the key, which environment variable it came from, the address, and the model.",
+      "why": "Lets a spent key be traced back to its source so it can be parked.",
+      "watch_out": "The source name is what allows a bad key to be removed from use, so it must stay accurate."
+    },
+    {
+      "start": 59,
+      "end": 81,
+      "kind": "function",
+      "name": "loadHarnessEnvFile",
+      "id": "s5",
+      "hash": "4dbb9bb5cf3d2997",
+      "title": "Reading the harness settings file",
+      "what": "Reads recipe_harness/.env into name and value pairs, skipping blank and comment lines and removing quotes.",
+      "why": "Keeps keys and addresses out of the code. Reason beyond that not stated in the code.",
+      "watch_out": "The same reading logic is copied in confirmFilter.ts, so the two copies can drift apart."
+    },
+    {
+      "start": 82,
+      "end": 94,
+      "kind": "function",
+      "name": "sslVerifyEnabled",
+      "id": "s6",
+      "hash": "f0dfa7b5a46154fc",
+      "title": "Whether to check certificates",
+      "what": "Decides whether secure connections verify the server's certificate. It is on unless the setting is 0, false, or no.",
+      "why": "Likely reason: lets the team work behind a proxy or with test certificates. Reason not stated in the code.",
+      "watch_out": "Turning this off removes the check that confirms the gateway is the real server."
+    },
+    {
+      "start": 95,
+      "end": 115,
+      "kind": "function",
+      "name": "resolveHarnessPortkey",
+      "id": "s7",
+      "hash": "d34ba7226a5ced9c",
+      "title": "Building the connection settings",
+      "what": "Picks the main Portkey key, or the backup key if the main one is parked, then sets the address and the model for the extraction role. The address falls back to a placeholder when no setting exists.",
+      "why": "Gives every parse call one place to get its key, address, and model. The code comment says per-feature model settings were removed because they made failures hard to read.",
+      "watch_out": "Returns nothing when no key is found, so every caller must handle that case, and the placeholder address will cause failed calls if the real address is not set."
+    },
+    {
+      "start": 116,
+      "end": 127,
+      "kind": "function",
+      "name": "normalizeGeo",
+      "id": "s8",
+      "hash": "782471209579a842",
+      "title": "Standardizing common country names",
+      "what": "Converts common variants such as US, United States, UK, and UAE into one standard form, and leaves other names unchanged.",
+      "why": "Helps the country match against the real Yard country names. Reason beyond that not stated in the code.",
+      "watch_out": "Only three countries are covered, so other variants are not standardized."
+    },
+    {
+      "start": 128,
+      "end": 156,
+      "kind": "function",
+      "name": "pickCountryFromFacets",
+      "id": "s9",
+      "hash": "4609be0438db7c98",
+      "title": "Matching a country to the Yard list",
+      "what": "Finds the exact Yard country name by trying, in order: the AI's own matches, an exact name match, a USA variant, and a partial text match. If nothing matches, it returns the standardized name.",
+      "why": "Makes the geography filter match the country names used in the data. Reason beyond that not stated in the code.",
+      "watch_out": "Partial matching can pick the wrong country when names overlap, and the fallback can return a name that is not in the Yard list."
+    },
+    {
+      "start": 157,
+      "end": 206,
+      "kind": "function",
+      "name": "portkeyChatCompletions",
+      "id": "s10",
+      "hash": "a334152620309893",
+      "title": "Sending a chat request to the gateway",
+      "what": "Posts a JSON chat request to the gateway's chat address with the key in the authorization and Portkey headers. It returns the status and body, and stops the request after 45 seconds by default.",
+      "why": "Makes the AI call without a separate library. Likely reason, not stated in the code.",
+      "watch_out": "The key is sent to whatever address is configured, so the address must be the real gateway."
+    },
+    {
+      "start": 207,
+      "end": 213,
+      "kind": "function",
+      "name": "harnessTokenCap",
+      "id": "s11",
+      "hash": "bfaebf5402340942",
+      "title": "Picks the output length setting",
+      "what": "Chooses which output length setting name to send to the AI model. Claude models use one name and other models use another, so this function returns the right one.",
+      "why": "Likely reason: different model families expect different names for the same length limit. The code does not state this.",
+      "watch_out": "The comment above this function describes a different job (parking a spent key), so that comment is misplaced and should not be relied on."
+    },
+    {
+      "start": 214,
+      "end": 217,
+      "kind": "function",
+      "name": "noteHarnessStatus",
+      "id": "s12",
+      "hash": "2c01fc7b40325033",
+      "title": "Records a spent API key",
+      "what": "When the AI service reports that a key is used up or rejected, this marks that key as spent. The next call then uses the backup key.",
+      "why": "Stated in the comment above harnessTokenCap: the next harness call uses the backup. Likely reason: avoid repeated calls that fail with the same key.",
+      "watch_out": "Only keys with an environment variable name can be parked. A key without one is never marked, so repeated failures are possible."
+    },
+    {
+      "start": 218,
+      "end": 248,
+      "kind": "function",
+      "name": "parseFilterWithLlm (part 1)",
+      "id": "s13",
+      "hash": "9a6a8b30175e060b",
+      "title": "Starts the plain-English filter request",
+      "what": "Opens the function that turns a plain-English request into project filters. It checks the prompt, sets safe empty defaults, and looks up the API key.",
+      "why": "Reason not stated in the code, beyond the return shape that callers must handle. The empty defaults let the function return a valid result even when it fails.",
+      "watch_out": "The empty default uses status all, so a failed call can look like a normal request with no filter to the user."
+    },
+    {
+      "start": 249,
+      "end": 304,
+      "kind": "method",
+      "name": "parseFilterWithLlm: if",
+      "id": "s14",
+      "hash": "b9943837ac7c8671",
+      "title": "Checks setup and writes AI instructions",
+      "what": "If the API key is missing, it returns a clear not-configured message. Otherwise it limits the country list to 200 items and writes the instructions that tell the AI how to map country names, status and evidence values, and when to leave a sector empty.",
+      "why": "Most rules are written in the instructions themselves. The reason for the sector rule is not stated in the code.",
+      "watch_out": "Countries past the first 200 are dropped silently, so the AI cannot match them."
+    },
+    {
+      "start": 305,
+      "end": 359,
+      "kind": "function",
+      "name": "parseFilterWithLlm (part 3)",
+      "id": "s15",
+      "hash": "c32ab9645c5d3904",
+      "title": "Calls the AI and checks the reply",
+      "what": "Sends the request to the AI service. It parks the key if the service says the key is spent, returns clear errors for HTTP failures and replies that are not JSON, and strips a markdown code fence if one wraps the answer.",
+      "why": "Likely reason for stripping the fence: models sometimes wrap JSON in markdown fences. The code does not state this.",
+      "watch_out": "Failures come back as a normal return value with ok set to false, not as an exception, so every caller must check ok."
+    },
+    {
+      "start": 360,
+      "end": 411,
+      "kind": "method",
+      "name": "parseFilterWithLlm: if",
+      "id": "s16",
+      "hash": "2a8a2c084a3f0f39",
+      "title": "Checks the AI answer and builds filters",
+      "what": "Checks that the AI answer matches the expected shape, turns the geography into one country name, applies saved lessons from earlier failures, and returns the filters with the matched countries and a confidence value.",
+      "why": "The learned lessons are labelled as rules from prior filter failures, so they are meant to override the AI's first guess.",
+      "watch_out": "If the AI leaves out confidence, the code uses 0.7, which can look like a real score to the user."
+    }
+  ],
+  "explained_at": "2026-11-12T05:08:27+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns a plain-English filter request into structured Yard filters, using the AI gateway and the harness settings file, and includes the helpers that set up that connection.",
+  "purpose": "Supports the parse-filter feature. It gives the AI the prompt and a list of real Yard countries so the geography it returns matches the data.",
+  "why": "The header says the country lists are sent so geography matches real Yard countries. Likely reason for the rest: keep the AI key and address in one settings file and choose the model by role. Reason beyond that not stated in the code.",
+  "how": "1. Reads the harness settings file. 2. Picks the Portkey key, preferring the main key and falling back to the backup key. 3. Builds the connection settings, including the address and the model for the extraction role. 4. Standardizes common country names. 5. Matches a country name to the exact Yard country text. 6. Sends chat requests to the gateway with a timeout. The main parse function is defined later in the file and is not described in these notes.",
+  "inputs": "A prompt of up to 2000 characters, plus optional lists of countries, statuses, and sample projects. The recipe_harness/.env file. The environment variables PORTKEY_API_KEY, PORTKEY_BASE_URL, and RECIPE_HARNESS_SSL_VERIFY.",
+  "outputs": "A connection object with the key, its source, the address, and the model. Standardized country names. A matched country from the list. Raw status and body from the gateway.",
+  "risks": "If PORTKEY_BASE_URL is not set, the fallback address is a placeholder example, so calls fail. The key is sent in two headers, so a wrong address would expose it. Certificate checking can be turned off. The key and settings are read from a file that must not be committed to version control. The parse function's later steps are not covered by these notes.",
+  "debug": "Call GET /status and check portkey_configured. A 503 response means no key was found. A 502 response means the gateway or AI call failed, so read the error text. Check that PORTKEY_BASE_URL or the file value is not the placeholder address. Check recipe_harness/.env. If a key was spent, the key manager parks it and the backup key is used.",
+  "summary_hash": "sha256:bca899435fe5141d305416bbb436526e7d13789471ad1be4c609b9e5347c8126"
+}

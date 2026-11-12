@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/acceptance-presentation.ts",
+  "language": "TypeScript",
+  "lines": 111,
+  "hash": "sha256:e516f78df9142623420b45e650127f34c263d7a9be0284ae13bf3f5e2d1a9249",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "It depends on a running server and a live domain, so it cannot be run in isolation here.",
+      "Several checks use exact status codes and text prefixes, which break if the wording changes.",
+      "The report sets accepted to false, so a clean run still needs a person to review it."
+    ]
+  },
+  "terms": [
+    {
+      "term": "validation copy",
+      "meaning": "a separate copy of a research run used for testing, so the real run is not changed"
+    },
+    {
+      "term": "revision",
+      "meaning": "a version number for the presentation that goes up with each saved change"
+    },
+    {
+      "term": "stale revision",
+      "meaning": "a save based on an old version, which the server refuses with a conflict status"
+    },
+    {
+      "term": "digest",
+      "meaning": "a fingerprint of stored data, used to prove it did not change"
+    },
+    {
+      "term": "JWT",
+      "meaning": "a signed login token that proves who is calling the server"
+    },
+    {
+      "term": "endpoint",
+      "meaning": "a web address the server answers, used to read or change data"
+    },
+    {
+      "term": "PPTX",
+      "meaning": "the file format for Microsoft PowerPoint presentations"
+    },
+    {
+      "term": "grounded answer",
+      "meaning": "an answer that cites stored facts from the research"
+    }
+  ],
+  "depends_on": [
+    "node:crypto",
+    "node:fs/promises",
+    "jsonwebtoken",
+    "drizzle-orm",
+    "@workspace/db",
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/tools/lessons-learnt/buildReferenceSlides",
+    "artifacts/api-server/src/tools/lessons-learnt/recipeResult"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "716d5e94daaf54e8",
+      "title": "Source run check",
+      "what": "Requires a source run ID as a command argument, confirms that run is marked succeeded, and loads its research stages. Stops if the run or its deck is missing.",
+      "why": "The code states the script never picks an arbitrary latest run, so the test is always on a known run.",
+      "watch_out": "A succeeded run is not the same as an accepted run, as the assertion message says."
+    },
+    {
+      "start": 20,
+      "end": 28,
+      "kind": "function",
+      "name": "digest",
+      "id": "s2",
+      "hash": "7ae5f0092b65c884",
+      "title": "Copy helpers and slide rebuild",
+      "what": "Creates a fingerprint of the original deck, makes a copy of its recipe with a validation label on the methodology, and rebuilds the slides from that copy.",
+      "why": "Likely reason: the fingerprint lets the script prove later that the original research was not changed.",
+      "watch_out": "The fingerprint is computed from the stored JSON text, so changes in how that data is stored would change the fingerprint even if the content is the same."
+    },
+    {
+      "start": 29,
+      "end": 32,
+      "kind": "value",
+      "name": "checks, progress",
+      "id": "s3",
+      "hash": "a4662ccecdcdf5f0",
+      "title": "Progress record",
+      "what": "Creates a list of eleven named checks, all starting as NOT_RUN, and a progress record that holds the source run, the validation run and the checks.",
+      "why": "Records exactly which step passed or failed, so the result is easy to read.",
+      "watch_out": "Check names are used as keys in several places, so renaming one requires changing all of them."
+    },
+    {
+      "start": 33,
+      "end": 57,
+      "kind": "event handler",
+      "name": "process uncaughtException handler",
+      "id": "s4",
+      "hash": "c5d8ab17d7b772ed",
+      "title": "Failure handler",
+      "what": "If an uncaught error happens, marks the active check FAIL, writes the progress file with the error type, prints a message and exits with a failure code.",
+      "why": "Likely reason: a failing step is recorded in the output file rather than lost.",
+      "watch_out": "It is unclear whether every failure in the top-level code reaches this handler; if one does not, no failure record is written."
+    },
+    {
+      "start": 58,
+      "end": 67,
+      "kind": "function",
+      "name": "request",
+      "id": "s5",
+      "hash": "e7c3977bcdf8961f",
+      "title": "Validation run creation and login token",
+      "what": "Creates the validation run and copies each stage from the source run, marking it as copied and not re-researched. Then creates a token that lasts ten minutes and a helper that sends authenticated requests to the presentation endpoints.",
+      "why": "The test must act as a logged-in user. Copying inside one transaction keeps the copy complete or absent.",
+      "watch_out": "The session secret must stay in the environment and out of logs or output files."
+    },
+    {
+      "start": 68,
+      "end": 106,
+      "kind": "value",
+      "name": "edit",
+      "id": "s6",
+      "hash": "9404cd27223908bc",
+      "title": "Edit and endpoint checks",
+      "what": "Saves a wording change to the first slide title, reloads, and confirms that the change, the original wording and the evidence all match expectations. Then checks that a stale save is refused, an overlong edit is rejected, a grounded question returns cited facts, and the conversation survives a reload.",
+      "why": "Each check follows one feature the presentation must support.",
+      "watch_out": "The grounded question check counts an answer that starts with a qualifying phrase as passing with a qualified status, so a weak answer can still show as partial success."
+    },
+    {
+      "start": 107,
+      "end": 111,
+      "kind": "value",
+      "name": "report",
+      "id": "s7",
+      "hash": "70d5c159afb3d9f1",
+      "title": "Export, source download and final report",
+      "what": "Requests the PowerPoint export and the source ledger, confirms the original research fingerprint is unchanged, and saves the PowerPoint, model and ledger files plus the final report.",
+      "why": "This is the last proof that export and source download work and that the original research was left alone.",
+      "watch_out": "The report always sets accepted to false, so a passing run still needs a person to review the output."
+    }
+  ],
+  "explained_at": "2026-11-12T02:50:12+00:00",
+  "explained_by": "haiku",
+  "summary": "Test script that runs the presentation features end to end on a separate copy of a finished research run.",
+  "purpose": "Proves that saving, reloading, editing, asking questions, exporting to PowerPoint and downloading sources all work, while the original research stays unchanged.",
+  "why": "The header says it is request-level proof on an isolated copy with no research or Yard writes. This protects the real research data during testing.",
+  "how": "Takes a source run ID from the command line and checks that the run succeeded and has a deck. Copies its research into a new validation run marked as a validation copy and rebuilds its slides. Creates a short signed login token, then calls the app's presentation endpoints in order: save an edit, check a stale revision is refused, check the text length limit, ask a grounded question, check conversation persistence, request an export, download the ledger, and confirm the original data fingerprint is unchanged. Writes results and files to docs/verification/expanded.",
+  "inputs": "The source run ID argument, the SESSION_SECRET and REPLIT_DEV_DOMAIN environment values, and the database rows for the source run.",
+  "outputs": "presentation-validation.json (progress and report), presentation-validation.pptx, a model JSON file and a ledger JSON file, plus a new validation run in the database.",
+  "risks": "Writes a new validation run to the database. Anyone with the session secret can create the same kind of login token. Depends on the host domain variable. The error handler may not run for every kind of failure.",
+  "debug": "Open presentation-validation.json. Each check shows PASS, FAIL or NOT_RUN, and the check that was running when a failure occurred is marked FAIL. If that file is missing, the failure may have happened before it was written.",
+  "summary_hash": "sha256:e516f78df9142623420b45e650127f34c263d7a9be0284ae13bf3f5e2d1a9249"
+}

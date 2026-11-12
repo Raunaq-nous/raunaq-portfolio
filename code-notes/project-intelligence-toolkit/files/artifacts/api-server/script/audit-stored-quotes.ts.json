@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/audit-stored-quotes.ts",
+  "language": "TypeScript",
+  "lines": 429,
+  "hash": "sha256:fe33549f3409ab1d96c38aaffd3ab21da48e324ff1fda7017ae80f4663340ee8",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "It is a one-off audit with no automated tests for its matching rules.",
+      "Several printed figures are labeled in ways that can mislead, such as the four-level line.",
+      "Thresholds such as the 0.55 overlap and the 500 character gap are choices, not verified values."
+    ]
+  },
+  "terms": [
+    {
+      "term": "verbatim",
+      "meaning": "the exact text a quote claims to be copied from a source"
+    },
+    {
+      "term": "normalization",
+      "meaning": "cleaning text, such as spacing and case, so small differences are ignored"
+    },
+    {
+      "term": "tolerance level",
+      "meaning": "how much difference between a quote and a page the matching allows"
+    },
+    {
+      "term": "source document",
+      "meaning": "a stored copy of a web page's text"
+    },
+    {
+      "term": "evidence quote",
+      "meaning": "a stored sentence or phrase that supports a fact about a project"
+    },
+    {
+      "term": "span",
+      "meaning": "the start and end positions of a quote inside a stored document"
+    },
+    {
+      "term": "jsdom",
+      "meaning": "a library that reads HTML inside Node.js"
+    },
+    {
+      "term": "wiki blob",
+      "meaning": "embedded wiki markup data inside a page's text that is not visible to readers"
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "@workspace/db",
+    "artifacts/api-server/src/tools/reality-scan/enrichResult"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "5dd2d0eed4d00094",
+      "title": "Header and imports",
+      "what": "States that the script is a read-only audit and loads the database and the text normalizer.",
+      "why": "The header says it exists only to produce the audit report and changes nothing.",
+      "watch_out": "The punctuation list is written with escaped characters, and editing it can change matches without any visible error."
+    },
+    {
+      "start": 16,
+      "end": 20,
+      "kind": "function",
+      "name": "punctTolerant",
+      "id": "s2",
+      "hash": "637a66c337d70263",
+      "title": "Punctuation-tolerant matching",
+      "what": "Normalizes text, then removes spaces that sit next to punctuation marks, so spacing added by the page parser does not count as a difference.",
+      "why": "The comment says the parser adds spaces around punctuation at inline element edges.",
+      "watch_out": "A quote is counted as found when only spacing around punctuation differs, which is intended but makes the level generous."
+    },
+    {
+      "start": 21,
+      "end": 24,
+      "kind": "function",
+      "name": "punctStripped",
+      "id": "s3",
+      "hash": "47579b05a31dd494",
+      "title": "Stripped-punctuation text",
+      "what": "Replaces all punctuation with spaces and collapses extra spaces. Used only to classify quotes that were not found.",
+      "why": "Used to tell apart quotes that differ only by punctuation from quotes with real wording differences.",
+      "watch_out": "It is for classification only and is not a valid proof that a quote appears on the page."
+    },
+    {
+      "start": 25,
+      "end": 28,
+      "kind": "function",
+      "name": "noWhitespace",
+      "id": "s4",
+      "hash": "4f03ecd03495bdd1",
+      "title": "Whitespace-free matching",
+      "what": "Normalizes text and removes all whitespace for an extra diagnostic match.",
+      "why": "Added as a diagnostic beyond the four levels the audit was asked for.",
+      "watch_out": "Joining words without spaces can match across word boundaries, so a match here is weak evidence."
+    },
+    {
+      "start": 29,
+      "end": 31,
+      "kind": "function",
+      "name": "alnumOnly",
+      "id": "s5",
+      "hash": "f60b789181ab0cae",
+      "title": "Letters and numbers only matching",
+      "what": "Keeps only letters and numbers for a last diagnostic match.",
+      "why": "Another extra diagnostic level, to see how many misses are due to symbols alone.",
+      "watch_out": "Very loose. A match at this level says little about whether the wording is the same."
+    },
+    {
+      "start": 32,
+      "end": 66,
+      "kind": "function",
+      "name": "insertionTolerant",
+      "id": "s6",
+      "hash": "f41f217f3982b07e",
+      "title": "Insertion-tolerant matching",
+      "what": "Checks whether a quote appears in the page with only small noise tokens inserted, such as footnote numbers, and in the same order.",
+      "why": "The comment says footnote markers such as bracketed numbers are inserted into page text by the extractor and break exact matches.",
+      "watch_out": "The rules for the allowed number of skips and for what counts as noise are tuned choices. Changing them changes the counts."
+    },
+    {
+      "start": 67,
+      "end": 80,
+      "kind": "type",
+      "name": "Ev",
+      "id": "s7",
+      "hash": "1f54ba0bb3588a78",
+      "title": "Evidence row shape",
+      "what": "Defines the shape of one evidence row together with the document it was matched to and how it was matched.",
+      "why": "Keeps each audited row consistent across the report steps.",
+      "watch_out": ""
+    },
+    {
+      "start": 81,
+      "end": 136,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s8",
+      "hash": "cb07803afd1873af",
+      "title": "Pairing quotes with documents",
+      "what": "Loads all stored documents and evidence quotes. Pairs each quote with a document first through its span link, otherwise through a matching URL. Counts how many quotes can be audited and how many cannot.",
+      "why": "A quote can only be checked against a stored document, so unpaired quotes are counted and set aside.",
+      "watch_out": "Unauditable quotes are not checked at all. The headline counts only the auditable ones, so read the unauditable count next to it."
+    },
+    {
+      "start": 137,
+      "end": 169,
+      "kind": "method",
+      "name": "main: for",
+      "id": "s9",
+      "hash": "dd82b06cdfade3b2",
+      "title": "Normalized document forms and cohorts",
+      "what": "Precomputes several normalized forms of each document. Defines three cohorts based on field path prefix and ID pattern, and sets up the counters for the match levels.",
+      "why": "Precomputing avoids repeating the same work for each quote. Cohorts separate summaries from extracted quotes so they are not mixed.",
+      "watch_out": "Cohort labels depend on field path prefixes and ID patterns, so new data shapes can fall into the wrong group."
+    },
+    {
+      "start": 170,
+      "end": 224,
+      "kind": "method",
+      "name": "main: for",
+      "id": "s10",
+      "hash": "fe122bcee14b833c",
+      "title": "Match levels and breakdown",
+      "what": "For each auditable quote, tries the match levels in order and records the first one that works. Quotes that match none become the missing set. Prints the breakdown overall.",
+      "why": "Shows how much of the stored text is faithful and how much needs looser matching to be found.",
+      "watch_out": "The printed four-level line subtracts only the exact, normalized and punctuation levels, so it counts the diagnostic matches as not found. Read that line carefully."
+    },
+    {
+      "start": 225,
+      "end": 278,
+      "kind": "method",
+      "name": "main: for",
+      "id": "s11",
+      "hash": "90b531d736b61d9d",
+      "title": "Breakdown by cohort and closeness helpers",
+      "what": "Prints the level breakdown for each cohort. Defines helpers that measure how many words of a missing quote appear in the page, in order from the start and the end.",
+      "why": "The helpers estimate how close a missing quote is to something on the page.",
+      "watch_out": "The prefix and suffix searches are approximate and can misreport the size of a gap."
+    },
+    {
+      "start": 279,
+      "end": 336,
+      "kind": "method",
+      "name": "main: for",
+      "id": "s12",
+      "hash": "01a189fbb73e14ae",
+      "title": "Classifying missed quotes",
+      "what": "Assigns each missing quote a category such as invented punctuation, elided parenthetical, stitched from separate places, label with value, paraphrase, or not on page in any form.",
+      "why": "Sorts misses by kind, so the report shows what is actually wrong with them.",
+      "watch_out": "The categories depend on thresholds such as the 0.55 overlap and the 500 character gap. Changing them changes the headline story."
+    },
+    {
+      "start": 337,
+      "end": 383,
+      "kind": "method",
+      "name": "main: for",
+      "id": "s13",
+      "hash": "7ad3f1d4a08694c0",
+      "title": "Examples and wiki data check",
+      "what": "Prints up to 25 examples spread across categories and cohorts. Then looks through all documents for embedded wiki-style data and reports what share of each document it makes up.",
+      "why": "The examples show real misses for a person to judge. The wiki check shows whether page parsing leaked structured data into the text.",
+      "watch_out": "The round-robin sampling spreads examples across categories, so a very small category can still take up slots that a larger one would have used."
+    },
+    {
+      "start": 384,
+      "end": 429,
+      "kind": "function",
+      "name": "main (part 7)",
+      "id": "s14",
+      "hash": "f5af994ba8a26308",
+      "title": "Correlations, match methods and headline",
+      "what": "Ranks misses by field path, source domain and job, prints the counts of stored match methods, and prints the headline count of quotes that cannot be found at any tolerance. Then exits.",
+      "why": "Shows where misses cluster, so the cause can be traced.",
+      "watch_out": "The script exits by force after printing, and the database connection is not closed first."
+    }
+  ],
+  "explained_at": "2026-11-12T02:50:12+00:00",
+  "explained_by": "haiku",
+  "summary": "Read-only audit that measures how many stored evidence quotes cannot be found in the source page they were taken from, at several levels of tolerance.",
+  "purpose": "Produces a report on how faithful stored quotes are to their source documents. It writes nothing to the database.",
+  "why": "The header says it exists only to produce the audit report. Likely reason: to check whether the app's quotes are really from their sources.",
+  "how": "Loads stored source documents and all evidence quotes, then pairs each quote with a document, first by its span link and otherwise by matching URL. Precomputes several normalized forms of each document. Tries progressively looser matches on each quote and records the first level that finds it. Classifies the quotes that match nothing into categories. Prints samples, checks for embedded wiki-style data blobs, and ranks misses by field, domain and job.",
+  "inputs": "The source_document, evidence_quotes, source_span and projects tables, and the normalizer in the reality-scan enrichment module.",
+  "outputs": "Console output only. The report is in the console text.",
+  "risks": "Heavy on memory and time for large tables. Results depend on the chosen tolerance rules and thresholds. A quote that is not found is not proof it is wrong, only that it does not match the stored text.",
+  "debug": "Check the joinable counts first: a large unauditable count means many quotes have no stored document. Then read the level breakdown and the category counts. If the numbers look odd, check the normalizer and the tolerance rules.",
+  "summary_hash": "sha256:fe33549f3409ab1d96c38aaffd3ab21da48e324ff1fda7017ae80f4663340ee8"
+}

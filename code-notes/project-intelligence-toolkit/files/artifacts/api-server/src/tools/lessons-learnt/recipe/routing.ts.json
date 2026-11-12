@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/recipe/routing.ts",
+  "language": "TypeScript",
+  "lines": 82,
+  "hash": "sha256:3bfac783aa50d7b1b89aa0351d746e8bd575715c9ce00c3aecdffc2611ca6e42",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible in the code shown.",
+      "The header says fifteen categories but the lexicon lists thirteen.",
+      "Keyword lists are blunt and can mis-file facts."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Lexicon",
+      "meaning": "a list of trigger words grouped by subject area"
+    },
+    {
+      "term": "Regular expression (regex)",
+      "meaning": "a pattern that describes text to search for"
+    },
+    {
+      "term": "Deterministic",
+      "meaning": "gives the same output every time for the same input"
+    },
+    {
+      "term": "Keyword vote",
+      "meaning": "counting how many trigger words from each subject area appear in the text"
+    }
+  ],
+  "depends_on": [
+    "./text (normal function)"
+  ],
+  "used_by": [
+    "Callers are not visible in this packet"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 19,
+      "kind": "setup",
+      "name": "File setup, RouteBasis",
+      "id": "s1",
+      "hash": "ccd795567c280137",
+      "title": "Routing rules overview and route labels",
+      "what": "Explains the routing rules in a header comment and defines the five labels that record which rule placed each fact. The labels show whether a fact was kept as-is, re-filed, routed by its cause, matched by keyword, or kept as outcome evidence.",
+      "why": "The comment says every routed fact must record the rule that placed it, so the labels exist for audit.",
+      "watch_out": "A new label added here must also be handled wherever labels are read, or those facts will be missed."
+    },
+    {
+      "start": 20,
+      "end": 36,
+      "kind": "value",
+      "name": "CATEGORY_LEXICON",
+      "id": "s2",
+      "hash": "a6db2ee921c9bc5b",
+      "title": "Keyword lists used to re-file facts",
+      "what": "A list of subject areas, each with trigger words such as permit, loan or safety. The fact text is scanned for these words to find the subject area that matches best.",
+      "why": "Likely reason: a fixed, readable word list keeps routing predictable and easy to audit.",
+      "watch_out": "The file header mentions fifteen categories, but this list holds thirteen, and when two areas tie the one listed first wins."
+    },
+    {
+      "start": 37,
+      "end": 39,
+      "kind": "value",
+      "name": "OUTCOME_CATEGORIES",
+      "id": "s3",
+      "hash": "07e36c45274e079a",
+      "title": "Categories that describe results and cause words",
+      "what": "Names the three categories that describe what happened in a project (cost and budget, schedule, milestones), as opposed to why it happened. It also holds the list of words that signal a cause, such as due to or because of.",
+      "why": "The file header says outcomes must stay separate from their drivers, so these categories are treated differently.",
+      "watch_out": "Milestones appear both here and in the keyword lists, and this set wins, so milestone facts are treated as outcomes."
+    },
+    {
+      "start": 40,
+      "end": 47,
+      "kind": "function",
+      "name": "causeClause",
+      "id": "s4",
+      "hash": "900bf5e35c92a66e",
+      "title": "Finding the cause part of a sentence",
+      "what": "Looks for the first cause word in a fact and returns the rest of the sentence after it. It returns nothing if no cause word is found or the remaining text is shorter than eight characters.",
+      "why": "The header says outcome facts are routed on their cause only, so the cause clause is needed.",
+      "watch_out": "The word following can match ordinary phrases such as following the review, so some facts may get a false cause clause."
+    },
+    {
+      "start": 48,
+      "end": 59,
+      "kind": "function",
+      "name": "lexiconCategory, isOutcomeCategory",
+      "id": "s5",
+      "hash": "dd6f10162877bae2",
+      "title": "Choosing the best matching subject area",
+      "what": "Counts the keyword hits for each subject area in the fact text and returns the one with the most hits, or nothing when no keyword matches. A second helper says whether a category is an outcome category.",
+      "why": "Reason not stated in the code beyond the file header.",
+      "watch_out": "Ties go to whichever subject area comes first in the list, so reordering that list can change results."
+    },
+    {
+      "start": 60,
+      "end": 68,
+      "kind": "type",
+      "name": "RoutePlan",
+      "id": "s6",
+      "hash": "55eecab2c7a61990",
+      "title": "Shape of a routing decision",
+      "what": "Defines what a routing decision holds: the text to vote on, the category to use, the rule label, and the category the keywords suggested. It is the shape of what the routing function returns.",
+      "why": "Likely reason: it lets the caller see both the category chosen and what the keywords suggested.",
+      "watch_out": "The category can be empty even when a derived category is set, for example when the derived category is an outcome category."
+    },
+    {
+      "start": 69,
+      "end": 82,
+      "kind": "function",
+      "name": "planRoute",
+      "id": "s7",
+      "hash": "7bcdcc22c5106904",
+      "title": "Deciding how each fact is routed",
+      "what": "Decides where a fact goes. Facts filed as other are re-filed by keyword. Outcome facts are routed only on their cause clause, and when no cause is stated the function returns nothing and the fact is kept as outcome evidence. All other facts keep their category.",
+      "why": "Follows the header rules, which keep outcome results separate from drivers.",
+      "watch_out": "An empty result means outcome evidence, not an error, so callers must not count it as a failure."
+    }
+  ],
+  "explained_at": "2026-11-12T04:42:49+00:00",
+  "explained_by": "haiku",
+  "summary": "Decides which subject area each project fact belongs to, using fixed keyword rules, and records which rule was used.",
+  "purpose": "Makes sure facts are sorted into driver categories in a way someone can audit, and keeps outcome results such as cost, schedule and milestones apart from their causes.",
+  "why": "Likely reason: the file header says the rules sit in front of the category map and keyword vote, and must be deterministic and auditable.",
+  "how": "1. A caller passes a fact's category and text to `planRoute`. 2. If the category is other, the text is scored against the keyword lists in `CATEGORY_LEXICON` and the best match is used. 3. If the category is an outcome category, the file looks for a cause phrase and routes only the cause clause. 4. If no cause is stated, the fact is kept as outcome evidence and nothing is returned for routing. 5. Any other category passes through unchanged.",
+  "inputs": "A fact's category label and its text, both as strings.",
+  "outputs": "A routing plan with the text used, the category chosen, the rule label, and the category the keywords suggested. For outcome facts with no cause, the result is nothing.",
+  "risks": "Keyword matching is blunt: words such as process, design or scope can match unrelated facts. The file header says fifteen categories but the lexicon lists thirteen. Ties go to whichever category comes first in the list.",
+  "debug": "Start with the basis label on a routed fact to see which rule placed it. If a fact is unexpectedly unrouted, check whether it has a cause phrase followed by at least eight characters. To check a keyword, look for it in `CATEGORY_LEXICON`.",
+  "summary_hash": "sha256:3bfac783aa50d7b1b89aa0351d746e8bd575715c9ce00c3aecdffc2611ca6e42"
+}

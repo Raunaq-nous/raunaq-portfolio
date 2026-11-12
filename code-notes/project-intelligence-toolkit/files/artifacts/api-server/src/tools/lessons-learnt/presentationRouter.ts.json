@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/lessons-learnt/presentationRouter.ts",
+  "language": "TypeScript",
+  "lines": 102,
+  "hash": "sha256:0eb8609036836917b1494014a840f0ed151e7a26dcf0705bc1a0118422749e67",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test file for these routes is visible in the packet.",
+      "The 503 message says no edits were applied, which is true only if the failure happens before saving.",
+      "If the deck row is missing inside the save lock, the code would fail; the earlier read usually prevents this, but it is not guarded here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "endpoint",
+      "meaning": "a web address that a program calls to read data or make a change"
+    },
+    {
+      "term": "revision",
+      "meaning": "a counter that goes up by one on each saved change"
+    },
+    {
+      "term": "transaction",
+      "meaning": "a group of database changes that all succeed together or all fail together"
+    },
+    {
+      "term": "row lock",
+      "meaning": "a hold on one database row so no other change can happen to it until this one finishes"
+    },
+    {
+      "term": "Express router",
+      "meaning": "a group of web endpoints inside the Express web framework"
+    }
+  ],
+  "depends_on": [
+    "express",
+    "node:crypto",
+    "zod",
+    "drizzle-orm",
+    "@workspace/db",
+    "@workspace/api-zod",
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/tools/guided-demo/refreshLessonsRecipe",
+    "artifacts/api-server/src/tools/lessons-learnt/presentationEdits",
+    "artifacts/api-server/src/tools/lessons-learnt/presentationAssistant",
+    "artifacts/api-server/src/tools/lessons-learnt/recipeResult"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup, Message, PresentationState",
+      "id": "s1",
+      "hash": "941ce5e6f7a119c9",
+      "title": "Imports and message shapes",
+      "what": "Brings in the router, the random ID maker, the schema library, the database tools, shared request schemas, the edit and question functions, and defines the shape of a chat message and of the saved presentation state.",
+      "why": "Likely reason: groups what the presentation endpoints need and fixes the shape of saved state.",
+      "watch_out": "The message shape is written twice, once as a type and once in the saved state schema, so changing one without the other causes silent mismatch."
+    },
+    {
+      "start": 15,
+      "end": 22,
+      "kind": "value",
+      "name": "stateSchema, PresentationError, whereDeck",
+      "id": "s2",
+      "hash": "329eaa49358425e4",
+      "title": "Saved state rules and error type",
+      "what": "Defines the rules a saved presentation state must meet, a custom error that carries an HTTP status, and a lookup for the single deck row of a run.",
+      "why": "Likely reason: stored data may come from an older version, so it is checked before use.",
+      "watch_out": "If the saved shape changes, older saved runs are refused with a 409 rather than upgraded."
+    },
+    {
+      "start": 23,
+      "end": 28,
+      "kind": "function",
+      "name": "stateOf",
+      "id": "s3",
+      "hash": "9d1ce3de3c0ccd8f",
+      "title": "Read saved state or start blank",
+      "what": "Returns the saved presentation state, or a blank starting state with revision zero and no messages when nothing is stored. Refuses saved data that does not match the rules.",
+      "why": "Likely reason: a new run has no presentation yet, so a blank start is needed.",
+      "watch_out": "The stored version number is not kept: the function always writes version 1 back."
+    },
+    {
+      "start": 29,
+      "end": 33,
+      "kind": "function",
+      "name": "payload",
+      "id": "s4",
+      "hash": "cd84177ae00a8bc2",
+      "title": "Build the payload for the screen",
+      "what": "Combines the saved revision and messages with a refreshed copy of the recipe, using current coverage, into one object for the screen.",
+      "why": "Likely reason: the screen always gets the latest recipe view together with the matching revision.",
+      "watch_out": "The recipe is refreshed on every read, which adds work to each request."
+    },
+    {
+      "start": 34,
+      "end": 42,
+      "kind": "function",
+      "name": "read",
+      "id": "s5",
+      "hash": "ed2d6398839fcab8",
+      "title": "Load a run and its deck",
+      "what": "Loads the run, requires it to have succeeded, finds its deck row, and returns the run, saved data and payload. A missing run gets 404. An unfinished run or missing recipe gets 409.",
+      "why": "Likely reason: every presentation route needs these same checks, so they are shared here.",
+      "watch_out": "This read takes no lock. The edit and question routes check again inside a locked transaction, so this read is only a preview."
+    },
+    {
+      "start": 43,
+      "end": 102,
+      "kind": "function",
+      "name": "respondError",
+      "id": "s6",
+      "hash": "e9db8940758f36c8",
+      "title": "Safe errors and three endpoints",
+      "what": "Sends known errors with their own status and message, and turns any other error into a generic 503 reply that also says no edits were applied. Also contains the three endpoints: read the presentation, save wording edits, and ask a question. Edits and questions run under a row lock and need the revision to match, or they return 409.",
+      "why": "The code comment says provider and database details must never reach the public reply. The revision check and lock are likely meant to stop two saves from overwriting each other.",
+      "watch_out": "If the revision check were removed, two saves made at the same time could overwrite each other."
+    }
+  ],
+  "explained_at": "2026-11-12T04:36:51+00:00",
+  "explained_by": "haiku",
+  "summary": "Web endpoints that let people read the saved presentation of a finished lessons run, save wording edits safely, and ask questions about it.",
+  "purpose": "Serve the presentation screen: read it, save edits without losing others' changes, and answer questions from admitted facts.",
+  "why": "Likely reason: several people or tabs may change one saved presentation, so each save checks a revision number and runs under a lock. The code's messages show that revision check is intended.",
+  "how": "First, check the request shape. Second, load the run and its deck and require the run to have succeeded. Third, lock the deck row. Fourth, compare the revision with the one the caller expects. Fifth, apply edits, bump the revision, and save the edit history. For questions, get the answer first, then save the messages under the same lock. Last, return a fresh payload, and map any error to a safe reply.",
+  "inputs": "The run ID in the address. For edits: a list of edits and an expected revision. For questions: question text of up to 4,000 characters and an expected revision.",
+  "outputs": "A payload with the revision, the saved messages and a refreshed recipe. Errors return a short message with a 400, 404, 409 or 503 status.",
+  "risks": "Revision checks are the only guard against overwriting edits, so a bug there can lose work. Saved data from an older version is refused, not upgraded. Question calls use an AI model with a 90 second timeout each, so one request can take several minutes.",
+  "debug": "Start with the status code. 409 means the revision changed or the saved data is incompatible, so reload and retry. 503 means check the server log for the error name. Check the deck row for the run in the stage results table. For save problems, look at the edit history stored with the deck.",
+  "summary_hash": "sha256:0eb8609036836917b1494014a840f0ed151e7a26dcf0705bc1a0118422749e67"
+}

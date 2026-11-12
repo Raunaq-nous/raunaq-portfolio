@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/shared/maturity.ts",
+  "language": "TypeScript",
+  "lines": 174,
+  "hash": "sha256:0aef8691a5982dfc9844ccdaf8ff332db39489a5fb7f50011bc988e2751ecd01",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in this file.",
+      "The roll-up does not match its comment, because in-progress gates are not counted at all.",
+      "One branch in the roll-up returns the same tier as the line below it, so the financing check changes nothing.",
+      "The protection against overwriting research results is in the callers and was not visible here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Gate",
+      "meaning": "A milestone a project must reach before it is considered real, such as permits or financing."
+    },
+    {
+      "term": "Roll-up",
+      "meaning": "Combining several separate results into one summary, here a single maturity tier."
+    },
+    {
+      "term": "Likelihood",
+      "meaning": "A number estimating how likely the project is to go ahead."
+    },
+    {
+      "term": "Research hint",
+      "meaning": "Search phrases used to find evidence that a gate has been reached."
+    }
+  ],
+  "depends_on": [],
+  "used_by": [
+    "server dashboard and research engine (named in the file header)",
+    "client Home gate breakdown (named in the file header)",
+    "file ingest (named in a comment)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "95117abcdb92a12d",
+      "title": "Purpose of the maturity module",
+      "what": "This section is only a header comment. It says the file holds the six research gates, their order and labels, and the rule that turns gate scores into a five-level maturity label, shared by server and client.",
+      "why": "The comment says one shared file keeps the server and client in agreement.",
+      "watch_out": "Both sides import this file, so a change here changes server results and client display together."
+    },
+    {
+      "start": 6,
+      "end": 16,
+      "kind": "value",
+      "name": "MATURITY_GATE_KEYS, MaturityGateKey",
+      "id": "s2",
+      "hash": "7e65b47e7940aad3",
+      "title": "Fixed list of six gate keys",
+      "what": "Lists the six maturity gates by code: site control, permitting, financing, offtake, EPC contracts and technology. It also creates a matching type so other code can use only these codes.",
+      "why": "Likely reason: a fixed list stops misspelled gate names from being used.",
+      "watch_out": "Renaming a key leaves old stored gate rows with the old name, and the database stores the gate as free text, so nothing flags the mismatch."
+    },
+    {
+      "start": 17,
+      "end": 25,
+      "kind": "type",
+      "name": "MaturityGateMeta",
+      "id": "s3",
+      "hash": "9f9ea5f2e2eac324",
+      "title": "Shape of one gate's details",
+      "what": "Defines the details each gate carries: its key, full label, short label, description, and a research hint with search phrases.",
+      "why": "The comment says the research hint guides the research engine toward the right evidence.",
+      "watch_out": "Research hints are plain phrases, so editing one changes what the research engine looks for."
+    },
+    {
+      "start": 26,
+      "end": 76,
+      "kind": "value",
+      "name": "MATURITY_GATES, GateStatus",
+      "id": "s4",
+      "hash": "c6414d38a34e46c2",
+      "title": "Gate details and status choices",
+      "what": "Holds the display text and research hints for each of the six gates, and defines the four allowed statuses: cleared, in progress, not started, and unknown.",
+      "why": "Likely reason: keeps the wording for display and research in one place for both server and client.",
+      "watch_out": "The label lookup is built from this list in order, so reordering entries changes the order shown on the home screen."
+    },
+    {
+      "start": 77,
+      "end": 93,
+      "kind": "function",
+      "name": "gateStatusScore, MATURITY_TIERS, MaturityTier",
+      "id": "s5",
+      "hash": "d359e24ff55d31e3",
+      "title": "Gate status scores and tier names",
+      "what": "Gives each gate status a score: cleared counts as 1, in progress as 0.5, and anything else as 0. It also lists the five tier names from concept up to bankable.",
+      "why": "The score is meant for a weighted total, but the tier roll-up does not use it.",
+      "watch_out": "Any status outside the four known ones scores 0 without a warning."
+    },
+    {
+      "start": 94,
+      "end": 98,
+      "kind": "type",
+      "name": "DerivedMaturity",
+      "id": "s6",
+      "hash": "446ee2886c76952d",
+      "title": "Shape of a derived maturity result",
+      "what": "Defines the pair of values the lifecycle estimate returns: a tier name and a likelihood number.",
+      "why": "Likely reason: keeps the two values together so they are stored as one result.",
+      "watch_out": "The likelihood number is not checked for a valid range here."
+    },
+    {
+      "start": 99,
+      "end": 101,
+      "kind": "value",
+      "name": "DEFAULT_DERIVED_MATURITY",
+      "id": "s7",
+      "hash": "aae3d31e537fe23c",
+      "title": "Fallback maturity for unknown stages",
+      "what": "Sets the default of low maturity with a likelihood of 50. It is used when a project has no usable lifecycle stage.",
+      "why": "The comment says this is the older ingest default, so existing behaviour is kept.",
+      "watch_out": "Projects with a missing stage receive this default silently, and it can look like a real estimate."
+    },
+    {
+      "start": 102,
+      "end": 147,
+      "kind": "function",
+      "name": "deriveMaturityFromLifecycle",
+      "id": "s8",
+      "hash": "de5aef8650d0c10e",
+      "title": "Estimate maturity from lifecycle stage",
+      "what": "Maps a lifecycle stage to a starting tier and likelihood, so bulk-loaded projects begin with a sensible value. Operating, operational and retired map to bankable, and cancelled maps to concept.",
+      "why": "The comments explain the edge cases: a retired unit was fully built, an on-hold project is unlikely to restart on schedule, and the research sweep stays the final authority.",
+      "watch_out": "This rule would overwrite real research if callers did not check for researched gates first, and that check is not in this function."
+    },
+    {
+      "start": 148,
+      "end": 152,
+      "kind": "type",
+      "name": "RolledUpGate",
+      "id": "s9",
+      "hash": "b62498c5e2b28bc2",
+      "title": "One gate with its status",
+      "what": "Pairs a gate key with its status. It is the input shape for the tier roll-up.",
+      "why": "Likely reason: gives the roll-up a clear, typed input.",
+      "watch_out": "Nothing here stops the same gate appearing twice in one list."
+    },
+    {
+      "start": 153,
+      "end": 174,
+      "kind": "function",
+      "name": "rollupMaturityTier",
+      "id": "s10",
+      "hash": "ade54c74e962c7bb",
+      "title": "Count cleared gates to set tier",
+      "what": "Counts the gates whose status is cleared and returns a tier: all six gives bankable, four or more gives high, two or three gives medium, one gives low, and none gives concept. In-progress gates are ignored, and the financing gate has no separate effect.",
+      "why": "The comment describes financing as the critical gate for bankable, which the thresholds satisfy only because all six must be cleared. The reason for the exact thresholds is not stated in the code.",
+      "watch_out": "The comment says in-progress gates count as half, but the code does not do that, so the tier will not reflect partial progress."
+    }
+  ],
+  "explained_at": "2026-11-12T04:17:23+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds the six maturity gates with their labels and research hints, the status scores, the five maturity tier names, and two rules: one estimates a starting tier from a project's lifecycle stage, and one counts cleared gates to set the tier.",
+  "purpose": "Gives the server and the client one agreed definition of how mature a project is.",
+  "why": "The file header says it is the single source of truth for the gates and the roll-up to a tier.",
+  "how": "First, the file lists the six gate keys with their display text and research hints. Then it defines the four gate statuses and their scores, and the five tier names. The lifecycle rule maps a stage to a tier and a likelihood. The roll-up rule counts the gates that are fully cleared and returns a tier from that count.",
+  "inputs": "For the lifecycle rule, a stage text that may be empty or unknown. For the roll-up, a list of gate keys each with a status.",
+  "outputs": "A tier name with a likelihood number from the lifecycle rule, a tier name from the roll-up, gate labels and details, and status scores.",
+  "risks": "Changing a threshold or stage mapping changes the maturity shown for many projects. The roll-up ignores in-progress gates, even though the comment describes them as half-weight. The lifecycle rule must never overwrite researched results, and the guard against that is in the callers, not in this file.",
+  "debug": "If a tier looks too low, count the fully cleared gates, since in-progress gates do not count toward the tier. If a stage gives an unexpected likelihood, check the exact stage text in the lifecycle rule. If a gate label is wrong on screen, check the gate list here.",
+  "summary_hash": "sha256:0aef8691a5982dfc9844ccdaf8ff332db39489a5fb7f50011bc988e2751ecd01"
+}

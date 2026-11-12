@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/resolve-evidence-review.ts",
+  "language": "TypeScript",
+  "lines": 110,
+  "hash": "sha256:0afa4dc40412d33349da638515ba3657cae694bffda2578b1ae7424710ad7f17",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible.",
+      "Depends on a hard-coded count of 41 findings.",
+      "Reviews are only valid for the reviewed values; a later change blocks the commit."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Hold",
+      "meaning": "keep the review and sources on record but leave the number blank so it is not shown"
+    },
+    {
+      "term": "Scan-ready",
+      "meaning": "a project with all the required budget and schedule fields filled in"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/lib/canonicalize",
+    "artifacts/api-server/src/scan/scanFields",
+    "artifacts/api-server/src/shared/industries",
+    "artifacts/api-server/src/ingest/evidenceReviewHold",
+    "jsonwebtoken"
+  ],
+  "used_by": [
+    "Run by hand"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup, digest, live, ready, ids",
+      "id": "s1",
+      "hash": "05b214be7289203f",
+      "title": "Setup and readiness rules",
+      "what": "Loads libraries, reads the findings file, checks it has 41 entries, and defines how a project counts as scan-ready.",
+      "why": "The count check stops the script if the findings file changed unexpectedly.",
+      "watch_out": "A project is scan-ready only when every required field has a value, so holding a value changes this."
+    },
+    {
+      "start": 24,
+      "end": 26,
+      "kind": "function",
+      "name": "units",
+      "id": "s2",
+      "hash": "90723ef61b8382ac",
+      "title": "Units for each field",
+      "what": "Returns the unit for a field: months for delays, raw currency for dairy, and millions otherwise.",
+      "why": "The unit is recorded with each held value so the review is understood later.",
+      "watch_out": "Dairy is the only industry with raw currency units here."
+    },
+    {
+      "start": 27,
+      "end": 72,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s3",
+      "hash": "e54f24bd03bc7b21",
+      "title": "Verify mode and the plan",
+      "what": "In verify mode, checks the committed review through the detail page. Otherwise, builds the plan for each reviewed project and skips projects that already carry the same review.",
+      "why": "Likely reason: re-running must not overwrite a review that was already applied.",
+      "watch_out": "A changed existing review stops the script for manual review."
+    },
+    {
+      "start": 73,
+      "end": 110,
+      "kind": "method",
+      "name": "main: if",
+      "id": "s4",
+      "hash": "4aaed2d10da91d6c",
+      "title": "Commit and output",
+      "what": "When committed, checks the fingerprint, writes each review and the blanks, logs the changes, confirms nothing else changed, and prints the result.",
+      "why": "The checks keep the commit limited to the held fields.",
+      "watch_out": "Output file names are chosen so an earlier committed file is not overwritten."
+    }
+  ],
+  "explained_at": "2026-11-12T03:13:00+00:00",
+  "explained_by": "haiku",
+  "summary": "Holds back numbers from 41 reviewed findings where the sources do not support them, by blanking the value and recording the review, while leaving all other project data untouched.",
+  "purpose": "Makes sure unsupported budget and delay figures are not shown as facts, and keeps the reason and sources visible.",
+  "why": "The script's checks say the held values must not be restored by mistake, which suggests the review is deliberate.",
+  "how": "Reads the findings file and checks it has 41 entries. Builds a plan for each project, showing what would be held. Without --commit it only prints the plan. With --commit it checks the approved fingerprint, writes the review and blank values, logs each change, and confirms nothing else moved.",
+  "inputs": "The continued-research findings JSON in the evidence-repair data folder, the database, and the --commit and --approve flags.",
+  "outputs": "A dry-run or committed JSON file under the data folder and change log rows when committed.",
+  "risks": "Blanks real budget and delay values. Wrong findings would hide correct numbers from the scan.",
+  "debug": "Read the dry-run output's rows list. For a project that was not expected to change, compare its stored value and review record.",
+  "summary_hash": "sha256:0afa4dc40412d33349da638515ba3657cae694bffda2578b1ae7424710ad7f17"
+}

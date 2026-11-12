@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/compass-oilgas-ingest.ts",
+  "language": "TypeScript",
+  "lines": 451,
+  "hash": "sha256:37b16c21274fa28a14a09aaf42020a5f5e152e3dbc7e8caf8ef9eb635c1eb530",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The write steps are not visible in this packet, so their safety cannot be judged here.",
+      "No automated test is visible.",
+      "The capacity rule is copied from the dry run rather than shared, so the two can drift apart."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Scope map",
+      "meaning": "A file that lists the exact projects allowed in this import, with their hand checked category."
+    },
+    {
+      "term": "Dry run",
+      "meaning": "A trial run that reports what would happen without writing anything."
+    },
+    {
+      "term": "Transaction",
+      "meaning": "A group of database writes that either all succeed or all get undone together."
+    },
+    {
+      "term": "Lifecycle stage",
+      "meaning": "Where a project sits in its life, such as planned, under construction, or complete."
+    },
+    {
+      "term": "Maturity and likelihood",
+      "meaning": "Two derived scores that say how far along and how likely a project is to go ahead, set from its lifecycle stage."
+    },
+    {
+      "term": "Approximate date",
+      "meaning": "A date that was guessed from vague wording and is marked as such."
+    }
+  ],
+  "depends_on": [
+    "src/ingest/compass/mapper",
+    "src/shared/maturity",
+    "pg",
+    "script/og-subindustry-map.json",
+    "data/compass/oil-gas"
+  ],
+  "used_by": [
+    "Run by hand with the dry or commit flag, as shown in the file header."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup, Rec",
+      "id": "s1",
+      "hash": "16c00c9562a65254",
+      "title": "Scope and purpose",
+      "what": "Describes the import: 119 oil and gas projects are in scope, and all other records are deferred. It names the helper functions it reuses from the shared mapper and the maturity rule.",
+      "why": "The header says the scope is fixed by a hand verified map, so the import never takes in projects nobody reviewed.",
+      "watch_out": "A project missing from the scope map is skipped, so new projects need the map updated first."
+    },
+    {
+      "start": 26,
+      "end": 55,
+      "kind": "function",
+      "name": "S",
+      "id": "s2",
+      "hash": "3e75499f7d77ee96",
+      "title": "Run mode and scope checks",
+      "what": "Sets the mode, which is dry unless the commit flag is passed, and the folder, map file, schema version and change author label. It loads the scope map and checks that exactly 119 projects are selected and 27 deferred, and that every name matches the map.",
+      "why": "Likely reason: the count and name checks stop the import if the source has drifted from what was reviewed.",
+      "watch_out": "Any name change upstream stops the whole import until the scope map is updated to match."
+    },
+    {
+      "start": 56,
+      "end": 103,
+      "kind": "function",
+      "name": "parseOilGasCapacity",
+      "id": "s3",
+      "hash": "b6ce36ff78e0c5a9",
+      "title": "Capacity rule copy",
+      "what": "Reads a capacity text and converts it to thousands of barrels per day only for clear barrel units. It refuses gas, LNG, power, bare numbers and values above the 20000 ceiling.",
+      "why": "The header says it is byte identical to the approved dry run, so the imported numbers match what was reviewed.",
+      "watch_out": "This rule is a copy of the one in the dry run file, so a change to one must be made in the other."
+    },
+    {
+      "start": 104,
+      "end": 112,
+      "kind": "function",
+      "name": "countryOf",
+      "id": "s4",
+      "hash": "39d39ed5355480fb",
+      "title": "Country from geography",
+      "what": "Finds the country from the geography text only when exactly one canonical country name appears. Otherwise it leaves the country blank and gives a reason.",
+      "why": "The code states that countries are not inferred from basin or field names, and that ambiguous text is not guessed.",
+      "watch_out": "A project that spans two countries gets no country at all."
+    },
+    {
+      "start": 113,
+      "end": 120,
+      "kind": "value",
+      "name": "EVIDENCE_FIELDS",
+      "id": "s5",
+      "hash": "52e06fba0e7fd42e",
+      "title": "Source field list",
+      "what": "Lists the 17 fields that the import treats as having source evidence, such as geography, status, owner, capacity, dates and budgets.",
+      "why": "Reason not stated in the code beyond the comment calling them field evidence sources.",
+      "watch_out": ""
+    },
+    {
+      "start": 121,
+      "end": 127,
+      "kind": "type",
+      "name": "Built",
+      "id": "s6",
+      "hash": "ac5bacb85447dbd7",
+      "title": "Shape of one project's output",
+      "what": "Defines the bundle built for each project: the project record, its evidence rows, a ledger entry, and a list of changes.",
+      "why": "Likely reason: keeping each project's output together lets all of them be written in one transaction, as the header describes.",
+      "watch_out": ""
+    },
+    {
+      "start": 128,
+      "end": 143,
+      "kind": "value",
+      "name": "stats, catCounts, leafCounts, maturityCounts, lifecycleCounts, excludedCapex, companyWideCapacity",
+      "id": "s7",
+      "hash": "2044b9748d9a9f67",
+      "title": "Counters and tallies",
+      "what": "Sets up the counters for each gate, such as capacity parsed, budgets written, dates exact or approximate, facts dropped, and the lists of company wide capacities and excluded capex. It also sets up the counts by category, lifecycle, and maturity.",
+      "why": "Lets the owner check each gate count against the dry run report.",
+      "watch_out": ""
+    },
+    {
+      "start": 144,
+      "end": 203,
+      "kind": "function",
+      "name": "build (part 1)",
+      "id": "s8",
+      "hash": "d47673f6a688a0a0",
+      "title": "Building a project: capacity, budgets and dates",
+      "what": "Starts building one project by making a new ID and reading its name and geography. It then sets capacity, skipping capacity text that quotes company wide guidance. It sets planned and actual budgets, excluding any whose wording reads as company finance. It converts start, actual end and planned end dates and records an assumption note for each approximate or unresolvable date.",
+      "why": "The capacity and budget rules come from the dry run hazard checks, which require company level finance never to become a project value.",
+      "watch_out": "The company finance check reads only the wording, so if the upstream text changes, a company budget could be counted as a project budget."
+    },
+    {
+      "start": 204,
+      "end": 254,
+      "kind": "function",
+      "name": "build (part 2)",
+      "id": "s9",
+      "hash": "2c1f343d2a0ee17c",
+      "title": "Building a project: status, attributes and reasons",
+      "what": "Maps the source status to a lifecycle stage, then derives maturity and likelihood from that stage with the shared rule. It sets the description, a start date or a placeholder of TBD, the country, and a set of named attributes. Blank values get a recorded reason.",
+      "why": "The code states that maturity is derived on ingest rather than taken from the source, so every ingest uses the same rule.",
+      "watch_out": "An unrecognised status leaves the lifecycle stage unknown, so the project falls back to the default low likelihood score, which can make it look less likely than it is."
+    },
+    {
+      "start": 255,
+      "end": 314,
+      "kind": "function",
+      "name": "build (part 3)",
+      "id": "s10",
+      "hash": "1f21ba81b67f9463",
+      "title": "Assembling each project record",
+      "what": "Creates the main project entry for one oil and gas project, then collects its evidence: the quoted text behind key fields and the numbered facts, keeping only those with a web link. Each project's name, operator, budgets, dates and country come from the source record.",
+      "why": "Likely reason: the source record carries a quote and a link beside each value, so the code keeps them as proof that each value came from a real page.",
+      "watch_out": "Facts with placeholder text or no web address are dropped, so the evidence count can be lower than the number of facts in the source file."
+    },
+    {
+      "start": 315,
+      "end": 369,
+      "kind": "function",
+      "name": "build (part 4)",
+      "id": "s11",
+      "hash": "da1d176d210d49a4",
+      "title": "Packaging results and printing the preflight report",
+      "what": "Returns the prepared project, evidence, sync ledger and change list for every selected record, then prints a summary: scope, sub-industry counts, evidence totals, field outcomes, lifecycle and maturity counts, and projects with both budgets and a usable schedule pair. In dry-run mode it stops here.",
+      "why": "Likely reason: the printed summary lets the owner check the counts before anything is written to the database.",
+      "watch_out": "The exit for dry-run mode happens at this point, so any change to the code above this line only shows up in the summary, never in the database."
+    },
+    {
+      "start": 370,
+      "end": 409,
+      "kind": "function",
+      "name": "build (part 5)",
+      "id": "s12",
+      "hash": "a79ae4a23a0dd6f0",
+      "title": "Writing projects, evidence and ledgers",
+      "what": "Opens a database connection and a single transaction, then inserts every project, every evidence quote and every sync ledger row.",
+      "why": "Likely reason: all inserts sit in one transaction, so a failure part way through leaves the database unchanged.",
+      "watch_out": "A failure is reported only as a message and an exit code, so the owner has to read the console output to see which step failed."
+    },
+    {
+      "start": 410,
+      "end": 451,
+      "kind": "method",
+      "name": "build: for",
+      "id": "s13",
+      "hash": "f5fc57be6f0b2043",
+      "title": "Logging changes and running count checks",
+      "what": "Writes one change log row for each changed field, then runs a set of count checks inside the same transaction. If any check fails, every write is rolled back; if all pass, the transaction is committed and a summary is printed.",
+      "why": "Likely reason: the count checks catch silent mistakes, such as missing rows or changes to other industries, before the data becomes permanent.",
+      "watch_out": "Several expected counts are typed into the code, such as 119 oil and gas projects, so a different input set makes the checks fail and nothing is saved."
+    }
+  ],
+  "explained_at": "2026-11-12T03:01:24+00:00",
+  "explained_by": "haiku",
+  "summary": "Plans and, only when told to with the commit flag, writes the 119 selected oil and gas projects from the Compass export, applying the same capacity, budget, date and country rules as the dry run and recording a reason for each blank.",
+  "purpose": "Brings the reviewed oil and gas projects into the database in a controlled way.",
+  "why": "The header says the scope is fixed by a hand verified map, and that every other record is deferred. Writes happen in one transaction with count gates.",
+  "how": "Loads the scope map and the export files, then checks the scope count, the selected and deferred counts, and that each name matches the map. The default mode is dry, and the commit flag switches to writing. For each selected project it builds a project record with its attributes, date assumptions and reasons for blank values. It counts the statistics as it goes. The later sections that do the actual writes are not in this packet, so the write steps are not described here.",
+  "inputs": "The OGCO_compass JSON files in data/compass/oil-gas, the scope map at script/og-subindustry-map.json, and the database connection when committing.",
+  "outputs": "In dry mode, a printed set of counts. In commit mode, rows written to the database according to the file header. The exact tables are not visible in this packet.",
+  "risks": "Commit mode writes to the database. The dry run and the import must keep the same capacity rule, and a name drift in the source stops the import. Company level finance is excluded only by the wording of the capex text.",
+  "debug": "Run the dry mode first and compare its counts with the dry run report. A scope count or name drift error means the source or scope map changed. For a blank value, read the matching reason in that project's naReasons attribute. A zero or low count of budgets usually means the company level wording rule removed them.",
+  "summary_hash": "sha256:37b16c21274fa28a14a09aaf42020a5f5e152e3dbc7e8caf8ef9eb635c1eb530"
+}

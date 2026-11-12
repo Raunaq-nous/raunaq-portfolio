@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/scan/synthesisCache.ts",
+  "language": "TypeScript",
+  "lines": 153,
+  "hash": "sha256:4ac67b34880aeb395011f074bfbf0dfe7ce061128e252cc6f425ad55ad94c65a",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "An invalid day setting is logged but the default is used, so a typo is not stopped.",
+      "No tests are visible here, although a verification script is named in comments.",
+      "Expiry uses two different clocks, which may differ slightly."
+    ]
+  },
+  "terms": [
+    {
+      "term": "database cache",
+      "meaning": "a saved copy of a result kept in the database so it survives restarts."
+    },
+    {
+      "term": "hash",
+      "meaning": "a short fingerprint computed from text; the same input always gives the same fingerprint."
+    },
+    {
+      "term": "time-to-live",
+      "meaning": "how long a saved result stays valid before it expires."
+    },
+    {
+      "term": "upsert",
+      "meaning": "insert a row, or update it if a row with the same key already exists."
+    },
+    {
+      "term": "primary key",
+      "meaning": "the unique id that identifies each row in a table."
+    }
+  ],
+  "depends_on": [
+    "node:crypto",
+    "drizzle-orm",
+    "../db",
+    "@workspace/db",
+    "./synthesis"
+  ],
+  "used_by": [
+    "./synthesis (the memory cache layer)",
+    "A verification script named in comments (path not shown)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 27,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "0a10625965192a8a",
+      "title": "Setup and cache rules",
+      "what": "Brings in the crypto helper, the database query tools, the table definition, and the shared types. Sets the default of seven days and the allowed range of one to 365 days.",
+      "why": "Likely reason: the range stops a bad setting from making results either last forever or expire at once.",
+      "watch_out": "The range must match what the environment setting is expected to hold."
+    },
+    {
+      "start": 28,
+      "end": 37,
+      "kind": "function",
+      "name": "hashSelection",
+      "id": "s2",
+      "hash": "7f64390b5a1bdbb6",
+      "title": "Fingerprint of the selection",
+      "what": "Produces a short fingerprint of the project ids that ignores their order, so the same set of projects always gives the same value.",
+      "why": "Likely reason: the same projects may be picked in a different order, and that should still hit the cache.",
+      "watch_out": "Only the first 16 characters are kept. Reason for that length is not stated in the code."
+    },
+    {
+      "start": 38,
+      "end": 43,
+      "kind": "function",
+      "name": "cacheKey",
+      "id": "s3",
+      "hash": "14f1bcccb22e7109",
+      "title": "Building the cache key",
+      "what": "Creates the full name used to look up a saved result: a version tag, the industry code name, and the selection fingerprint.",
+      "why": "The comment says this is the single source of the key so that the memory and database caches always agree.",
+      "watch_out": "Changing the version tag orphans every saved result, which forces fresh and costly model calls."
+    },
+    {
+      "start": 44,
+      "end": 59,
+      "kind": "function",
+      "name": "resolveTtlDays",
+      "id": "s4",
+      "hash": "a1817e3f3852b697",
+      "title": "Reading the day setting",
+      "what": "Reads the environment setting for how many days a saved result lasts. A blank value uses seven days; an invalid or out-of-range value logs a warning and also uses seven days.",
+      "why": "The comment says there is no silent clamping, so a bad value shows up in the logs.",
+      "watch_out": "A typo falls back to seven days without stopping, which may surprise someone expecting a longer period."
+    },
+    {
+      "start": 60,
+      "end": 63,
+      "kind": "function",
+      "name": "toIso",
+      "id": "s5",
+      "hash": "c5adf7b9207019a9",
+      "title": "Converting dates to text",
+      "what": "Turns a stored date into a standard text timestamp so the result always has one format.",
+      "why": "Likely reason: the database may return a date object or plain text, and callers need one form.",
+      "watch_out": ""
+    },
+    {
+      "start": 64,
+      "end": 75,
+      "kind": "type",
+      "name": "CacheStore",
+      "id": "s6",
+      "hash": "14c605e78fe1ba75",
+      "title": "Storage contract",
+      "what": "Describes the three operations the cache needs from storage: find an unexpired row, save or update a row, and delete expired rows.",
+      "why": "The comment says this is the only part that touches Postgres, which makes a fake store possible for tests.",
+      "watch_out": ""
+    },
+    {
+      "start": 76,
+      "end": 112,
+      "kind": "value",
+      "name": "drizzleStore",
+      "id": "s7",
+      "hash": "7ebc4b17d5eca12c",
+      "title": "Real database storage",
+      "what": "Implements the three operations against the real database table. Expiry checks use the database's current time, and a save with an existing key overwrites the stored content.",
+      "why": "Likely reason: saving again for the same selection should replace the old result rather than fail.",
+      "watch_out": "Overwriting also replaces the stored model name and time, so earlier generations are not kept."
+    },
+    {
+      "start": 113,
+      "end": 120,
+      "kind": "function",
+      "name": "__setDb",
+      "id": "s8",
+      "hash": "d5bbe586ab3196dc",
+      "title": "Test-only storage swap",
+      "what": "Lets the verification script substitute a fake in-memory store.",
+      "why": "The comment says this lets verification run without a real database.",
+      "watch_out": "If production code called this, it would silently stop using the real database."
+    },
+    {
+      "start": 121,
+      "end": 130,
+      "kind": "function",
+      "name": "getCached",
+      "id": "s9",
+      "hash": "8149d83eed757d98",
+      "title": "Reading a saved result",
+      "what": "Looks for an unexpired saved result for the industry and selection, and returns its synthesis, model, and generation time, or nothing.",
+      "why": "Reason not stated beyond the function's purpose; the memory layer calls it on a miss.",
+      "watch_out": ""
+    },
+    {
+      "start": 131,
+      "end": 150,
+      "kind": "function",
+      "name": "setCached",
+      "id": "s10",
+      "hash": "31220ce49128582b",
+      "title": "Saving a result",
+      "what": "Stores a new result with its key, fingerprint, model name, transport description, generation time, and an expiry date set from the day setting.",
+      "why": "Likely reason: the expiry is written once at save time, so later reads need no calculation.",
+      "watch_out": "Expiry is calculated from this server's clock, so a clock error shortens or lengthens how long results last."
+    },
+    {
+      "start": 151,
+      "end": 153,
+      "kind": "function",
+      "name": "clearExpired",
+      "id": "s11",
+      "hash": "44e2dba316e312a0",
+      "title": "Clearing expired results",
+      "what": "Deletes every saved result whose expiry has passed and reports how many were removed.",
+      "why": "Likely reason: keeps the table from growing without limit. No scheduled caller is visible in the packet.",
+      "watch_out": "Nothing here runs it on a schedule, so expired rows stay until something calls it. Reads ignore them, so results stay correct."
+    }
+  ],
+  "explained_at": "2026-11-12T04:12:18+00:00",
+  "explained_by": "haiku",
+  "summary": "Saves finished AI synthesis results in the database for a set number of days, so they survive server restarts and are not paid for twice.",
+  "purpose": "Acts as the durable second cache layer behind the in-memory cache in synthesis.ts.",
+  "why": "The header says the cache must survive restarts for an expensive model call. Likely reason: the separate storage interface lets a test script swap in a fake store.",
+  "how": "Builds a cache key from a version tag, the industry code name, and a fingerprint of the sorted project id list. Reads return a row only if its expiry is still in the future. Writes insert or update the row under that key and set its expiry from the day setting. A separate cleanup function deletes expired rows.",
+  "inputs": "Industry code name, the project ids in the selection, the result to save, a description of the AI transport used, and the day-count environment setting.",
+  "outputs": "A stored entry (synthesis, model, and generation time) when found, nothing when missing, and a count of rows removed by cleanup.",
+  "risks": "Changing the version tag in the key makes every saved result unreachable. Database errors are thrown to the caller. Expiry is set using the server clock but checked using the database clock, so the two can disagree slightly.",
+  "debug": "If results regenerate more often than expected, check the day setting and whether the selection ids change order or content. If nothing is saved, look for the write-failure log lines. Check the table for old rows, since cleanup is what removes expired ones.",
+  "summary_hash": "sha256:4ac67b34880aeb395011f074bfbf0dfe7ce061128e252cc6f425ad55ad94c65a"
+}

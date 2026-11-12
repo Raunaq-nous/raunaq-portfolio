@@ -1,0 +1,473 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/recipe-harness/index.ts",
+  "language": "TypeScript",
+  "lines": 898,
+  "hash": "sha256:a78171372a040dd37e44a525ea40fb1140920a3ba9f90b0654b34906f4bc4ce3",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "TypeScript checks are switched off for the whole file.",
+      "No test is visible in this file.",
+      "Running jobs are lost from memory on restart, and recovery depends on file guesses.",
+      "No login check is visible in this file.",
+      "The improvements route builds a script from text."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Router",
+      "meaning": "a group of web addresses that the server answers, here the recipe-harness routes"
+    },
+    {
+      "term": "Route",
+      "meaning": "one web address and action the server answers, such as POST /run"
+    },
+    {
+      "term": "Polling",
+      "meaning": "the app asking the server again and again for the latest status"
+    },
+    {
+      "term": "Job",
+      "meaning": "one deck run, with its status and file locations"
+    },
+    {
+      "term": "Checkpoint",
+      "meaning": "a saved snapshot of the Python run's progress, used to resume later"
+    },
+    {
+      "term": "Subprocess",
+      "meaning": "a separate program started by the server, here the Python run"
+    },
+    {
+      "term": "PPTX",
+      "meaning": "the PowerPoint file format that the deck is saved in"
+    },
+    {
+      "term": "Schema",
+      "meaning": "a written rule for the exact shape a piece of data must have"
+    },
+    {
+      "term": "Orphan process",
+      "meaning": "a Python run still going after the server that started it has restarted"
+    }
+  ],
+  "depends_on": [
+    "express",
+    "zod",
+    "fs (Node file access)",
+    "path (Node file path helper)",
+    "child_process (Node helper to start programs)",
+    "crypto (Node random id helper)",
+    "./parseFilterLlm",
+    "./confirmFilter",
+    "./filterLessons",
+    "../reality-scan/scope",
+    "../lessons-learnt/exportCompassFlat",
+    "@workspace/db",
+    "../types"
+  ],
+  "used_by": [
+    "The API server loads this file as a tool module. The loader is not in this file, so the exact caller is not visible here."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 41,
+      "kind": "setup",
+      "name": "File setup, JobStatus",
+      "id": "s1",
+      "hash": "7502098e19e24395",
+      "title": "Imports and status words",
+      "what": "Loads the web router, validation, file, and helper tools, and defines the five states a run can be in: queued, running, succeeded, failed, and interrupted.",
+      "why": "Gives every run one of a fixed set of states that all routes use.",
+      "watch_out": "A new state must be added to every place that checks status, or runs will look wrong."
+    },
+    {
+      "start": 42,
+      "end": 64,
+      "kind": "type",
+      "name": "Job, jobs, runningChildren",
+      "id": "s2",
+      "hash": "376442d659604d1b",
+      "title": "Job record and in-memory lists",
+      "what": "Defines what each run record holds, plus two in-memory lists: all known jobs, and the Python processes currently running.",
+      "why": "Gives fast lookups while the server is up. The disk copy covers restarts.",
+      "watch_out": "Both lists are lost when the server restarts, so the running-process list is the only sign this server started a Python process."
+    },
+    {
+      "start": 65,
+      "end": 72,
+      "kind": "value",
+      "name": "runBodySchema",
+      "id": "s3",
+      "hash": "18f2d811bede62eb",
+      "title": "Checking a run request",
+      "what": "Defines what a new run request may contain: the project scope, optional project names, a limit of up to 80 projects, a flag to require AI agents (default on), and a flag to regenerate the framework (default off).",
+      "why": "Rejects bad requests before any work starts.",
+      "watch_out": "Agents are on by default, so most runs need the AI service and take longer."
+    },
+    {
+      "start": 73,
+      "end": 76,
+      "kind": "function",
+      "name": "jobMetaPath",
+      "id": "s4",
+      "hash": "5e7c561ca03035af",
+      "title": "Location of the job file",
+      "what": "Returns the path of the v2_job.json file inside a run folder.",
+      "why": "Gives every run one fixed place to store its record.",
+      "watch_out": "Renaming this file would hide every existing run from the disk reload."
+    },
+    {
+      "start": 77,
+      "end": 85,
+      "kind": "function",
+      "name": "persistJob",
+      "id": "s5",
+      "hash": "cb49eef297c93985",
+      "title": "Saving a job to disk",
+      "what": "Writes the job record to its file so it survives restarts.",
+      "why": "Lets runs be found and resumed after the server restarts.",
+      "watch_out": "A write failure is only logged, so the job can quietly go unsaved."
+    },
+    {
+      "start": 86,
+      "end": 91,
+      "kind": "function",
+      "name": "touch",
+      "id": "s6",
+      "hash": "65fa7f2ad14ef8da",
+      "title": "Updating a job",
+      "what": "Applies a set of changes to a job, stamps the update time, updates the in-memory list, and saves to disk.",
+      "why": "Keeps memory and disk in step through one function.",
+      "watch_out": "Every call writes to disk, so frequent updates add file activity."
+    },
+    {
+      "start": 92,
+      "end": 111,
+      "kind": "function",
+      "name": "phaseFromCheckpoints",
+      "id": "s7",
+      "hash": "dbe7d178d8b2799f",
+      "title": "Reading the current stage",
+      "what": "Reads the checkpoint index and returns the most recent stage name and the number of checkpoints.",
+      "why": "The Python run prints nothing until it ends, so the files are the only progress signal. Reason beyond that not stated in the code.",
+      "watch_out": "If the index is missing or cannot be read, the function returns nothing and the app shows no progress."
+    },
+    {
+      "start": 112,
+      "end": 142,
+      "kind": "function",
+      "name": "syncJobProgressFromDisk",
+      "id": "s8",
+      "hash": "6101ce433cfb0789",
+      "title": "Keeping progress up to date from disk",
+      "what": "If a PowerPoint file exists, marks the run succeeded and stores its summary. Otherwise it copies the latest stage from the checkpoint files into the job.",
+      "why": "Lets progress show while the Python run is still working.",
+      "watch_out": "Success is decided only by the file existing, so a leftover file from an earlier attempt would count as success."
+    },
+    {
+      "start": 143,
+      "end": 156,
+      "kind": "function",
+      "name": "orphanHarnessAlive",
+      "id": "s9",
+      "hash": "882dcf0c5af7a20a",
+      "title": "Guessing whether a run is still alive",
+      "what": "Says a run is still alive if its checkpoint index was changed in the last 10 minutes.",
+      "why": "Helps after a server restart, when the process can no longer be checked directly. Likely reason, not stated in the code.",
+      "watch_out": "This is only a guess, so a slow stage with no file changes for more than 10 minutes can be marked interrupted."
+    },
+    {
+      "start": 157,
+      "end": 197,
+      "kind": "function",
+      "name": "loadJobFromDisk (part 1)",
+      "id": "s10",
+      "hash": "cd34bdda8573ce89",
+      "title": "Rebuilding a job from its saved file",
+      "what": "When a saved job file exists, reads it back. If a PowerPoint exists the run is succeeded. If the run was active but no process is alive, it is marked interrupted and resumable only when the peer set and config files exist.",
+      "why": "Restores a run's state after a restart. Reason beyond that not stated in the code.",
+      "watch_out": "If the saved file cannot be read, the function moves on to the second rebuild path."
+    },
+    {
+      "start": 198,
+      "end": 246,
+      "kind": "function",
+      "name": "loadJobFromDisk (part 2)",
+      "id": "s11",
+      "hash": "114efce8d8d9436f",
+      "title": "Rebuilding a job without a saved file",
+      "what": "Builds a job from the files on disk. If a PowerPoint exists, the run is succeeded. If the peer set and config exist, it is marked interrupted and resumable.",
+      "why": "Covers runs whose record file was lost but whose output files remain.",
+      "watch_out": "The run summary is read without an error check, so a damaged summary file can crash the request that asked for this run."
+    },
+    {
+      "start": 247,
+      "end": 273,
+      "kind": "function",
+      "name": "publicJob",
+      "id": "s12",
+      "hash": "3ef819b161707072",
+      "title": "Shaping a job for the app",
+      "what": "Converts the internal job record into the public response: id, status, phase, error, quality tier, model runs, facts, chart data, project count, industry, resumable flag, PowerPoint link, and last update time.",
+      "why": "Gives the app one stable set of field names and hides internal details.",
+      "watch_out": "Field names are in snake_case for the app, so renaming one here breaks the app's display."
+    },
+    {
+      "start": 274,
+      "end": 277,
+      "kind": "function",
+      "name": "pythonBin",
+      "id": "s13",
+      "hash": "8f1493f82bea24ff",
+      "title": "Choosing the Python program",
+      "what": "Returns the Python command from the RECIPE_HARNESS_PYTHON setting, then PYTHON, then the plain word python.",
+      "why": "Lets each server point to its own Python install. Reason beyond that not stated in the code.",
+      "watch_out": "On a server where only python3 exists, the environment variable must be set or the run will fail to start."
+    },
+    {
+      "start": 278,
+      "end": 312,
+      "kind": "function",
+      "name": "finalizeCompassExport",
+      "id": "s14",
+      "hash": "996eefbf7cc4d861",
+      "title": "Trimming the project list",
+      "what": "Keeps the projects that have the most fact fields, up to the limit, counts their facts, and rewrites the peer set file with the trimmed list and a note of the cap.",
+      "why": "Keeps the run within the safety limit of 80 projects. Likely reason, not stated in the code.",
+      "watch_out": "Projects are ranked by how many fact fields they have, not by how relevant they are, so a relevant project can be dropped."
+    },
+    {
+      "start": 313,
+      "end": 338,
+      "kind": "function",
+      "name": "writeRunConfig",
+      "id": "s15",
+      "hash": "5bae2ffabf8b1e28",
+      "title": "Writing the run settings",
+      "what": "Writes the v2_config.json file that tells the Python run which settings to use, such as the minimum sample size of 8, that lessons need approval, and whether agents and framework regeneration are on.",
+      "why": "Gives the Python run its settings as a file so a run can be resumed with the same settings.",
+      "watch_out": "Filters are written as an empty object here, so any filter must be applied earlier in the pipeline."
+    },
+    {
+      "start": 339,
+      "end": 395,
+      "kind": "function",
+      "name": "executeJob (part 1)",
+      "id": "s16",
+      "hash": "6b9ed16b2da90e70",
+      "title": "Starting the Python run, first part",
+      "what": "Marks the job as running, writes the settings file if none was given, and starts the Python run with the database, config, and output folder. It also sets a 30-minute limit that kills the process if reached.",
+      "why": "Runs the deck build outside the web request. Reason beyond that not stated in the code.",
+      "watch_out": "When agents are off, the run is started with a flag that skips the AI step, so the deck is produced without AI."
+    },
+    {
+      "start": 396,
+      "end": 450,
+      "kind": "function",
+      "name": "executeJob (part 2)",
+      "id": "s17",
+      "hash": "da8d6622778d430f",
+      "title": "Starting the Python run, second part",
+      "what": "Checks the Python output every 3 seconds, records errors from the Python error stream, and when the program exits cleanly it confirms the PowerPoint exists and marks the run succeeded. A clean exit with no PowerPoint is treated as a failure.",
+      "why": "Keeps the job record current and turns a missing deck into a clear error. Reason beyond that not stated in the code.",
+      "watch_out": "Only the last 8000 characters of error output are kept, so an earlier error can be lost."
+    },
+    {
+      "start": 451,
+      "end": 495,
+      "kind": "route",
+      "name": "post (part 1)",
+      "id": "s18",
+      "hash": "77de06de0c5bb5b8",
+      "title": "Start a new deck run",
+      "what": "Checks the request, exports the chosen Yard projects, copies them into a new run folder, trims the list, and saves the job. If no projects remain, it returns an error.",
+      "why": "This is the entry point that begins every new deck build.",
+      "watch_out": "The run folder is created before the project count is checked, so a request with no projects leaves an empty folder behind."
+    },
+    {
+      "start": 496,
+      "end": 540,
+      "kind": "route",
+      "name": "post (part 2)",
+      "id": "s19",
+      "hash": "b580e0035b6c7a12",
+      "title": "Start the run in the background",
+      "what": "Starts the run without waiting for it to finish, marks the job failed if the run errors, and replies at once with a 202 status, the job status, and links to poll and download.",
+      "why": "Keeps the web request short while the deck is built. Reason beyond that not stated in the code.",
+      "watch_out": "The reply is sent before the run finishes, so the app must poll for the final result."
+    },
+    {
+      "start": 541,
+      "end": 570,
+      "kind": "route",
+      "name": "get",
+      "id": "s20",
+      "hash": "c87fbdc4c32600be",
+      "title": "Check a run's status",
+      "what": "Returns the current status of a run. If it claims to be running but no process exists and its checkpoints have stopped changing, it marks the run interrupted.",
+      "why": "Lets the app see progress and recover from a crash without a restart. Reason beyond that not stated in the code.",
+      "watch_out": "A run whose process has just restarted may show as interrupted until its checkpoints move again."
+    },
+    {
+      "start": 571,
+      "end": 624,
+      "kind": "route",
+      "name": "post (part 1)",
+      "id": "s21",
+      "hash": "2d8db4d028c3bf3d",
+      "title": "Resume a run, first part",
+      "what": "Checks that a run can be resumed, rejecting it if it is already running, already done, or missing its saved peer set or config. Then it marks the run queued and starts the Python run again.",
+      "why": "Lets a crashed run continue from saved checkpoints instead of starting over.",
+      "watch_out": "The resume does not pass the framework regeneration setting, so a resumed run uses the default and may differ from the original."
+    },
+    {
+      "start": 625,
+      "end": 641,
+      "kind": "route",
+      "name": "post (part 2)",
+      "id": "s22",
+      "hash": "64630ea138cdd25b",
+      "title": "Resume a run, second part",
+      "what": "Replies at once with a 202 status, a note that the run is resuming from saved checkpoints, and the poll and download links.",
+      "why": "Keeps the web request short, the same as a new run.",
+      "watch_out": "The reply is sent after the run starts, so the status shown is only the first step."
+    },
+    {
+      "start": 642,
+      "end": 694,
+      "kind": "route",
+      "name": "post (part 1)",
+      "id": "s23",
+      "hash": "6733113ee7a44940",
+      "title": "Recording a human edit, first part",
+      "what": "Checks the edit request, makes sure the finished deck state exists, and writes the edit to a pending file in the run folder.",
+      "why": "Stores the edit so a separate Python step can apply it. Reason beyond that not stated in the code.",
+      "watch_out": "The path and text come straight from the request and are only checked to be non-empty."
+    },
+    {
+      "start": 695,
+      "end": 753,
+      "kind": "route",
+      "name": "post (part 2)",
+      "id": "s24",
+      "hash": "e8d4d37a37019220",
+      "title": "Recording a human edit, second part",
+      "what": "Builds a short Python script that loads the deck state, adds the edit, creates lessons from it, and saves the deck state. It runs that script and reads back the result.",
+      "why": "Reuses the existing Python lesson logic instead of rewriting it in TypeScript. Likely reason.",
+      "watch_out": "The file path is inserted into the script text with only backslash escaping, so a path containing quote characters could break the script."
+    },
+    {
+      "start": 754,
+      "end": 769,
+      "kind": "route",
+      "name": "post (part 3)",
+      "id": "s25",
+      "hash": "7e90ac0de0db30df",
+      "title": "Recording a human edit, third part",
+      "what": "Replies with the run id, the edit id, and the lesson ids, or logs the error and returns a 500 status.",
+      "why": "Gives the app a clear result for the edit.",
+      "watch_out": "The note says the lesson is saved for future runs, so a failure here means it was not saved."
+    },
+    {
+      "start": 770,
+      "end": 790,
+      "kind": "route",
+      "name": "get",
+      "id": "s26",
+      "hash": "e84e869f108a2f3c",
+      "title": "Downloading the PowerPoint",
+      "what": "Finds the first PowerPoint file that exists among the candidates and streams it to the browser. It returns a 404 if none exists.",
+      "why": "Lets the app open the finished deck. Reason beyond that not stated in the code.",
+      "watch_out": "The run id is joined into a folder path without a check, so an odd id such as two dots can point to the parent folder. The file names are fixed, which limits the damage."
+    },
+    {
+      "start": 791,
+      "end": 803,
+      "kind": "route",
+      "name": "get",
+      "id": "s27",
+      "hash": "ead087bc9f5db47c",
+      "title": "Status of the harness",
+      "what": "Reports whether the harness folder is present, the Python command in use, the default project limit, the peer set rule, and whether the Portkey key is set.",
+      "why": "Lets the team check the setup without reading server logs.",
+      "watch_out": "It reveals configuration details, though the key value itself is not shown."
+    },
+    {
+      "start": 804,
+      "end": 829,
+      "kind": "route",
+      "name": "post",
+      "id": "s28",
+      "hash": "511730d922121077",
+      "title": "Turning a plain sentence into filters",
+      "what": "Passes the request to the filter parser and returns 503 when no AI service is available, 502 when the AI call fails, and 200 when it works.",
+      "why": "Lets the app tell an outage apart from a bad answer. Reason beyond that not stated in the code.",
+      "watch_out": "The status codes depend on the parser reporting its result correctly."
+    },
+    {
+      "start": 830,
+      "end": 854,
+      "kind": "route",
+      "name": "post",
+      "id": "s29",
+      "hash": "1a57fd315bc96eda",
+      "title": "Checking filters against research",
+      "what": "Passes the request to the filter checker and returns 200 or 502 depending on the result.",
+      "why": "Lets the app check the peer set before the user starts a run.",
+      "watch_out": "A fallback result still has ok set to true, so a 200 can hide that the AI step did not run."
+    },
+    {
+      "start": 855,
+      "end": 863,
+      "kind": "route",
+      "name": "get",
+      "id": "s30",
+      "hash": "9ee398bf4575e6bb",
+      "title": "Listing filter lessons",
+      "what": "Returns the path of the rules file and the list of active rules.",
+      "why": "Lets the team see what the system has learned.",
+      "watch_out": "No login check is visible in this route."
+    },
+    {
+      "start": 864,
+      "end": 891,
+      "kind": "route",
+      "name": "post",
+      "id": "s31",
+      "hash": "eadb29b5a92c9d36",
+      "title": "Recording a filter failure",
+      "what": "Checks the report, records it as a lesson, and returns the result with the full list of active rules.",
+      "why": "Lets failed searches teach the system right away.",
+      "watch_out": "Each report changes rules that every future search uses, so a bad report affects all later searches."
+    },
+    {
+      "start": 892,
+      "end": 898,
+      "kind": "value",
+      "name": "tool",
+      "id": "s32",
+      "hash": "82426552b5ea87a7",
+      "title": "Registering the tool",
+      "what": "Packages the router with the name recipe-harness and a display title, then exports it for the server to load.",
+      "why": "Gives the server the information it needs to mount these routes.",
+      "watch_out": "The name becomes part of every web address, so renaming it changes the URLs the app uses."
+    }
+  ],
+  "explained_at": "2026-11-12T05:06:04+00:00",
+  "explained_by": "haiku",
+  "summary": "The web entry point for the recipe harness. It starts Volume 2 deck runs in the background, reports their progress from disk, lets failed runs resume, serves the finished PowerPoint, and exposes the filter helper routes.",
+  "purpose": "Lets the app start a deck run, check how far it has got, download the PowerPoint, and manage filter parsing, filter checking, and filter lessons.",
+  "why": "Deck runs take many minutes, so the server starts them in the background and the app polls for updates. Saved files on disk let a run resume after a crash. Likely reason, beyond that not stated in the code.",
+  "how": "1. POST /run checks the request, exports the chosen Yard projects, copies them into a new run folder, trims the list to the limit, saves the job, starts the Python run in the background, and replies with a 202 and poll links. 2. GET /runs/:id returns the status, correcting stale running states. 3. POST /runs/:id/resume restarts the Python run from saved files. 4. GET /runs/:id/pptx sends the finished PowerPoint. 5. POST /runs/:id/improvements saves a human edit as a lesson by running a short Python script. 6. The parse-filter, confirm-filter, and filter-lessons routes pass requests to the helper files.",
+  "inputs": "JSON bodies for each route, checked with Zod. The environment variables RECIPE_HARNESS_PYTHON and PYTHON. Files in recipe_harness/runs.",
+  "outputs": "JSON status objects with run_id, status, phase, and a pptx_url. The PowerPoint file itself. Files in each run folder such as v2_job.json, peer_set.json, v2_config.json, and run_summary.json.",
+  "risks": "Job records live in memory and on disk, so a server restart loses the running Python process while the record remains. The improvements route builds a Python script as text and places a file path inside it, so an unusual path could break the script. Errors in loading a saved job summary are not caught in every route. No login check is visible in this file. The top of the file turns off TypeScript checks. Runs time out after 30 minutes.",
+  "debug": "Start with GET /status to see the Python command and whether the Portkey key is set. Look in recipe_harness/runs/<run id>/ for v2_job.json and state/checkpoint_index.json to see the last stage reached. If a run shows as interrupted, check whether checkpoint files stopped changing for more than 10 minutes. If the PowerPoint is missing, read the job error text, which holds the Python error output. If Python is not found, set RECIPE_HARNESS_PYTHON.",
+  "summary_hash": "sha256:a78171372a040dd37e44a525ea40fb1140920a3ba9f90b0654b34906f4bc4ce3"
+}

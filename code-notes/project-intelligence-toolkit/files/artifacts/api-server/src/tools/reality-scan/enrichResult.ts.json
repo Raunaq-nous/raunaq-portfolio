@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/reality-scan/enrichResult.ts",
+  "language": "TypeScript",
+  "lines": 231,
+  "hash": "sha256:d20226b7269d3bdfd5cc76bfc587a1215b3ef40057cf30e5d2781e835bfed839",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only 3 of 18 sections were provided.",
+      "The schemas, field rules, totals and calculation helpers were not visible, so readiness cannot be judged."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Schema",
+      "meaning": "a rule set that checks whether data has the expected shape."
+    },
+    {
+      "term": "Descriptor",
+      "meaning": "a small record that describes one datapoint and how to read it."
+    },
+    {
+      "term": "Variance",
+      "meaning": "the difference between a planned figure and an actual or current figure."
+    },
+    {
+      "term": "JSONB",
+      "meaning": "a database column type that stores structured data."
+    },
+    {
+      "term": "Evidence path",
+      "meaning": "the stored name of the field a source quote supports."
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "@workspace/db",
+    "../../scan/budgetUnits"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 15,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "67f4ecf9038bc9cf",
+      "title": "File header and setup",
+      "what": "Brings in the schema library, the database project type, and the budget unit converter. The header comments explain that run results are checked before they are saved, and that later phases depend on this shape.",
+      "why": "The header describes this file as the typed contract for the enrichment engine, so saved results keep one fixed shape.",
+      "watch_out": "The comments describe planned phases, so a reader should not assume later phases already exist."
+    },
+    {
+      "start": 16,
+      "end": 22,
+      "kind": "type",
+      "name": "EnrichFieldDescriptor",
+      "id": "s2",
+      "hash": "ffc10b25522c2d0c",
+      "title": "Shape of one datapoint descriptor",
+      "what": "Defines what one datapoint descriptor holds: a key, a way to read its value from a project, the evidence paths that back it, and whether it is numeric.",
+      "why": "Likely reason: one shared format keeps every datapoint read the same way.",
+      "watch_out": "Values can be text, a number or missing, so callers must handle null."
+    },
+    {
+      "start": 23,
+      "end": 25,
+      "kind": "function",
+      "name": "str",
+      "id": "s3",
+      "hash": "fa610ef425f44bd5",
+      "title": "Text cleanup helper",
+      "what": "Returns the trimmed text when a value is a non-empty string, and nothing otherwise.",
+      "why": "Likely reason: keeps blank or non-text values out of the results.",
+      "watch_out": ""
+    },
+    {
+      "start": 26,
+      "end": 72,
+      "kind": "value",
+      "name": "ENRICH_FIELDS",
+      "id": "s4",
+      "hash": "3e8d6743ac3f76a0",
+      "title": "Catalog of checked project fields",
+      "what": "Lists every project fact the enrichment run looks at, such as budgets, dates, capacity, status, parties and overrun reasons. For each one it says how to read the value from a project and which stored evidence path backs it.",
+      "why": "Likely reason: one list lets every field follow the same checks and the same rules for missing values.",
+      "watch_out": "The delayIsApproximate flag is produced as the text true or false, so readers must compare it with the exact text true; the text false counts as true in JavaScript."
+    },
+    {
+      "start": 73,
+      "end": 82,
+      "kind": "value",
+      "name": "fieldSourceSchema, FieldSource",
+      "id": "s5",
+      "hash": "0a70d15d64e90c7f",
+      "title": "Where a value came from",
+      "what": "Defines the record that says where a stored value came from: an evidence ID, the field path, the web address, the publisher, the date and the exact quoted passage.",
+      "why": "Keeps each value tied to its proof so that the re-check step and the user can confirm it.",
+      "watch_out": "Most of these parts can be empty, so code that reads a source must handle a missing web address."
+    },
+    {
+      "start": 83,
+      "end": 90,
+      "kind": "value",
+      "name": "verificationStatusSchema, VerificationStatus",
+      "id": "s6",
+      "hash": "55cd1f01873cd8d9",
+      "title": "Four possible check outcomes",
+      "what": "Lists the four results a check can produce: verified, unconfirmed, unreachable and unsourced. Each one has a short comment explaining when it applies.",
+      "why": "A fixed set of words lets the totals and the spreadsheet use the same labels.",
+      "watch_out": "A new outcome must be added here and also in every place that counts or displays outcomes."
+    },
+    {
+      "start": 91,
+      "end": 96,
+      "kind": "value",
+      "name": "fieldConflictSchema",
+      "id": "s7",
+      "hash": "55ab783d63ddbd1f",
+      "title": "Record of a disagreement with live sources",
+      "what": "Holds the stored value, a written finding and the source where the difference was seen.",
+      "why": "Likely reason: the scan reports differences between the Yard and live sources without changing project data.",
+      "watch_out": "Nothing in this shape writes back to a project; it only reports."
+    },
+    {
+      "start": 97,
+      "end": 118,
+      "kind": "value",
+      "name": "fieldRecordSchema, EnrichFieldRecord",
+      "id": "s8",
+      "hash": "9743517c8968f074",
+      "title": "Full shape of one checked field",
+      "what": "Describes one field's result: its value, its source, its check outcome, when it was checked, whether it was calculated or approximate, whether it is a forecast, the reason it is not available, its inputs, its display text and any conflict.",
+      "why": "One common record lets stored, calculated and directly reported values share one format.",
+      "watch_out": "Where the value came from has only three choices, and the forecast flag is optional, so readers must not assume it is always present."
+    },
+    {
+      "start": 119,
+      "end": 126,
+      "kind": "value",
+      "name": "projectResultSchema, EnrichProjectResult",
+      "id": "s9",
+      "hash": "f0e6100b97a5dc2d",
+      "title": "Result for one project",
+      "what": "Holds one project's ID, name, industry and its set of field results.",
+      "why": "Groups all field results for each project, which the results file and the slides both read.",
+      "watch_out": "Fields are keyed by name, so a missing key means the field was not produced, not that it is empty."
+    },
+    {
+      "start": 127,
+      "end": 139,
+      "kind": "value",
+      "name": "runTotalsSchema",
+      "id": "s10",
+      "hash": "d8f9107a6427402b",
+      "title": "Counts for the whole run",
+      "what": "Holds totals of projects and values, and how many values were verified, unconfirmed, unreachable, unsourced, calculated, directly reported, not available or in conflict.",
+      "why": "Lets a summary show the run's status without recounting every field.",
+      "watch_out": "The unsourced count includes the two delay flags on purpose, so it can look higher than expected. The source comments say so."
+    },
+    {
+      "start": 140,
+      "end": 144,
+      "kind": "value",
+      "name": "enrichRunResultSchema",
+      "id": "s11",
+      "hash": "daa808356c4e780f",
+      "title": "Whole-run result format",
+      "what": "Defines the complete run result: a version number, the list of project results and the totals.",
+      "why": "Likely reason: the version number lets a future change to the format be recognized rather than misread.",
+      "watch_out": "The version is fixed at 1, so any change to the format needs a new version number or readers will misread it."
+    },
+    {
+      "start": 145,
+      "end": 152,
+      "kind": "type",
+      "name": "EnrichRunResult",
+      "id": "s12",
+      "hash": "99c94a814140dbd1",
+      "title": "Typed version of the run result",
+      "what": "Gives programmers a typed version of the whole run result, generated from the format definition above.",
+      "why": "Generating the type from the format means the two cannot drift apart.",
+      "watch_out": "Changing the format definition changes this type too; there is no separate copy to update."
+    },
+    {
+      "start": 153,
+      "end": 161,
+      "kind": "function",
+      "name": "normalizeText",
+      "id": "s13",
+      "hash": "0dc52254b5c271e4",
+      "title": "Standardizing text before comparing",
+      "what": "Makes text lowercase, turns curly quotes and long dashes into plain ones, and squeezes repeated spaces. This lets a saved quote match a web page even when the formatting differs.",
+      "why": "Web pages format text differently from how the quote was first saved.",
+      "watch_out": "Only quote and dash variants are standardized; other special characters, such as accents, are not, so a quote containing them can fail to match."
+    },
+    {
+      "start": 162,
+      "end": 185,
+      "kind": "function",
+      "name": "numericTokens",
+      "id": "s14",
+      "hash": "002f5db5ff7442d4",
+      "title": "Ways a number can be written",
+      "what": "Turns a number into the spellings a web page might use, such as plain digits, digits with commas, one or two decimal places, and billion wording for large round amounts. Text that is not a plain number produces nothing.",
+      "why": "A figure such as 6500 may appear on a page as 6,500, so matching has to allow both.",
+      "watch_out": "Accepting text that is not a number here would let the scan match figures that were never on the page."
+    },
+    {
+      "start": 186,
+      "end": 204,
+      "kind": "function",
+      "name": "presenceCheck",
+      "id": "s15",
+      "hash": "9b264a55147c8b10",
+      "title": "Checking that a quote is on a page",
+      "what": "Looks for the stored quote inside the page text after both are standardized. It returns verified only when the quote is at least twenty characters long and appears in full; otherwise it returns unconfirmed.",
+      "why": "Strict matching means a value is only marked verified when its own words appear on the page.",
+      "watch_out": "The numeric argument is accepted but never used here, so a bare number cannot count as a match, and the source comment says the runner decides attribution separately."
+    },
+    {
+      "start": 205,
+      "end": 209,
+      "kind": "function",
+      "name": "costDeviationPct",
+      "id": "s16",
+      "hash": "f82d08ebc137741e",
+      "title": "Percent over or under budget",
+      "what": "Works out how far the actual cost is above or below the planned cost, as a percentage rounded to one decimal place. It returns nothing if either figure is missing or the plan is zero.",
+      "why": "Simple arithmetic with guards, so bad inputs give no answer instead of a wrong one.",
+      "watch_out": "A planned cost of zero gives no answer, so such a project shows as not available rather than as zero."
+    },
+    {
+      "start": 210,
+      "end": 222,
+      "kind": "function",
+      "name": "monthsBetween",
+      "id": "s17",
+      "hash": "aa63084cb494eafe",
+      "title": "Whole months between two dates",
+      "what": "Counts whole months from an earlier date to a later one. It adds or removes a month when the leftover days are about half a month or more. It returns nothing if the dates are not in year-month-day form.",
+      "why": "Likely reason: so that a delay from early March to early June counts as three months rather than a near miss being counted as a full month.",
+      "watch_out": "Only the leading year-month-day part is read, so a date in another format returns nothing rather than an error."
+    },
+    {
+      "start": 223,
+      "end": 231,
+      "kind": "function",
+      "name": "yearsMonthsForm",
+      "id": "s18",
+      "hash": "5228c884c859e53c",
+      "title": "Plain-English duration text",
+      "what": "Turns a number of months into text such as 2 years 3 months, with correct singular and plural words and a minus sign for negative values.",
+      "why": "Makes durations readable on slides and in reports.",
+      "watch_out": "The minus sign goes in front of the whole duration, so a negative value reads as a negative span."
+    }
+  ],
+  "explained_at": "2026-11-12T05:02:20+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the typed shape of the Reality Scan enrichment results and the list of datapoints read from each project. Only part of the file was visible.",
+  "purpose": "Sets a fixed format for the enrichment results so the saved data has a known shape.",
+  "why": "The file header says the finalize stage checks the whole run result before saving it, so stored data is never free-form. Likely reason: protects the database from malformed results.",
+  "how": "1. The header comments explain the purpose and the phases. 2. A descriptor type defines one datapoint: its key, how to read it from a project, the evidence paths behind it, and whether it is numeric. 3. A small text helper keeps only non-empty text. The rest of the file, including the field list, schemas, totals and calculation helpers, was not in the packet and is not described here.",
+  "inputs": "Project records from the database and the run's variance data, as the header describes.",
+  "outputs": "A typed result object that is checked before it is saved.",
+  "risks": "The packet does not show the code that enforces the no-fabrication rule, so that claim is not verified here. Unseen sections may hold risks not covered in this note.",
+  "debug": "If a run result fails to save, check the schema rule for the failing field. Sections not provided cannot be checked from this note.",
+  "summary_hash": "sha256:d20226b7269d3bdfd5cc76bfc587a1215b3ef40057cf30e5d2781e835bfed839"
+}

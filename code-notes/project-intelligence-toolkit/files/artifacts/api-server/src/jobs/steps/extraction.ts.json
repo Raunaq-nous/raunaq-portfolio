@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/jobs/steps/extraction.ts",
+  "language": "TypeScript",
+  "lines": 222,
+  "hash": "sha256:efc4c775c60a7d90d5b27f68066175460ae1204837d95af72a369fabdc34d393",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The placeholder produces realistic-looking status and quote values that are not based on any source.",
+      "Only the update entries are format-checked by the schema, while the rest of the model output is not checked in this file.",
+      "There are no retry pauses, so a retry happens immediately.",
+      "No tests are visible in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Extractor",
+      "meaning": "The part that reads retrieved pages and returns structured facts, either by asking an AI model or by the placeholder."
+    },
+    {
+      "term": "Stub",
+      "meaning": "A simple stand-in that behaves like the real component so the rest of the system can run without it."
+    },
+    {
+      "term": "Schema",
+      "meaning": "A written set of rules that a piece of data must follow, checked here by the Zod library."
+    },
+    {
+      "term": "ZodError",
+      "meaning": "The error raised when data fails a schema check, meaning it has the wrong form."
+    },
+    {
+      "term": "Locator",
+      "meaning": "A pointer that says where in a page an excerpt sits, such as a text fragment."
+    }
+  ],
+  "depends_on": [
+    "zod",
+    "../interfaces"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 3,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "4d5ed8ba810e5dbb",
+      "title": "Imports",
+      "what": "Loads the Zod format-checking library and the shared type definitions for extraction results and updates.",
+      "why": "Reason not stated in the code beyond the checks it supports.",
+      "watch_out": ""
+    },
+    {
+      "start": 4,
+      "end": 17,
+      "kind": "value",
+      "name": "UpdateCandidateSchema, UpdateCandidate",
+      "id": "s2",
+      "hash": "ddfca0e83a4ec181",
+      "title": "Format rules for an update entry",
+      "what": "Defines the required form of each update: a date in year-month-day form, a headline of 5 to 300 characters, a source name, a web address or empty text, an optional excerpt of up to 1,000 characters, and an optional locator that points into the page.",
+      "why": "Likely reason: rejecting malformed model output before anything is saved.",
+      "watch_out": "The date must match the year-month-day pattern exactly, so any other date style from the model is rejected as a format error."
+    },
+    {
+      "start": 18,
+      "end": 25,
+      "kind": "type",
+      "name": "RetrievedDoc",
+      "id": "s3",
+      "hash": "81b313413b53ad88",
+      "title": "Shape of a retrieved page",
+      "what": "Describes one page passed to extraction: address, title, search snippet, extracted text, and when it was fetched. It is a local type and is not shared with other files.",
+      "why": "Reason not stated in the code. It makes the placeholder's expected input explicit.",
+      "watch_out": "The input is read from text without a format check, so a page with the wrong shape may be skipped silently."
+    },
+    {
+      "start": 26,
+      "end": 59,
+      "kind": "function",
+      "name": "extractDatesFromText",
+      "id": "s4",
+      "hash": "075be506a1564233",
+      "title": "Finding dates in page text",
+      "what": "Scans text for dates written as year-month-day or as day and month name, converts them to year-month-day, removes duplicates and returns them newest first. The placeholder uses this to choose each update's date.",
+      "why": "Likely reason: it gives the placeholder a date without calling a model.",
+      "watch_out": "The newest date is used, which can be a future deadline rather than the date of the news."
+    },
+    {
+      "start": 60,
+      "end": 85,
+      "kind": "function",
+      "name": "extractHeadlines",
+      "id": "s5",
+      "hash": "6a2bcc39e0d626cc",
+      "title": "Picking likely headline sentences",
+      "what": "Splits text into sentences of 20 to 300 characters, keeps those that mention a word of the project name longer than three letters, scores each by news and construction keywords and length, and returns the top five.",
+      "why": "Likely reason: it is a simple way to find project news without a model.",
+      "watch_out": "Any sentence containing a common project word can be picked, so unrelated sentences may become headlines."
+    },
+    {
+      "start": 86,
+      "end": 108,
+      "kind": "function",
+      "name": "publisherFromUrl",
+      "id": "s6",
+      "hash": "f0ac1b900e969064",
+      "title": "Naming the publisher of a page",
+      "what": "Maps a fixed list of twelve known domains to readable names such as Reuters or IAEA. Any other domain is shown by its host name. An unreadable address returns the word Unknown.",
+      "why": "Likely reason: it makes the source name readable on the page.",
+      "watch_out": "The list is mostly nuclear-industry sites, so sources from other industries show their raw domain names."
+    },
+    {
+      "start": 109,
+      "end": 163,
+      "kind": "class",
+      "name": "StubExtractor (part 1)",
+      "id": "s7",
+      "hash": "0c5c7dab6462627a",
+      "title": "Placeholder extractor builds updates from pages",
+      "what": "Stands in for the AI when none is configured. For up to eight pages it picks a date, a headline and an excerpt, and makes each into an update with a text fragment locator. If a page has no headline but its title contains the first word of the project name, the title is used instead.",
+      "why": "Likely reason: the pipeline can run end to end without a model provider.",
+      "watch_out": "Titles are matched only on the first word of the project name, so a weak match can add an unrelated page."
+    },
+    {
+      "start": 164,
+      "end": 195,
+      "kind": "method",
+      "name": "StubExtractor: if",
+      "id": "s8",
+      "hash": "12dcab1f0e0c4f82",
+      "title": "Placeholder fallback and fixed answer",
+      "what": "If no updates were found, adds one update saying a routine scan found nothing new, dated today with no address. Then returns a fixed answer: status ON_TRACK, score 75, a generic placeholder quote, and confidence 0.7.",
+      "why": "Likely reason: every project still gets a result even when no news is found.",
+      "watch_out": "The ON_TRACK status and the placeholder quote are not based on any source, so they must never be read as research findings."
+    },
+    {
+      "start": 196,
+      "end": 222,
+      "kind": "function",
+      "name": "runExtraction",
+      "id": "s9",
+      "hash": "0fc777c078145859",
+      "title": "Calling the extractor with retries",
+      "what": "Asks the chosen extractor for results and tries again once on ordinary errors. A format-check error is passed up at once without retry. Missing update or source lists are replaced with empty ones so later steps do not crash.",
+      "why": "Likely reason: a retry covers a passing model failure, and a format error is not expected to fix itself.",
+      "watch_out": "Retries happen immediately with no pause, so a short outage is likely to fail both attempts."
+    }
+  ],
+  "explained_at": "2026-11-12T03:52:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Turns the pages found in retrieval into facts and updates for a project, using either an AI extractor or a placeholder stub, and retries ordinary errors once.",
+  "purpose": "Produces the extracted field values, quotes and updates for one job. The stub only creates placeholder-style results so the pipeline can run without a model.",
+  "why": "Likely reason: the placeholder lets the pipeline run without model keys, and the format rules keep the model's update entries in a strict form.",
+  "how": "The runner calls runExtraction, which asks the extractor for results and tries again on ordinary errors. Format-check errors are passed up at once. The placeholder extractor takes up to eight pages, picks a date, a headline and an excerpt from each, creates an update per page, and adds a fixed status and quote when nothing is found.",
+  "inputs": "The project name, the retrieved pages as text, and an extractor object, which is either the AI extractor or the placeholder.",
+  "outputs": "An extraction result with fields, field sources, evidence quotes, updates and a confidence number.",
+  "risks": "The placeholder output resembles real research, with status ON_TRACK and confidence 0.7, so it can be mistaken for findings. Headline choice uses simple keyword matching. Date choice can pick a future deadline mentioned in the text.",
+  "debug": "Check which extractor the runner logged at startup. If results look generic, the placeholder ran. For format errors, read the Zod message in the job error. Empty updates from the placeholder mean no page mentioned the project name.",
+  "summary_hash": "sha256:efc4c775c60a7d90d5b27f68066175460ae1204837d95af72a369fabdc34d393"
+}

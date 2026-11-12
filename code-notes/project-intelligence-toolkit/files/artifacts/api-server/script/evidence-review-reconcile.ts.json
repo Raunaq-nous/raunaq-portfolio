@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/evidence-review-reconcile.ts",
+  "language": "TypeScript",
+  "lines": 174,
+  "hash": "sha256:d3e9201db80e1eaacdc4ce28e1c03beca9561acc042bc0835111349eb5fd5f08",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "It is a one-off script with no tests or saved verification result visible.",
+      "Basis matching relies on text patterns, so wording the patterns miss will not be tagged.",
+      "The text-replace step on project attributes is fragile."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Value point",
+      "meaning": "One stored figure or date for a project, together with where it came from."
+    },
+    {
+      "term": "Basis tag",
+      "meaning": "A label saying what a money figure includes, such as financing costs or transmission."
+    },
+    {
+      "term": "Vetting",
+      "meaning": "A human review record that approves or challenges a value."
+    },
+    {
+      "term": "Derived metric",
+      "meaning": "A figure calculated from other stored values."
+    },
+    {
+      "term": "Rounding-only difference",
+      "meaning": "Two values that match once the stated rounding is applied, such as 1,231.7 and 1,232."
+    }
+  ],
+  "depends_on": [
+    "@workspace/db",
+    "drizzle-orm",
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/evidence/dateConventions",
+    "artifacts/api-server/src/evidence/dateRules",
+    "artifacts/api-server/src/evidence/metrics",
+    "artifacts/api-server/src/evidence/store"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 31,
+      "kind": "setup",
+      "name": "File setup, DryRun",
+      "id": "s1",
+      "hash": "9b3eb663f8c6a020",
+      "title": "Setup and dry-run switch",
+      "what": "Loads the helper modules, reads the --commit flag, and defines the signal used to undo a dry run.",
+      "why": "The header states that the script is a one-off with a dry run default.",
+      "watch_out": "Without --commit, nothing is saved, so a dry run is the only safe first step."
+    },
+    {
+      "start": 32,
+      "end": 61,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s2",
+      "hash": "d2cc0041fdffaa2b",
+      "title": "Dates and start of the reconcile",
+      "what": "Tags each stored date with the rule that resolved it. Yard field dates are tagged as coming from the field. If the current rules would resolve a stored date differently, the mismatch is listed and the date is left alone. Also loads all value points for later steps.",
+      "why": "The header says stored dates are reported, never changed.",
+      "watch_out": "Mismatched dates stay as they are until someone reviews them."
+    },
+    {
+      "start": 62,
+      "end": 115,
+      "kind": "method",
+      "name": "main: for",
+      "id": "s3",
+      "hash": "668f223815e1095c",
+      "title": "Freeze APS calculations and merge helper",
+      "what": "Saves a copy of the inputs each published APS deck figure was built from, so later edits cannot change it. Also defines the merge helper that moves sources to a kept value and deletes the duplicate, unless the duplicate has vetting.",
+      "why": "The header says the snapshot exists so that later edits cannot move published figures.",
+      "watch_out": "Each input is snapshotted only once. The merge helper also re-points other calculations, so a merge changes more than one row."
+    },
+    {
+      "start": 116,
+      "end": 174,
+      "kind": "function",
+      "name": "main (part 3)",
+      "id": "s4",
+      "hash": "b219443130b2d80b",
+      "title": "Basis tags and rounding merges",
+      "what": "Reads basis tags from the stated text of APS money values and from Yard budget text. Moves each value to its matching basis. If the same figure already exists on that basis, keeps the older row and merges the newer one. Then merges duplicates that differ only by rounding into the current value. Commits or rolls back at the end.",
+      "why": "The header says negated wording such as 'does not establish whether AFUDC' must tag nothing.",
+      "watch_out": "Tagging depends on text patterns. A value whose wording the patterns miss will be left untagged without any warning."
+    }
+  ],
+  "explained_at": "2026-11-12T03:03:37+00:00",
+  "explained_by": "haiku",
+  "summary": "A one-time cleanup script, tied to an October 28, 2026 review, that tags stored dates, freezes the inputs of published calculations, sets basis tags on money values, and merges duplicate values that differ only by rounding.",
+  "purpose": "Bring stored evidence in line with decisions made in that review without changing any stored date.",
+  "why": "The header says it is a one-off reconciliation and that it is idempotent, meaning safe to re-run.",
+  "how": "Loads date conventions. Inside one transaction: tags each date with the rule that resolved it and reports any date the current rules would resolve differently. Snapshots the inputs of APS deck calculations. Sets basis tags from stated text, then moves values to the matching basis. Merges rounding-only duplicates into the current value unless the duplicate has vetting. Commits or rolls back based on the flag, then prints a JSON report.",
+  "inputs": "Database tables for value points, derived metrics, projects, value point sources, and vetting records. Date convention and rule modules.",
+  "outputs": "Database updates when committed. A console JSON report listing counts, date mismatches, basis moves, merges, kept rows, and newly current values.",
+  "risks": "Commit deletes duplicate value rows and moves their sources. Yard project attributes are rewritten by replacing ids inside JSON text, which could touch an unrelated string that happens to match. Rows with vetting are kept, not merged.",
+  "debug": "Run without --commit and read the report. Items under dateMismatch need human review because they were left unchanged. Items under keptHasVetting show rows kept for review. If a merge looks wrong, check the mergedFrom details saved in the source link record.",
+  "summary_hash": "sha256:d3e9201db80e1eaacdc4ce28e1c03beca9561acc042bc0835111349eb5fd5f08"
+}

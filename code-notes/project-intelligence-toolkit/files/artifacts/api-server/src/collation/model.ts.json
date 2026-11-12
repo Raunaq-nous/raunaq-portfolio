@@ -1,0 +1,273 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/collation/model.ts",
+  "language": "TypeScript",
+  "lines": 273,
+  "hash": "sha256:20cf928e8ce99885241328f52d6dfb261a4b3d0a68fac57e833d8d95e6d2b8c8",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible.",
+      "A routed fact with no source is shown as sourced, which looks unintended.",
+      "Relies on exact field names in stored summaries with no check for missing names."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Ring",
+      "meaning": "one country's slice of the collation view"
+    },
+    {
+      "term": "Tile",
+      "meaning": "one small square for each datapoint, drawn as a single letter in the data"
+    },
+    {
+      "term": "Stage",
+      "meaning": "one step in a run's pipeline"
+    },
+    {
+      "term": "Routed",
+      "meaning": "assigned to a driver or lesson, so the fact feeds an output"
+    },
+    {
+      "term": "Signature",
+      "meaning": "a short fingerprint of a run's state, used to tell whether a saved copy is still valid"
+    },
+    {
+      "term": "Reality Scan",
+      "meaning": "one of the toolkit's run types, covering cost and schedule checks"
+    },
+    {
+      "term": "Lessons Learnt",
+      "meaning": "another run type, which builds lessons from collected project facts"
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "@workspace/db",
+    "artifacts/api-server/src/db.ts",
+    "artifacts/api-server/src/collation/countries.ts",
+    "artifacts/api-server/src/shared/industries.ts"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "f95f233fce3676b3",
+      "title": "Imports for the collation model",
+      "what": "Brings in the table definitions, the shared database connection, the country helpers and the industry lookup. A user does not see this directly; it supplies the tools the rest of the file uses.",
+      "why": "Needed so the file can read run records and turn them into the collation picture. The reason beyond that is not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 9,
+      "end": 24,
+      "kind": "type",
+      "name": "Phase, CollationTool",
+      "id": "s2",
+      "hash": "b54991fb2c682a88",
+      "title": "Phase names and tile code explanation",
+      "what": "Defines the five phase names (scope, gather, check, compute, compose) and the two run types. The long comment explains that each datapoint becomes one letter, and the letter encodes its category and its state, such as unsourced, sourced, verified or flagged.",
+      "why": "The comment says the collation view draws one ring per country and one tile per datapoint, and shows only what the run recorded. The reason for the letter scheme beyond that is not stated in the code.",
+      "watch_out": "The letter scheme depends on a fixed offset and eight steps per category, so changing one of those numbers breaks the meaning of every stored tile."
+    },
+    {
+      "start": 25,
+      "end": 38,
+      "kind": "type",
+      "name": "CollationModel",
+      "id": "s3",
+      "hash": "03e01668fd8e36a0",
+      "title": "Shape of the collation model",
+      "what": "Describes the full picture sent to the collation view: the run's title and status, its stages, the country rings, each project with its tile string, the slide outputs and a set of totals. The view relies on this shape.",
+      "why": "Likely reason: the view needs one fixed shape to draw the rings and tiles. Reason not stated in the code.",
+      "watch_out": "Renaming a field here, such as the short keys for groups and tiles, must be matched in the view or parts of the page will go blank."
+    },
+    {
+      "start": 39,
+      "end": 47,
+      "kind": "value",
+      "name": "RS_STAGES",
+      "id": "s4",
+      "hash": "0c625e8db35a60f9",
+      "title": "Reality Scan stage names",
+      "what": "Lists the Reality Scan stages in order, with a readable label and phase for each, such as Calculate and Write the synthesis. These labels appear in the stage progress on the collation view.",
+      "why": "Likely reason: the stage keys in the database need readable names for the view. Reason not stated in the code.",
+      "watch_out": "A stage key must match the name the pipeline uses exactly, or that stage will show as pending."
+    },
+    {
+      "start": 48,
+      "end": 72,
+      "kind": "value",
+      "name": "LL_STAGES, Obj, StageRow, iso, obj, arr, num, fmt",
+      "id": "s5",
+      "hash": "b6bbf8b567bebd18",
+      "title": "Lessons Learnt stage names and small helpers",
+      "what": "Lists the Lessons Learnt stages with labels and phases, then defines small helpers that safely read stored values as objects, lists or numbers, format dates as text, and format numbers with commas. The helpers protect the rest of the file from unexpected stored data.",
+      "why": "Likely reason: the stored summaries are loosely shaped, so the helpers guard against missing or odd values. Reason not stated in the code.",
+      "watch_out": "The number helper returns nothing for any value that is not a real number, so a number stored as text will quietly drop out of the totals."
+    },
+    {
+      "start": 73,
+      "end": 78,
+      "kind": "function",
+      "name": "fieldCategory",
+      "id": "s6",
+      "hash": "b3686a1a52995a03",
+      "title": "Category for numeric fields",
+      "what": "Sorts a field name into one of four categories: cost, schedule, capacity or scope, and other. It uses keywords in the name such as budget, date or capacity, and the category decides which part of the tile code the datapoint uses.",
+      "why": "Likely reason: the rings and tiles group datapoints by theme. Reason not stated in the code.",
+      "watch_out": "Matching is by loose keyword, so short fragments such as cod or mw can match inside unrelated names."
+    },
+    {
+      "start": 79,
+      "end": 86,
+      "kind": "function",
+      "name": "factCategory, tile",
+      "id": "s7",
+      "hash": "501f4b937b110d1e",
+      "title": "Category for facts and the tile letter",
+      "what": "Sorts a fact into the same four groups using its category text and a keyword list of its own. It then builds the single letter for a datapoint from its group and its state.",
+      "why": "Likely reason: keeps facts and fields in the same visual scheme. Reason not stated in the code beyond that.",
+      "watch_out": "A state outside the expected range would produce a letter that points to a different category, so the state values must stay in range."
+    },
+    {
+      "start": 87,
+      "end": 103,
+      "kind": "function",
+      "name": "linkOutputs",
+      "id": "s8",
+      "hash": "c2bb6ec854923e5e",
+      "title": "Linking slides to projects",
+      "what": "Works out which projects each output slide mentions by searching the slide's text for each project ID in quotes or after a slash. It merges slides with the same title and keeps at most 80 linked projects per output, so a user can see which projects a slide covers.",
+      "why": "The comment says links come from literal ID matches in the slide model. The reason for the limit of 80 is not stated in the code.",
+      "watch_out": "Matching is text-based, so a project ID appearing in an unrelated part of a slide will also be linked."
+    },
+    {
+      "start": 104,
+      "end": 109,
+      "kind": "function",
+      "name": "yardRows",
+      "id": "s9",
+      "hash": "f86e313e96c706fc",
+      "title": "Loading project names and countries",
+      "what": "Reads the name and country for a set of project IDs from the projects table and returns them as a lookup by ID. If the list is empty, it returns an empty lookup without asking the database.",
+      "why": "Likely reason: the stored run data may lack a project's name or country, so this table is the fallback. The calling code uses it that way.",
+      "watch_out": "A project ID missing from the table gets no name here, and the caller then falls back to the raw ID, which can show as a code on screen."
+    },
+    {
+      "start": 110,
+      "end": 122,
+      "kind": "function",
+      "name": "ringGroups",
+      "id": "s10",
+      "hash": "72c355f6b1bc6e26",
+      "title": "Grouping projects into country rings",
+      "what": "Counts projects per country. When there are more than 12 countries, it keeps the 11 with the most projects as their own rings and folds all others into one ring for the rest of the world, with a count of how many countries it holds. It also returns a lookup that tells each project which ring it belongs to.",
+      "why": "The comment says the view shows the largest countries and groups the rest together. The reason for the threshold of 12 is not stated in the code.",
+      "watch_out": "Countries with equal project counts are ordered alphabetically, which decides which countries make the cut at the edge."
+    },
+    {
+      "start": 123,
+      "end": 136,
+      "kind": "function",
+      "name": "finish",
+      "id": "s11",
+      "hash": "b13b3effc07aa9a7",
+      "title": "Assembling the final picture",
+      "what": "Attaches each project to its ring, adds up the datapoints in each ring, then totals across all projects: how many datapoints there are, and how many are sourced, verified, flagged or used in an output. It returns the full model ready for the view.",
+      "why": "Likely reason: the view needs the totals ready made instead of recalculating them. Reason not stated in the code.",
+      "watch_out": "The sourced, verified, flagged and used counts are read back from each tile letter, so any change to the tile scheme must also change these counts."
+    },
+    {
+      "start": 137,
+      "end": 144,
+      "kind": "function",
+      "name": "stageList",
+      "id": "s12",
+      "hash": "344a99a3bdc5d33d",
+      "title": "Listing the stages with their status",
+      "what": "Builds the stage list for a run by going through the known stage names in order and filling each with its recorded status and start and finish times. A stage with no recorded result shows as pending, and each stage can carry a short note.",
+      "why": "Likely reason: the view should show every stage, including ones that have not started. Reason not stated in the code.",
+      "watch_out": "A stage with no record shows as pending even if it ran, so a missing record looks the same as a stage that never started."
+    },
+    {
+      "start": 145,
+      "end": 149,
+      "kind": "function",
+      "name": "titleOf",
+      "id": "s13",
+      "hash": "a54fe3a4c295a118",
+      "title": "Building a readable run title",
+      "what": "Creates the run's title from its scope. It turns each industry code into its display name, joins them with commas, and uses Selected projects when no industry is set. The names come from the shared industry lookup.",
+      "why": "Likely reason: the title should read naturally on the view. Reason not stated in the code.",
+      "watch_out": "An unknown industry code is shown with dashes turned into spaces, so an odd code appears as typed text rather than a proper name."
+    },
+    {
+      "start": 150,
+      "end": 200,
+      "kind": "function",
+      "name": "realityScan",
+      "id": "s14",
+      "hash": "bac12a6863a3bcac",
+      "title": "Reality Scan collation model",
+      "what": "Builds the collation picture for one Reality Scan run from its recorded stage results. Each value gets a tile based on whether it has a source, whether a re-check verified it, and whether it feeds a chart or slide. It also writes short stage notes, such as how many projects are in scope.",
+      "why": "The header says nothing is estimated, so a tile exists only for a recorded value. The reason beyond that is not stated in the code.",
+      "watch_out": "A value is marked as used only when it is verified, and for plotted projects only cost or schedule values count, so other plotted values stay unmarked."
+    },
+    {
+      "start": 201,
+      "end": 253,
+      "kind": "function",
+      "name": "lessonsLearnt",
+      "id": "s15",
+      "hash": "269af03858de62c4",
+      "title": "Lessons Learnt collation model",
+      "what": "Builds the collation picture for one Lessons Learnt run from its facts. Each fact becomes one tile, with its state based on whether it has a source, its verification result, and whether it was routed to a lesson. It also builds the stage notes and the slide outputs.",
+      "why": "The collation view shows only what the run recorded, the same goal as the Reality Scan version. The reason beyond that is not stated in the code.",
+      "watch_out": "A fact routed to a lesson is shown as sourced even when it has no source, which looks unintended and could overstate the evidence."
+    },
+    {
+      "start": 254,
+      "end": 257,
+      "kind": "value",
+      "name": "cache",
+      "id": "s16",
+      "hash": "7a1c6da6995274dd",
+      "title": "Memory slot for finished model results",
+      "what": "Keeps up to 40 recently built collation models in memory, keyed by tool and run ID, so the page does not rebuild them on every visit. Each saved copy carries a signature that records the run's status, last update time and current stage.",
+      "why": "The comment says finished runs never change, so their model is built once, and running runs are rebuilt when they change. The reason for the limit of 40 is not stated in the code.",
+      "watch_out": "If stage results change after a run is marked finished, the saved copy keeps showing the old picture until the run's record changes."
+    },
+    {
+      "start": 258,
+      "end": 273,
+      "kind": "function",
+      "name": "collationModel",
+      "id": "s17",
+      "hash": "b8d7a83502a5189f",
+      "title": "Main entry point for the collation model",
+      "what": "The single function other code calls to get a collation picture for a run. It reads the run's status and last update time, returns the saved copy if nothing has changed, and otherwise rebuilds it with the right tool's logic. It returns nothing if the run does not exist.",
+      "why": "Likely reason: rebuilding is slow, so the saved copy is reused, and live runs are refreshed about every five seconds. Reason not stated in the code.",
+      "watch_out": "Live runs are only rebuilt on request and at most every five seconds, so the picture can lag the run by up to that long."
+    }
+  ],
+  "explained_at": "2026-11-12T03:22:30+00:00",
+  "explained_by": "haiku",
+  "summary": "Builds the chart-ready collation picture for one Reality Scan or Lessons Learnt run, using only what the run recorded.",
+  "purpose": "Feeds the dark-mode collation view with country rings, datapoint tiles, stage progress, notes and slide links.",
+  "why": "The header says nothing is estimated, so each tile matches a recorded value or fact. Likely reason: finished runs are cached so they are not rebuilt on each visit. Reason not stated in the code otherwise.",
+  "how": "Reads the run record and its stage records. For the chosen tool, it collects the values or facts for each project and turns each one into a tile letter based on its category and state. It then adds project names and countries, groups projects into country rings, links slides to projects, and totals the counts. The result is saved and rebuilt only when the run changes.",
+  "inputs": "A tool name (Reality Scan or Lessons Learnt) and a run ID, plus the stored run, stage, project and slide records.",
+  "outputs": "A CollationModel object, or nothing if the run does not exist.",
+  "risks": "Relies on exact stage names and summary field names. If the pipeline renames one, counts go blank without an error. A routed fact with no source appears as sourced. Finished runs stay cached until their record changes.",
+  "debug": "If the collation view is blank, confirm the run ID and that the run record exists. If a stage shows pending, check its stage key. If tile states look wrong, check the category keywords and the state rules. If numbers are stale, check the run's updated time.",
+  "summary_hash": "sha256:20cf928e8ce99885241328f52d6dfb261a4b3d0a68fac57e833d8d95e6d2b8c8"
+}

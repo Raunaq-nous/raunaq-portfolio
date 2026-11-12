@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/compass-oilgas-dryrun.ts",
+  "language": "TypeScript",
+  "lines": 256,
+  "hash": "sha256:6f64e48465178b806527ce7fff536dba2645f7e8e2eb2ba13107acea57409eaf",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated test or pass or fail assertion is visible; results depend on reading the printed output.",
+      "The hazard checks print their results without comparing them to expected values."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Dry run",
+      "meaning": "A trial run that reads and reports but writes nothing to the database."
+    },
+    {
+      "term": "Byte identical",
+      "meaning": "Two files that are exact copies at the level of every byte."
+    },
+    {
+      "term": "Placeholder",
+      "meaning": "A blank or stand-in value in the source that means no real information."
+    },
+    {
+      "term": "Kboe/d",
+      "meaning": "Thousand barrels of oil equivalent per day, the unit used for oil and gas output."
+    },
+    {
+      "term": "Sub industry",
+      "meaning": "A finer category inside oil and gas, such as offshore deepwater."
+    }
+  ],
+  "depends_on": [
+    "src/ingest/compass/mapper",
+    "node:fs",
+    "node:path",
+    "node:crypto",
+    "data/compass/oil-gas"
+  ],
+  "used_by": [
+    "compass-oilgas-ingest.ts copies its capacity rule from this file; it does not import it."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "7dd09a2df6a217f7",
+      "title": "Setup and shared helpers",
+      "what": "Loads the file system and hashing tools and the shared helper functions for blanks, web links, host names, dates, and signed months.",
+      "why": "The header says the mapper helpers are imported so the rules are not written twice.",
+      "watch_out": "The script is meant to be run from the api server folder, because later paths depend on the current folder."
+    },
+    {
+      "start": 17,
+      "end": 24,
+      "kind": "type",
+      "name": "Rec",
+      "id": "s2",
+      "hash": "01f1d444971ec1de",
+      "title": "Locating the export files",
+      "what": "Defines a loose record type and lists every oil and gas export file, sorted by name.",
+      "why": "Likely reason: export records have many dynamic keys, so a loose type is used instead of a fixed one.",
+      "watch_out": "Any file with the matching name prefix is counted, even if it is not meant to be part of the export."
+    },
+    {
+      "start": 25,
+      "end": 30,
+      "kind": "value",
+      "name": "byHash",
+      "id": "s3",
+      "hash": "576b98653c4f12f3",
+      "title": "Exact copy detection",
+      "what": "Fingerprints each file's bytes so that files which are exact copies can be found.",
+      "why": "The header lists byte identical duplicate detection as one of the gates.",
+      "watch_out": "Only exact copies are caught; records repeated with small edits are not."
+    },
+    {
+      "start": 31,
+      "end": 37,
+      "kind": "value",
+      "name": "dupGroups",
+      "id": "s4",
+      "hash": "a1a09f19aee8cffc",
+      "title": "Duplicate file groups and loading records",
+      "what": "Keeps only the groups of two or more identical files, and reads every file into memory as a record.",
+      "why": "Reason not stated in the code beyond feeding the duplicate report and later checks.",
+      "watch_out": "Malformed JSON in any file stops the whole run."
+    },
+    {
+      "start": 38,
+      "end": 43,
+      "kind": "function",
+      "name": "S",
+      "id": "s5",
+      "hash": "9afffcd2b7bdfa64",
+      "title": "Blank value helper",
+      "what": "A short name for the shared helper that treats empty or placeholder values as absent.",
+      "why": "Reason not stated in the code beyond reusing the shared rule so that all reports count blanks the same way.",
+      "watch_out": "The exact blank rules live in the mapper file, so this report's counts depend on that file."
+    },
+    {
+      "start": 44,
+      "end": 46,
+      "kind": "value",
+      "name": "dupIds",
+      "id": "s6",
+      "hash": "e8930ace7e78e9b1",
+      "title": "Duplicate project IDs",
+      "what": "Finds project IDs that appear more than once across the records.",
+      "why": "Likely reason: a repeated ID would collide when records are loaded.",
+      "watch_out": ""
+    },
+    {
+      "start": 47,
+      "end": 65,
+      "kind": "value",
+      "name": "dupNames, catCounts, fieldPaths, factIdxTokens, publishers",
+      "id": "s7",
+      "hash": "5c50f5b1bc095c0c",
+      "title": "Identity report",
+      "what": "Finds project names that repeat and prints the identity summary: file count, record count, exact duplicate groups, populated and blank IDs, and duplicate IDs and names.",
+      "why": "Likely reason: identity must be clean before any import, and this report only shows the problems without fixing them.",
+      "watch_out": "A repeated name may be two genuinely different projects, so it is reported rather than removed."
+    },
+    {
+      "start": 66,
+      "end": 114,
+      "kind": "value",
+      "name": "factTextDupWithinProject, DATE_FIELDS",
+      "id": "s8",
+      "hash": "2b6d1c4140f80cf4",
+      "title": "Fact layer counts",
+      "what": "Walks every record's numbered fact fields and counts the facts that would be kept, dropped for placeholder text, or dropped for a missing web source. It also counts missing ids, attributions and categories, repeated fact text inside a project, the publisher hosts, and the commentary, theme and finding keys. It also sets the list of date fields.",
+      "why": "The report counts facts that would be kept so the owner can judge the import before any write.",
+      "watch_out": "The counting depends on the key naming pattern, so a renamed field in a future export would go uncounted without any warning."
+    },
+    {
+      "start": 115,
+      "end": 129,
+      "kind": "value",
+      "name": "dateRows",
+      "id": "s9",
+      "hash": "b38d3b7a62709486",
+      "title": "Date values",
+      "what": "Collects every start, planned completion and actual completion date and converts each with the shared date rule. Each is sorted as exact, approximate, or not available.",
+      "why": "The dry run shows how many dates would be guessed, so the owner can see the date rule's effect.",
+      "watch_out": "Approximate dates are kept with a note, and anyone reading the results must check that flag rather than assume the date is exact."
+    },
+    {
+      "start": 130,
+      "end": 149,
+      "kind": "value",
+      "name": "byRaw",
+      "id": "s10",
+      "hash": "22024b4041c3d21e",
+      "title": "Date rules by raw text",
+      "what": "Groups identical raw date strings and prints the resolved value and assumption note for each, separately for approximate, exact, and unresolvable dates.",
+      "why": "Lets the owner review each date rule one at a time.",
+      "watch_out": ""
+    },
+    {
+      "start": 150,
+      "end": 176,
+      "kind": "function",
+      "name": "parseOilGasCapacity, capWhy",
+      "id": "s11",
+      "hash": "27ba884497827552",
+      "title": "Capacity parsing rule",
+      "what": "Reads a capacity text and converts it to thousands of barrels per day only when the unit is clearly a barrel unit. It refuses gas, LNG, power, bare numbers, free text, and values above the 20000 ceiling, and gives a reason for each refusal.",
+      "why": "The code comments say the ceiling catches unit tokens that contradict the size, and that gas or power units need a conversion factor that is not assumed.",
+      "watch_out": "The 20000 ceiling is a fixed number, so a real asset above it would be refused."
+    },
+    {
+      "start": 177,
+      "end": 192,
+      "kind": "value",
+      "name": "capSamples",
+      "id": "s12",
+      "hash": "df843ea5cb9fa425",
+      "title": "Capacity decision samples",
+      "what": "Counts how many capacity values are present, parsed, and refused, with the reasons, and keeps up to 25 example refusals.",
+      "why": "Lets the owner check the refusal decisions by eye.",
+      "watch_out": "Only the first 25 refusals are shown, not all of them."
+    },
+    {
+      "start": 193,
+      "end": 208,
+      "kind": "value",
+      "name": "OG_LEAVES, subDist",
+      "id": "s13",
+      "hash": "fc202f46b056e98c",
+      "title": "Sub industry keyword lists",
+      "what": "Holds a list of keyword patterns, each mapped to one of the oil and gas sub industry categories, and counts how many records fall into each category.",
+      "why": "The header says these are proposals only, and that no category is invented.",
+      "watch_out": "The first matching pattern in the list wins, so the order matters for projects that mention several topics."
+    },
+    {
+      "start": 209,
+      "end": 225,
+      "kind": "value",
+      "name": "subNull",
+      "id": "s14",
+      "hash": "8022218cc747a8d6",
+      "title": "Records with no sub industry match",
+      "what": "Searches each record's name, overview, technology, geography, capacity and asset class text for the keywords. Records with no match are counted as no clean match, and the first 20 names are kept.",
+      "why": "Shows which projects the keyword rules could not place.",
+      "watch_out": "Keyword matches are plain text patterns, so an unrelated word that contains one can be counted under the wrong category."
+    },
+    {
+      "start": 226,
+      "end": 244,
+      "kind": "value",
+      "name": "companyLevelNames",
+      "id": "s15",
+      "hash": "15e57dfac06e0233",
+      "title": "Budget and company finance check",
+      "what": "Counts planned and actual capex values, flags records whose capex text reads like company wide finance, lists up to 15 of them, and counts budgets stated in a currency other than USD.",
+      "why": "The header says company level finance must never become a project value.",
+      "watch_out": "This flags records by text pattern only, and the dry run does not exclude them itself."
+    },
+    {
+      "start": 245,
+      "end": 248,
+      "kind": "value",
+      "name": "padded",
+      "id": "s16",
+      "hash": "5a64b7de8f4322fd",
+      "title": "Zero padded fact keys",
+      "what": "Finds fact keys written with a leading zero, such as fact_01, and reports how many a simple numbered loop would miss.",
+      "why": "Reason not stated in the code beyond the hazard label, which shows the import must handle this naming.",
+      "watch_out": "The check only looks for two digit zero padded keys."
+    },
+    {
+      "start": 249,
+      "end": 256,
+      "kind": "value",
+      "name": "sm",
+      "id": "s17",
+      "hash": "0e232cd5d846c86e",
+      "title": "Hazard checks and delay parsing",
+      "what": "Runs the signed month parser on three sample values and prints the results. Then reports whether overrun fields and grounded-in references exist in the source, and prints the hazard checks one by one.",
+      "why": "Serves as a regression check on the delay parser and records which derived values are not computed here.",
+      "watch_out": "The parser output is only printed, not compared with expected values, so a broken parser shows up only if someone reads the line."
+    }
+  ],
+  "explained_at": "2026-11-12T02:57:01+00:00",
+  "explained_by": "haiku",
+  "summary": "A read only report on the oil and gas Compass export that counts each quality gate and shows what the real import would keep, change or refuse, without writing anything.",
+  "purpose": "Gives the owner evidence about the oil and gas data before any database write happens.",
+  "why": "The header says it is a dry run only, and that the capacity and sub industry logic is proposed here but not applied anywhere.",
+  "how": "Finds the oil and gas export files, fingerprints them to detect exact copies, and loads every record. It then checks identity, the fact layers, date values, capacity values, possible sub industry matches, budgets and company level finance wording. It prints a report for each check, plus hazard checks such as zero padded keys and delay parsing.",
+  "inputs": "The OGCO_compass JSON files in the data/compass/oil-gas folder and the shared mapper helper functions.",
+  "outputs": "Printed report only. It writes no files and no database rows.",
+  "risks": "Reads and parses every file, so one malformed file stops the whole report. The sub industry and capacity results are suggestions, and printed counts can be misread as final values.",
+  "debug": "If the file count looks wrong, check the folder path, which is resolved from the current working directory and must be run from the api server folder. A parse error names the bad file. If counts do not match the real import, compare the capacity rule with the ingest script's copy.",
+  "summary_hash": "sha256:6f64e48465178b806527ce7fff536dba2645f7e8e2eb2ba13107acea57409eaf"
+}

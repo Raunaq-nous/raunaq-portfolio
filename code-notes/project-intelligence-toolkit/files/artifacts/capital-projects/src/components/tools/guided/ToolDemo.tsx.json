@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/capital-projects/src/components/tools/guided/ToolDemo.tsx",
+  "language": "TypeScript (React)",
+  "lines": 361,
+  "hash": "sha256:ab5a28116acfaf4960a48dc4c3e56fbdfd919fa6a649b685d38b6e6d92eaefe3",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Load and error paths are handled, with a retry button and a route to the live tool.",
+      "No test or other evidence of correct behaviour is visible in this file.",
+      "Matching a selection depends on the server sending the project list; without it the file shows a notice instead of a result, which is safe but limits the demo."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Replay",
+      "meaning": "Showing a result that was saved earlier, step by step, without doing the work again."
+    },
+    {
+      "term": "Prepared run",
+      "meaning": "The saved copy of one demo run that the server keeps for replay."
+    },
+    {
+      "term": "Scope",
+      "meaning": "The set of industries, segments, companies or projects a run covers."
+    },
+    {
+      "term": "Cohort",
+      "meaning": "The exact list of project ids a recorded run covered."
+    },
+    {
+      "term": "Hook",
+      "meaning": "A React function that stores state or fetches data for a component."
+    },
+    {
+      "term": "PPTX",
+      "meaning": "The PowerPoint file format."
+    }
+  ],
+  "depends_on": [
+    "@tanstack/react-query",
+    "wouter",
+    "lucide-react",
+    "@/lib/queryClient",
+    "@/tools/reality-scan/SlideEditor",
+    "@/tools/reality-scan/scanApi",
+    "@/tools/lessons-learnt/LessonsRunView",
+    "@/tools/reality-scan/scanStages",
+    "@/components/tools/house/AgentProcess",
+    "@/components/tools/house/RunControls",
+    "@/components/tools/house/ScopePicker",
+    "./DemoHint"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup, DemoTool, QA",
+      "id": "s1",
+      "hash": "801dd61dbd280c64",
+      "title": "Purpose notes and imports",
+      "what": "Explains the rules of the demo in a comment, imports the parts it needs, and defines the two supported tools and the shape of a saved question and answer.",
+      "why": "The comment states the rules, so later changes can be checked against them; the rest is setup.",
+      "watch_out": "The comment is the only written rule set, so any change must keep replay free of live calls."
+    },
+    {
+      "start": 31,
+      "end": 53,
+      "kind": "type",
+      "name": "PreparedPresentation, fmtDate, norm, LIVE_HREF",
+      "id": "s2",
+      "hash": "0723944cb10aa68d",
+      "title": "Shape of a recorded run",
+      "what": "Describes everything saved for one recorded run: tool, run id, date, scope, deck, questions, amendment, stages, hints, source checks and research.",
+      "why": "Defines what the server must supply so the demo can replay the run.",
+      "watch_out": "Many fields are optional, so code that reads them must handle their absence."
+    },
+    {
+      "start": 54,
+      "end": 61,
+      "kind": "function",
+      "name": "usePrepared",
+      "id": "s3",
+      "hash": "59dcaca73bd7e44a",
+      "title": "Loading the recorded run",
+      "what": "Fetches the saved run for one tool from the server and keeps it, so it is not requested again while the page is open.",
+      "why": "Likely reason: a recording never changes, so keeping it avoids repeat requests.",
+      "watch_out": "The cache never goes stale, so a corrected recording only appears after a page reload."
+    },
+    {
+      "start": 62,
+      "end": 67,
+      "kind": "function",
+      "name": "preparedScope",
+      "id": "s4",
+      "hash": "66f84853c98104e0",
+      "title": "Recorded selection in picker form",
+      "what": "Converts the saved selection into the shape the scope picker uses, filling any missing lists with empty ones.",
+      "why": "Lets the recorded selection use the same picker controls as a live selection.",
+      "watch_out": "Missing lists become empty, so a partly saved selection can look broader than it was."
+    },
+    {
+      "start": 68,
+      "end": 79,
+      "kind": "function",
+      "name": "usePreloadedScope",
+      "id": "s5",
+      "hash": "8eea2981bf6d3dd4",
+      "title": "Preloading the recorded selection",
+      "what": "On demo entry, places the recorded selection into the picker once, and only if the picker is still empty.",
+      "why": "So the first screen already matches the recording.",
+      "watch_out": "A page reload resets the one-time guard, so the recorded selection will be applied again."
+    },
+    {
+      "start": 80,
+      "end": 85,
+      "kind": "function",
+      "name": "cohortIds, ScopeMatch",
+      "id": "s6",
+      "hash": "9e833838c0e39229",
+      "title": "Possible match results",
+      "what": "Lists the recorded project ids and defines three outcomes: match, unavailable, or mismatch with counts.",
+      "why": "Lets the screen say whether the current selection is the recorded set.",
+      "watch_out": "If the server does not send the project list, the outcome is unavailable, never a match."
+    },
+    {
+      "start": 86,
+      "end": 96,
+      "kind": "function",
+      "name": "matchCohort",
+      "id": "s7",
+      "hash": "dbf642606c05d11f",
+      "title": "Comparing selection with recording",
+      "what": "Counts projects in the recording but not on screen, and on screen but not in the recording, and reports a match only when both counts are zero and the recording is not empty.",
+      "why": "An exact set comparison prevents replaying a result that does not fit the selection.",
+      "watch_out": "An empty recorded list never counts as a match."
+    },
+    {
+      "start": 97,
+      "end": 104,
+      "kind": "function",
+      "name": "useReplayMatch",
+      "id": "s8",
+      "hash": "a1fd8ba8b6493c87",
+      "title": "Shared match hook for index pages",
+      "what": "Used by both tool index pages to load the recording, compare it with the shown projects, and open the replay page.",
+      "why": "Keeps the matching and navigation rules in one place for both tools.",
+      "watch_out": "The comparison runs only when demo mode is on and a list of shown project ids is supplied."
+    },
+    {
+      "start": 105,
+      "end": 138,
+      "kind": "function",
+      "name": "ReplayScopeNotice",
+      "id": "s9",
+      "hash": "10899339c975b8c0",
+      "title": "Selection notice and restore action",
+      "what": "Shows in the selection panel whether the current selection matches the recording; if not, explains what was recorded and offers a restore button or a live run button.",
+      "why": "Tells the visitor plainly that a changed selection has no recorded result instead of silently showing a different one.",
+      "watch_out": "The live run button appears only when an action is passed in, and the text warns that a live run can take several minutes."
+    },
+    {
+      "start": 139,
+      "end": 148,
+      "kind": "function",
+      "name": "describeScope",
+      "id": "s10",
+      "hash": "a6a0e425bafa8cac",
+      "title": "Readable description of a selection",
+      "what": "Writes a short plain summary of a selection from its industries, segments, companies and project count, falling back to the saved label.",
+      "why": "Gives the visitor a human description of what was recorded.",
+      "watch_out": "If none of those parts are present, the saved label is shown instead, which may be vague."
+    },
+    {
+      "start": 149,
+      "end": 152,
+      "kind": "function",
+      "name": "scopeIsEmptyLocal",
+      "id": "s11",
+      "hash": "debe088058969fba",
+      "title": "Empty selection check",
+      "what": "Returns true when no industries, segments, projects or companies are selected.",
+      "why": "Used to decide whether there is anything to preload or restore.",
+      "watch_out": "Peer and research settings are ignored, so a selection that holds only those looks empty."
+    },
+    {
+      "start": 153,
+      "end": 156,
+      "kind": "function",
+      "name": "toResearchSources",
+      "id": "s12",
+      "hash": "9db8666efb20be85",
+      "title": "Converting saved sources for display",
+      "what": "Turns saved source references into the source format the assistant panel expects, marking each as fetched or search only.",
+      "why": "Likely reason: the assistant panel uses its own source format, and this adapts the saved one.",
+      "watch_out": "The fetched status is inferred only from whether a web address exists; the page itself is not checked."
+    },
+    {
+      "start": 157,
+      "end": 167,
+      "kind": "function",
+      "name": "reverifyQA",
+      "id": "s13",
+      "hash": "84814546c4fd2fe9",
+      "title": "Re-verify reply from stored checks",
+      "what": "Builds the reply for the re-verify action from checks stored at recording time, stating for each source whether its quote was found then, and saying nothing was re-checked now.",
+      "why": "Keeps the replay honest by reporting the recorded checks, not new ones.",
+      "watch_out": "When no checks were stored, the function returns nothing and the caller tells the visitor a live run is needed."
+    },
+    {
+      "start": 168,
+      "end": 170,
+      "kind": "type",
+      "name": "ReplayMessage",
+      "id": "s14",
+      "hash": "8a674d5ecbfa4e92",
+      "title": "Replay chat message type",
+      "what": "Describes a saved chat message that can also carry its original source references.",
+      "why": "Lets the replay keep sources while the Scan panel ignores the extra field.",
+      "watch_out": "Any new consumer of these messages must tolerate the extra field."
+    },
+    {
+      "start": 171,
+      "end": 205,
+      "kind": "function",
+      "name": "useReplayAssistant",
+      "id": "s15",
+      "hash": "c2b44309b590b0b6",
+      "title": "Replay chat answers",
+      "what": "Answers chat prompts only from stored text: it runs the re-verify, edit or recorded research reply, or matches a suggested question to its recorded answer, and otherwise says no model runs in replay.",
+      "why": "The comment says unrecorded prompts must not receive generated answers.",
+      "watch_out": "Matching uses normalised text, so a reworded question gets the honest no-recorded-reply message."
+    },
+    {
+      "start": 206,
+      "end": 213,
+      "kind": "function",
+      "name": "download",
+      "id": "s16",
+      "hash": "dd63e85319a756dd",
+      "title": "File download helper",
+      "what": "Fetches a file from the server, saves it to the browser's download link and frees the temporary link after two seconds.",
+      "why": "A file fetched with request headers needs a temporary link before the browser can save it.",
+      "watch_out": "A failed fetch is not caught here, so the caller must handle errors."
+    },
+    {
+      "start": 214,
+      "end": 225,
+      "kind": "function",
+      "name": "preparedRows",
+      "id": "s17",
+      "hash": "cac38be2f447d59e",
+      "title": "Saved stage rows for display",
+      "what": "Converts each saved stage into the row format the live views use, shows a missing status as not reported, and removes the recipe field from summaries.",
+      "why": "The comment says a missing status must not look complete, and the recipe could lead to opening and changing the saved run.",
+      "watch_out": "Only the summary loses its recipe field; the log is still shown as text."
+    },
+    {
+      "start": 226,
+      "end": 236,
+      "kind": "function",
+      "name": "preparedStages",
+      "id": "s18",
+      "hash": "a717a40a4cd3c39a",
+      "title": "Stages for the progress view",
+      "what": "Builds the stage list for display: for Reality Scan it uses the scan stage builder and hides the body of the final stage; for Lessons Learnt it uses the stage labels and pairs them with the saved rows by position.",
+      "why": "Keeps the replay looking the same as a live run.",
+      "watch_out": "Lessons stages are matched by position, so a change in stage order would mislabel them."
+    },
+    {
+      "start": 237,
+      "end": 255,
+      "kind": "function",
+      "name": "ReplayBar",
+      "id": "s19",
+      "hash": "5f4c4471dccf64f6",
+      "title": "Replay top bar",
+      "what": "Shows the recorded date, scope and project count, a note that statuses are as recorded, any local changes, Reality Scan download buttons, a skip button, a discard button and a link to run live.",
+      "why": "Tells the visitor they are watching a recording and which changes exist only on screen.",
+      "watch_out": "Download buttons appear only for Reality Scan, so Lessons Learnt has no downloads here."
+    },
+    {
+      "start": 256,
+      "end": 262,
+      "kind": "function",
+      "name": "LoadState",
+      "id": "s20",
+      "hash": "692b2445b568b0e7",
+      "title": "Loading and error message",
+      "what": "Shows placeholder bars while the recording loads, and on failure a message with a retry button and a link to the live tool.",
+      "why": "Gives the visitor a way forward when the recording cannot be loaded.",
+      "watch_out": "The live link depends on the tool name, so a new tool needs its own live route."
+    },
+    {
+      "start": 263,
+      "end": 267,
+      "kind": "function",
+      "name": "ScanReplayView",
+      "id": "s21",
+      "hash": "1644d6db98497ee9",
+      "title": "Reality Scan replay entry",
+      "what": "Shows the Reality Scan replay body once the recording has loaded, otherwise the loading message.",
+      "why": "Waits for the recording before drawing anything, so no empty screen appears.",
+      "watch_out": "The screen depends on the loading state being correct; a stuck load shows only placeholders."
+    },
+    {
+      "start": 268,
+      "end": 313,
+      "kind": "function",
+      "name": "useReplayDeck",
+      "id": "s22",
+      "hash": "cf20872c8890269c",
+      "title": "Shared replay state",
+      "what": "Holds the local state for both demos: whether the amendment was requested, its decision, text edits and chart cut. It builds the deck the slide editor shows, the actions the editor can call, and a reset.",
+      "why": "Keeps the local-only behaviour in one place so the export matches what the visitor sees.",
+      "watch_out": "Edits are keyed by element id, so two edits sharing an id would overwrite each other."
+    },
+    {
+      "start": 314,
+      "end": 322,
+      "kind": "function",
+      "name": "preparedExport",
+      "id": "s23",
+      "hash": "9f9055e092dfb114",
+      "title": "Prepared presentation download",
+      "what": "Asks the server for the saved presentation with local changes attached and downloads it as a PowerPoint file, named with the tool and whether it was edited.",
+      "why": "Lets the visitor take away the replayed deck as it looks on screen.",
+      "watch_out": "The changes are sent as text in the web address, so a very large set of edits could exceed address length limits."
+    },
+    {
+      "start": 323,
+      "end": 342,
+      "kind": "function",
+      "name": "ScanReplayBody",
+      "id": "s24",
+      "hash": "51d038434880c3bb",
+      "title": "Reality Scan replay body",
+      "what": "Shows the recorded process first, using the same progress view as a live run, then reveals the slide editor when the process finishes or the visitor skips.",
+      "why": "Follows the live experience without faking any new work.",
+      "watch_out": "The deck appears only after the process has been shown, and a recording with no trace lines skips straight to the deck."
+    },
+    {
+      "start": 343,
+      "end": 350,
+      "kind": "function",
+      "name": "LessonsReplayDeck",
+      "id": "s25",
+      "hash": "26a4c41f1f42878c",
+      "title": "Lessons slides replay entry",
+      "what": "Shows the recorded Lessons Learnt deck in the editor once it has loaded, otherwise the loading message, and passes along an optional deck connection.",
+      "why": "Lets the Lessons tab reuse the same editor as a live run.",
+      "watch_out": "Whether the optional deck connection could save to the live service is unclear from this file, so it should be checked before use in replay."
+    },
+    {
+      "start": 351,
+      "end": 361,
+      "kind": "function",
+      "name": "LessonsReplayBody",
+      "id": "s26",
+      "hash": "094d251432d245c6",
+      "title": "Lessons replay body",
+      "what": "Shows the recorded Lessons Learnt deck with a note about the recording date, a list of local changes, and a discard button after any change.",
+      "why": "Makes clear that the deck is a recording and that edits stay on screen.",
+      "watch_out": "The discard button appears only once a local change exists."
+    }
+  ],
+  "explained_at": "2026-11-12T05:46:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Lets a visitor replay a pre-recorded LNG demo of the Reality Scan and Lessons Learnt tools without starting any new server work.",
+  "purpose": "Gives a demonstration path that shows a saved run in the same screens as a live run, while making no new runs, research or model calls.",
+  "why": "The header comment says replay must not start runs, research or model calls, and must not change a saved deck or the Yard, so local state is kept on screen and only exported.",
+  "how": "First, `usePrepared` loads the recorded run from the prepared endpoint. `usePreloadedScope` puts the recorded selection into the picker once, and `useReplayMatch` with `matchCohort` checks whether the visible selection is the recorded project set. For Reality Scan, `ScanReplayBody` replays the recorded stage logs in `AgentProcess` and then shows the slide editor. For Lessons Learnt, `LessonsReplayBody` shows the recorded deck. Edits, the chart cut and the amendment decision are kept in `useReplayDeck`. `useReplayAssistant` answers chat prompts only from stored replies. `preparedExport` downloads the deck with those local changes.",
+  "inputs": "The prepared run from the guided-demo prepared endpoint, the demo and replay URL flags, the picker's current selection, and the visitor's actions (typing edits, applying or dismissing the amendment, asking prompts, exporting).",
+  "outputs": "Rendered replay screens, a short list of local changes, chat replies from the recording, and a downloaded PowerPoint file.",
+  "risks": "A recorded result can look live if its label is missed. A wrong match could show a result for a different selection. Local edits can be mistaken for saved edits, and the export is a plain file download with no error handling in `download`.",
+  "debug": "If the replay says no recorded result for this scope, compare the selection with the recorded project list in `matchCohort`. If the recording fails to load, check the response from the prepared endpoint and the message in `LoadState`. If a prompt gets no recorded reply, check the question text against the stored questions in `useReplayAssistant`. If an export is wrong, check the options passed to `preparedExport`.",
+  "summary_hash": "sha256:ab5a28116acfaf4960a48dc4c3e56fbdfd919fa6a649b685d38b6e6d92eaefe3"
+}

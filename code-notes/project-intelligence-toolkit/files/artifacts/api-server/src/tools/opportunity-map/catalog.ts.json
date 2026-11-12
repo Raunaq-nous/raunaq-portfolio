@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/catalog.ts",
+  "language": "TypeScript",
+  "lines": 54,
+  "hash": "sha256:a496422fb9ab4b4205531beef5689cf069169a2d0e2c032aabcce7d831f47c59",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The public account list uses an allowlist, which is a safe choice.",
+      "No test for this file is visible.",
+      "Alias matching has special cases for Hydro and National Grid that need review whenever matching changes."
+    ]
+  },
+  "terms": [
+    {
+      "term": "allowlist",
+      "meaning": "a list of the only fields allowed to leave the server; everything else is hidden"
+    },
+    {
+      "term": "alias",
+      "meaning": "another name an account is known by"
+    },
+    {
+      "term": "domain",
+      "meaning": "the web address name a company owns, such as example.com"
+    },
+    {
+      "term": "research key",
+      "meaning": "a shared key that groups several account records under one research target"
+    }
+  ],
+  "depends_on": [
+    "./data/accounts.json",
+    "./data/solutions.json",
+    "./data/trigger-rules.json"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/codebook.ts",
+    "artifacts/api-server/src/tools/opportunity-map/index.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 5,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3ece34ccab3f3b30",
+      "title": "Loading the reference data files",
+      "what": "Loads the account data file, the solution data file and the trigger rule data file, and exposes the account list to other code.",
+      "why": "Likely reason: keeps business reference data in editable files rather than in code.",
+      "watch_out": "All three files must exist and be valid JSON when the server starts, or this module fails to load."
+    },
+    {
+      "start": 6,
+      "end": 11,
+      "kind": "type",
+      "name": "Account, triggerFamilies, getAccount, accountTarget",
+      "id": "s2",
+      "hash": "3c137f9e4f46a44f",
+      "title": "Account types and lookup helpers",
+      "what": "Defines the account type, the solutions list, the trigger rules, and the trigger family names. Provides helpers to find an account by id and to build the target label used for account research.",
+      "why": "Likely reason: lookups by id are shared by several other opportunity map files.",
+      "watch_out": "An unknown id returns nothing, so callers must handle a missing account."
+    },
+    {
+      "start": 12,
+      "end": 14,
+      "kind": "function",
+      "name": "accountForTarget",
+      "id": "s3",
+      "hash": "3c79ed95fc282436",
+      "title": "Reverse lookup from a target label",
+      "what": "Turns a target label that starts with the account prefix back into an account. Also lists the research accounts: those that are their own research key and have a web domain.",
+      "why": "Likely reason: research jobs store a target label, so this recovers the account from that label.",
+      "watch_out": "Only labels starting with the account prefix resolve; any other text gives nothing."
+    },
+    {
+      "start": 15,
+      "end": 24,
+      "kind": "function",
+      "name": "publicAccounts, normalized, escape",
+      "id": "s4",
+      "hash": "3279d9d75b1e5f8b",
+      "title": "Safe public account list and text cleaning",
+      "what": "Builds the account list that may be shown to users, copying only a fixed set of fields and leaving out private relationship data. Also provides helpers that lower case text, remove accents, and escape special characters for pattern matching.",
+      "why": "The comment says this is an explicit allowlist so the private relationship catalogue is never serialised.",
+      "watch_out": "A new field added to the account data is not shown publicly until someone adds it to this list, so review each change here."
+    },
+    {
+      "start": 25,
+      "end": 32,
+      "kind": "function",
+      "name": "mentionsAccount",
+      "id": "s5",
+      "hash": "677710b0a91af84f",
+      "title": "Checking whether text names an account",
+      "what": "Says whether a piece of text mentions an account by any of its aliases, matching whole words only and ignoring case and accents. The bare names Hydro and National Grid are ignored, because those words are common in ordinary text.",
+      "why": "The comments explain that these two names appear in everyday sentences and would give false matches.",
+      "watch_out": "The whole-word test works on plain letters and digits, so an alias with unusual characters may fail to match."
+    },
+    {
+      "start": 33,
+      "end": 36,
+      "kind": "function",
+      "name": "accountIdsForText",
+      "id": "s6",
+      "hash": "7aa32c03013fa3b2",
+      "title": "All accounts named in a text",
+      "what": "Returns the ids of every account mentioned in the text. Accounts that share a research key are all included together.",
+      "why": "Likely reason: one research target can have several account records, so grouping keeps them together.",
+      "watch_out": "Results depend on the aliases in the data file, so a missing alias means the account is not found."
+    },
+    {
+      "start": 37,
+      "end": 43,
+      "kind": "function",
+      "name": "isOfficialSource",
+      "id": "s7",
+      "hash": "2d8e17eb988a7499",
+      "title": "Checking a link is from the company",
+      "what": "Says whether a web address belongs to the account's own domain, including subdomains, ignoring a leading www. Returns no if the account has no domain or the address is not valid.",
+      "why": "Likely reason: lets the app tell company-published sources apart from press or third-party sources.",
+      "watch_out": "Any company web presence on a different domain will be treated as not official."
+    },
+    {
+      "start": 44,
+      "end": 49,
+      "kind": "function",
+      "name": "internalRouting",
+      "id": "s8",
+      "hash": "0c6e499426de4613",
+      "title": "Internal owner details for stored records",
+      "what": "Returns the partners and managers recorded for each named account. The comment says this confidential ownership information is kept only in stored server data.",
+      "why": "The comment states the reason: the ownership details are confidential.",
+      "watch_out": "This output must never reach a browser or public response; it is the main confidentiality risk in this file."
+    },
+    {
+      "start": 50,
+      "end": 54,
+      "kind": "function",
+      "name": "matchTriggers",
+      "id": "s9",
+      "hash": "47f530c1d3a2b1df",
+      "title": "Finding trigger rules that match text",
+      "what": "Returns the trigger rules whose phrases appear as whole words in the text, ignoring case and accents.",
+      "why": "Likely reason: lets a signal be tagged with the kinds of event it describes.",
+      "watch_out": "A very common phrase will match many texts, so trigger wording needs care when edited."
+    }
+  ],
+  "explained_at": "2026-11-12T04:49:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Loads the account, solution and trigger data files and provides safe lookups, including a public account list that hides private relationship data.",
+  "purpose": "Single place where the opportunity map reads its reference data and decides what is safe to show.",
+  "why": "The comment on the public list says it is an explicit allowlist so the private relationship catalogue is never sent out.",
+  "how": "1. Load three JSON data files. 2. Provide lookups by account id. 3. Build the public account list from an allowlist of fields. 4. Match account aliases and trigger phrases in text, as whole words. 5. Check whether a web address belongs to an account's own domain. 6. Provide internal ownership details only for stored server data.",
+  "inputs": "The accounts, solutions and trigger rules JSON files, plus text and web addresses to check.",
+  "outputs": "Account lists, single account lookups, matched accounts or triggers, official-source yes or no, and internal partner and manager details.",
+  "risks": "internalRouting returns confidential partner and manager names, so it must never reach a browser. A field added to the public list would be exposed. Alias matching can give false hits. A missing or invalid data file stops startup.",
+  "debug": "If an account is not found, check its aliases in the accounts file. If a trigger is missed, check its phrases in the trigger rules file. If confidential data appears in a response, check which function built that response and what publicAccounts allows.",
+  "summary_hash": "sha256:a496422fb9ab4b4205531beef5689cf069169a2d0e2c032aabcce7d831f47c59"
+}

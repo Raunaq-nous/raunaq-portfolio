@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/capital-projects/src/tools/lessons-learnt/v3/RecipeRunView.tsx",
+  "language": "TypeScript (React)",
+  "lines": 146,
+  "hash": "sha256:5d899bb16cbe584d3968cad9d501953334671e8bf7a714ed1cd747df277c148e",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in this file or packet.",
+      "Several places depend on server state being in an expected form.",
+      "Error handling covers loading and export, but the stage view shows nothing when stage data is missing rather than explaining why."
+    ]
+  },
+  "terms": [
+    {
+      "term": "polling",
+      "meaning": "asking the server for fresh data on a timer, here every two seconds"
+    },
+    {
+      "term": "checkpoint",
+      "meaning": "a saved point in a run so it can restart without starting over"
+    },
+    {
+      "term": "replay",
+      "meaning": "showing a recorded run again without running anything new"
+    },
+    {
+      "term": "API",
+      "meaning": "a doorway other programs use to ask this app for data"
+    }
+  ],
+  "depends_on": [
+    "@tanstack/react-query",
+    "wouter",
+    "artifacts/capital-projects/src/tools/lessons-learnt/llApi",
+    "artifacts/capital-projects/src/tools/lessons-learnt/v3/RecipeResultView",
+    "artifacts/capital-projects/src/tools/lessons-learnt/v3/types.ts",
+    "artifacts/capital-projects/src/components/tools/house/AgentProcess",
+    "artifacts/capital-projects/src/components/tools/house/LiveRunFeed",
+    "artifacts/capital-projects/src/components/tools/house/RunPanelTabs",
+    "artifacts/capital-projects/src/components/dark/CollationField",
+    "artifacts/capital-projects/src/components/tools/guided/ToolDemo",
+    "artifacts/capital-projects/src/components/tools/guided/DemoHint"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "2b30dc471aa92ba3",
+      "title": "Imports",
+      "what": "Brings in the data-fetching, page-address, status-panel, demo and result pieces this page uses.",
+      "why": "Keeps the run page built from shared parts rather than re-written code.",
+      "watch_out": ""
+    },
+    {
+      "start": 18,
+      "end": 34,
+      "kind": "value",
+      "name": "V3_STAGES",
+      "id": "s2",
+      "hash": "ae40acc8c282078e",
+      "title": "Stage names and descriptions",
+      "what": "Maps each internal stage key to a plain label and a sentence saying what the stage does. These appear as the run progresses.",
+      "why": "Turns internal names such as `gather_factbase` into text a user can read.",
+      "watch_out": "A stage added on the server but missing here will be silently hidden from the progress view."
+    },
+    {
+      "start": 35,
+      "end": 47,
+      "kind": "function",
+      "name": "toProcessStages",
+      "id": "s3",
+      "hash": "336521bbf0e17423",
+      "title": "Converting stage data for display",
+      "what": "Takes the run details from the server and turns each known stage into a row with label, purpose, status, trace lines and progress text. Stages that are unknown are dropped and missing stages count as pending.",
+      "why": "Lets the progress view draw the same stage list for live and replayed runs.",
+      "watch_out": "Stage order comes from the server's `stageOrder`, so the order shown follows the server, not this file."
+    },
+    {
+      "start": 48,
+      "end": 52,
+      "kind": "function",
+      "name": "getResult",
+      "id": "s4",
+      "hash": "fa70b9c424ec360c",
+      "title": "Fetching the saved result",
+      "what": "Asks the server for the finished result of a run and returns it as data.",
+      "why": "Kept small so the query for the result can be reused and cached.",
+      "watch_out": "Errors are not caught here, so the caller must handle a failed request."
+    },
+    {
+      "start": 53,
+      "end": 97,
+      "kind": "function",
+      "name": "RecipeRunView (part 1)",
+      "id": "s5",
+      "hash": "9e690d0c23f78d52",
+      "title": "Run status, polling and export",
+      "what": "Fetches the run every two seconds until it is final, decides whether to show live progress or the result, and handles export and resume requests. Export in replay mode uses the prepared copy.",
+      "why": "Keeps the page current during a run without a manual refresh, and lets a finished run open straight to its result.",
+      "watch_out": "The decision to show the result depends on two flags, one set when the page first loads and one set when the user skips ahead. Changing either can make the page show progress again after a refresh."
+    },
+    {
+      "start": 98,
+      "end": 146,
+      "kind": "function",
+      "name": "RecipeRunView (part 2)",
+      "id": "s6",
+      "hash": "dec6e5a6be757855",
+      "title": "Page header, run progress and result",
+      "what": "Draws the title, the cancel, resume, skip and new-run buttons, the error message, then either the progress tabs or the replay progress, or the finished result.",
+      "why": "Puts every state of a run on one screen, so the user is never sent to a different page.",
+      "watch_out": "Resume is shown only for failed or interrupted runs. Cancel is hidden in replay mode, so a replay cannot change a saved run."
+    }
+  ],
+  "explained_at": "2026-11-12T06:30:03+00:00",
+  "explained_by": "haiku",
+  "summary": "The page that shows one Lessons Learnt run while it is working and then its finished result, with a replay mode for recorded demo runs.",
+  "purpose": "Lets a user watch a run progress through its stages, cancel or resume it, and move on to the result.",
+  "why": "Likely reason: the run takes a long time, so the page polls for status and shows progress instead of making the user refresh. Reason for the replay mode not fully stated in the code, though it is named in the code as a recorded demo.",
+  "how": "The page asks the server for the run every two seconds until the run reaches a final state. Once it succeeds it fetches the saved result. Stage names are mapped to labels and purposes through `V3_STAGES`. A live run shows progress in three tabs (collation, feed, trace). A replay plays back the recorded progress, or shows a stage list in light mode, and then reveals the saved result. Export is a file download, or a prepared copy in replay mode.",
+  "inputs": "A run id, an optional new-run callback, and a flag that turns on replay mode. It also reads the `playback` value from the page address.",
+  "outputs": "A progress view or the finished result screen. It can also start a resume or export a PowerPoint.",
+  "risks": "The polling stops only when the run reaches a state listed in `TERMINAL`. If that list is wrong, polling continues forever. A replay mode that never writes depends on the prepared copy being present.",
+  "debug": "If the page never leaves the spinner, check the run status returned by the server and the `TERMINAL` list. If progress is empty, check that stage names match keys in `V3_STAGES`. If the result does not load, call the result endpoint directly to see the error.",
+  "summary_hash": "sha256:5d899bb16cbe584d3968cad9d501953334671e8bf7a714ed1cd747df277c148e"
+}

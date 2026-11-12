@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/gates/e25/provenance.ts",
+  "language": "TypeScript",
+  "lines": 117,
+  "hash": "sha256:aca6199566c6c79694aae7f519efd1fd4b6e9342214ecbfd9a7338fef41bf1ac",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "SQL is built by joining ID strings into the text, which is fragile even with quote escaping.",
+      "No test is visible for the lookup or the snapshot."
+    ]
+  },
+  "terms": [
+    {
+      "term": "snapshot",
+      "meaning": "a frozen copy of the data taken at one moment"
+    },
+    {
+      "term": "source span",
+      "meaning": "a stored passage from a document that a number was taken from"
+    },
+    {
+      "term": "evidence row",
+      "meaning": "one stored record that says where a value came from"
+    },
+    {
+      "term": "field path",
+      "meaning": "the name of a stored field, such as one for a planned budget, used to link records together"
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/mappers/toProjectDetailDTO",
+    "artifacts/api-server/src/gates/e25/types.ts"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/gates/e25/runE25.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 18,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "12ff0069eedafe8d",
+      "title": "Database layer purpose and rules",
+      "what": "Explains that this file is the only part allowed to read the database, and that it never writes, backfills, or changes data.",
+      "why": "The header separates reading from checking, so the checker stays testable.",
+      "watch_out": "Adding any write here would break the promise that a run only reads."
+    },
+    {
+      "start": 19,
+      "end": 26,
+      "kind": "type",
+      "name": "EvidenceRow",
+      "id": "s2",
+      "hash": "4704799f585dfbda",
+      "title": "Shape of an evidence row",
+      "what": "Describes the columns read from the evidence table: ID, project, field path, URL, and provenance class.",
+      "why": "It gives the query results a typed shape.",
+      "watch_out": "If a column is renamed in the database, this shape must change too."
+    },
+    {
+      "start": 27,
+      "end": 63,
+      "kind": "function",
+      "name": "resolveEvidenceIds",
+      "id": "s3",
+      "hash": "6ec593fac5d010f0",
+      "title": "Attaching evidence IDs to numbers",
+      "what": "For each claim that has a lookup, attaches every active evidence row for that project whose normalized field path is in the wanted list.",
+      "why": "The comment says it is generous on purpose, so a number is not failed just because the renderer showed a different source.",
+      "watch_out": "Because it attaches every matching row, a number can look linked to more evidence than the renderer actually displayed."
+    },
+    {
+      "start": 64,
+      "end": 117,
+      "kind": "function",
+      "name": "buildProvenanceIndex",
+      "id": "s4",
+      "hash": "26afcb9173acd963",
+      "title": "Building the evidence snapshot",
+      "what": "Loads the rows for the evidence IDs, marks whether each has a URL, marks rows without a URL as client supplied, attaches the source passages, and loads the calculation records for derived numbers.",
+      "why": "The comment explains that no URL means the value came in through a file the client supplied, which cannot be linked to a public page.",
+      "watch_out": "Client-supplied status is inferred only from a missing URL, so a blank or whitespace URL is treated as missing."
+    }
+  ],
+  "explained_at": "2026-11-12T03:33:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads the database to find the evidence records and source passages for each number, and packs them into a plain snapshot the validator can check without touching the database.",
+  "purpose": "Separates the database reading from the checking, so the checking stays pure and testable.",
+  "why": "The header says the validator must not do any input or output, so this file does all the reading.",
+  "how": "First, finds the project IDs in the claims, reads active evidence rows for those projects, and attaches every row whose normalized field path is wanted. Second, loads the evidence rows, their source passages, and any calculation records into plain objects.",
+  "inputs": "A list of numeral claims that may carry a lookup. Reads the tables for evidence quotes, source spans, and computation records.",
+  "outputs": "Claims with evidence IDs added, and a snapshot object holding evidence and computations.",
+  "risks": "The project and evidence IDs are placed into the SQL text by joining strings, not by passing parameters. The header of the first function says it attaches more rows than the renderer uses, which can make a number look better linked than it is.",
+  "debug": "If a claim gets no evidence, check that the evidence rows are active and that the field path normalizes to the same name. If a query fails, look at the IDs being joined into the SQL text.",
+  "summary_hash": "sha256:aca6199566c6c79694aae7f519efd1fd4b6e9342214ecbfd9a7338fef41bf1ac"
+}

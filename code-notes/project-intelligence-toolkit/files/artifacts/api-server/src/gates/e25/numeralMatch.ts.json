@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/gates/e25/numeralMatch.ts",
+  "language": "TypeScript",
+  "lines": 111,
+  "hash": "sha256:1fb576e0c0f8b4d3bc2843d447eef412e4cb2f5a0ea04fefd65408b7fb9f0c01",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test file is visible for this matcher.",
+      "The known limitation with unrelated numbers is documented but not guarded."
+    ]
+  },
+  "terms": [
+    {
+      "term": "tolerance",
+      "meaning": "how far two numbers may differ and still count as the same number"
+    },
+    {
+      "term": "unit hint",
+      "meaning": "a label saying what unit the stored value is in, such as millions of dollars or months"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/gates/e25/types.ts"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/gates/e25/validator.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b6cd1c5a6243e408",
+      "title": "Purpose and known limits",
+      "what": "Explains the job of this file: check whether a number appears in source text, handling different ways of writing it. It states that it does not check meaning.",
+      "why": "The header says presence of the number is the core test, while meaning is checked by a different gate.",
+      "watch_out": "A number that appears in an unrelated sentence still counts as a match."
+    },
+    {
+      "start": 26,
+      "end": 34,
+      "kind": "value",
+      "name": "SCALE_WORDS",
+      "id": "s2",
+      "hash": "15d238f60d8bd383",
+      "title": "Scale word table",
+      "what": "Lists words like billion, million, lakh, and crore, and their multipliers.",
+      "why": "Sources often write money with these words, so the matcher must read them.",
+      "watch_out": "Short forms such as m and b are included, so a fragment like '5 m' can be read as five million."
+    },
+    {
+      "start": 35,
+      "end": 62,
+      "kind": "function",
+      "name": "candidateValues",
+      "id": "s3",
+      "hash": "97d3b51b1f291d4d",
+      "title": "Finding candidate numbers in text",
+      "what": "Finds every number in a text and, when a scale word or percent follows, also adds the scaled version. Returns all these candidates.",
+      "why": "The comment says the caller decides which unit to compare, so every reading is returned.",
+      "watch_out": "Any letters after a number are checked as a possible scale word, so the list above controls what is recognized."
+    },
+    {
+      "start": 63,
+      "end": 69,
+      "kind": "function",
+      "name": "closeEnough",
+      "id": "s4",
+      "hash": "a5ceac5ab0e787b2",
+      "title": "Deciding two numbers are close",
+      "what": "Two numbers count as close if they differ by a small absolute amount, or by a small share of their size.",
+      "why": "Likely reason: displayed numbers are rounded, so exact equality would miss real matches.",
+      "watch_out": "Very small values depend mostly on the absolute amount, so they match loosely."
+    },
+    {
+      "start": 70,
+      "end": 85,
+      "kind": "function",
+      "name": "targetValues",
+      "id": "s5",
+      "hash": "4545ee159008e87f",
+      "title": "Alternate units for a stored value",
+      "what": "Builds the list of values a stored number could match in other units: a million dollar figure as a full dollar figure, a months figure as years when it divides evenly by twelve, and a years figure as months.",
+      "why": "The comment says a budget stored in millions is the same money as a billion figure in text.",
+      "watch_out": "Any months value divisible by twelve also matches as years, which widens what counts as a match."
+    },
+    {
+      "start": 86,
+      "end": 91,
+      "kind": "type",
+      "name": "NumeralMatch",
+      "id": "s6",
+      "hash": "fe512af7610c7d1a",
+      "title": "Match result shape",
+      "what": "Defines the result returned by the matcher: whether it matched, and which value in the text matched.",
+      "why": "The matched value is kept so the report can show what was found.",
+      "watch_out": ""
+    },
+    {
+      "start": 92,
+      "end": 107,
+      "kind": "function",
+      "name": "matchNumeralInText",
+      "id": "s7",
+      "hash": "516915c3cfe2c05c",
+      "title": "Main matching entry point",
+      "what": "Returns matched when any number found in the text is close to any allowed interpretation of the stored value. Returns not matched when the text is empty.",
+      "why": "This is the single entry point the validator calls.",
+      "watch_out": "An empty or missing text is never a match, so a missing source always fails."
+    },
+    {
+      "start": 108,
+      "end": 111,
+      "kind": "function",
+      "name": "isYearLike",
+      "id": "s8",
+      "hash": "54594dc7797be583",
+      "title": "Year-like number check",
+      "what": "Returns true for whole numbers from 1900 to 2100, so a year is not treated as a measured quantity.",
+      "why": "The gate reports year-like numbers separately, so years from slides do not look like failures.",
+      "watch_out": "A real amount between 1900 and 2100 is also flagged as year-like."
+    }
+  ],
+  "explained_at": "2026-11-12T03:33:41+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks whether a number the app is about to show appears in a piece of source text, allowing for different ways of writing the same number.",
+  "purpose": "Answers one question for the provenance gate: is this value present in the quoted text?",
+  "why": "The header says that a number being present in the quoted text is the real proof of provenance, while the evidence row being about the right project is not.",
+  "how": "Finds every number in the text and any scale word or percent sign after it. Adds scaled versions, such as billions or lakhs. Then compares each found value with the stored value and its alternate units, using a small tolerance.",
+  "inputs": "The text to search (may be empty), the stored value, and an optional unit hint.",
+  "outputs": "A result saying whether it matched, and which value in the text matched.",
+  "risks": "It checks that a number is present, not that it means the same thing. A '1200 employees' phrase matches a 1200 million dollar budget. The header calls this a known limitation.",
+  "debug": "If a real number is reported as unmatched, check the unit hint and the scale word list. Try the text through the candidate step to see what numbers were found.",
+  "summary_hash": "sha256:1fb576e0c0f8b4d3bc2843d447eef412e4cb2f5a0ea04fefd65408b7fb9f0c01"
+}

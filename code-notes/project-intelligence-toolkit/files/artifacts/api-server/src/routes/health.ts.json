@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/routes/health.ts",
+  "language": "TypeScript",
+  "lines": 51,
+  "hash": "sha256:af7a0a2df5d0c78f746e3c84834534444d4faa054cafe9a58bfa9ed6873982b6",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The live and search routes have no try and catch in this file, so an unexpected error may leave the request without a reply.",
+      "Any visitor can trigger paid model and search calls because no login check is present.",
+      "No tests are visible in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Environment variable",
+      "meaning": "A setting the server reads when it starts, such as a secret key, kept outside the code."
+    },
+    {
+      "term": "API key",
+      "meaning": "A secret password that lets this app use an outside service."
+    },
+    {
+      "term": "Live check",
+      "meaning": "A real, small request sent to an outside service to confirm that it works."
+    },
+    {
+      "term": "Router",
+      "meaning": "A group of web addresses that the app answers, attached to the main server."
+    },
+    {
+      "term": "Quota",
+      "meaning": "The usage limit a service allows over a period, after which it refuses requests."
+    }
+  ],
+  "depends_on": [
+    "../lib/envPreflight",
+    "../lib/modelLiveCheck",
+    "../lib/searchProviderLiveCheck",
+    "@workspace/api-zod",
+    "express"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/routes/index.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 8,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c8ca24dd1fda6ebf",
+      "title": "Imports and the router set-up",
+      "what": "Brings in the web framework, the response shape check, and the three check helpers. Creates the router that the routes below attach to.",
+      "why": "Reason not stated in the code beyond the imports being the checks the routes call.",
+      "watch_out": ""
+    },
+    {
+      "start": 9,
+      "end": 13,
+      "kind": "route",
+      "name": "get",
+      "id": "s2",
+      "hash": "057b582be821c30c",
+      "title": "Simple is-the-server-up answer",
+      "what": "Answers with status ok so a monitor can see the server is running. It does not check any outside service.",
+      "why": "Likely reason: a cheap heartbeat for uptime monitoring.",
+      "watch_out": "It says ok even when keys or outside services are broken, so use the other routes for those."
+    },
+    {
+      "start": 14,
+      "end": 21,
+      "kind": "route",
+      "name": "get",
+      "id": "s3",
+      "hash": "999d65b60c43e8b6",
+      "title": "Reports which settings are present",
+      "what": "Returns a report of which environment settings are set, showing only yes or no and length, never the value.",
+      "why": "The comment says this is the first place to look when a model call fails.",
+      "watch_out": "The report comes from buildEnvReport; if that helper ever returned a value, this route would expose a secret."
+    },
+    {
+      "start": 22,
+      "end": 37,
+      "kind": "route",
+      "name": "get",
+      "id": "s4",
+      "hash": "83308365af653cb7",
+      "title": "Real model test call",
+      "what": "Runs the settings report and three live checks at once: a small model completion, a per-role model check, and the search provider check. Always replies with status 200 and puts the verdict in the body.",
+      "why": "The comment says it is kept apart from the cheap check because it costs money and network time.",
+      "watch_out": "Each run spends paid calls and this section has no error catch, so a failed helper may leave the request without a reply."
+    },
+    {
+      "start": 38,
+      "end": 51,
+      "kind": "route",
+      "name": "get",
+      "id": "s5",
+      "hash": "2892867dee1d637d",
+      "title": "Real search provider test",
+      "what": "Runs one minimal search per search provider to tell whether each one is missing, invalid, rate-limited or working. Always replies with status 200 and puts the verdict in the body.",
+      "why": "The comment says a revoked search key and an exhausted quota went unnoticed while runs kept going on the other providers.",
+      "watch_out": "Each check uses a real search and so uses quota, and anyone who can reach the server can trigger it."
+    }
+  ],
+  "explained_at": "2026-11-12T04:06:01+00:00",
+  "explained_by": "haiku",
+  "summary": "The health and setup check routes that report whether the server is up, which keys are set, and whether the model and search services actually answer.",
+  "purpose": "Lets the owner or a monitoring tool see if the server runs, which API keys are present, and whether model and search calls work.",
+  "why": "The comments say the environment check is the first thing to check when a model call fails, and the live checks exist because a revoked key went unnoticed while runs carried on.",
+  "how": "Route one returns status ok. Route two reports which environment settings are present, as yes or no and lengths only. Route three does the same and adds one tiny model call, per role. Route four runs one tiny search per search provider. Each live result is put in the response body.",
+  "inputs": "HTTP GET requests with no parameters. The live routes read environment settings and make calls to the model and search providers.",
+  "outputs": "JSON. The health route returns status ok. The env route returns presence and length for each key, never the value. The live and search routes return a verdict per provider.",
+  "risks": "The two live routes spend money, because each one makes real calls to paid services. None of the health routes checks for a logged-in user, so anyone who can reach the server can trigger those calls. The live routes have no error handling in this file.",
+  "debug": "When model calls fail, open the env route first to confirm keys are present, then the live route for the real verdict. The helper modules envPreflight, modelLiveCheck and searchProviderLiveCheck hold the real logic and are not in this file. If a live route hangs, a provider is probably slow or unreachable.",
+  "summary_hash": "sha256:af7a0a2df5d0c78f746e3c84834534444d4faa054cafe9a58bfa9ed6873982b6"
+}

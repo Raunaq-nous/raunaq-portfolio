@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/replay-yard-research.ts",
+  "language": "TypeScript",
+  "lines": 120,
+  "hash": "sha256:deef8183c0863cb82a0f78dd423c8d454b74176a847fc316206ada1f2e5928a8",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible.",
+      "Uses a child process with a fixed timeout for one importer.",
+      "The ledger files were not visible here, so their content is unverified."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Ledger",
+      "meaning": "a list of approved research batches with their order and fingerprints"
+    },
+    {
+      "term": "Fingerprint (digest)",
+      "meaning": "a short code computed from the content, used to confirm a batch is the one that was approved"
+    },
+    {
+      "term": "Advisory lock",
+      "meaning": "a database lock that stops two runs from working at the same time"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/ingest/yardResearch/quoteChecks",
+    "artifacts/api-server/src/ingest/yardResearch/replayLedger",
+    "artifacts/api-server/src/ingest/yardResearch/populationImport",
+    "artifacts/api-server/script/import-yard-closure.ts",
+    "pg"
+  ],
+  "used_by": [
+    "Post-merge setup step",
+    "Run by hand"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 30,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "a54f1d4cf03768c0",
+      "title": "Setup and options",
+      "what": "Loads libraries and reads the command-line options for one industry, check-only mode, and the time budget.",
+      "why": "The header documents these options for running by hand and in setup.",
+      "watch_out": "The default time budget is 150 seconds; later batches wait for the next run."
+    },
+    {
+      "start": 31,
+      "end": 39,
+      "kind": "function",
+      "name": "val, log, Outcome",
+      "id": "s2",
+      "hash": "8f6877f1154e28ad",
+      "title": "Logging and outcome record",
+      "what": "Defines the log helper and the record format used for each batch's result.",
+      "why": "Reason not stated in the code beyond its use in the report.",
+      "watch_out": "Unclear beyond the names; the record fields are what the report shows."
+    },
+    {
+      "start": 40,
+      "end": 59,
+      "kind": "value",
+      "name": "pool",
+      "id": "s3",
+      "hash": "98c1b17e6e216e0d",
+      "title": "Connection pool and run lock",
+      "what": "Opens a small connection pool and takes a lock that stops another replay from running at the same time, then loops over the industries.",
+      "why": "The lock prevents two replays from interleaving their writes.",
+      "watch_out": "The lock is held on one connection for the whole run, so it must be released or the next run will say another replay is running."
+    },
+    {
+      "start": 60,
+      "end": 62,
+      "kind": "function",
+      "name": "stateOf",
+      "id": "s4",
+      "hash": "68565f665302b4ab",
+      "title": "Loaded state check",
+      "what": "Returns whether a given ledger batch is loaded, not loaded, partly loaded, or has nothing to load.",
+      "why": "Reason not stated in the code beyond the function's comment, which says it is called by the run above.",
+      "watch_out": "A partly loaded result stops that industry, so a wrong state check blocks later batches."
+    },
+    {
+      "start": 63,
+      "end": 107,
+      "kind": "function",
+      "name": "replayIndustry",
+      "id": "s5",
+      "hash": "1628536b977f77d0",
+      "title": "Replay for one industry",
+      "what": "Goes through the industry's batches in order, skips loaded ones, stops at partly loaded or mismatched batches, does a dry run and then a real load for matching ones, and writes the report.",
+      "why": "Stopping at the first problem stops later batches from loading out of order.",
+      "watch_out": "A mismatch blocks every later batch in that industry, so the report must be read before rerunning."
+    },
+    {
+      "start": 108,
+      "end": 120,
+      "kind": "function",
+      "name": "importBatch",
+      "id": "s6",
+      "hash": "8b6a8addb492a65a",
+      "title": "Load one batch",
+      "what": "Runs the population importer directly, or runs the closure importer as a separate program and reads its report file.",
+      "why": "Reason not stated in the code beyond the comment about the closure importer being a standalone script.",
+      "watch_out": "The closure path has a two-minute timeout and reads a fixed report path."
+    }
+  ],
+  "explained_at": "2026-11-12T03:13:00+00:00",
+  "explained_by": "haiku",
+  "summary": "Loads approved research batches into the database that are not loaded yet, checking each batch's plan fingerprint first, and stops an industry if a batch is partly loaded or does not match.",
+  "purpose": "Brings the database up to date with approved research after a merge, without loading a batch twice or loading a batch that differs from what was approved.",
+  "why": "The header says the setup should be safe to run at any time.",
+  "how": "Takes a lock so only one run happens, reads each industry's ledger in order, and checks each batch's state. Pending batches get a dry run, and the fingerprint must match before a real load. Results go to a report file for each industry. Exit code is non-zero if anything was refused.",
+  "inputs": "The replay ledger JSON files under data/yard-research, the DATABASE_URL setting, and command-line options for industry, check mode and time budget.",
+  "outputs": "Console messages, a replay report JSON for each industry that loaded or refused something, and database rows when a batch is loaded.",
+  "risks": "Writes many project rows. A stale ledger fingerprint blocks loads safely, but a wrong ledger entry would load the wrong data.",
+  "debug": "Run with --check to see each batch's state. Read the replay-report.json for the industry, and compare the dry-run report against the approved report named in the ledger.",
+  "summary_hash": "sha256:deef8183c0863cb82a0f78dd423c8d454b74176a847fc316206ada1f2e5928a8"
+}

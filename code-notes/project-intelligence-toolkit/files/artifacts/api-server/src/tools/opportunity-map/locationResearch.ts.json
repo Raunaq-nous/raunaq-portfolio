@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/locationResearch.ts",
+  "language": "TypeScript",
+  "lines": 130,
+  "hash": "sha256:b7438135d46663eb192ef698e710c9e6e4f52aa4abb6b8e46a6c2fc3ded16db1",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test for these functions is visible in the packet.",
+      "A map lookup that finds no clear match is cached for 24 hours, so a place may stay unresolved for a full day.",
+      "Errors are caught and reported as notes or a failed status, which is a strength."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Geocoding",
+      "meaning": "turning a place name into map coordinates (latitude and longitude)."
+    },
+    {
+      "term": "OpenStreetMap",
+      "meaning": "a free, community-built world map database."
+    },
+    {
+      "term": "Photon and Nominatim",
+      "meaning": "two map search services that this code asks in turn for a place name."
+    },
+    {
+      "term": "Centroid",
+      "meaning": "a rough central point for a place, such as a country, rather than an exact site."
+    },
+    {
+      "term": "Rate limit",
+      "meaning": "a cap on how often an outside service may be called."
+    },
+    {
+      "term": "Source passage",
+      "meaning": "a saved piece of text from a web page or document that a claim must match."
+    },
+    {
+      "term": "Capex",
+      "meaning": "capital expenditure: the money spent to build or buy a long-lived asset such as a plant or project."
+    },
+    {
+      "term": "Chat completion",
+      "meaning": "a request sent to an AI language model that returns generated text."
+    },
+    {
+      "term": "Evidence record",
+      "meaning": "a stored entry that links a claim to its source URL and quote."
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "../../lib/safeFetch",
+    "../../lib/portkeyOpenAI",
+    "../../lib/modelConfig",
+    "../../lib/researchSources",
+    "../../search/createRouter",
+    "../reality-scan/deckResearch",
+    "../../lib/countryCentroids",
+    "./store",
+    "./locationEvidence",
+    "./types"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/locationWorker.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 14,
+      "kind": "setup",
+      "name": "File setup, geocodes",
+      "id": "s1",
+      "hash": "fc319ae0d9f07f75",
+      "title": "Imports and in-memory map cache",
+      "what": "Brings in the tools this file needs: web fetching, the AI client, the search router, country centre data, and helpers from nearby modules. It also creates the in-memory cache for map lookups and the timestamp used to pace requests.",
+      "why": "Setup code. The cache and timestamp exist so repeated lookups are not sent to the map service again.",
+      "watch_out": "The cache lives only in memory, so every server restart starts empty."
+    },
+    {
+      "start": 15,
+      "end": 41,
+      "kind": "function",
+      "name": "geocode",
+      "id": "s2",
+      "hash": "8cd55c73d3c7b595",
+      "title": "Turn a place name into coordinates",
+      "what": "Looks up a place name with Photon first, then with Nominatim if Photon gives no clear match. Nominatim calls are spaced at least about 1.1 seconds apart. Results, including no-match results, are cached for a day.",
+      "why": "The comments say neither service's top-ranked result is trusted without the checks in uniqueGeocode, and Nominatim is used only for names already established by evidence.",
+      "watch_out": "A no-match result is cached for 24 hours, so a place that fails once stays unresolved for a full day."
+    },
+    {
+      "start": 42,
+      "end": 59,
+      "kind": "function",
+      "name": "linkedLocations",
+      "id": "s3",
+      "hash": "da21f956dc908fe2",
+      "title": "Reuse Yard project locations",
+      "what": "Takes the location of each project linked to the opportunity from the Yard database. If the stored point is missing or sits very close to the middle of its country, it uses the country centre and labels the pin as country-only. These pins are never marked as verified.",
+      "why": "The comment says past Yard geocoding used jittered country centres, so those points must never be shown as real sites.",
+      "watch_out": "The 0.3-degree closeness test is a rough threshold, so a real site near a country centre could be mislabelled as country-only."
+    },
+    {
+      "start": 60,
+      "end": 110,
+      "kind": "function",
+      "name": "researchSignalLocations",
+      "id": "s4",
+      "hash": "6b1482f73eb23783",
+      "title": "Find locations for an opportunity",
+      "what": "Uses linked Yard locations when they exist. Otherwise asks the AI for up to three places from the source passages, checks each quote, geocodes the places, saves accepted pins with evidence, and returns notes about withheld claims. If no pins are found, it runs one web search, fetches up to four pages, and asks the AI again.",
+      "why": "The notes say company headquarters are not opportunity locations, and the staged search keeps cost and provider traffic bounded.",
+      "watch_out": "The web step makes outside requests and uses paid AI calls, so changes here affect cost as well as results."
+    },
+    {
+      "start": 111,
+      "end": 130,
+      "kind": "function",
+      "name": "capexDocuments",
+      "id": "s5",
+      "hash": "910d2f884f65311e",
+      "title": "Look for missing capex passages",
+      "what": "For a named project whose saved passages contain no money amount, runs one search and fetches up to two new pages to look for one. Pages that fail or are not usable are skipped and never used as evidence.",
+      "why": "The comment says this lookup is bounded to one search and two page fetches, which limits cost.",
+      "watch_out": "A generic project name can return unrelated pages, so the search uses quotes around the name to narrow results."
+    }
+  ],
+  "explained_at": "2026-11-12T04:54:17+00:00",
+  "explained_by": "haiku",
+  "summary": "Finds where a capital project is, using saved source passages first and a bounded web search second, then turns each place into map coordinates that are checked against the source.",
+  "purpose": "Give each opportunity a map pin that a user can trace back to a quote, without guessing.",
+  "why": "The comments say company headquarters are not project sites, projected market demand is not a construction site, and unverified or ambiguous places must not be pinned. Likely reason for the cache and the one-request-per-1.1-seconds limit: to stay within the free map service's rules and avoid repeated calls.",
+  "how": "1. Reuse pins already linked to Yard project records, if any. 2. Otherwise ask an AI model to name up to three places from the saved passages. 3. Keep only places whose quote appears in the source text. 4. Look up each place with map services, accepting only clear matches. 5. Save each accepted pin with its evidence record. 6. If nothing is found, run one web search, fetch up to four pages, and try the AI step again. A separate bounded step, capexDocuments, looks for capex figures.",
+  "inputs": "An opportunity with its saved source passages and any linked Yard project IDs, plus the AI model, map service, and search configuration. During the web step, the search results and fetched pages are inputs too.",
+  "outputs": "A list of location records (label, country, region, coordinates, precision, quote, source, and evidence ID), notes explaining withheld or unresolved claims, and a count of sources checked. capexDocuments returns extra page passages for the capex step.",
+  "risks": "A common place name can match the wrong place; ambiguous names are dropped, but a single wrong match can pass. Country-centre pins can look like real sites. A failed map lookup is cached for a day. The web step fetches pages of uneven quality. AI and map calls cost money or hit rate limits.",
+  "debug": "Read the job's coverage notes for withheld, ambiguous, or unavailable messages. If no pins appear, check in this order: whether the AI service is configured (MODEL_UNAVAILABLE), whether the map service responds (GEOCODER_UNAVAILABLE), and whether source passages exist at all. Slow runs are normal because of the rate limit. The geocode cache is in memory, so a restart clears it.",
+  "summary_hash": "sha256:b7438135d46663eb192ef698e710c9e6e4f52aa4abb6b8e46a6c2fc3ded16db1"
+}

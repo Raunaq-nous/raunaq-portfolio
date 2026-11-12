@@ -1,0 +1,293 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/scan/synthesis.ts",
+  "language": "TypeScript",
+  "lines": 358,
+  "hash": "sha256:e641a9ca614197be4624aceb71abceb60f610e44713263380b938916d945ed47",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The header says the default model is gpt-4.1-mini, but the code reads the model from the reasoning role setting, so the comment is out of date or the setting differs from what it implies.",
+      "The helper toMillionsRounded accepts an industry parameter that it never uses. The comment says raw-dollar industries are handled elsewhere, but the reason is not stated in this code.",
+      "The start date sent to the model is always null. Likely reason: no start date is stored, but this is not stated in the code.",
+      "Comments name a verification script that is not in the packet, so test coverage cannot be confirmed."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Zod",
+      "meaning": "a library that checks data has exactly the shape the code expects."
+    },
+    {
+      "term": "cache",
+      "meaning": "a saved copy of an earlier result so it does not have to be produced again."
+    },
+    {
+      "term": "in-memory",
+      "meaning": "kept in the running program's memory, so it is lost when the program restarts."
+    },
+    {
+      "term": "prompt",
+      "meaning": "the written instructions and data sent to an AI model."
+    },
+    {
+      "term": "grounding",
+      "meaning": "checking that each claim traces back to real source data."
+    },
+    {
+      "term": "Portkey",
+      "meaning": "a gateway service that routes requests to AI providers."
+    },
+    {
+      "term": "HTTP status",
+      "meaning": "a number a web server returns to say how a request went, such as 200 for success."
+    },
+    {
+      "term": "slug",
+      "meaning": "a short, web-friendly code name for something, such as an industry."
+    }
+  ],
+  "depends_on": [
+    "./scanData",
+    "../lib/portkeyOpenAI",
+    "../lib/modelConfig",
+    "./synthesisCache",
+    "../lib/researchSources",
+    "zod"
+  ],
+  "used_by": [
+    "The routes file, named in comments (path not shown in the packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 47,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "41b5030c92c6ec0e",
+      "title": "Setup, limits, and safety promises",
+      "what": "Loads the helpers this file needs and sets the limits for this slide: the maximum reply length and the wait time for the model. The header lists the promises the module keeps, such as keeping keys on the server and never inventing facts.",
+      "why": "Likely reason: the header is a written contract so future editors know which rules must not be broken.",
+      "watch_out": "The wait time and reply length are tuned for large batches, so changing batch size may need these changed too."
+    },
+    {
+      "start": 48,
+      "end": 52,
+      "kind": "function",
+      "name": "getModel",
+      "id": "s2",
+      "hash": "f8f4cc28c10b5e5d",
+      "title": "Choosing the model",
+      "what": "Asks the shared model settings for the model meant for reasoning tasks. Synthesis is treated as judgement rather than simple lookup.",
+      "why": "Likely reason: the comment says a per-feature model setting once produced a name the gateway rejected, so one central place now decides.",
+      "watch_out": "Changing the model here changes both cost and quality for every synthesis call."
+    },
+    {
+      "start": 53,
+      "end": 56,
+      "kind": "function",
+      "name": "openaiConfigured",
+      "id": "s3",
+      "hash": "19f9526d110c20d8",
+      "title": "Checking whether AI is configured",
+      "what": "Answers yes or no to whether the AI service settings are present, so the slide can show a calm message instead of failing.",
+      "why": "Reason not stated in the code beyond the function name and header.",
+      "watch_out": ""
+    },
+    {
+      "start": 57,
+      "end": 66,
+      "kind": "value",
+      "name": "bulletSchema",
+      "id": "s4",
+      "hash": "feb34cd67519375d",
+      "title": "Rules for one bullet",
+      "what": "Sets the exact shape of a single bullet: the project it names, its text, the evidence quotes behind it, and optional source records. Each quote must be between 30 and 1600 characters.",
+      "why": "Likely reason: the quote length rule ties every claim to real text while stopping very long quotes.",
+      "watch_out": "The minimum quote length also rejects valid short quotes, which a later step handles by dropping those bullets."
+    },
+    {
+      "start": 67,
+      "end": 70,
+      "kind": "value",
+      "name": "categorySchema",
+      "id": "s5",
+      "hash": "957f3eb59585245c",
+      "title": "Rules for one category",
+      "what": "Sets the shape of a named theme that holds a list of bullets.",
+      "why": "Likely reason: groups bullets so the slide can show each theme as one block.",
+      "watch_out": ""
+    },
+    {
+      "start": 71,
+      "end": 79,
+      "kind": "value",
+      "name": "synthesisSchema, ScanSynthesis",
+      "id": "s6",
+      "hash": "032e6b5dd8fddd19",
+      "title": "Rules for the whole synthesis",
+      "what": "Sets the full result the model must return: a headline, a list of problem categories, a list of success categories, and a takeaway line for each side. Also exports the matching type for other files.",
+      "why": "Likely reason: one definition keeps the model reply, the caches, and the slide in agreement.",
+      "watch_out": ""
+    },
+    {
+      "start": 80,
+      "end": 84,
+      "kind": "type",
+      "name": "SynthesisResult",
+      "id": "s7",
+      "hash": "c173094bf1677311",
+      "title": "Possible outcomes",
+      "what": "Names the three possible results of a synthesis request: ok with content, not configured, or error with a message.",
+      "why": "Likely reason: the routes code maps each outcome to a web status, so every case must be named.",
+      "watch_out": ""
+    },
+    {
+      "start": 85,
+      "end": 95,
+      "kind": "type",
+      "name": "CacheEntry, cache",
+      "id": "s8",
+      "hash": "16eee5c5206a01e2",
+      "title": "Memory cache",
+      "what": "Holds recent results in the program's memory, keyed by the cache key, so repeat page views are fast. Each stored entry keeps the synthesis, the model name, and when it was made.",
+      "why": "The header describes this as the fast first layer. The database layer behind it survives restarts; this one does not.",
+      "watch_out": "Memory is lost on every restart and is not shared between copies of the server."
+    },
+    {
+      "start": 96,
+      "end": 106,
+      "kind": "function",
+      "name": "toMillionsRounded",
+      "id": "s9",
+      "hash": "2038da44fb41b3cc",
+      "title": "Rounding money to millions",
+      "what": "Rounds a budget figure to one decimal place so the written text matches the slide. Empty or non-number values become null.",
+      "why": "The comment says the rounding must match the slide's display so the numbers agree.",
+      "watch_out": "The industry parameter is accepted but never used, so no industry gets different treatment here."
+    },
+    {
+      "start": 107,
+      "end": 116,
+      "kind": "function",
+      "name": "evidenceFields",
+      "id": "s10",
+      "hash": "e4d50cabcf1940bf",
+      "title": "Facts the model may use",
+      "what": "Builds the small set of facts about one project that the model may cite: planned and actual cost, end dates, delay, status, country, and the stated reasons. It leaves out source links and quotes on purpose.",
+      "why": "The header says the model may cite only figures in the data, so only plain values are passed. Reason for the always-null start date is not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 117,
+      "end": 170,
+      "kind": "function",
+      "name": "compactProjects (part 1)",
+      "id": "s11",
+      "hash": "7ff35db0f9945827",
+      "title": "Compact project records and main instructions",
+      "what": "Turns each project into a short record with its name, status, costs in millions, deviation, dates, slip in months, stated reasons, capacity, and country. Projects with a forecast are marked as still in delivery. It also holds the main instruction text sent to the model: no invented facts, the allowed theme groupings, and the exact shape of the reply.",
+      "why": "Likely reason: a short, clean record keeps the prompt small and gives the model less to misread.",
+      "watch_out": "The instructions are one long text, so any edit changes the model's behaviour for every industry."
+    },
+    {
+      "start": 171,
+      "end": 177,
+      "kind": "function",
+      "name": "compactProjects (part 2)",
+      "id": "s12",
+      "hash": "c631add699220566",
+      "title": "Editorial limits for the slide",
+      "what": "Sets how many categories and bullets the slide may hold, the length limits for names and text, and tells the model never to invent a positive example to fill space.",
+      "why": "Likely reason: the slide has fixed room, so the length limits keep text from overflowing.",
+      "watch_out": "These counts are only requests to the model; the code does not check them after the reply."
+    },
+    {
+      "start": 178,
+      "end": 190,
+      "kind": "function",
+      "name": "buildUserPrompt",
+      "id": "s13",
+      "hash": "0de4fb388fa7eb90",
+      "title": "Building the message for the model",
+      "what": "Creates the user message with the industry name, the project count, and the compact project records as JSON, ending with a request for JSON only.",
+      "why": "Likely reason: the data sits in one labelled block so the model treats it as the only allowed set of facts.",
+      "watch_out": ""
+    },
+    {
+      "start": 191,
+      "end": 210,
+      "kind": "function",
+      "name": "parseJsonObject",
+      "id": "s14",
+      "hash": "27870eba1ad1567e",
+      "title": "Reading the model reply as JSON",
+      "what": "Turns the reply text into a data object. It strips code fences and, if needed, takes the text between the first and last curly brace. If neither works, it throws an error.",
+      "why": "Likely reason: some providers add stray text around the JSON even when asked not to.",
+      "watch_out": "Taking text between the first and last braces could join unrelated text if the reply holds more than one object."
+    },
+    {
+      "start": 211,
+      "end": 251,
+      "kind": "function",
+      "name": "groundToSelection",
+      "id": "s15",
+      "hash": "c4e33f31908a0ae2",
+      "title": "Checking each bullet against real data",
+      "what": "For each bullet, confirms the named project is in the selection, that it has evidence, and that each quote really appears in that project's source text after spacing cleanup. Confirmed bullets get source records saved. The headline and takeaways are then overwritten with fixed wording.",
+      "why": "Likely reason: the schema only checks shape, so an invented project name would pass without this check. It is the main protection against fabrication.",
+      "watch_out": "Each confirmed quote also writes a research source record, so a run leaves lasting data behind."
+    },
+    {
+      "start": 252,
+      "end": 274,
+      "kind": "function",
+      "name": "callSynthesis",
+      "id": "s16",
+      "hash": "1ba1eb15219b4777",
+      "title": "Calling the model and running checks",
+      "what": "Sends the instructions and data to the model with a time limit and one retry, then cleans the reply, drops bad quotes, checks the shape, and runs the grounding check.",
+      "why": "Likely reason: each step catches a different kind of bad output, so they run in order.",
+      "watch_out": "A shape failure throws an error that fails the whole batch, not just the bad bullet."
+    },
+    {
+      "start": 275,
+      "end": 304,
+      "kind": "function",
+      "name": "dropMalformedBullets",
+      "id": "s17",
+      "hash": "b7ded7c68b7141e0",
+      "title": "Dropping bullets with bad quotes",
+      "what": "Removes any bullet whose quote is shorter than 30 or longer than 1600 characters, instead of failing the whole reply. Logs only a count of how many were dropped.",
+      "why": "The comment says some source quotes are fragments that can never meet the rule, so dropping one bullet is safer than failing the batch.",
+      "watch_out": "Only quote length is checked here; a bullet with no evidence is left for the grounding step."
+    },
+    {
+      "start": 305,
+      "end": 358,
+      "kind": "function",
+      "name": "getScanSynthesis",
+      "id": "s18",
+      "hash": "bdda270f53038a17",
+      "title": "Main entry point with caching and errors",
+      "what": "Returns a saved result if one exists (unless forced). Otherwise it generates one, saves it to the database cache and memory cache, and returns it. On failure it logs only a short reason and returns a plain error message; a spent usage limit (status 412) gets its own message.",
+      "why": "Likely reason: caching avoids paying twice for the same call, and logs must not expose stored content or the provider's raw error text.",
+      "watch_out": "A failed cache write is only logged, so the saved copy can be missing after a restart without any visible error."
+    }
+  ],
+  "explained_at": "2026-11-12T04:12:18+00:00",
+  "explained_by": "haiku",
+  "summary": "Asks an AI model to write the what went wrong and what went right summary for the benchmark scan slide, then checks each bullet against the real project data before returning it.",
+  "purpose": "Produces the short written findings shown on the benchmark slide, grouped into themes, with each claim tied to real evidence.",
+  "why": "The header says the model may group projects into themes but must not make up any figure, cause, or source. The checks run after the model answers because its output cannot be fully trusted.",
+  "how": "First it checks that the AI service is configured. It then looks for a saved answer, first in memory and then in the database, unless a fresh answer was forced. If none is found, it builds a compact list of facts for the selected projects, sends them with a fixed set of instructions to the reasoning model, and reads the reply. It cleans stray formatting, drops bullets whose quotes are too short or too long, checks the overall shape, and drops any bullet that names a project outside the selection. It then saves the result in both caches and returns it. Any failure becomes an error result.",
+  "inputs": "An industry code name and display name, the list of selected project ids, the project data for those projects, and a flag that forces a fresh answer.",
+  "outputs": "One of three results: not configured, ok with the synthesis and whether it came from cache, or error with a short message. The routes file maps these to web status codes.",
+  "risks": "The model may still word a claim so it passes the checks but misreads the data. Each uncached call sends a large prompt and costs money. The headline and the two takeaway lines are replaced with fixed text after generation, so the model's wording for them is discarded. Confirmed bullets also save research source records, which is a lasting side effect.",
+  "debug": "If the slide shows a calm not-configured panel, check the OpenAI and Portkey settings. For error results, read the log lines starting with the synthesis tag: they name the failing step and any HTTP status, such as 412 for a spent usage limit. If bullets are missing, the checks dropped them, so compare each bullet's project name and quote with the project data. Use the force option to rule out a stale cache.",
+  "summary_hash": "sha256:e641a9ca614197be4624aceb71abceb60f610e44713263380b938916d945ed47"
+}

@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/driver-naming-compare.ts",
+  "language": "TypeScript",
+  "lines": 273,
+  "hash": "sha256:a92ddd28e10a9e84ebc0d6cf1eb1c2695b5ce0cb7d73ceda8334d7aeb6b37349",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Comparison tool with no test visible",
+      "Top-level error handler prints the failure",
+      "Relies on several modules whose behavior is not visible here"
+    ]
+  },
+  "terms": [
+    {
+      "term": "Cluster",
+      "meaning": "a group of similar facts that the system tries to name as one driver"
+    },
+    {
+      "term": "Driver",
+      "meaning": "a reason behind an outcome, such as a cause of delay"
+    },
+    {
+      "term": "Stop-word",
+      "meaning": "a word left out of naming because it is too common or identifies a company or place"
+    },
+    {
+      "term": "Cache",
+      "meaning": "stored results reused so the same question is not paid for twice"
+    },
+    {
+      "term": "Token",
+      "meaning": "a small chunk of text, the unit that AI models charge by"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/tools/lessons-learnt/deriveDrivers",
+    "artifacts/api-server/src/lib/portkeyOpenAI",
+    "artifacts/api-server/src/tools/lessons-learnt/recipeResult",
+    "@workspace/db",
+    "drizzle-orm"
+  ],
+  "used_by": [
+    "Not visible in the code"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 22,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "306c5ae448e7b19c",
+      "title": "Setup and usage notes",
+      "what": "Explains the purpose and usage, then imports the database, the naming step, the usage counters and the data types.",
+      "why": "Sets out the rule that only the naming step is rerun, so the comparison is fair.",
+      "watch_out": "Only naming is replayed, so a change in clustering would not show up in these results."
+    },
+    {
+      "start": 23,
+      "end": 35,
+      "kind": "function",
+      "name": "stageSummary",
+      "id": "s2",
+      "hash": "ffbf111fbe9a14dd",
+      "title": "Loading a stored stage result",
+      "what": "Reads one saved stage output from a succeeded run and stops with an error if that stage did not succeed or has no summary.",
+      "why": "Stops the comparison from running on partial or failed data.",
+      "watch_out": "The stage names must match the names saved by the original run exactly."
+    },
+    {
+      "start": 36,
+      "end": 63,
+      "kind": "function",
+      "name": "buildEntityStopTerms",
+      "id": "s3",
+      "hash": "8ac2d25a27d807a6",
+      "title": "Building the stop-word list",
+      "what": "Collects words from project names, countries, geography, company names and owner names so they are not used as driver names.",
+      "why": "The comment says this matches the real run, so the names being compared are produced the same way.",
+      "watch_out": "If the real run's stop-word rules change, this copy must be updated by hand."
+    },
+    {
+      "start": 64,
+      "end": 75,
+      "kind": "type",
+      "name": "NamedCluster",
+      "id": "s4",
+      "hash": "f53bf58816b2f739",
+      "title": "Shape of one named cluster",
+      "what": "Defines the record kept for each named cluster: its pillar, name, size, how it was named, any rejection reason, and a report-only flag.",
+      "why": "A single shape makes the two models' results easy to line up side by side.",
+      "watch_out": "The old-rule flag is for measurement only and must never be used to accept or reject a name."
+    },
+    {
+      "start": 76,
+      "end": 101,
+      "kind": "function",
+      "name": "oldProperNounRule",
+      "id": "s5",
+      "hash": "9cd5c1c05743ec1c",
+      "title": "Old proper-noun rule as a yardstick",
+      "what": "Reproduces the earlier proper-noun check, which rejected names containing capitalised words not found in the source text, so the report can count how many accepted names it would have thrown out.",
+      "why": "The comment says it is kept only as a measuring stick to show the effect of the fix.",
+      "watch_out": "If this rule is reused for live validation, the old behavior returns."
+    },
+    {
+      "start": 102,
+      "end": 161,
+      "kind": "function",
+      "name": "runNaming (part 1)",
+      "id": "s6",
+      "hash": "51991c7c248027dd",
+      "title": "Running one naming pass",
+      "what": "Sets the model choice through environment settings, runs the naming step on the clusters, and collects names, cache hits, token use, time and details of each cluster.",
+      "why": "Changing the environment setting is how the code selects which model does the naming.",
+      "watch_out": "The settings stay in place for the whole process; they are cleared only when no model is given."
+    },
+    {
+      "start": 162,
+      "end": 173,
+      "kind": "function",
+      "name": "runNaming (part 2)",
+      "id": "s7",
+      "hash": "82e157dce56acfa2",
+      "title": "Summarising one naming pass",
+      "what": "Counts how many names were accepted, rejected, kept as topic only, or applied as imperative style, and returns those counts with the rejection and comparison details.",
+      "why": "These counts are the numbers the two models are judged by.",
+      "watch_out": "Not every nameable cluster falls into accepted or rejected, so do not assume those two counts add up to the total."
+    },
+    {
+      "start": 174,
+      "end": 179,
+      "kind": "value",
+      "name": "PRICES",
+      "id": "s8",
+      "hash": "f9d6120eba412b81",
+      "title": "Model price table",
+      "what": "Holds hand-typed list prices per million input and output tokens for two models. A null price means the gateway publishes no price.",
+      "why": "Needed to turn token counts into a cost estimate.",
+      "watch_out": "Prices change over time, so an old entry gives a wrong cost estimate without any warning."
+    },
+    {
+      "start": 180,
+      "end": 186,
+      "kind": "function",
+      "name": "costLine",
+      "id": "s9",
+      "hash": "3876d778aa442d6b",
+      "title": "Cost summary line",
+      "what": "Turns token counts and a model name into a dollar cost line, or reports that the price is unknown.",
+      "why": "Gives the owner a cost figure in plain text without a separate calculation.",
+      "watch_out": "A model with no table entry prints UNKNOWN, so an unpriced model is never silently treated as free."
+    },
+    {
+      "start": 187,
+      "end": 239,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s10",
+      "hash": "1e61def47ac9abfa",
+      "title": "Predicting cost and running both models",
+      "what": "Loads the verified facts, pillars and outcomes, prints the cluster count, runs the no-model baseline, prints the re-bill warning, then runs each model and prints its results.",
+      "why": "The no-model baseline costs nothing and warns about the cost of a model change before any spending.",
+      "watch_out": "If the stored stages are missing, the function throws, so the source run must have finished its naming stages."
+    },
+    {
+      "start": 240,
+      "end": 273,
+      "kind": "method",
+      "name": "main: for",
+      "id": "s11",
+      "hash": "56094fd55714eabc",
+      "title": "Comparing models and checking cache",
+      "what": "Prints each rejected name and which names the old rule would have rejected, reruns the same model to check cache hits, then prints the two models' names side by side and exits.",
+      "why": "The rerun shows whether repeat runs are free, and the side-by-side view shows what changed.",
+      "watch_out": "The cache check only prints numbers; it does not fail if the rerun still makes model calls."
+    }
+  ],
+  "explained_at": "2026-11-12T03:01:24+00:00",
+  "explained_by": "haiku",
+  "summary": "A comparison tool that reruns only the driver naming step of a finished lessons-learnt run with two AI models on identical clusters, then reports naming quality, token use and estimated cost.",
+  "purpose": "Decide whether a different AI model gives better driver names before the project upgrades the model.",
+  "why": "The header says it keeps clustering and everything else identical so the model is the only variable, and it predicts the cost first with zero model calls.",
+  "how": "The script loads the stored verification and outcome results from a succeeded run and rebuilds the stop-word list from project and company names. It runs the naming step with no model as a baseline and prints a predicted re-bill. Then it runs each model, prints accepted, rejected and fallback counts, token use, estimated cost and time, counts names the old proper-noun rule would have rejected, runs the same model again to check cache hits, and finally prints names side by side.",
+  "inputs": "A run ID and one or two model names on the command line. Stored results of the run, and the database.",
+  "outputs": "Console report only. The header says names are cached by model, so the run may write cache entries, but the code that writes them is not visible here.",
+  "risks": "Real model calls cost money. The cost table covers only two models. The script sets environment variables that change how the naming step behaves while it runs.",
+  "debug": "If it reports no succeeded summary, check the run ID and the stage names. If a cost says UNKNOWN, add the model to the price table. If the cache re-run makes model calls, the cache key may not be stable.",
+  "summary_hash": "sha256:a92ddd28e10a9e84ebc0d6cf1eb1c2695b5ce0cb7d73ceda8334d7aeb6b37349"
+}

@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/check-population-quotes.ts",
+  "language": "TypeScript",
+  "lines": 186,
+  "hash": "sha256:86527c3d76d9952fded7f8a8684f9110ddd23700ee76acb454d4740368eb1ab3",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No automated test is visible in this file.",
+      "Depends on external tools curl and pdftotext being installed.",
+      "Live web results can change from run to run, so the output is not repeatable."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Quote cache",
+      "meaning": "A saved file that remembers the check result for each cited quote so work is not repeated."
+    },
+    {
+      "term": "Verbatim quote",
+      "meaning": "The exact sentence a research reply says a source contains."
+    },
+    {
+      "term": "SSRF guard",
+      "meaning": "A safety check that blocks requests to internal network addresses that a web link could point to."
+    },
+    {
+      "term": "Charset",
+      "meaning": "The text encoding a web page declares, such as windows-1252, which decides how its characters are read."
+    },
+    {
+      "term": "pdftotext",
+      "meaning": "An external command that pulls plain text out of PDF files."
+    }
+  ],
+  "depends_on": [
+    "curl",
+    "pdftotext",
+    "jsdom",
+    "src/lib/curlFetch",
+    "src/lib/safeFetch",
+    "src/lib/spanAnchor",
+    "src/ingest/yardResearch/populationReplies",
+    "src/ingest/yardResearch/populationConfig",
+    "src/ingest/yardResearch/quoteChecks",
+    "src/ingest/yardResearch/populationIndustries"
+  ],
+  "used_by": [
+    "The importer that reads the quote cache (not shown in this packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 40,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "2a0bf383bc794e6d",
+      "title": "Setup and shared tools",
+      "what": "Sets up the checker with its header description and the tools it needs: file access, a web fetcher, a text extractor, a matcher, and the quote cache. It also defines the pattern used to spot bot-check pages.",
+      "why": "The header says the checker reuses the same fetch, extraction and matching logic as the closure checker, but is kept as its own file so that checker stays untouched.",
+      "watch_out": "Changes in the shared helpers affect this checker and the closure checker together."
+    },
+    {
+      "start": 41,
+      "end": 54,
+      "kind": "function",
+      "name": "decodeHtml",
+      "id": "s2",
+      "hash": "43789f2368a0b888",
+      "title": "Reading page text charset",
+      "what": "Turns downloaded page bytes into text using the encoding the page declares, so curly apostrophes and similar characters match the quote.",
+      "why": "The header explains that older regulator pages use windows-1252, and reading them as UTF-8 wrongly marked quotes as not on page.",
+      "watch_out": "An unknown encoding name silently falls back to UTF-8, which can bring back the wrong characters."
+    },
+    {
+      "start": 55,
+      "end": 79,
+      "kind": "function",
+      "name": "pageTexts",
+      "id": "s3",
+      "hash": "0b5c676aff2471c0",
+      "title": "Extracting text from PDFs and pages",
+      "what": "Turns a PDF or web page into text. For PDFs it produces two reading orders, one that keeps columns and one in raw stream order, so quotes from two-column reports can be found. For web pages it keeps the title, description and body text and drops scripts and styles.",
+      "why": "The header explains that two-column reports interleave lines in column layout, so the raw order is needed to find some sentences.",
+      "watch_out": "PDF text depends on the external pdftotext command; if it fails, the PDF is treated as having no text."
+    },
+    {
+      "start": 80,
+      "end": 120,
+      "kind": "function",
+      "name": "guardedFetch",
+      "id": "s4",
+      "hash": "edf254c2e9c8f22a",
+      "title": "Safe page downloading with redirects",
+      "what": "Downloads one web address by hand, following each redirect step with a checked address, up to eight steps. Any step that points to a disallowed or internal address is refused.",
+      "why": "The header says curl does not follow redirects itself, so every hop can be checked and pinned to the address that passed the check.",
+      "watch_out": "Any curl failure returns nothing and is recorded as a fetch failure, so network trouble looks like an unavailable page."
+    },
+    {
+      "start": 121,
+      "end": 128,
+      "kind": "function",
+      "name": "save, wanted",
+      "id": "s5",
+      "hash": "9da208f940606c19",
+      "title": "Save function and recheck options",
+      "what": "Sets up the save function and reads the recheck and keep-from options. It then builds the list of addresses and quotes that still need checking.",
+      "why": "Likely reason: the recheck option retries quotes marked not on page after an extraction fix, while keeping quotes that other committed batches still use so their replays stay the same.",
+      "watch_out": "The keep-from list must name the other committed batch files, or their quotes may be rechecked and their results may change."
+    },
+    {
+      "start": 129,
+      "end": 186,
+      "kind": "function",
+      "name": "quotesIn",
+      "id": "s6",
+      "hash": "158e51b93a4cd8be",
+      "title": "Collecting quotes and checking pages",
+      "what": "Collects the quote keys used by the protected batch files, then goes through each address that needs checking. It fetches the page, looks for each quote, saves the results after each page, and prints a summary of found, not on page, and unavailable counts.",
+      "why": "Likely reason: the protected keys stop a recheck from changing quotes that other batches depend on, and saving per page allows restarts.",
+      "watch_out": "The protected key list must be built the same way as the main loop, or some quotes may be rechecked without being protected."
+    }
+  ],
+  "explained_at": "2026-11-12T02:57:01+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks that each quote cited in population research reply files appears on the web page it cites, and saves the results to a cache file that the importer reads.",
+  "purpose": "Stops quotes that cannot be found on their cited source from being accepted into the project data.",
+  "why": "The file header says the checker is kept separate from the closure checker so that the closure checker stays unchanged. It makes no model calls, so its results come only from the pages themselves.",
+  "how": "First it reads the reply files and works out which industry folder they belong to. Then it loads the cache and lists each cited address and quote that is not already cached. For each address it downloads the page safely, turns it into text, and looks for the quote with the shared matcher. It saves the cache after every page and prints a summary of found, not on page, and unavailable counts.",
+  "inputs": "Reply files in the yard research folder, an optional industry name, optional flags for rechecking not-on-page quotes and for protecting quotes from other batches, the existing quote cache, and the live web pages.",
+  "outputs": "Updates the file data/yard-research/<industry>/quote-checks.json, prints progress lines, and prints a final JSON summary of counts.",
+  "risks": "The script makes live internet requests and runs the external tools curl and pdftotext. Rechecking can change results for quotes in the given files. Writes temporary PDF files to the system temp folder.",
+  "debug": "Read the per-address result lines first. Many page unavailable results suggest a bot wall, an HTTP error, or missing curl or pdftotext. A quote marked not on page that appears on the page may point to a text decoding or PDF reading order problem. Check the cache file to see the stored detail for each quote.",
+  "summary_hash": "sha256:86527c3d76d9952fded7f8a8684f9110ddd23700ee76acb454d4740368eb1ab3"
+}

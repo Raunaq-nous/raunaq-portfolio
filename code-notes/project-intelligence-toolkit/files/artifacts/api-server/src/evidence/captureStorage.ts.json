@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/evidence/captureStorage.ts",
+  "language": "TypeScript",
+  "lines": 25,
+  "hash": "sha256:50be0fc62f5b8e0d610c8b9f9cc40d12af1554c8421f7ea7c9f2ec4589040643",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or examples are visible.",
+      "The type helper is not used anywhere in the shown code, so its use cannot be confirmed here.",
+      "Missing configuration raises an error that callers must handle."
+    ]
+  },
+  "terms": [
+    {
+      "term": "App Storage",
+      "meaning": "the app's file storage service, used here for capture images and PDFs."
+    },
+    {
+      "term": "bucket",
+      "meaning": "a top-level container in cloud storage, like a folder that holds many files."
+    },
+    {
+      "term": "content-addressed",
+      "meaning": "named by a fingerprint of the content, so identical files share one name."
+    },
+    {
+      "term": "environment variable",
+      "meaning": "a named setting passed to the program from its surroundings, here the private storage folder."
+    }
+  ],
+  "depends_on": [
+    "@google-cloud/storage",
+    "../replit_integrations/object_storage/objectStorage",
+    "PRIVATE_OBJECT_DIR environment setting"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/evidence/captureService.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 6,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "55691708f32e5441",
+      "title": "Storage naming rules",
+      "what": "Explains the two naming schemes: older snapshot names and new content-based names for captures. Defines where each kind of file lives.",
+      "why": "The header documents the naming so older snapshots and new captures can coexist.",
+      "watch_out": "Older snapshot names must keep working, or existing citation images will fail to load."
+    },
+    {
+      "start": 7,
+      "end": 13,
+      "kind": "function",
+      "name": "captureObjectFile",
+      "id": "s2",
+      "hash": "98beab30a72a0c74",
+      "title": "Getting a handle to a stored file",
+      "what": "Turns a storage key into a handle to the matching file in the storage bucket, failing with a clear message if the storage folder is not set.",
+      "why": "All reads and writes go through this one place, so the folder and bucket logic is kept in one spot.",
+      "watch_out": "With the setting missing, every storage call fails, so a deployment without it will break capture saving."
+    },
+    {
+      "start": 14,
+      "end": 22,
+      "kind": "function",
+      "name": "putCaptureImage",
+      "id": "s3",
+      "hash": "40fc326161f0777c",
+      "title": "Saving a file once",
+      "what": "Checks whether a file with that name already exists, and if not, saves the bytes with the given type. Returns whether it uploaded or found an existing copy.",
+      "why": "Content-based names mean an existing file already holds the same bytes, so the upload can be skipped.",
+      "watch_out": "The check and the save are separate steps, so two simultaneous saves of the same file could both upload. The content is identical, so this does no harm."
+    },
+    {
+      "start": 23,
+      "end": 25,
+      "kind": "function",
+      "name": "contentTypeForKey",
+      "id": "s4",
+      "hash": "75d2a45017ae53c2",
+      "title": "Choosing the image type",
+      "what": "Returns the image type for a storage key: png for names ending in png, and jpeg for anything else.",
+      "why": "Likely reason: captures are stored as jpeg by default and older snapshots may be png.",
+      "watch_out": "Any other file type gets the jpeg label, so a PDF key passed here would be labelled wrongly."
+    }
+  ],
+  "explained_at": "2026-11-12T03:27:36+00:00",
+  "explained_by": "haiku",
+  "summary": "Saves and loads capture images and PDF copies in the app's private object storage, under names that avoid storing the same file twice.",
+  "purpose": "Keeps large capture files out of the database and gives the capture service one place to read and write them.",
+  "why": "The header says new captures are named by a fingerprint of their content, so the same image is stored once. The comments also list older snapshot names that must still resolve.",
+  "how": "Reads the private storage folder from the environment, splits it into a bucket name and a path, and returns a handle to the file. Saving first checks whether the file exists and skips the upload if it does. A small helper picks the image type from the file name ending.",
+  "inputs": "A relative storage key, the file bytes, and a content type for saving.",
+  "outputs": "A file handle, or the word uploaded or exists from the save step, and a content type from the helper.",
+  "risks": "Throws if the storage folder setting is missing. The exists check and the save are two steps, so two simultaneous writes can both upload, which is harmless for identical content. The type helper labels anything not ending in png as jpeg.",
+  "debug": "If saves fail, check that PRIVATE_OBJECT_DIR is set and points to a bucket and folder that exist. Check the storage client settings in the object storage integration module. If an image shows the wrong type, check the file name ending.",
+  "summary_hash": "sha256:50be0fc62f5b8e0d610c8b9f9cc40d12af1554c8421f7ea7c9f2ec4589040643"
+}

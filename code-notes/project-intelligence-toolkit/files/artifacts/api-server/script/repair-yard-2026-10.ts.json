@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/repair-yard-2026-10.ts",
+  "language": "TypeScript",
+  "lines": 197,
+  "hash": "sha256:05f86a461a4ee8b38adf802a83a93d63b33dcef3ae68d10213b35a376d0f12e2",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Deletes and merges real rows and depends on hard-coded ID lists.",
+      "No test is visible.",
+      "The file is a one-time script and has been run once or planned to run."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Backup",
+      "meaning": "a saved copy of rows before they are changed, so they can be restored"
+    },
+    {
+      "term": "Merge",
+      "meaning": "moving one row's linked data to another row and then deleting the first row"
+    },
+    {
+      "term": "Approximate date convention",
+      "meaning": "the project's rule for writing a date that is only roughly known"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/ingest/compass/mapper",
+    "artifacts/api-server/src/tools/research-contract/fieldSemantics",
+    "pg"
+  ],
+  "used_by": [
+    "Run by hand from the api-server folder"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 40,
+      "kind": "setup",
+      "name": "File setup, JUNK",
+      "id": "s1",
+      "hash": "4dcc2aa007adeb96",
+      "title": "Setup and the rows to delete",
+      "what": "Loads libraries and lists the 29 project IDs that came from news headlines and are to be deleted.",
+      "why": "The header says these rows were parsed from headlines and are not real projects.",
+      "watch_out": "The ID list is fixed text; a wrong ID would delete the wrong project."
+    },
+    {
+      "start": 41,
+      "end": 44,
+      "kind": "value",
+      "name": "MERGE",
+      "id": "s2",
+      "hash": "c2d43d613a4445c1",
+      "title": "Duplicate-to-survivor map",
+      "what": "Pairs each duplicate nuclear row with the reactor row that should keep its data.",
+      "why": "The header says these are legacy seed rows for the same reactors.",
+      "watch_out": "A wrong pair would move evidence to the wrong reactor."
+    },
+    {
+      "start": 45,
+      "end": 47,
+      "kind": "value",
+      "name": "PLANT_ROWS",
+      "id": "s3",
+      "hash": "79b295917c007809",
+      "title": "Plant-level rows and the templated-text rules",
+      "what": "Names the two plant-level rows and defines patterns for templated labels and example.com placeholder URLs.",
+      "why": "Plant-level rows may describe a whole plant, so their merged evidence gets a note.",
+      "watch_out": "A label pattern that is too broad could deactivate real evidence."
+    },
+    {
+      "start": 48,
+      "end": 54,
+      "kind": "value",
+      "name": "DEPENDENT, iso",
+      "id": "s4",
+      "hash": "d0c57f98d548898d",
+      "title": "Tables linked to projects",
+      "what": "Lists every table that stores rows keyed to a project, so they can be moved or deleted together.",
+      "why": "Reason not stated in the code beyond the header, which says they move with the project.",
+      "watch_out": "A new project-linked table not in this list would be left pointing at a deleted project."
+    },
+    {
+      "start": 55,
+      "end": 63,
+      "kind": "function",
+      "name": "statesUsdMillions, pool, report",
+      "id": "s5",
+      "hash": "f0778bd350b58d19",
+      "title": "Quote check for USD amounts and the logging helper",
+      "what": "Checks whether a quote states a given dollar amount, and defines the helper that writes change log rows.",
+      "why": "Used to decide whether a stored value is backed by its quote.",
+      "watch_out": "The pattern only handles a few dollar spellings."
+    },
+    {
+      "start": 64,
+      "end": 115,
+      "kind": "function",
+      "name": "log (part 1)",
+      "id": "s6",
+      "hash": "d3efa2642248c213",
+      "title": "Backup, junk delete and merge (part 1)",
+      "what": "Opens the transaction, checks that the expected junk rows exist and look right, backs them up, deletes them with their linked rows, and starts merging duplicates.",
+      "why": "The backup is written before any delete, so the delete can be undone.",
+      "watch_out": "Stops with an error if the number or names of rows do not match."
+    },
+    {
+      "start": 116,
+      "end": 166,
+      "kind": "method",
+      "name": "log: for",
+      "id": "s7",
+      "hash": "e0fd08617d9db941",
+      "title": "Deactivate placeholder evidence",
+      "what": "Loops over nuclear evidence and turns off quotes that are templated labels or cite example.com.",
+      "why": "The header says these quotes are not text from a real page.",
+      "watch_out": "Deactivated quotes stay in the database and can be turned back on."
+    },
+    {
+      "start": 167,
+      "end": 197,
+      "kind": "method",
+      "name": "log: if",
+      "id": "s8",
+      "hash": "11f8b1c5c78e0e95",
+      "title": "Clear values no quote supports and move dates",
+      "what": "Clears nuclear budget and delay values that no quote states, and moves oil-gas and lithium actual completion dates to the updated completion column.",
+      "why": "Seed values with no source are removed, and the header says actual completion was stored in the planned date column.",
+      "watch_out": "Date moves that cannot be resolved leave cod_date empty on purpose."
+    }
+  ],
+  "explained_at": "2026-11-12T03:13:00+00:00",
+  "explained_by": "haiku",
+  "summary": "One-off repair of the nuclear rows in the Yard: deletes news-headline rows, merges duplicates into the correct reactor rows, removes placeholder evidence, clears unsupported values, and moves oil-gas and lithium dates to the right columns.",
+  "purpose": "Fixes data errors found by a sanity audit so nuclear and oil-gas figures match what the sources say.",
+  "why": "The header says the change was requested by the owner after the audit.",
+  "how": "Opens a transaction, backs up every row it will touch into a compressed file, deletes or merges rows, deactivates unsupported evidence, clears values no quote states, and moves dates. Without --commit it rolls back. It writes a JSON report.",
+  "inputs": "The projects, evidence and dependent tables, the DATABASE_URL setting, and the --commit flag.",
+  "outputs": "A compressed backup, a JSON report under data/repairs, and change log rows when committed.",
+  "risks": "Deletes project rows. A wrong entry in the JUNK or MERGE lists would remove real data. The backup is the only way back.",
+  "debug": "Read the backup file and the report's junkDeleted, merged and valuesCleared lists. Run without --commit first.",
+  "summary_hash": "sha256:05f86a461a4ee8b38adf802a83a93d63b33dcef3ae68d10213b35a376d0f12e2"
+}

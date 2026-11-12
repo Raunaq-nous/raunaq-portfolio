@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/verify-unified-scan-api.ts",
+  "language": "TypeScript",
+  "lines": 69,
+  "hash": "sha256:ef566adecf0bbb5fd0a80276f3d87812c4ee22c52dd2d83130ecaaf5ed39eded",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Depends on live model and source services, so results can vary",
+      "Changes saved data and has no cleanup step",
+      "Writes to fixed paths in the shared temp folder",
+      "Explicitly tolerates a model that makes no change, so some checks can pass without exercising the proposal path"
+    ]
+  },
+  "terms": [
+    {
+      "term": "endpoint",
+      "meaning": "a web address the server answers, returning data"
+    },
+    {
+      "term": "revision",
+      "meaning": "a version number for the deck, used to stop people overwriting each other"
+    },
+    {
+      "term": "409",
+      "meaning": "the server status meaning the save was rejected because the deck changed"
+    },
+    {
+      "term": "proposal",
+      "meaning": "a change the assistant suggests that a person must approve before it is applied"
+    },
+    {
+      "term": "PPTX",
+      "meaning": "a PowerPoint file"
+    },
+    {
+      "term": "PK signature",
+      "meaning": "the two letters every PowerPoint file starts with, showing it is a zip archive"
+    },
+    {
+      "term": "development run",
+      "meaning": "a named test copy of a scan on the development server"
+    }
+  ],
+  "depends_on": [
+    "lib/api-client-react/src/scan-deck (type only)",
+    "node:assert/strict",
+    "node:fs/promises"
+  ],
+  "used_by": [
+    "Not visible in the packet; appears to be a manual check run against a development run"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 12,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b2bfd33f3d4ddd69",
+      "title": "Setup and run selection",
+      "what": "Reads the run id from the command line and checks the development domain is set. Builds the base address for that run's scan API.",
+      "why": "Requires an explicit run id so the check cannot quietly pick the wrong run.",
+      "watch_out": "Running the script on the wrong run id will change that run's saved headline."
+    },
+    {
+      "start": 13,
+      "end": 69,
+      "kind": "function",
+      "name": "request",
+      "id": "s2",
+      "hash": "1a07b078752aa8f6",
+      "title": "Request helper",
+      "what": "Sends a request to the scan API with a three-minute time limit, reads the JSON response, and asserts the status matches what was expected, defaulting to 200.",
+      "why": "Model and source calls can be slow, so a time limit is set, and every call is checked for its status in one place.",
+      "watch_out": "A failing response includes the full server reply in the error, which may be long."
+    }
+  ],
+  "explained_at": "2026-11-12T03:17:48+00:00",
+  "explained_by": "haiku",
+  "summary": "Live end-to-end test of the unified scan API on a named development run, including real edits, model calls, source lookups and a PowerPoint export.",
+  "purpose": "Confirms the deck editing, proposal approval, source rechecking, literature search and export work together on a running system.",
+  "why": "The header says it saves real consultant edits and calls real model and source services, so it is a live check, not a unit test.",
+  "how": "Loads the deck and finds the cover headline. Asks the assistant to propose a headline change, applies the proposal if one is made, then saves a direct edit. Checks that an out-of-date save is rejected with a 409 status. Reloads the deck to confirm the edit persisted. Asks the assistant to recheck a cited detail and search literature, then exports a PowerPoint file and checks it starts with the PK signature. Saves copies of the output to fixed temporary paths and prints a summary.",
+  "inputs": "A run id given on the command line. The REPLIT_DEV_DOMAIN environment variable.",
+  "outputs": "A printed JSON summary. A PowerPoint file at /tmp/unified-scan-export.pptx. A deck JSON copy at /tmp/unified-scan-verified-deck.json.",
+  "risks": "It permanently changes the headline of the named development run. It calls model and external source services, which can cost money and take up to three minutes per request. The fixed output paths in the system temp folder will be overwritten on each run.",
+  "debug": "Check that the run id exists and that REPLIT_DEV_DOMAIN is set. Failure messages include the server response. If the 409 check fails, look at the revision handling. If the recheck shows no sources, the model may not have made a source request.",
+  "summary_hash": "sha256:ef566adecf0bbb5fd0a80276f3d87812c4ee22c52dd2d83130ecaaf5ed39eded"
+}

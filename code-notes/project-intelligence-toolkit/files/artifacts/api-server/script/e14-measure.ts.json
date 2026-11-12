@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/e14-measure.ts",
+  "language": "TypeScript",
+  "lines": 134,
+  "hash": "sha256:b9d60e362d1fc05ad62f514eaa8a9691b768d3eed4fcae49cb7fb4655b3922d8",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Measurement harness with no test visible",
+      "Failures reach a top-level handler that prints and exits",
+      "Verdict depends on unseen runner and validator modules"
+    ]
+  },
+  "terms": [
+    {
+      "term": "Rubric",
+      "meaning": "a fixed set of questions used to score facts consistently"
+    },
+    {
+      "term": "Criterion",
+      "meaning": "one question in the rubric, such as whether a pillar appears"
+    },
+    {
+      "term": "Cohen's h",
+      "meaning": "a standard size measure for the difference between two proportions"
+    },
+    {
+      "term": "Fisher p-value",
+      "meaning": "the chance of a difference this large arising by luck with small samples"
+    },
+    {
+      "term": "Confidence interval",
+      "meaning": "a range that likely contains the true effect"
+    },
+    {
+      "term": "Computation record",
+      "meaning": "a saved log entry that the system keeps of a calculation run"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/db",
+    "artifacts/api-server/src/gates/e14/observations",
+    "artifacts/api-server/src/gates/e14/runE14",
+    "artifacts/api-server/src/gates/e14/validator",
+    "artifacts/api-server/src/gates/e14/types",
+    "drizzle-orm"
+  ],
+  "used_by": [
+    "Not visible in the code"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 16,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c1966a31d2e33fff",
+      "title": "Setup and usage notes",
+      "what": "Explains the usage and what the harness may write, then imports the database, corpus builder, runner, validator and parameters.",
+      "why": "Sets the expectation that results are read-only except for one log entry.",
+      "watch_out": "The header's read-only promise should be checked again if the runner is changed."
+    },
+    {
+      "start": 17,
+      "end": 24,
+      "kind": "function",
+      "name": "arg, pctOf, pts",
+      "id": "s2",
+      "hash": "31aac048345957c8",
+      "title": "Flag and percentage helpers",
+      "what": "Reads a named command-line option with a default, and formats fractions as percentages and differences as percentage points, showing n/a for missing values.",
+      "why": "Keeps the printed table consistent.",
+      "watch_out": "A missing value prints n/a rather than zero, so an empty result is not mistaken for a rate of zero."
+    },
+    {
+      "start": 25,
+      "end": 44,
+      "kind": "function",
+      "name": "storedOutcomeSplit",
+      "id": "s3",
+      "hash": "696a72eadea37c6a",
+      "title": "Cross-check against the stored deck run",
+      "what": "Finds the latest succeeded deck run for an industry and reads its outcome split, so the harness's own grouping can be compared with it.",
+      "why": "Lets the owner see whether the harness groups outcomes the same way the real deck does.",
+      "watch_out": "If no run is stored, the cross-check is skipped and the report says so."
+    },
+    {
+      "start": 45,
+      "end": 73,
+      "kind": "function",
+      "name": "printReport",
+      "id": "s4",
+      "hash": "e09ee5aa1f92d0b3",
+      "title": "Printing the verdict table",
+      "what": "Prints one line per criterion showing outcome counts, rates, effect size, confidence range, p-value, required sample size and verdict, then a detail line for each.",
+      "why": "Fits a dense statistical result into one readable table.",
+      "watch_out": "Criterion names are cut at 48 characters, so long names are shortened on screen."
+    },
+    {
+      "start": 74,
+      "end": 122,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s5",
+      "hash": "d71270d68cf07c8c",
+      "title": "Running both definitions per industry",
+      "what": "For each industry, builds the corpus, prints counts and pillars, prints outcome group sizes, runs the cross-check, runs the presence and salience definitions, prints each report, and then counts the stored records.",
+      "why": "The header places group sizes first because they limit how far each verdict can be trusted.",
+      "watch_out": "Small or empty outcome groups make verdicts unreliable, so check the group sizes before reading any verdict."
+    },
+    {
+      "start": 123,
+      "end": 134,
+      "kind": "method",
+      "name": "main: if",
+      "id": "s6",
+      "hash": "6ef481c70baf2a7d",
+      "title": "Optional JSON output",
+      "what": "If a JSON path was given, writes all the reports to that file and then exits.",
+      "why": "Lets the results be saved and compared later.",
+      "watch_out": "The script exits right after writing, so nothing that follows runs."
+    }
+  ],
+  "explained_at": "2026-11-12T03:01:24+00:00",
+  "explained_by": "haiku",
+  "summary": "A measurement harness that checks whether the scoring rubric's criteria actually separate projects that overran their schedules from those that delivered, for chosen industries, and prints the results.",
+  "purpose": "Test the rubric on real data before anyone relies on its verdicts.",
+  "why": "The header says the harness routes facts through the shipped framework and measures the result, leaving clustering, naming and the deck untouched.",
+  "how": "For each industry, the script builds a corpus of routed facts, prints counts and pillars, and checks the outcome group sizes. It cross-checks outcome counts against the latest stored deck run. Then it runs two definitions, presence and salience, prints a verdict table for each, and optionally saves all reports to a JSON file. Finally it counts computation records for this engine.",
+  "inputs": "Command-line options for industries and a JSON output path, with a default of lithium-mining and gas-power. Database contents and fixed rubric parameters.",
+  "outputs": "A console report for each industry and definition. An optional JSON file. A count of computation records for this engine, which the header says is the only write.",
+  "risks": "Small groups or many unknown cells can make verdicts unreliable. The header's claim that only the computation record is written should be re-checked if the runner changes.",
+  "debug": "If an industry shows little data, read the corpus line for routed and unrouted facts. If the cross-check says no stored run, no completed deck run exists. If verdicts say refused, read the refusal reason on that line.",
+  "summary_hash": "sha256:b9d60e362d1fc05ad62f514eaa8a9691b768d3eed4fcae49cb7fb4655b3922d8"
+}

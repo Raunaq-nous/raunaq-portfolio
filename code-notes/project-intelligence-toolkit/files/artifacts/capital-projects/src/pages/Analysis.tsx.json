@@ -1,0 +1,317 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/capital-projects/src/pages/Analysis.tsx",
+  "language": "TypeScript (React)",
+  "lines": 745,
+  "hash": "sha256:5247e52b7dc2f58b7611c554bbefa8dcb91541402439369f822c52c45ceae0b2",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible for this file.",
+      "The 500-project cap has no visible warning to the user.",
+      "Date parsing is duplicated from the portfolio code and may read dates differently.",
+      "Many values are typed loosely, so bad data can reach the charts without a clear error."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Bubble chart",
+      "meaning": "A scatter chart where each project is a circle, and the circle size can show a number such as capacity."
+    },
+    {
+      "term": "Gantt chart",
+      "meaning": "A timeline with one bar per project, from its start to its completion."
+    },
+    {
+      "term": "FID",
+      "meaning": "Final investment decision, the point when a project is committed to be built."
+    },
+    {
+      "term": "COD",
+      "meaning": "Commercial operation date, the planned completion date of a plant."
+    },
+    {
+      "term": "CAPEX",
+      "meaning": "Capital expenditure, the money spent building a plant."
+    },
+    {
+      "term": "Reality Scan",
+      "meaning": "A separate tool in this app that builds slides from selected projects, as its name and the code's references suggest."
+    }
+  ],
+  "depends_on": [
+    "../lib/api",
+    "../components/ui/SegmentedToggle",
+    "../components/ui/IndustrialCard",
+    "../components/ui/ErrorBoundary",
+    "../components/ui/SegmentChip",
+    "../hooks/useSegment",
+    "../hooks/usePersistentState",
+    "../tools/reality-scan/scanApi",
+    "../tools/reality-scan/SlideScene",
+    "../components/ui/useDatapointSources",
+    "../lib/projectDisplay",
+    "../components/benchmark/CostScheduleBubbleChart",
+    "../../../../lib/api-client-react/src/schedule-metrics",
+    "../../../../lib/api-client-react/src/scan-template",
+    "@tanstack/react-query",
+    "wouter"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 25,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "c33159d55239d1ee",
+      "title": "Imports the page needs",
+      "what": "Brings in the data loader, shared chart and layout pieces, the Reality Scan tools, date and schedule helpers, and the display helper for budgets.",
+      "why": "Likely reason: the page reuses pieces shared with the Reality Scan and the benchmark chart, so the two stay consistent.",
+      "watch_out": "Several imports reach outside this app folder with long relative paths, so moving those shared files breaks this page."
+    },
+    {
+      "start": 26,
+      "end": 41,
+      "kind": "function",
+      "name": "fieldRefs, fmtDate",
+      "id": "s2",
+      "hash": "0fcb059fef5ea791",
+      "title": "Attaching sources to chart values",
+      "what": "Builds the list of source references for a project's values, such as budgets, delay, completion and capacity. The actual evidence is loaded later, only when someone opens it.",
+      "why": "Likely reason: the page offers a Sources action so every number can be traced back to its source.",
+      "watch_out": "A value is only linked when it is present, so a missing value has no source reference at all."
+    },
+    {
+      "start": 42,
+      "end": 64,
+      "kind": "function",
+      "name": "chartDatapoints",
+      "id": "s3",
+      "hash": "b4314c85740d935a",
+      "title": "Source lines for a clicked mark",
+      "what": "Lists the sourced inputs behind one project's bubble or timeline bar, each with its own citation link. Bubbles show budgets, delay, completion and capacity; timelines show FID, construction start, completion and lifecycle stage.",
+      "why": "Likely reason: the sources panel should show only the inputs that actually drove the chosen chart.",
+      "watch_out": "The delay label changes to approximate when the source marks it so, and that wording is shown to the reader."
+    },
+    {
+      "start": 65,
+      "end": 70,
+      "kind": "function",
+      "name": "toNum",
+      "id": "s4",
+      "hash": "f59d17a8d3ea6e60",
+      "title": "Converting a value to a number",
+      "what": "Turns a value into a number, or into nothing when it is empty or not a number.",
+      "why": "Likely reason: stored values arrive as mixed text and numbers, and charts need real numbers or nothing.",
+      "watch_out": "Blank text becomes nothing, but a zero stays a zero, which affects later checks that treat zero differently."
+    },
+    {
+      "start": 71,
+      "end": 119,
+      "kind": "function",
+      "name": "parseDate (part 1)",
+      "id": "s5",
+      "hash": "3da8e2da38e57d7a",
+      "title": "Reading messy date text",
+      "what": "Reads many date forms into a timestamp: plain years, full dates, quarters such as Q1 2024, halves such as H2 2025, phrases such as early or late 2026, and day-month-year or month-year text. Phrases like not determined return nothing.",
+      "why": "Likely reason: the source data writes dates in many styles, and the timeline and bubble chart need a single time value.",
+      "watch_out": "This parser is separate from the one on the portfolio page and reads more forms, so the two can give different results for the same text."
+    },
+    {
+      "start": 120,
+      "end": 131,
+      "kind": "method",
+      "name": "parseDate: if",
+      "id": "s6",
+      "hash": "4c6dca8218151601",
+      "title": "Finishing the date reader",
+      "what": "Finishes reading month-name dates, then reads a leading year. As a last resort it asks the browser's own date reader, and returns nothing if that fails.",
+      "why": "Likely reason: the browser reader is a fallback for formats the earlier rules do not cover.",
+      "watch_out": "The browser reader's results can vary between browsers, so unusual text may give different dates on different machines."
+    },
+    {
+      "start": 132,
+      "end": 135,
+      "kind": "function",
+      "name": "monthsBetween",
+      "id": "s7",
+      "hash": "56f50f1ba33f8c75",
+      "title": "Measuring months between two dates",
+      "what": "Returns the number of months between two timestamps, using an average month length.",
+      "why": "Likely reason: schedule overrun and durations are shown in months, which an average month handles simply.",
+      "watch_out": "Because it uses an average month, results are approximate, not calendar-exact."
+    },
+    {
+      "start": 136,
+      "end": 146,
+      "kind": "type",
+      "name": "GanttRow, MultiKey",
+      "id": "s8",
+      "hash": "811b4adccd6d77f9",
+      "title": "Shapes of timeline rows and filter keys",
+      "what": "Describes one timeline row (its id, name, stage, start, planned end and any slipped end) and lists the four filter names.",
+      "why": "Likely reason: keeps the timeline data in a fixed shape.",
+      "watch_out": "The filter name list does not appear to be used in the visible part of this file, so do not rely on it changing filter behavior."
+    },
+    {
+      "start": 147,
+      "end": 206,
+      "kind": "function",
+      "name": "FilterDropdown (part 1)",
+      "id": "s9",
+      "hash": "fa6f2eacd37de8c2",
+      "title": "Multi-select filter dropdown",
+      "what": "Shows a button that opens a checklist of options. Its label shows how many are selected, and it closes when the visitor clicks elsewhere.",
+      "why": "Likely reason: lets the visitor pick several values for one filter at a time.",
+      "watch_out": "The open state closes only on a mouse press outside the dropdown, so touch or keyboard users may not get the same behavior."
+    },
+    {
+      "start": 207,
+      "end": 218,
+      "kind": "function",
+      "name": "FilterDropdown (part 2)",
+      "id": "s10",
+      "hash": "7575679d5104e04b",
+      "title": "Dropdown options and empty state",
+      "what": "Shows each option as a checkbox with underscores turned into spaces, toggles an option on or off, and shows a no-options message when the list is empty.",
+      "why": "Likely reason: stored codes such as UNDER_CONSTRUCTION read better as words.",
+      "watch_out": "Option values are used as list keys, so two options with the same text would conflict."
+    },
+    {
+      "start": 219,
+      "end": 261,
+      "kind": "function",
+      "name": "Analysis (part 1)",
+      "id": "s11",
+      "hash": "91bea33aabf1ae79",
+      "title": "Page setup, saved settings and loading data",
+      "what": "Sets up the page for one industry: works out the industry name, keeps bubble size and filters saved per industry, tracks Reality Scan selection and loads up to 500 projects for the industry and any sub-industry chosen.",
+      "why": "Likely reason: saved settings mean analysts return to the same view. The 500 limit is not explained in the code.",
+      "watch_out": "Projects beyond the 500 limit are not loaded at all, and the total count shown is only what was loaded."
+    },
+    {
+      "start": 262,
+      "end": 298,
+      "kind": "function",
+      "name": "Analysis (part 2)",
+      "id": "s12",
+      "hash": "ca0c0b2f86e01b24",
+      "title": "Building filter choices and applying filters",
+      "what": "Builds the option lists for technology, EPC contractor, lifecycle stage and country from the loaded projects. Lifecycle stages are sorted in a set order. A project must match every chosen filter, while options within one filter match any one.",
+      "why": "Likely reason: the option lists should only offer values that really exist in the data.",
+      "watch_out": "The filtered list is built with AND across filters, so each extra filter narrows results and can hide projects without any message."
+    },
+    {
+      "start": 299,
+      "end": 355,
+      "kind": "method",
+      "name": "Analysis: for",
+      "id": "s13",
+      "hash": "79d574a47003b7d0",
+      "title": "Building bubble chart points and selection",
+      "what": "For each filtered project with both budgets and a schedule overrun, it sets cost overrun on the vertical axis and schedule overrun on the horizontal axis. Capacity sets the bubble size, or the bubble is hollow when capacity is missing. Also works out which bubbles are selected for a Reality Scan.",
+      "why": "Likely reason: the code comments say projects without capacity are kept as hollow markers so no project is dropped and no capacity is invented.",
+      "watch_out": "Dairy uses a capacity field while other industries use megawatts, so a new industry must be added to that rule or it will use the wrong size."
+    },
+    {
+      "start": 356,
+      "end": 413,
+      "kind": "function",
+      "name": "Analysis (part 4)",
+      "id": "s14",
+      "hash": "8b2a60fc6f316532",
+      "title": "Building Reality Scan slide data and selection actions",
+      "what": "Converts the filtered projects into the slide format the Reality Scan chart uses, and provides the actions to select all shown, clear, toggle one bubble, and start a Reality Scan run with the selected ids.",
+      "why": "Likely reason: the selection goes to the Reality Scan tool, which needs project ids and a bubble size rule.",
+      "watch_out": "Choosing select all shown resets the selection to the full plotted set, so any manual choices made earlier are discarded."
+    },
+    {
+      "start": 414,
+      "end": 470,
+      "kind": "function",
+      "name": "Analysis (part 5)",
+      "id": "s15",
+      "hash": "ce407d27463d88e8",
+      "title": "Building timeline rows and axis range",
+      "what": "For each filtered project with a start date and a completion date after it, creates a timeline row, marks a slipped completion when the updated date is later, sorts the rows by start, and works out the year range shown.",
+      "why": "Likely reason: a timeline needs a start and an end to draw, and a slip is shown so delays are visible.",
+      "watch_out": "Projects with no usable start or completion date are dropped from the timeline silently, so the count shown matters."
+    },
+    {
+      "start": 471,
+      "end": 521,
+      "kind": "function",
+      "name": "Analysis (part 6)",
+      "id": "s16",
+      "hash": "ebea0b714ae08967",
+      "title": "Page header and filter bar",
+      "what": "Shows the page title with the industry name, the bubble and timeline switch, a short description, the filter dropdowns, a clear button when filters are set, and the count of projects shown.",
+      "why": "Likely reason: the header stays visible while the chart scrolls, so the filters are always in reach.",
+      "watch_out": "The header is sticky, so a very tall chart can be harder to read on a small screen."
+    },
+    {
+      "start": 522,
+      "end": 581,
+      "kind": "function",
+      "name": "Analysis (part 7)",
+      "id": "s17",
+      "hash": "b6a6c1a43d9a2dc6",
+      "title": "Bubble view controls",
+      "what": "While loading, shows a spinner. In the bubble view, shows the chart's explanatory labels, the coverage count of plotted and missing projects, the select mode switch, and when select mode is on, the selected count, select-all, clear and Reality Scan buttons.",
+      "why": "Likely reason: the coverage count tells the reader how much of the portfolio the chart represents.",
+      "watch_out": "The Reality Scan button is disabled when nothing is selected, and a failed start shows an error message next to the buttons."
+    },
+    {
+      "start": 582,
+      "end": 641,
+      "kind": "function",
+      "name": "Analysis (part 8)",
+      "id": "s18",
+      "hash": "33eb784a4411aaee",
+      "title": "Bubble chart card and click handling",
+      "what": "Shows the bubble size choices and the chart itself, inside an error boundary so a chart crash does not blank the whole page. A click toggles selection in select mode, or opens the sourced inputs otherwise.",
+      "why": "Likely reason: the error boundary keeps the rest of the page working if the chart fails.",
+      "watch_out": "The error boundary resets only when its listed values change, so a stuck error may persist until one of them changes."
+    },
+    {
+      "start": 642,
+      "end": 701,
+      "kind": "function",
+      "name": "Analysis (part 9)",
+      "id": "s19",
+      "hash": "768340d68813157a",
+      "title": "Timeline coverage and empty state",
+      "what": "Shows how many projects are on the timeline, explains the slip marker, and shows a message when no project has both a start and an end. Also draws the year labels across the top.",
+      "why": "Likely reason: the coverage line tells the reader which projects are missing from the timeline.",
+      "watch_out": "The year labels are placed by percentage, so a very narrow range can crowd them together."
+    },
+    {
+      "start": 702,
+      "end": 745,
+      "kind": "function",
+      "name": "Analysis (part 10)",
+      "id": "s20",
+      "hash": "75cc5e680c23479f",
+      "title": "Timeline rows, bars and legend",
+      "what": "Draws each project as a row with its name, a bar from start to planned completion colored by stage, and a red extension for a slipped completion. Clicking a name opens the project, and clicking a bar opens its sourced dates. A legend explains the colors.",
+      "why": "Likely reason: the name and bar clicks give two different paths, to the project page and to its sources.",
+      "watch_out": "Very short projects still get a bar at least half a percent wide, so a short bar can look longer than it is."
+    }
+  ],
+  "explained_at": "2026-11-12T06:06:27+00:00",
+  "explained_by": "haiku",
+  "summary": "The Analysis page for an industry: a cost-versus-schedule bubble chart and a project timeline (Gantt) chart, with filters, a way to see each number's source, and a way to send selected projects into a Reality Scan.",
+  "purpose": "Lets an analyst see which projects are over budget or late, compare their timelines, and open the sourced figures behind any mark.",
+  "why": "Likely reason: the code comments say the bubble chart matches the Reality Scan slides and that chart settings are saved per industry, which explains much of the structure.",
+  "how": "1. Reads the industry from the page context or address, defaulting to nuclear. 2. Loads up to 500 projects for that industry. 3. Applies the four filters. 4. Builds bubble points, with cost overrun up and schedule overrun across. 5. Builds timeline rows from start and end dates. 6. Shows one view at a time. Clicks either open the sourced inputs panel or toggle selection for a Reality Scan.",
+  "inputs": "The industry from the page or address, the project list from the server, saved filter and bubble size settings, and clicks on bubbles or timeline bars.",
+  "outputs": "A bubble chart, a timeline chart, counts of plotted and missing projects, and a request to start a Reality Scan with the selected project ids.",
+  "risks": "Only 500 projects are loaded per industry, so a larger set is cut short without a visible warning. The page relies on server-computed cost deviation values. Two date parsers exist on different pages and may disagree. A failed Reality Scan start shows an error message.",
+  "debug": "If a project is missing from the bubble chart, check that it has both a planned and an actual budget, a positive planned budget, and a schedule overrun value; the coverage text counts the missing ones. If a timeline bar is missing, check its start and end dates, since both are needed. If counts look too low, check the 500-project limit. If the Reality Scan button fails, read the red message beside it.",
+  "summary_hash": "sha256:5247e52b7dc2f58b7611c554bbefa8dcb91541402439369f822c52c45ceae0b2"
+}

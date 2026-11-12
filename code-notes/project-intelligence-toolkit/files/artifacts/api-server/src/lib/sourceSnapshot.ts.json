@@ -1,0 +1,431 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/lib/sourceSnapshot.ts",
+  "language": "TypeScript",
+  "lines": 576,
+  "hash": "sha256:5d72d99c02f5ed52acade818ac5df3c6b50a030f8df1649ec75525950cecbb03",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Type checking is turned off for the whole file.",
+      "A browser launch failure is not turned into a saved failure record.",
+      "No tests are visible in the file.",
+      "Depends on external programs (Chromium, pdftoppm) that may be missing."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Headless browser",
+      "meaning": "A web browser run by a program with no window, used to load pages and take screenshots."
+    },
+    {
+      "term": "Chromium",
+      "meaning": "The open-source browser engine that the headless browser runs on."
+    },
+    {
+      "term": "Playwright",
+      "meaning": "A library that lets code control a browser: open pages, read text, and take screenshots."
+    },
+    {
+      "term": "Object storage",
+      "meaning": "A cloud file store where files are kept under names, separate from the main database."
+    },
+    {
+      "term": "PNG",
+      "meaning": "A common picture file format."
+    },
+    {
+      "term": "PDF",
+      "meaning": "A document file format, often used for reports and papers."
+    },
+    {
+      "term": "pdftoppm",
+      "meaning": "A command-line tool from the poppler package that turns one PDF page into a picture."
+    },
+    {
+      "term": "SSRF",
+      "meaning": "Server-side request forgery: a trick where an outside address tricks the server into calling internal services. The address check here blocks it."
+    },
+    {
+      "term": "User agent",
+      "meaning": "The name a program sends to a website to say what software is asking for a page."
+    },
+    {
+      "term": "JSONB",
+      "meaning": "A database column type that stores structured data as JSON text."
+    },
+    {
+      "term": "Locator",
+      "meaning": "The stored note of where in a source the quote sits, such as a PDF page."
+    },
+    {
+      "term": "Cache",
+      "meaning": "A saved result kept so the same work is not repeated."
+    }
+  ],
+  "depends_on": [
+    "playwright",
+    "@google-cloud/storage",
+    "child_process (Node built-in)",
+    "fs, os, path, crypto (Node built-ins)",
+    "artifacts/api-server/src/replit_integrations/object_storage/objectStorage",
+    "artifacts/api-server/src/storage",
+    "artifacts/api-server/src/lib/researchSources",
+    "artifacts/api-server/src/lib/safeFetch",
+    "artifacts/api-server/src/lib/curlFetch",
+    "@workspace/db"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 31,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "75b6a8c34d11c986",
+      "title": "Imports and capture time limits",
+      "what": "Brings in the browser tool, file storage, and helper modules. Sets a 20 second wait for page loads and allows at most two captures at once.",
+      "why": "The header comment explains the purpose. The limits are named constants, so the reason for the numbers is not stated in the code.",
+      "watch_out": "The ts-nocheck line turns off type checking for the whole file, so type mistakes will not be caught here."
+    },
+    {
+      "start": 32,
+      "end": 41,
+      "kind": "type",
+      "name": "SnapshotStatus",
+      "id": "s2",
+      "hash": "748ef249638fe54f",
+      "title": "Possible capture result labels",
+      "what": "Lists the eight possible results of a capture, from a matched and highlighted passage to several kinds of failure. These labels are what the citation drawer reads.",
+      "why": "The header comment says the labels exist so the app never shows a placeholder or misleading image.",
+      "watch_out": "Any new label must also be handled wherever statuses are read, since this list is the only definition."
+    },
+    {
+      "start": 42,
+      "end": 48,
+      "kind": "type",
+      "name": "SnapshotRecord",
+      "id": "s3",
+      "hash": "97ec66ad37b85da9",
+      "title": "Saved summary of one capture",
+      "what": "Describes what is saved for each capture: the status, a short detail message, the capture time in text form, and whether an image exists.",
+      "why": "Likely reason: a small saved summary lets later opens reuse the result without capturing again.",
+      "watch_out": "The time is stored as ISO text, so any code reading it must parse it that way."
+    },
+    {
+      "start": 49,
+      "end": 54,
+      "kind": "type",
+      "name": "CaptureOutcome",
+      "id": "s4",
+      "hash": "d7a193640cd427d2",
+      "title": "Internal result of one attempt",
+      "what": "Holds the status, detail text, and image bytes (or nothing) from one capture attempt before it is saved.",
+      "why": "Reason not stated in the code. It keeps capturing separate from saving the result.",
+      "watch_out": "An outcome with no image is normal for failures, so callers must not assume an image exists."
+    },
+    {
+      "start": 55,
+      "end": 61,
+      "kind": "type",
+      "name": "Locator",
+      "id": "s5",
+      "hash": "ed69d2aea3eff567",
+      "title": "Where the passage sits",
+      "what": "Describes the locator: a type (such as a PDF page) and an optional value that says where in the source the quote is.",
+      "why": "Reason not stated in the code. The locator is read from the evidence row so the capture knows where to look.",
+      "watch_out": "The type is a plain text field, so a typo silently changes which path is used."
+    },
+    {
+      "start": 62,
+      "end": 71,
+      "kind": "function",
+      "name": "resolveChromium",
+      "id": "s6",
+      "hash": "c0ce1c4477b27b72",
+      "title": "Finding the installed browser",
+      "what": "Looks for a Chromium program on the machine the first time it is needed and remembers the answer. Returns nothing if none is found.",
+      "why": "Likely reason: the browser may be missing in some environments, so capture reports the problem instead of crashing.",
+      "watch_out": "The answer is kept for the life of the process, so installing Chromium later needs a server restart."
+    },
+    {
+      "start": 72,
+      "end": 84,
+      "kind": "function",
+      "name": "computeSnapshotKey",
+      "id": "s7",
+      "hash": "aca4f33be0e557ee",
+      "title": "Cache key for shared captures",
+      "what": "Makes a short fingerprint from the URL and the passage, so rows that cite the same passage from the same page share one stored image. For PDFs the key uses the page number instead.",
+      "why": "The comment says many rows share a URL but cite different passages, so the passage must be part of the key.",
+      "watch_out": "Changing how the passage text is cleaned changes every key, so existing saved images will no longer be found."
+    },
+    {
+      "start": 85,
+      "end": 92,
+      "kind": "function",
+      "name": "rowLocator",
+      "id": "s8",
+      "hash": "bc6146bfc7a58185",
+      "title": "Reading the locator from a row",
+      "what": "Pulls the locator type and value from the row's stored source keys, or returns nothing when they are absent or malformed.",
+      "why": "Reason not stated in the code. The stored data is loosely typed, so the check is done at read time.",
+      "watch_out": "Only the type is checked to be text; the value is not validated."
+    },
+    {
+      "start": 93,
+      "end": 103,
+      "kind": "function",
+      "name": "snapshotObjectFile",
+      "id": "s9",
+      "hash": "fe577dfd158bde38",
+      "title": "Path to stored image file",
+      "what": "Builds the storage location for a capture under a snapshots folder inside the private storage folder named by an environment setting. Throws an error if that setting is missing.",
+      "why": "Likely reason: images are kept in private cloud storage rather than the database.",
+      "watch_out": "The first part of the path is read as the bucket name, so the environment setting must start with a real bucket name."
+    },
+    {
+      "start": 104,
+      "end": 110,
+      "kind": "function",
+      "name": "uploadSnapshot",
+      "id": "s10",
+      "hash": "ab063ea19c77c73e",
+      "title": "Saving the image to storage",
+      "what": "Writes the screenshot bytes to storage as a PNG file at the key's location.",
+      "why": "Reason not stated in the code. It is the only place images are written.",
+      "watch_out": "Errors here are caught by the caller and recorded, so a missing image usually shows up in the detail text."
+    },
+    {
+      "start": 111,
+      "end": 117,
+      "kind": "function",
+      "name": "getSnapshotImageFile",
+      "id": "s11",
+      "hash": "5f2052feb49eb9a5",
+      "title": "Getting a stored image back",
+      "what": "Returns the storage file for a row's image only when the row says an image was saved. Otherwise returns nothing.",
+      "why": "Likely reason: avoids asking storage for images that were never saved.",
+      "watch_out": "It checks the flag is exactly the text 1, so a different flag value means no image is returned."
+    },
+    {
+      "start": 118,
+      "end": 151,
+      "kind": "function",
+      "name": "locateAndHighlight (part 1)",
+      "id": "s12",
+      "hash": "4bc16c1ab6f9f91d",
+      "title": "Finding the quote on the page",
+      "what": "Runs inside the page itself. It removes spaces and lowercases visible text, then searches it for the quote while keeping a map back to each character's original place.",
+      "why": "Likely reason: removing spaces lets a quote match even when words are split across lines or cells.",
+      "watch_out": "Hidden elements are skipped, so a matching passage that is hidden will not be found."
+    },
+    {
+      "start": 152,
+      "end": 193,
+      "kind": "method",
+      "name": "locateAndHighlight: for",
+      "id": "s13",
+      "hash": "9eb917bd015fa8aa",
+      "title": "Highlighting and scrolling to match",
+      "what": "Tries the whole quote first, then the first 100, 60, or 30 characters. When found, it colors the matching text yellow and scrolls it near the top third of the screen. Returns true if found.",
+      "why": "Shorter tries help when the page text differs slightly from the quote.",
+      "watch_out": "Each call adds another style block to the page, and a short prefix can match the wrong repeated phrase."
+    },
+    {
+      "start": 194,
+      "end": 199,
+      "kind": "value",
+      "name": "UA_PROFILES",
+      "id": "s14",
+      "hash": "23c3fd1f3e50046a",
+      "title": "Browser identities and block titles",
+      "what": "Lists three browser identities to try in order: a Chrome identity, no identity, and a research bot name. Also defines a pattern that spots block pages by their title or text.",
+      "why": "The comment says some sites block one identity but allow another.",
+      "watch_out": "Each identity is a full retry, so order affects how long a blocked page takes to fail."
+    },
+    {
+      "start": 200,
+      "end": 259,
+      "kind": "function",
+      "name": "capturePdf (part 1)",
+      "id": "s15",
+      "hash": "f48f10113cf98c67",
+      "title": "Downloading and rendering a PDF",
+      "what": "Downloads the PDF directly, since the browser cannot show PDFs. Checks the file starts with the PDF signature, then turns the requested page into a PNG with pdftoppm. The result is labeled as a PDF page with no highlight.",
+      "why": "The comment explains the browser cannot render its PDF viewer, so the bytes are fetched and rendered directly.",
+      "watch_out": "Fetch errors other than timeouts are ignored silently, so the final message may show a vague status. pdftoppm must be installed."
+    },
+    {
+      "start": 260,
+      "end": 276,
+      "kind": "function",
+      "name": "capturePdf (part 2)",
+      "id": "s16",
+      "hash": "e7075697838f5f0c",
+      "title": "Deleting temporary PDF files",
+      "what": "Removes the temporary PDF and PNG files after rendering, even when rendering fails.",
+      "why": "The finally block ensures cleanup runs in every case, which avoids leaving files behind.",
+      "watch_out": "If the process is killed in the middle, the temporary files are not removed."
+    },
+    {
+      "start": 277,
+      "end": 300,
+      "kind": "function",
+      "name": "dismissConsent",
+      "id": "s17",
+      "hash": "bbd8db7c7b788a57",
+      "title": "Dismissing cookie banners",
+      "what": "Looks for a button with a common accept or reject label in several languages, clicks the first match, and waits 0.8 seconds. Any error is ignored.",
+      "why": "The comment says the banner should not cover the cited passage.",
+      "watch_out": "Matching is by button text, so a reject button can be clicked if it comes first on the page."
+    },
+    {
+      "start": 301,
+      "end": 356,
+      "kind": "function",
+      "name": "captureAttempt (part 1)",
+      "id": "s18",
+      "hash": "d704db814e154d33",
+      "title": "Loading the page and checking status",
+      "what": "Opens a fresh isolated browser session with a 1280 by 900 window and loads the URL, or uses the curl-fetched HTML if asked. Maps HTTP codes to failure statuses, waits 2.5 seconds, clicks any consent button, and checks the title and text for block or paywall messages.",
+      "why": "Likely reason: different sites block visitors in different ways, and the wait lets the page finish loading.",
+      "watch_out": "The 2.5 second wait is fixed, so slow pages may be captured before their text appears."
+    },
+    {
+      "start": 357,
+      "end": 388,
+      "kind": "method",
+      "name": "captureAttempt: if",
+      "id": "s19",
+      "hash": "3b827ff40be4978e",
+      "title": "Highlighting, screenshot, final status",
+      "what": "If an excerpt exists, tries to highlight it. If it is not found, scrolls to the top. Takes a screenshot, then returns MATCHED when found, a paywall failure when paywall text was seen, or NOT_LOCATED otherwise. The browser session is always closed.",
+      "why": "Reason not stated in the code beyond the status names. It keeps the result honest about what was found.",
+      "watch_out": "The paywall check runs only when the passage is not found, so a paywalled page where the passage is found is shown as matched."
+    },
+    {
+      "start": 389,
+      "end": 440,
+      "kind": "function",
+      "name": "captureSource",
+      "id": "s20",
+      "hash": "91e75ab58e830d6f",
+      "title": "Choosing how to capture a source",
+      "what": "Checks the address is public http or https, refusing private network addresses. PDFs go to the PDF path. Web pages start a headless browser, try each identity, then fall back to the curl copy. The browser is always closed at the end.",
+      "why": "The SSRF guard exists because the URLs come from outside search results and imports, so the app must not be tricked into calling internal services.",
+      "watch_out": "The browser launch happens outside the error handling in this function, so a failed launch throws instead of returning a failure record."
+    },
+    {
+      "start": 441,
+      "end": 445,
+      "kind": "value",
+      "name": "inFlight",
+      "id": "s21",
+      "hash": "d35a62c701145e50",
+      "title": "Tracking captures in progress",
+      "what": "Holds a map of captures that are running, keyed by fingerprint, plus a count of active captures and a waiting line.",
+      "why": "The comments say concurrent requests for the same key share one capture, and parallel browsers are capped.",
+      "watch_out": "This lives in memory, so it resets on restart and only works within one server process."
+    },
+    {
+      "start": 446,
+      "end": 454,
+      "kind": "function",
+      "name": "acquireSlot",
+      "id": "s22",
+      "hash": "1eca0c451d284f4a",
+      "title": "Waiting for a free capture slot",
+      "what": "Lets up to two captures run at once. Any extra capture waits in line until a slot opens.",
+      "why": "Each capture starts a full browser, which is heavy, so the number is capped.",
+      "watch_out": "Every acquired slot must be released, or the line stalls."
+    },
+    {
+      "start": 455,
+      "end": 460,
+      "kind": "function",
+      "name": "releaseSlot",
+      "id": "s23",
+      "hash": "61367aa7bff5b910",
+      "title": "Releasing a capture slot",
+      "what": "Frees one slot and wakes the next waiting capture if there is one.",
+      "why": "It is the pair of the slot wait and keeps the queue moving.",
+      "watch_out": "It must be called exactly once per acquired slot. Calling it twice lets too many browsers run."
+    },
+    {
+      "start": 461,
+      "end": 470,
+      "kind": "function",
+      "name": "recordFromSourceKeys",
+      "id": "s24",
+      "hash": "b538ede857331a77",
+      "title": "Rebuilding a record from saved fields",
+      "what": "Turns the flat saved fields back into a snapshot record. Returns nothing when the status or time is missing.",
+      "why": "Reason not stated in the code. Saved data is stored as flat text, so it must be converted back.",
+      "watch_out": "The status is cast without checking it is one of the valid labels."
+    },
+    {
+      "start": 471,
+      "end": 488,
+      "kind": "function",
+      "name": "persistRecord",
+      "id": "s25",
+      "hash": "2a73851f8e5c57b0",
+      "title": "Saving the result onto the row",
+      "what": "Writes the snapshot fields into the evidence row's source keys without touching other fields. Research rows and normal evidence rows use different save routines. The detail is cut to 200 characters.",
+      "why": "The comment says a long capture must not overwrite fields that another process updated during the wait.",
+      "watch_out": "The detail is cut at 200 characters, so the end of a long error message is lost."
+    },
+    {
+      "start": 489,
+      "end": 492,
+      "kind": "type",
+      "name": "SnapshotResult",
+      "id": "s26",
+      "hash": "783619cd50f9d0ca",
+      "title": "Result type for callers",
+      "what": "Describes the return value: either a failure (not found or no URL) or a success carrying a record.",
+      "why": "Reason not stated in the code. It lets callers handle missing rows without catching errors.",
+      "watch_out": "Callers must check the ok flag before reading the record."
+    },
+    {
+      "start": 493,
+      "end": 527,
+      "kind": "function",
+      "name": "getOrCaptureSnapshot (part 1)",
+      "id": "s27",
+      "hash": "e0b7766de314070a",
+      "title": "Returning or starting a capture",
+      "what": "Loads the row and returns its saved record unless a retry was asked for. Otherwise it computes the key and copies the record from another row with the same key if one exists.",
+      "why": "The comments say saved results are reused, and rows sharing a page should not repeat the same capture.",
+      "watch_out": "Copying a failure record from another row means that failure also applies here without a retry."
+    },
+    {
+      "start": 528,
+      "end": 576,
+      "kind": "method",
+      "name": "getOrCaptureSnapshot: if",
+      "id": "s28",
+      "hash": "5d5615d242e399ed",
+      "title": "Running the capture and saving",
+      "what": "If no capture is already running for this key, starts one inside a slot, uploads any image, and builds the record. Saves the record to this row. On a retry, also updates all rows that share the key so their dates match the new image.",
+      "why": "The comments say rows sharing a key must be refreshed together, or they would show a new image with an old date.",
+      "watch_out": "If the capture throws an error, the error reaches the caller rather than becoming a saved failure record. A retry also overwrites the image shared by every row with that key."
+    }
+  ],
+  "explained_at": "2026-11-12T04:00:24+00:00",
+  "explained_by": "haiku",
+  "summary": "Takes a screenshot of a cited web page or PDF with the cited passage highlighted, saves the image, and records whether the capture worked.",
+  "purpose": "Fills the 'Source snapshot' slot in the citation drawer so a user can see the original source behind a quote. It is built to be honest: it shows a real image or a clear failure label, never a made-up picture.",
+  "why": "Captures happen on demand and are slow and sometimes blocked, so the result is stored on the evidence row. Failures are stored too, so a dead link does not get retried every time someone opens the drawer. Reason for the retry flag: the header says it lets someone explicitly try again.",
+  "how": "1. The main function `getOrCaptureSnapshot` looks for a saved record on the evidence row. If one exists and no retry was asked for, it returns that. 2. If not, it looks for another row with the same URL and passage and copies that record. 3. Otherwise it starts a capture, limited to two at a time, and reuses a capture already running for the same key. 4. `captureSource` checks the address is public web, then sends PDFs to `capturePdf` and web pages to a headless browser. 5. The browser tries three browser identities, then a curl-fetched copy of the HTML. 6. The image is uploaded to private object storage and the status is saved on the row.",
+  "inputs": "An evidence row id, plus an optional retry flag. The row supplies its URL, quote text, and locator (for example a PDF page number). Settings used: PRIVATE_OBJECT_DIR for storage location, and a Chromium program found on the machine.",
+  "outputs": "A snapshot record with status, detail text, capture time, and whether an image exists. The image is stored as a PNG in object storage under snapshots and a key. The evidence row's source keys are updated with the snapshot fields.",
+  "risks": "The file disables TypeScript checking for its whole body, so type mistakes will not be reported. A failed browser launch throws an error instead of saving a failure record. Captures run real browsers against outside sites, so the address check (blocking private addresses) is important and must not be removed. Retries overwrite the shared image for every row with the same key.",
+  "debug": "Check the stored snapshotStatus and snapshotDetail on the evidence row first; the detail text names the cause. If every capture says the browser is unavailable, check that chromium is installed and found by the which command. If PDFs fail, check pdftoppm is installed. If storage errors appear, check the PRIVATE_OBJECT_DIR setting starts with a bucket name. To force a fresh attempt, use the retry flag, but know it also overwrites twin rows.",
+  "summary_hash": "sha256:5d72d99c02f5ed52acade818ac5df3c6b50a030f8df1649ec75525950cecbb03"
+}

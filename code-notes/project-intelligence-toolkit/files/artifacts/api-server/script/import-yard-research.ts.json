@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/import-yard-research.ts",
+  "language": "TypeScript",
+  "lines": 255,
+  "hash": "sha256:cc86018bdcedce15425c4f6cb469a12f57d08acbb7c522cf157ad596e5b46711",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the first two sections of the file are visible, so the write logic cannot be judged.",
+      "No tests or run results are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Batch",
+      "meaning": "A named group of imported rows, marked with one label so the group can be traced or replayed."
+    },
+    {
+      "term": "Fill-only-empty",
+      "meaning": "A rule that only writes to fields that are currently blank."
+    },
+    {
+      "term": "Milestone",
+      "meaning": "A dated event in a project's life, such as a final investment decision."
+    },
+    {
+      "term": "Assessment",
+      "meaning": "A stored research conclusion, linked to the evidence that supports it."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/lib/canonicalize",
+    "artifacts/api-server/src/ingest/yardResearch/companies",
+    "artifacts/api-server/src/ingest/yardResearch/identities",
+    "artifacts/api-server/src/ingest/yardResearch/plan",
+    "pg",
+    "attached_assets/offshore_wind_all_batches_combined_1791737651608.json",
+    "attached_assets/offshore_wind_combined_1791737651608.json"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 23,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "000d03dbcec8de35",
+      "title": "Header and usage",
+      "what": "Describes what the importer writes and how to run a dry run or a commit with an approved digest.",
+      "why": "The header is the operating guide for the import.",
+      "watch_out": "A dry run still performs the writes inside a transaction before rolling them back, so it takes real time and load."
+    },
+    {
+      "start": 24,
+      "end": 32,
+      "kind": "value",
+      "name": "FILES, digest, uuid, norm",
+      "id": "s2",
+      "hash": "ea71e09723eedd74",
+      "title": "Input files and helpers",
+      "what": "Names the two offshore wind input files and the batch label, reads the commit flag, and defines helpers for fingerprints, stable ids, and name matching.",
+      "why": "Reason not stated in the code beyond the batch label, which marks this batch.",
+      "watch_out": "Name matching strips all characters except letters and digits, so different company names can collide."
+    },
+    {
+      "start": 33,
+      "end": 41,
+      "kind": "value",
+      "name": "STANCE",
+      "id": "s3",
+      "hash": "11f149f030ab4f7b",
+      "title": "Source stance labels",
+      "what": "Turns the research files' stance codes, such as strength, risk, watch item and neutral, into the readable labels the app shows.",
+      "why": "Likely reason: the research files use lowercase codes while the app shows readable labels.",
+      "watch_out": "A stance word missing from this map causes the finding to be skipped and counted, not stopped with an error."
+    },
+    {
+      "start": 42,
+      "end": 47,
+      "kind": "value",
+      "name": "records",
+      "id": "s4",
+      "hash": "f4c3830465d0d785",
+      "title": "Loading and fingerprinting the research files",
+      "what": "Reads each listed research file, checks its schema marker, and records a SHA-256 fingerprint of its exact bytes.",
+      "why": "The fingerprint lets a reviewer later prove exactly which file version was imported.",
+      "watch_out": "The list of files is fixed in the code, so adding a new file means editing this script."
+    },
+    {
+      "start": 48,
+      "end": 57,
+      "kind": "value",
+      "name": "byIdentity, pool",
+      "id": "s5",
+      "hash": "f1e917ba64bee36e",
+      "title": "Matching records to projects",
+      "what": "Groups each research record under the offshore wind project it describes, using a fixed key map, and rejects unknown keys and duplicate direct records from one producer.",
+      "why": "Likely reason: prevents research about one project from being attached to another.",
+      "watch_out": "Two direct records from the same producer for one project stop the whole run."
+    },
+    {
+      "start": 58,
+      "end": 62,
+      "kind": "value",
+      "name": "out",
+      "id": "s6",
+      "hash": "436d2dc001ee50d9",
+      "title": "Report structure",
+      "what": "Creates the report object that will be saved, holding the source files and counts for inserts, enrichments, held items, evidence, findings and more.",
+      "why": "Gives a reviewer one place to see what the run will do before anything is committed.",
+      "watch_out": "Every branch must update the counts, or the report will undercount."
+    },
+    {
+      "start": 63,
+      "end": 120,
+      "kind": "function",
+      "name": "log (part 1)",
+      "id": "s7",
+      "hash": "41e406225def0053",
+      "title": "Change log helper and transaction start",
+      "what": "Defines the helper that writes one change log row, then opens a database transaction with a 120 second limit and a lock so two imports cannot run at once. It also takes a snapshot of projects and existing evidence to compare at the end.",
+      "why": "A transaction means all changes succeed together or none are kept.",
+      "watch_out": "A large import that runs past 120 seconds is cancelled and fully rolled back."
+    },
+    {
+      "start": 121,
+      "end": 173,
+      "kind": "method",
+      "name": "log: if",
+      "id": "s8",
+      "hash": "cb0fc2431ff0bb79",
+      "title": "Creating or enriching projects",
+      "what": "For a new project, inserts a row with placeholder defaults such as not assessed, renewables and offshore wind. For an existing project, fills empty columns, merges attributes and logs changes. Projects without a clear lifecycle stage are held.",
+      "why": "Likely reason: a lifecycle stage is mandatory, so a project without a sourced one is not created.",
+      "watch_out": "New rows get placeholder values such as Not reported and 0 MW; these must be replaced later or they will look like real data."
+    },
+    {
+      "start": 174,
+      "end": 209,
+      "kind": "method",
+      "name": "log: for",
+      "id": "s9",
+      "hash": "9ec9a1033d040228",
+      "title": "Saving quotes and milestones",
+      "what": "Writes each claim's quote as an evidence row, records which evidence row backs each fact, then writes milestones and company links.",
+      "why": "Every shown figure needs a source quote behind it.",
+      "watch_out": "Evidence IDs are built from the content, so changing a quote creates a new row instead of updating the old one."
+    },
+    {
+      "start": 210,
+      "end": 255,
+      "kind": "method",
+      "name": "log: for",
+      "id": "s10",
+      "hash": "28083efd857c0e12",
+      "title": "Saving assessments as findings and final checks",
+      "what": "Saves each assessment as a finding only if it has a known stance, text and at least one grounding fact with evidence. Others are skipped and listed with a reason. Then runs the final safety checks and writes the dry run or commit report.",
+      "why": "Likely reason: a finding without supporting evidence should not appear to users.",
+      "watch_out": "Commit refuses to run unless the approved digest matches the reviewed dry run file."
+    }
+  ],
+  "explained_at": "2026-11-12T03:05:26+00:00",
+  "explained_by": "haiku",
+  "summary": "The earlier importer for the offshore wind research batch. It adds new projects, fills empty fields on existing ones, and stores research evidence, milestones, company links, and assessments. It dry-runs by default and needs an approved digest to commit.",
+  "purpose": "Bring offshore wind research into the database under one batch label.",
+  "why": "The header describes the writes and the approval rule. The batch label contains a fixed date, 2026-10-11.",
+  "how": "Only the setup part is visible here. It names the two input files, sets the batch label and commit flag, and defines helpers for fingerprints, stable ids, and name matching. The rest of the write logic is not visible in the code shown.",
+  "inputs": "Two offshore wind JSON files in attached_assets, the offshore wind identity table, and the database.",
+  "outputs": "Database rows when committed, and a dry-run JSON file as described in the header.",
+  "risks": "A commit writes to the database. Name matching removes punctuation and accents, so different names can match. Most of the logic is not visible, so its risks cannot be judged here.",
+  "debug": "Confirm both input files exist. Read the dry-run output before any commit. Check the batch label before running a replay.",
+  "summary_hash": "sha256:cc86018bdcedce15425c4f6cb469a12f57d08acbb7c522cf157ad596e5b46711"
+}

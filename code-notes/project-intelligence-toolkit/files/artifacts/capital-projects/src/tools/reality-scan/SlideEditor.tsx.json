@@ -1,0 +1,376 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/capital-projects/src/tools/reality-scan/SlideEditor.tsx",
+  "language": "TypeScript (React)",
+  "lines": 786,
+  "hash": "sha256:6641908ab889dc99f77c411f03738e2eda88880ed916137dae66eb81e80408ad",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test or evidence of tests is in the code provided.",
+      "Loading, running, failed, conflict and save errors all have visible messages.",
+      "Only the first 21 of 24 outline parts were included, so the message bubble, loading skeleton and notice parts were not reviewed here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Run",
+      "meaning": "one scan job that produces a deck of slides"
+    },
+    {
+      "term": "Deck",
+      "meaning": "the set of slides a run produces and the user edits"
+    },
+    {
+      "term": "Revision",
+      "meaning": "a version number that goes up on every save, used to catch overwrites"
+    },
+    {
+      "term": "Conflict",
+      "meaning": "a save the server rejects because the deck changed elsewhere"
+    },
+    {
+      "term": "Draft",
+      "meaning": "an edit that has not been saved yet"
+    },
+    {
+      "term": "Proposal",
+      "meaning": "a change the assistant suggests, which waits for the user to accept or dismiss it"
+    },
+    {
+      "term": "Replay",
+      "meaning": "a scripted demo that drives the real screen using local copies"
+    },
+    {
+      "term": "Citation",
+      "meaning": "a reference to the source of a figure or fact"
+    },
+    {
+      "term": "PPTX",
+      "meaning": "the PowerPoint file format"
+    },
+    {
+      "term": "Context",
+      "meaning": "a way to pass shared settings to nested components without passing them through each one"
+    }
+  ],
+  "depends_on": [
+    "@tanstack/react-query",
+    "wouter",
+    "lucide-react",
+    "@/components/tools/guided/DemoHint",
+    "@/components/ui/useFullCitation",
+    "@/components/ui/CitationDrawer",
+    "@/components/ui/SourceRefList",
+    "@/lib/queryClient",
+    "artifacts/capital-projects/src/tools/reality-scan/SlideScene",
+    "artifacts/capital-projects/src/tools/reality-scan/ChartCutPanel",
+    "artifacts/capital-projects/src/tools/reality-scan/scanApi",
+    "artifacts/capital-projects/lib/api-client-react/src/scan-deck"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 54,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "bace403ffacdd92e",
+      "title": "Imports for the slide editor",
+      "what": "Brings in icons, data-fetching tools, the citation drawer, the slide renderer, the chart panel and the deck API helpers that the editor uses.",
+      "why": "Reason is clear from the names: the editor is built from these shared pieces.",
+      "watch_out": "Many imports come from the shared API file, so removing one that is still used later will break the editor."
+    },
+    {
+      "start": 55,
+      "end": 61,
+      "kind": "value",
+      "name": "ACTIONS",
+      "id": "s2",
+      "hash": "f0f396ebb11f4ecc",
+      "title": "Assistant modes",
+      "what": "Defines the four assistant modes: Chat, Edit (wording changes that are proposed, never applied automatically), Research (public source search) and Re-verify (checks a project's figures). Each has an icon and a hint.",
+      "why": "Stated in the hint text: edits are proposed and never applied automatically, so the user stays in control.",
+      "watch_out": "The mode keys must match the AssistantAction type in the shared API file, or requests will fail."
+    },
+    {
+      "start": 62,
+      "end": 77,
+      "kind": "type",
+      "name": "ScanReplayCue",
+      "id": "s3",
+      "hash": "14095b7828e77860",
+      "title": "Commands for replay playback",
+      "what": "Describes the commands a scripted demo can send to the editor, such as opening a slide, selecting an element, opening the assistant, prefilling a draft or opening a citation.",
+      "why": "Stated in the code: the demo controller drives the real workspace through these commands.",
+      "watch_out": "Each command is applied only when its nonce number changes, so sending the same nonce again does nothing."
+    },
+    {
+      "start": 78,
+      "end": 93,
+      "kind": "type",
+      "name": "ScanReplay",
+      "id": "s4",
+      "hash": "bad5b40281c0d0bf",
+      "title": "Replay controller contract",
+      "what": "Lists the functions a replay must supply: answer a prompt, decide a proposal, export, save text locally, apply a chart locally, and show hints. It also says a replay never changes the saved deck.",
+      "why": "Stated in the code: nothing in replay mutates the saved deck, so the demo can run safely.",
+      "watch_out": "Export in replay uses the same local edits, so any edit type missing from these functions will not appear in the exported file."
+    },
+    {
+      "start": 94,
+      "end": 97,
+      "kind": "type",
+      "name": "RunStatusLite",
+      "id": "s5",
+      "hash": "e15fe47c57cebb6d",
+      "title": "Run status shape",
+      "what": "Describes the small part of the run record the editor reads: its id, its status, and any error message.",
+      "why": "Likely reason: the editor only needs the status to decide what to show, not the full run record.",
+      "watch_out": "Status values are compared as exact text, so a renamed status would silently break the loading logic."
+    },
+    {
+      "start": 98,
+      "end": 103,
+      "kind": "function",
+      "name": "SlideEditor",
+      "id": "s6",
+      "hash": "69410b45f7b2c4e3",
+      "title": "Entry point with optional alternate API",
+      "what": "Wraps the editor so that, when an alternate API is passed, every part inside it uses that API's deck routes. Otherwise it uses the Reality Scan default.",
+      "why": "Stated in the code: the api setting selects which tool's deck routes are used, so the same editor can serve other tools.",
+      "watch_out": "Parts rendered outside this wrapper fall back to the default routes, so they can read or save the wrong deck."
+    },
+    {
+      "start": 104,
+      "end": 149,
+      "kind": "function",
+      "name": "SlideEditorInner (part 1)",
+      "id": "s7",
+      "hash": "9ad3ca21d2778fc6",
+      "title": "Waiting for the run and loading the deck",
+      "what": "Checks the run status, keeps checking every 1.5 seconds while it is queued or running, and loads the deck only once the run succeeds. Failed or unusual run outcomes show a message with a link to the run.",
+      "why": "Likely reason: a deck only exists after a successful run, so the editor shows progress until then.",
+      "watch_out": "If the run status never changes from running, the page keeps polling and shows no editor."
+    },
+    {
+      "start": 150,
+      "end": 171,
+      "kind": "method",
+      "name": "SlideEditorInner: if",
+      "id": "s8",
+      "hash": "473e3b0f89d6d2d0",
+      "title": "Missing deck and load errors",
+      "what": "If the deck is missing (not found or conflict), shows a notice that offers a link to start a new run, since decks are never rebuilt from the current database. Other load errors show a message with Retry. Otherwise it passes the deck to the workspace.",
+      "why": "Stated in the code: decks are never rebuilt from the current database, so the user must start a new run instead.",
+      "watch_out": "A conflict response is treated the same as a missing deck, so a real conflict can look like the deck was never saved."
+    },
+    {
+      "start": 172,
+      "end": 176,
+      "kind": "function",
+      "name": "SlideWorkspace",
+      "id": "s9",
+      "hash": "1fe12d5eef0c90e2",
+      "title": "Workspace wrapper for replay",
+      "what": "Renders the same workspace for replays, passing in the replay controller and an optional banner. It can also receive an alternate API.",
+      "why": "Likely reason: lets a demo show the real screen instead of a copy of it.",
+      "watch_out": "The reload action does nothing here, and saves are kept local, so a replay will not show any change the saved deck received."
+    },
+    {
+      "start": 177,
+      "end": 235,
+      "kind": "function",
+      "name": "Workspace (part 1)",
+      "id": "s10",
+      "hash": "960a45a2b1aea4d6",
+      "title": "Workspace state and text saves",
+      "what": "Holds the workspace state: the current slide, the selected element, unsaved drafts, the conflict message, export status, and which panels are open. It also applies replay commands and defines the text save, which sends the deck revision with the new text.",
+      "why": "Likely reason: the revision lets the server reject a save made on an old version of the deck.",
+      "watch_out": "If the requested starting slide is not found, the editor falls back to the first slide, so a bad link opens a different slide without a warning."
+    },
+    {
+      "start": 236,
+      "end": 274,
+      "kind": "function",
+      "name": "Workspace (part 2)",
+      "id": "s11",
+      "hash": "a04f7316a7220176",
+      "title": "Unsaved edits, arrow keys and export",
+      "what": "Works out whether the selected text has unsaved changes, gathers every unsaved edit across all slides so they show on the slide, and moves between slides with the arrow and page keys. Escape leaves focus mode. Also defines the export action and the list of pending changes.",
+      "why": "Stated in the code: keyboard navigation is ignored while the user types, and Escape is ignored when the citation drawer already handled it.",
+      "watch_out": "Arrow keys are ignored only inside input, text area, select and editable areas, so any new kind of input must be added to that check."
+    },
+    {
+      "start": 275,
+      "end": 332,
+      "kind": "function",
+      "name": "Workspace (part 3)",
+      "id": "s12",
+      "hash": "0925c325f4b230e0",
+      "title": "Top toolbar and conflict banner",
+      "what": "Draws the deck title and revision, a badge counting pending changes, and buttons for Chart cuts, slides, assistant, focus mode, reload and export. Shows a banner when the deck changed elsewhere, offering to load the latest revision.",
+      "why": "Likely reason: the conflict banner stops the user overwriting another edit without knowing it.",
+      "watch_out": "The banner says unsaved text is kept, which depends on drafts staying in local state across a reload."
+    },
+    {
+      "start": 333,
+      "end": 392,
+      "kind": "function",
+      "name": "Workspace (part 4)",
+      "id": "s13",
+      "hash": "053fdaeb7a1315c6",
+      "title": "Slide stage and thumbnails",
+      "what": "Draws the main slide, showing an unsaved chart preview in place of the saved chart when one exists, then the inspector for the selected element, then a row of slide thumbnails with a dot on slides that have pending changes.",
+      "why": "Likely reason: the main slide is the editing surface, and thumbnails let the user move between slides quickly.",
+      "watch_out": "The dot on a thumbnail depends on each proposal carrying the matching slide id, so a proposal with a wrong id shows no dot."
+    },
+    {
+      "start": 393,
+      "end": 428,
+      "kind": "function",
+      "name": "Workspace (part 5)",
+      "id": "s14",
+      "hash": "efa7a266dabf3cf3",
+      "title": "Chart panel and assistant side panel",
+      "what": "Shows the chart cut panel only when the current slide is the chart slide, and shows the assistant on the right when it is open. Also draws the citation drawer.",
+      "why": "Likely reason: the chart controls belong next to the chart, and the assistant can stay open while the user works on any slide.",
+      "watch_out": "The chart panel is removed when the user leaves the chart slide, so any unsaved chart preview is cleared at that point."
+    },
+    {
+      "start": 429,
+      "end": 488,
+      "kind": "function",
+      "name": "ElementInspector (part 1)",
+      "id": "s15",
+      "hash": "070fc1e2ef44610c",
+      "title": "Element inspector and text editing",
+      "what": "Shows the selected element's type, id, source project and field, its source references, and an editable text box with Save edit and Revert. Text elements can be edited, and shape elements get a note that they cannot be moved or resized.",
+      "why": "Stated in the code: chart geometry is fixed by the finalized data, so only label text is editable.",
+      "watch_out": "The note promises that direct edits change slide wording only and never the Yard database, so keep that note accurate if the save path changes."
+    },
+    {
+      "start": 489,
+      "end": 495,
+      "kind": "function",
+      "name": "ElementInspector (part 2)",
+      "id": "s16",
+      "hash": "623b69afe55eb834",
+      "title": "End of the element inspector",
+      "what": "Closes the conditional blocks and the box that the element inspector draws.",
+      "why": "Structure only. Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 496,
+      "end": 554,
+      "kind": "function",
+      "name": "AssistantPanel (part 1)",
+      "id": "s17",
+      "hash": "332c3541e8577da0",
+      "title": "Assistant requests and decisions",
+      "what": "Holds the assistant's mode, message and scope (this slide or all slides). Defines the requests that ask the assistant and that accept or dismiss a proposal, and splits the deck's messages and proposals into pending and history lists. The send action routes to replay when one is active.",
+      "why": "Likely reason: each request carries the slide, the selected element and the revision so the answer matches what the user sees.",
+      "watch_out": "Requests are sent with the current revision, so a stale answer is rejected by the server and the conflict is reported to the parent."
+    },
+    {
+      "start": 555,
+      "end": 602,
+      "kind": "function",
+      "name": "AssistantPanel (part 2)",
+      "id": "s18",
+      "hash": "92216ca3616204a0",
+      "title": "Assistant header and pending changes",
+      "what": "Draws the assistant's header with the all-slides checkbox, the four mode tabs and the hint for the current mode. Below that, it lists pending changes as cards that wait for review.",
+      "why": "Likely reason: pending changes are shown above the chat so they are not missed.",
+      "watch_out": "Pending changes stay in the list until the user accepts or dismisses them, since nothing is applied automatically."
+    },
+    {
+      "start": 603,
+      "end": 636,
+      "kind": "function",
+      "name": "AssistantPanel (part 3)",
+      "id": "s19",
+      "hash": "27bc9bccbe646777",
+      "title": "Conversation list and recent decisions",
+      "what": "Draws the scrollable message list, with example questions when there is no conversation, and a working indicator while a request runs. It scrolls to the newest message whenever a message is added. A collapsed section shows the last six decisions.",
+      "why": "Stated in the code: the list follows the newest message, and the history is capped so the panel stays short.",
+      "watch_out": "Only the last six decisions are shown, so older decisions disappear from view even though they were applied."
+    },
+    {
+      "start": 637,
+      "end": 679,
+      "kind": "function",
+      "name": "AssistantPanel (part 4)",
+      "id": "s20",
+      "hash": "4c862a5065f459ce",
+      "title": "Assistant message box and context line",
+      "what": "Shows which slide and element the assistant will use, warns when Re-verify has no project to check, shows replay hints and suggested prompts, and provides the message box. Pressing Command or Control with Enter sends the message, and a Retry link appears when a request fails.",
+      "why": "Stated in the code: Re-verify needs a project element, so the warning tells the user what to select.",
+      "watch_out": "Plain Enter does not send, only Command or Control with Enter does, so a user may expect a different key to send."
+    },
+    {
+      "start": 680,
+      "end": 724,
+      "kind": "function",
+      "name": "ProposalCard",
+      "id": "s21",
+      "hash": "3fa31ece88fd05a8",
+      "title": "One pending change card",
+      "what": "Shows one suggested change: whether it is factual or editorial, a link to jump to its element, the before and after text, the reason, and the sources. Factual changes with no source get a red warning, and Apply and Dismiss buttons sit at the bottom.",
+      "why": "Stated in the code: a factual change with no source would be unsupported, so it is flagged for the user.",
+      "watch_out": "Applying a factual change replaces the element's earlier citations with the new sources, so the old source is removed."
+    },
+    {
+      "start": 725,
+      "end": 767,
+      "kind": "function",
+      "name": "MessageBubble",
+      "id": "s22",
+      "hash": "a1433ed8441f4f56",
+      "title": "Single chat message display",
+      "what": "Shows one message in the assistant chat. User messages sit on the right and assistant messages on the left. When an assistant message cites web sources, each source appears with a status label, a link, a short quote, and a button that opens the full quote.",
+      "why": "Likely reason: the assistant's answers need to show where their facts came from, so the user can check them. Reason for the layout not stated in the code.",
+      "watch_out": "The slide number label is hidden when the message's slide is not found in the deck, so a missing slide fails quietly."
+    },
+    {
+      "start": 768,
+      "end": 777,
+      "kind": "function",
+      "name": "EditorSkeleton",
+      "id": "s23",
+      "hash": "96184b3d084d3564",
+      "title": "Loading placeholder for the editor",
+      "what": "Shows grey pulsing blocks in the shape of the editor while the slide data loads. It has four small thumbnails on the left, a large slide area in the middle, and a tall panel on the right.",
+      "why": "Likely reason: to keep the page layout steady while data loads, so the screen does not jump when the real editor appears.",
+      "watch_out": "The column widths here must match the real editor's layout, or the page will shift when loading finishes."
+    },
+    {
+      "start": 778,
+      "end": 786,
+      "kind": "function",
+      "name": "Notice",
+      "id": "s24",
+      "hash": "c0c5acdf46b10acf",
+      "title": "Boxed status message",
+      "what": "Displays a titled message box in one of three tones: information, warning, or error. Each tone uses different colors, and the box is announced to screen readers as a status message.",
+      "why": "Reason not stated in the code. It appears to be a single reusable way to show notices across the editor.",
+      "watch_out": "Only the three tone names are accepted, so any new tone must be added to the color choice here first."
+    }
+  ],
+  "explained_at": "2026-11-12T06:42:39+00:00",
+  "explained_by": "haiku",
+  "summary": "The full editing screen for a Reality Scan deck: slide navigation, text editing, chart cuts, an AI assistant that proposes changes, and PowerPoint export.",
+  "purpose": "Lets a user review and improve the slides a finished scan run produced, and then export them.",
+  "why": "Likely reason: the deck exists only after a run succeeds, so the editor waits for the run, and every change goes through a checked save so nothing is overwritten silently.",
+  "how": "1. Check the run status and keep checking while it runs. 2. Load the saved deck once the run succeeds. 3. Show the requested or first slide with its selected element. 4. Store text edits as unsaved drafts, then save them with the deck revision. 5. Let the assistant suggest changes, which the user accepts or dismisses. 6. Export the deck as a PowerPoint file.",
+  "inputs": "A run id, an optional starting slide, an optional alternate API, and in replay mode a scripted controller that drives the screen.",
+  "outputs": "Saved text edits and decisions on suggested changes sent to the server, a downloaded PowerPoint file, or local-only changes in replay mode.",
+  "risks": "Saves can conflict when another tab has changed the deck. Factual suggestions are unverified until the user accepts them. In replay, changes never reach the saved deck. Arrow keys are ignored while typing, so a new text input must be covered by that guard.",
+  "debug": "If the page stays on running, check the run status and its stage log from the Watch stages link. If the deck will not load, check the 404 and 409 handling and whether a deck was saved for that run. If saves show a conflict banner, reload the latest revision. If the assistant or export fails, the error text in its panel names the failing call, so check the server log for that route.",
+  "summary_hash": "sha256:6641908ab889dc99f77c411f03738e2eda88880ed916137dae66eb81e80408ad"
+}

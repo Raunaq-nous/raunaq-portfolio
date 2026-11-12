@@ -1,0 +1,355 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/capital-projects/src/components/ValuesTab.tsx",
+  "language": "TypeScript (React)",
+  "lines": 613,
+  "hash": "sha256:c83345a778f5001ac02d3f84223850c7d06d3c16a9edd6cc5b60b7cbe15c4ae7",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests or other checks are visible in this file.",
+      "The screen assumes at least one value exists when it picks the one to show, so a project with fields but no values can crash it.",
+      "Error display for failed requests depends on the shared apiRequest helper, which is not in this file, so that behaviour is not confirmed here."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Query",
+      "meaning": "A request that reads data from the server and keeps it on screen. Here it is handled by the React Query library."
+    },
+    {
+      "term": "Mutation",
+      "meaning": "A request that changes data on the server, such as saving a verdict or promoting a value."
+    },
+    {
+      "term": "Vetting",
+      "meaning": "A person checking a value against its sources and recording a verdict: Vetted, Doubt or Cleared."
+    },
+    {
+      "term": "Promotion",
+      "meaning": "Making a vetted value the current value for its basis, and optionally copying it into the project's Yard field."
+    },
+    {
+      "term": "Basis",
+      "meaning": "The accounting rule a figure was calculated under, such as including or excluding interest paid during construction."
+    },
+    {
+      "term": "AFUDC",
+      "meaning": "Allowance for funds used during construction: an interest-like cost added to a plant's cost while it is being built."
+    },
+    {
+      "term": "Yard field",
+      "meaning": "The single recorded number the project shows for a field, as opposed to the many candidate values kept beside it."
+    }
+  ],
+  "depends_on": [
+    "react",
+    "@tanstack/react-query",
+    "../lib/queryClient"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 4,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "dc3b22b9b4cc88c1",
+      "title": "Importing the tools this screen needs",
+      "what": "Brings in the React library, the data loading and saving helpers, and the shared request function. Nothing is shown to the user from this part.",
+      "why": "Likely reason: the rest of the screen needs these tools to load data, save changes and draw the page.",
+      "watch_out": ""
+    },
+    {
+      "start": 5,
+      "end": 12,
+      "kind": "type",
+      "name": "Vet",
+      "id": "s2",
+      "hash": "857efea6b8f93e1f",
+      "title": "Shape of one vetting record",
+      "what": "Describes one recorded human check: who did it, the verdict, the optional note, when it happened, and which image they looked at.",
+      "why": "Likely reason: keeps a full history of who checked each value, which the screen shows as the vetting history.",
+      "watch_out": "These type descriptions are checked only while the code is being built, so a mismatch with the server's real fields is not caught here."
+    },
+    {
+      "start": 13,
+      "end": 18,
+      "kind": "type",
+      "name": "Capture",
+      "id": "s3",
+      "hash": "3711c1f0394521b3",
+      "title": "Shape of one captured copy",
+      "what": "Describes one saved copy of a source: the page or image, where it came from, whether the expected quote was found, how closely the nearest text matched, and when it was taken.",
+      "why": "Likely reason: lets a reviewer check that a quoted passage really appears on the source at the time it was captured.",
+      "watch_out": ""
+    },
+    {
+      "start": 19,
+      "end": 24,
+      "kind": "type",
+      "name": "Source",
+      "id": "s4",
+      "hash": "e929c01d9d0a5915",
+      "title": "Shape of one source",
+      "what": "Describes one source behind a value: its web address, quoted passage, publisher, quality rating, saved copies, vetting history, and any alternative sources that could replace it.",
+      "why": "Likely reason: each value needs its evidence attached, so this record keeps the quote and the copies together.",
+      "watch_out": "A retired source still appears on screen, marked as retired and not cited, so check the marker rather than assuming it is gone."
+    },
+    {
+      "start": 25,
+      "end": 37,
+      "kind": "type",
+      "name": "Point, Metric, ChangeEntry, PublishedInput, Derived",
+      "id": "s5",
+      "hash": "c9c91771ac35aceb",
+      "title": "Shape of values, fields, changes and calculations",
+      "what": "Describes a single value with its date and basis details, the field that groups its values, a logged change, the inputs to a calculation, and the calculation result.",
+      "why": "Likely reason: one shared description of the data keeps the screen and the server agreeing on what each value holds.",
+      "watch_out": "Some fields are loosely typed, such as the calculation inputs, so the screen must check them before reading them."
+    },
+    {
+      "start": 38,
+      "end": 48,
+      "kind": "type",
+      "name": "Payload, ORIGIN, BASIS, LAYER, STATUS_TONE",
+      "id": "s6",
+      "hash": "ef46910c69221360",
+      "title": "Full response and plain-word labels",
+      "what": "Describes the full data the server returns for one project. It also holds small lookup tables that turn internal codes, such as yard field or server screenshot, into plain words, and colours for status.",
+      "why": "Likely reason: reviewers should read plain words rather than internal codes.",
+      "watch_out": "A code missing from these tables shows as its raw internal text, so new server codes need a matching entry here."
+    },
+    {
+      "start": 49,
+      "end": 57,
+      "kind": "value",
+      "name": "VERDICT, when, basisLabel, chip",
+      "id": "s7",
+      "hash": "bad661c74a5391bc",
+      "title": "Verdict labels, date and wording helpers",
+      "what": "Maps verdicts to labels and colours, formats dates for reading, turns basis codes into wording such as excl. AFUDC, and builds the small coloured tags used across the screen.",
+      "why": "Likely reason: keeps the same wording and colours everywhere on the screen.",
+      "watch_out": "Dates are formatted in the viewer's own language and time zone, so two reviewers may see different times for the same record."
+    },
+    {
+      "start": 58,
+      "end": 62,
+      "kind": "function",
+      "name": "json",
+      "id": "s8",
+      "hash": "0763b5f1acdddd39",
+      "title": "Shared request helper",
+      "what": "Sends a request to the server and returns the reply as data. Every read and save on this screen goes through it.",
+      "why": "Likely reason: one place handles sending requests and reading replies, so the rest of the code stays short.",
+      "watch_out": "It does not check the reply's status itself, so error handling depends on the shared request function."
+    },
+    {
+      "start": 63,
+      "end": 86,
+      "kind": "function",
+      "name": "CaptureImage",
+      "id": "s9",
+      "hash": "7f48b0a3c4bc21ee",
+      "title": "Screenshot viewer",
+      "what": "Loads a saved screenshot of a source page through the request helper and shows it small. Clicking it toggles between small and full width. It shows a loading line first and an error line if loading fails.",
+      "why": "Likely reason: screenshots are fetched as protected data, so they are loaded with the same helper and shown from a temporary local link.",
+      "watch_out": "A temporary link is made for each image and released when the component goes away. Removing that cleanup would slowly use up memory."
+    },
+    {
+      "start": 87,
+      "end": 114,
+      "kind": "function",
+      "name": "CaptureRow",
+      "id": "s10",
+      "hash": "909260132112c15c",
+      "title": "One row of capture details",
+      "what": "Shows one capture with small tags: the layer, the status, whether it is a genuine image, HTTP code, anchor matches, page number and time. It then shows matched or closest text, the link, the screenshot and short fingerprints.",
+      "why": "Likely reason: lets a reviewer judge how strong the evidence is at a glance, and see the exact text that was matched.",
+      "watch_out": "Fingerprints are shown only as their first 12 characters, so a reviewer cannot compare the full values on screen."
+    },
+    {
+      "start": 115,
+      "end": 130,
+      "kind": "function",
+      "name": "VetList",
+      "id": "s11",
+      "hash": "0f5442de9620b3b3",
+      "title": "List of reviewer verdicts",
+      "what": "Lists each recorded verdict with a coloured tag, the reviewer's name, how the decision was entered, the time, the image they saw and their note. If nobody has checked, it shows a plain message.",
+      "why": "Likely reason: keeps a visible record of who decided what, and when.",
+      "watch_out": "If a name is missing, the reviewer's internal id shows instead, and if that is also missing, the word unknown appears."
+    },
+    {
+      "start": 131,
+      "end": 153,
+      "kind": "function",
+      "name": "CaptureNow",
+      "id": "s12",
+      "hash": "6530c4dcb9f54bae",
+      "title": "Capture now button",
+      "what": "Asks the server to re-check a source page right away and reports the outcome on the spot, such as whether the quote was verified on an alternative page. It is hidden for retired sources and for sources with no address.",
+      "why": "Likely reason: saved copies can go out of date, so a reviewer can refresh one on demand.",
+      "watch_out": "Every press forces a fresh visit to the outside page, so repeated clicks repeat that outside request."
+    },
+    {
+      "start": 154,
+      "end": 212,
+      "kind": "function",
+      "name": "SourceCard, RESOLVED_BY (part 1)",
+      "id": "s13",
+      "hash": "b2622d09273b92df",
+      "title": "Source card: main details",
+      "what": "Shows one source as a card: rank, tags, publisher and date, the quote, anchor phrases, which table or column the number was read from, the link, and its saved copies with a show all toggle. Below that, it lists open alternatives that could replace the source.",
+      "why": "Likely reason: a reviewer needs the quote, the proof copies and the backup options together to decide whether the source supports the value.",
+      "watch_out": "Only the first genuine copy shows until the toggle is used, and if there are no genuine copies, only the first two other copies show."
+    },
+    {
+      "start": 213,
+      "end": 222,
+      "kind": "function",
+      "name": "SourceCard, RESOLVED_BY (part 2)",
+      "id": "s14",
+      "hash": "2ac780b2a8da3e9b",
+      "title": "Source vetting and date-source labels",
+      "what": "Shows the verdict history for the source. It also holds a small lookup that turns the codes for how a calculation date was set into plain words: date convention, reviewer or Yard field.",
+      "why": "Likely reason: a reviewer needs to know whether a date came from a rule, a person or the Yard field.",
+      "watch_out": "Any date-setting code missing from the lookup appears in raw form on screen."
+    },
+    {
+      "start": 223,
+      "end": 265,
+      "kind": "function",
+      "name": "CalcDate",
+      "id": "s15",
+      "hash": "25db44cd5fc0bd5b",
+      "title": "Calculation date override",
+      "what": "Shows the date used in calculations for one value. For stated dates, a reviewer can enter a new date with a required note, or return to the convention. Yard field dates cannot be changed here.",
+      "why": "The file's comment says only stated dates can be overridden, and that a Yard field date changes through promotion.",
+      "watch_out": "Returning to the convention asks for no note here, unlike setting a new date."
+    },
+    {
+      "start": 266,
+      "end": 300,
+      "kind": "function",
+      "name": "ChangeRow",
+      "id": "s16",
+      "hash": "75c48435a95d6f9f",
+      "title": "One change-log entry with revert",
+      "what": "Shows one change: its field, old and new values, who made it and when. Reverted entries stay visible with a strike-through and a reverted tag. Where allowed, a reviewer can start a revert, and must give a reason.",
+      "why": "The change-log text says every promotion and revert is kept and marked, so the history is never erased.",
+      "watch_out": "The revert button appears only on the list under one value, not on the project-wide list, so reverts must be made from the value view."
+    },
+    {
+      "start": 301,
+      "end": 355,
+      "kind": "function",
+      "name": "PointDetail (part 1)",
+      "id": "s17",
+      "hash": "08c9cc86406cc19c",
+      "title": "Value detail: facts and tags",
+      "what": "Shows the chosen value in large type, with tags for current status, basis, vetting needs, latest verdict, whether it is the Yard field, and origin. Below it lists the stated wording, date rule, US dollar figure, basis note, as-of date, status, owner share, MW basis, provenance and the Yard field comparison.",
+      "why": "Likely reason: a reviewer needs the full context of one value before deciding on it.",
+      "watch_out": "The Yard field comparison line appears only when the field has a Yard column, so fields without one show no comparison."
+    },
+    {
+      "start": 356,
+      "end": 396,
+      "kind": "function",
+      "name": "PointDetail (part 2)",
+      "id": "s18",
+      "hash": "d99352cea93c4258",
+      "title": "Vetting buttons, promotion and value history",
+      "what": "Lets a reviewer tick (vetted), doubt, or clear the value. Doubt needs a note first. When the value is ready, a button makes it the current value or sets the Yard field. Past promotions for this value are listed, followed by each source card.",
+      "why": "The file's top comment says nothing here overwrites silently, and only a promotion changes the project's field.",
+      "watch_out": "The Also set the Yard field box is ticked by default, so promoting changes the project's recorded number unless the box is unticked."
+    },
+    {
+      "start": 397,
+      "end": 428,
+      "kind": "function",
+      "name": "ValuesTab, Convention, ConventionChange, MONTHS, mon (part 1)",
+      "id": "s19",
+      "hash": "642579adba6fd90b",
+      "title": "Loading the values and summary counts",
+      "what": "Shows a loading line, an error, or a plain message when the project has no values. Otherwise it picks the value to show first, shows counts for fields, values, values needing vetting and sources, and offers a checkbox to show only fields needing vetting. A short note explains that a field can hold several values and that the Yard field changes only on promotion.",
+      "why": "Likely reason: the counts give a quick picture of what still needs review before the reviewer scrolls.",
+      "watch_out": "If a project has fields but none has any value, the chosen value is missing and the screen will crash."
+    },
+    {
+      "start": 429,
+      "end": 464,
+      "kind": "function",
+      "name": "ValuesTab, Convention, ConventionChange, MONTHS, mon (part 2)",
+      "id": "s20",
+      "hash": "73356af58b73bb34",
+      "title": "Left list of fields and the chosen value",
+      "what": "Lists each field with its values, showing for each one its basis, status tags, origin and source count. Clicking a value shows its detail on the right, which stays beside the list while scrolling.",
+      "why": "Likely reason: a two-column layout lets a reviewer compare values and see their detail at the same time.",
+      "watch_out": "The detail panel is rebuilt each time a different value is picked, so any note typed but not saved is cleared."
+    },
+    {
+      "start": 465,
+      "end": 521,
+      "kind": "function",
+      "name": "ValuesTab, Convention, ConventionChange, MONTHS, mon (part 3)",
+      "id": "s21",
+      "hash": "b5db57c2797675a9",
+      "title": "Calculations, comparability and full change log",
+      "what": "Lists each calculation with its result, formula and inputs. Each input is a button that jumps to that value, and a line shows figures as published. Then it lists comparability scores by profile, and the full change log for the project.",
+      "why": "Likely reason: showing the inputs next to each result lets a reviewer trace each figure back to its sources.",
+      "watch_out": "If an input value no longer exists, its button shows only the first eight characters of its id."
+    },
+    {
+      "start": 522,
+      "end": 526,
+      "kind": "function",
+      "name": "ValuesTab, Convention, ConventionChange, MONTHS, mon (part 4)",
+      "id": "s22",
+      "hash": "905c46294e5f0e25",
+      "title": "Date convention types and month names",
+      "what": "Defines the shape of a date convention and its change record, and a list of short month names. A month number from 1 to 12 becomes its short name, so 3 becomes Mar.",
+      "why": "Likely reason: conventions are stored as month numbers but read by people as month names.",
+      "watch_out": "Month numbers must be from 1 to 12, and other values can show as a dash or as the word undefined."
+    },
+    {
+      "start": 527,
+      "end": 576,
+      "kind": "function",
+      "name": "ConventionRow",
+      "id": "s23",
+      "hash": "3f70fbe95076f832",
+      "title": "One date convention row, editable",
+      "what": "Shows one convention: its name, meaning, months covered and calculation month. Clicking edit opens drop-downs and a required note. Saving reports how many values were recalculated and how many Yard-mirrored values were flagged for vetting, with fields left unchanged.",
+      "why": "The panel's comment says conventions are shared, editable with a note, and logged.",
+      "watch_out": "Saving changes the rule for every project that uses this convention, not only the one on screen."
+    },
+    {
+      "start": 577,
+      "end": 613,
+      "kind": "function",
+      "name": "DateConventionsPanel",
+      "id": "s24",
+      "hash": "c9c2982d869e47ea",
+      "title": "Date conventions panel",
+      "what": "A collapsed panel that, when opened, loads the fixed date rules, the list of conventions and the history of past changes. It applies to every project.",
+      "why": "The comment says the conventions are workspace-wide, visible, editable with a note, and logged, so the panel shows them in one place.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T05:34:09+00:00",
+  "explained_by": "haiku",
+  "summary": "The value inspector for one project. It lists every value kept for each field with its sources, vetting history, promotions, calculations and date rules, and lets a reviewer vet, promote or revert values.",
+  "purpose": "Lets a reviewer check each figure a project carries, see the evidence behind it, record a verdict, and decide which value becomes the current one. It also shows the calculations built from those values and the date rules used to place stated dates in time.",
+  "why": "The top comment says a project's field changes only when a vetted value is promoted, and nothing here overwrites silently. Several values can sit under one field, with one current value per basis, so comparisons stay on the same basis.",
+  "how": "1. Fetch the project's values from the server. 2. Pick the value to show first: the one the user clicked, else the first that needs vetting, else the first overall. 3. Show totals and a filter for fields that need vetting. 4. Show fields and their values in a left list, and the chosen value's detail on the right with its vetting, promotion and date controls and its sources. 5. Below, show calculations, comparability scores, the full change log and the date conventions panel. 6. Each button sends a request to the server, then reloads the affected data.",
+  "inputs": "The project id from the parent screen. The server's values response: fields with their values, sources, calculations, comparability scores and change log. Reviewer actions: verdicts (Tick, Doubt, Clear) with a note, a promotion choice, a calculation date and note, a revert note, and date convention edits with a note.",
+  "outputs": "An on-screen inspector. Writes to the server: vetting verdicts, promotions that can set the Yard field, reverts, calculation date overrides, and date convention changes. The screen reloads after each write.",
+  "risks": "Promoting a value can change the project's recorded Yard field, and the checkbox that controls this is ticked by default. Reverting adds a new entry rather than erasing one. Saving a date convention can recalculate many values at once across every project that uses it.",
+  "debug": "If the list is blank, check the values response for a non-empty metrics list. If the screen crashes on open, look for a project whose fields have no values, since the chosen value is then missing. If a button fails, read the red message under the detail panel. If the Make current or Set Yard field button is missing, the latest verdict must be vetted and the value must not already be current. If a date shows not resolved, check the date rule and the calculation date. Date conventions are edited in the Date conventions panel at the bottom.",
+  "summary_hash": "sha256:c83345a778f5001ac02d3f84223850c7d06d3c16a9edd6cc5b60b7cbe15c4ae7"
+}

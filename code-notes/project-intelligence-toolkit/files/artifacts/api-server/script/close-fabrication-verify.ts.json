@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/close-fabrication-verify.ts",
+  "language": "TypeScript",
+  "lines": 297,
+  "hash": "sha256:e81ddaed60adcc4de0b5d5967246618bf58620219e4262c9ae1e72854d978f04",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "The script does not exit with an error when the must be zero checks fail.",
+      "It writes to the database when it runs.",
+      "No automated test or assertion is visible; results depend on a person reading the output."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Gate",
+      "meaning": "The check the pipeline applies to each quote before accepting it."
+    },
+    {
+      "term": "Fingerprint",
+      "meaning": "A short code computed from a row's contents, used to tell whether the row changed."
+    },
+    {
+      "term": "Span",
+      "meaning": "The exact start and end position of a quote inside a stored source document."
+    },
+    {
+      "term": "Active flag",
+      "meaning": "A marker that says a quote is currently in use, separate from its content."
+    },
+    {
+      "term": "Locatable",
+      "meaning": "Able to be found again at its recorded position in the stored source text."
+    }
+  ],
+  "depends_on": [
+    "pg",
+    "crypto",
+    "src/storage",
+    "src/jobs/runner",
+    "src/lib/spanAnchor"
+  ],
+  "used_by": [
+    "Not referenced elsewhere in this packet; run by hand."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 49,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "b2f5273a8637a511",
+      "title": "Purpose, project list and fingerprints",
+      "what": "Describes the verification run and lists the three default projects across nuclear, LNG and dairy. It also sets up the identity fields and the snapshot query that the before and after checks use.",
+      "why": "The header explains that identity and the active flag are tracked separately, because the normal run deactivates quotes it no longer sees.",
+      "watch_out": "The default project list is hardcoded, so changing the projects changes what the test covers."
+    },
+    {
+      "start": 50,
+      "end": 94,
+      "kind": "function",
+      "name": "main (part 1)",
+      "id": "s2",
+      "hash": "23da8cacc6a5b0cf",
+      "title": "Taking the before snapshot and running jobs",
+      "what": "Records the number of evidence rows and their per row fingerprints, plus span and document counts. Then, for each project, it creates a research job, runs it, and reads the job back.",
+      "why": "The before snapshot is needed to prove later that no existing row was deleted or changed.",
+      "watch_out": "Errors from a job run are caught and printed, so a failed run can continue without stopping the whole check."
+    },
+    {
+      "start": 95,
+      "end": 147,
+      "kind": "method",
+      "name": "main: if",
+      "id": "s3",
+      "hash": "8365deed86bc0171",
+      "title": "Printing gate statistics per job",
+      "what": "For each job, prints the gate counts such as attempted, accepted, first pass rejections, retries and dropped items, along with sample rejections. If no statistics were recorded it prints a defect line.",
+      "why": "The header says the gate counters are printed for reference but are not the evidence, which comes from the database queries later.",
+      "watch_out": "These numbers come from the pipeline's own report, so they should be compared with the database counts rather than trusted alone."
+    },
+    {
+      "start": 148,
+      "end": 203,
+      "kind": "function",
+      "name": "main (part 3)",
+      "id": "s4",
+      "hash": "a1d7de296fdcb4e5",
+      "title": "Checking that quotes can be found in stored text",
+      "what": "Asks the database whether each new quote's recorded span matches the stored document text, whether every new row has a document, and whether each quote appears exactly in the latest stored document for its address. It also lists up to 15 quotes that do not match exactly.",
+      "why": "The header says this is the audit's own test applied to the new rows.",
+      "watch_out": "The check uses only the newest stored document for each address, so an older version of a page is ignored."
+    },
+    {
+      "start": 204,
+      "end": 249,
+      "kind": "function",
+      "name": "main (part 4)",
+      "id": "s5",
+      "hash": "af927776f29977b0",
+      "title": "Summary of the new rows",
+      "what": "Prints counts of rows written, how many have a validation level, how many are anchored to a span, how strong the match methods are, locatability totals, and document sizes. It also prints a breakdown by domain.",
+      "why": "Likely reason: these figures show whether the new rows are genuinely located in source text, not just counted.",
+      "watch_out": "Percentages are divided by the rows written, so they print blank when nothing was written."
+    },
+    {
+      "start": 250,
+      "end": 297,
+      "kind": "method",
+      "name": "main: for",
+      "id": "s6",
+      "hash": "94798cb07e0ed114",
+      "title": "Before and after comparison",
+      "what": "Compares every existing evidence row before and after the run. It counts rows that were deleted, rows whose identity fields changed, and rows whose active flag went off or on, then prints them. It also prints the non exact quotes and the domain breakdown.",
+      "why": "The header explains this proves that nothing pre existing was rewritten. Active flag changes are reported separately because the normal pipeline makes them.",
+      "watch_out": "The script does not exit with an error when the deleted or altered counts are above zero, so someone must read the printed numbers."
+    }
+  ],
+  "explained_at": "2026-11-12T02:57:01+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs the real research pipeline on three chosen projects, then reads the results back from the database to check whether the new quotes can be found in their source pages and whether any existing evidence was changed.",
+  "purpose": "Verifies that the research pipeline now produces quotes that can be located in real source text and does not rewrite older evidence.",
+  "why": "The header says a validator that reports its own success is not a check, so every reported number is read back from the database with SQL instead of trusted from the pipeline.",
+  "how": "Takes a snapshot of existing evidence rows and their fingerprints. For each project it creates a research job, runs it, and prints the gate statistics. Then it asks the database for the new rows, their levels, their match methods, whether each quote appears in its stored document, and the per domain counts. Finally it compares the before and after snapshots and prints how many rows were deleted, altered, or had their active flag changed.",
+  "inputs": "The database connection from DATABASE_URL, optional project IDs given as arguments, and the default three project IDs in the file.",
+  "outputs": "Printed reports only. The run itself writes new evidence rows, source documents and spans to the database through the pipeline.",
+  "risks": "This is not a read only check. It writes real research output to the database. The script never exits with an error when deleted or altered counts are above zero; someone has to read the printed numbers.",
+  "debug": "Look at the DELETED and ALTERED lines first, which must be zero. Check that the gated count equals rows written. A SKIP line means a project ID was not found. A THREW line means the pipeline failed for that project. If the gate line says no validation stats were recorded, the run has a defect.",
+  "summary_hash": "sha256:e81ddaed60adcc4de0b5d5967246618bf58620219e4262c9ae1e72854d978f04"
+}

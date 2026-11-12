@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/gates/e14/validator.ts",
+  "language": "TypeScript",
+  "lines": 245,
+  "hash": "sha256:ce68c575657efd7ed85c9c516b0ac90b101b1eb29513eef1363ce712ec17cb3c",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No tests are visible in the packet, so the decision rules are documented but not shown to pass.",
+      "Only the start of the decision rules was checked against the rest of the function in the packet."
+    ]
+  },
+  "terms": [
+    {
+      "term": "verdict",
+      "meaning": "the decision for one criterion: it discriminates, it does not discriminate, or the check refuses to decide."
+    },
+    {
+      "term": "confidence interval",
+      "meaning": "the range the true gap is likely to fall in, given the sample."
+    },
+    {
+      "term": "equivalence band",
+      "meaning": "a fixed zone around zero; if the whole range sits inside it, the gap is treated as too small to matter."
+    },
+    {
+      "term": "power",
+      "meaning": "the chance of detecting a real gap of a given size when one exists."
+    },
+    {
+      "term": "pure function",
+      "meaning": "a function that only uses its inputs and does no database or file work."
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/gates/e14/stats.ts",
+    "artifacts/api-server/src/gates/e14/types.ts"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/gates/e14/runE14.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 33,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "6c39bbc402cbb5df",
+      "title": "Header and imports",
+      "what": "Header comment that says the file is pure, with no input, output or logging, and imports the statistics helpers and the shared types.",
+      "why": "States the design: decisions depend only on the inputs, so they are repeatable and testable.",
+      "watch_out": ""
+    },
+    {
+      "start": 34,
+      "end": 58,
+      "kind": "function",
+      "name": "tally, pct",
+      "id": "s2",
+      "hash": "0f38af51edfd953d",
+      "title": "Counting one group for one criterion",
+      "what": "Counts met, not met and unknown projects for one criterion in one group, then computes the rate from the known projects only. A missing criterion counts as unknown. The percentage helper for messages is defined here too.",
+      "why": "Keeps unknown out of both the numerator and the denominator, as the header says.",
+      "watch_out": "Treating a missing criterion as unknown means a bug that drops data makes results look incomplete."
+    },
+    {
+      "start": 59,
+      "end": 109,
+      "kind": "function",
+      "name": "validateRubric (part 1)",
+      "id": "s3",
+      "hash": "c93ea345cf7d73a3",
+      "title": "Group sizes and the first part of the decision",
+      "what": "Sets up the confidence cut-off and separates the two groups. Counts group sizes and fact totals. For each criterion it computes the pooled rate and the sample size needed, and defines the refusal helper that builds a refused result.",
+      "why": "Sets up the inputs every verdict below depends on.",
+      "watch_out": "The pooled rate uses zero when no projects are known, which can understate the sample size needed."
+    },
+    {
+      "start": 110,
+      "end": 169,
+      "kind": "method",
+      "name": "validateRubric: if",
+      "id": "s4",
+      "hash": "91c8d2705dbf6721",
+      "title": "Checks that can refuse a verdict",
+      "what": "In order: refuse when either group has too few known projects, refuse when too many are unknown, then compute the gap, range, effect size and p-value. A verdict is chosen by testing the range against zero and the minimum gap, then the equivalence band, then whether the criterion never varies, then whether the sample is too small, and otherwise refuse as a boundary case.",
+      "why": "Refuses rather than guesses, as the header says. Each refusal carries a reason for the report.",
+      "watch_out": "The order of these tests decides the verdict, so reordering them changes results without any error."
+    },
+    {
+      "start": 170,
+      "end": 214,
+      "kind": "function",
+      "name": "validateRubric (part 3)",
+      "id": "s5",
+      "hash": "4eb22b07314afd46",
+      "title": "Assembling each criterion result and the pillar roll-ups",
+      "what": "Builds the result record for each criterion, then groups each pillar with its sub-drivers and counts their verdicts.",
+      "why": "Gives the report a record for every criterion and a summary for every pillar.",
+      "watch_out": "A pillar with no matching criterion record would fail here, so the criteria list must include every pillar."
+    },
+    {
+      "start": 215,
+      "end": 245,
+      "kind": "method",
+      "name": "validateRubric: for",
+      "id": "s6",
+      "hash": "6d1ee0c397bcb6e1",
+      "title": "Totals and the final report",
+      "what": "Counts refusals by reason, counts unknown cells and total cells, and returns the complete report with its settings and totals.",
+      "why": "Gives the headline numbers and makes the refusal reasons visible.",
+      "watch_out": "Refusal counts are only as complete as the reasons assigned in the earlier checks."
+    }
+  ],
+  "explained_at": "2026-11-12T03:31:30+00:00",
+  "explained_by": "haiku",
+  "summary": "The decision step of E14: compares the two outcome groups for each criterion and returns a verdict, a refusal with a reason, and the arithmetic behind each.",
+  "purpose": "Says whether a criterion separates projects that overran from projects that were delivered, or refuses to decide when the data cannot support a call.",
+  "why": "The header says it has no input, output or logging of its own, and that the rule for unknowns lives in one counting function so it cannot drift.",
+  "how": "1. Count met, not met and unknown projects in each group. 2. Refuse if either group has too few known projects. 3. Refuse if too many projects are unknown. 4. Compute the gap, its range, the effect size and the exact p-value. 5. Choose a verdict: discriminates if the range excludes zero and the gap is large enough; does not discriminate if the range sits inside the equivalence band; otherwise refuse with the reason. 6. Roll up pillars, totals and refusal counts.",
+  "inputs": "One input bundle: the industry, the definition, the settings, the criteria, and each project's outcome group and states.",
+  "outputs": "A full report with a result for each criterion, a roll-up for each pillar, totals, group sizes and refusal counts.",
+  "risks": "The order of the checks decides the verdict, so reordering them changes results. The exact p-value is reported but does not decide the verdict. When a group has no known projects, the pooled rate falls back to zero, which can distort the sample size estimate.",
+  "debug": "Read the plain sentence in each criterion result, which explains the verdict. Check the group sizes and unknown counts in the report. Confirm the settings echoed back match the ones you expected.",
+  "summary_hash": "sha256:ce68c575657efd7ed85c9c516b0ac90b101b1eb29513eef1363ce712ec17cb3c"
+}

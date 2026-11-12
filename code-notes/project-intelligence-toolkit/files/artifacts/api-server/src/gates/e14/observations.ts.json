@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/gates/e14/observations.ts",
+  "language": "TypeScript",
+  "lines": 245,
+  "hash": "sha256:dd64f9ee5a37ef0e9cbf0168244dee259f9d14e16a6cbb15c5ba072647b6c8f6",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "Only the setup section is in the packet, so the routing and labelling logic cannot be checked.",
+      "The header describes an intended cross-check, but no evidence of it running is shown."
+    ]
+  },
+  "terms": [
+    {
+      "term": "gate",
+      "meaning": "a test that a pipeline must pass before it is trusted"
+    },
+    {
+      "term": "routing",
+      "meaning": "the step that sends each fact to the right theme or pillar"
+    },
+    {
+      "term": "outcome",
+      "meaning": "whether a project's result is labelled as a success or a problem for the measurement"
+    },
+    {
+      "term": "observation",
+      "meaning": "one project's facts and outcome, ready for the gate to measure"
+    }
+  ],
+  "depends_on": [
+    "artifacts/api-server/src/tools/lessons-learnt/framework.ts",
+    "artifacts/api-server/src/gates/e14/types.ts",
+    "artifacts/api-server/src/db.ts",
+    "@workspace/db"
+  ],
+  "used_by": [
+    "the E14 measurement harness (not listed in the packet)"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 31,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "3b7db9fa12f1a92e",
+      "title": "Setup and purpose of the measurement layer",
+      "what": "Explains that this file reads the live data and labels outcomes without changing the deck pipeline, and that two private functions are copied here so the deck code is not altered. It names the routing functions it imports from the framework.",
+      "why": "Likely reason: the gate must measure the shipped pipeline, and copying the two private functions avoids changing the deck code.",
+      "watch_out": "If the copies are not kept in step with the originals, the measurement stops matching what the deck does."
+    },
+    {
+      "start": 32,
+      "end": 37,
+      "kind": "function",
+      "name": "num",
+      "id": "s2",
+      "hash": "3e947a7a4d37e954",
+      "title": "Reading a number from text",
+      "what": "Converts a stored value into a number, removing commas first. Blank or non-numeric values become nothing.",
+      "why": "Budget and delay fields may be stored as text with commas, so they need one safe conversion.",
+      "watch_out": "Non-numeric text quietly becomes missing, so a typo in a budget leaves that project without a cost figure."
+    },
+    {
+      "start": 38,
+      "end": 73,
+      "kind": "function",
+      "name": "classifyOutcome",
+      "id": "s3",
+      "hash": "e20c81126647a00d",
+      "title": "Sorting a project into an outcome group",
+      "what": "Assigns each project to Overran, Delivered, Cautionary or In progress from its status words, its planned and actual budget, and its delay. Cancelled, paused or similar means Cautionary. A cost overrun above 25 percent or a delay above 24 months means Overran. Delivered-type words mean Delivered. Everything else is In progress.",
+      "why": "Mirrors the classifier on the deck path so both paths group projects the same way. The comment states this.",
+      "watch_out": "The early-stage word list is checked but both results return In progress, so that check changes nothing."
+    },
+    {
+      "start": 74,
+      "end": 86,
+      "kind": "function",
+      "name": "isRelevantToProject",
+      "id": "s4",
+      "hash": "8cecd5e68440901b",
+      "title": "Deciding whether a fact is relevant to a project",
+      "what": "Keeps a fact if it is at least 20 characters and mentions a word from the project name, or if it is at least 40 characters long even without a name match.",
+      "why": "Filters out short, unrelated text before it is scored. Mirrors the deck path, as the comment says.",
+      "watch_out": "The 40 character fallback is loose, so long unrelated text can count as relevant."
+    },
+    {
+      "start": 87,
+      "end": 104,
+      "kind": "type",
+      "name": "RoutedCorpus",
+      "id": "s5",
+      "hash": "f43b7c93f15133ae",
+      "title": "Shape of the routed data",
+      "what": "Defines what the routed data holds: the industry, the pillars and criteria, per-project counts, and summary totals.",
+      "why": "Lets the routing step hand its results to the step that turns counts into met or not met.",
+      "watch_out": "A project missing from the per-project map looks like zero facts, so check the map before reading zeros."
+    },
+    {
+      "start": 105,
+      "end": 150,
+      "kind": "function",
+      "name": "buildRoutedCorpus (part 1)",
+      "id": "s6",
+      "hash": "6b9357c9cc39b7d7",
+      "title": "Loading an industry and building its framework",
+      "what": "Loads every project in one industry and its active evidence quotes, keeps the relevant facts, builds the framework of pillars from them, and stops with an error if no pillar results.",
+      "why": "Builds the framework from the industry's own evidence before any scoring happens.",
+      "watch_out": "The framework is built from the same facts that are then scored, so results may look better than they are."
+    },
+    {
+      "start": 151,
+      "end": 205,
+      "kind": "method",
+      "name": "buildRoutedCorpus: for",
+      "id": "s7",
+      "hash": "5035ce760348ada8",
+      "title": "Counting facts against each criterion",
+      "what": "Creates a criterion for each pillar and each sub-driver, sets up a counter per project, then routes each relevant fact to a pillar and possibly a sub-driver. Totals and unrouted counts are returned.",
+      "why": "Counting once lets both definitions read the same routing pass, as the comment on the loader explains.",
+      "watch_out": "Unrouted facts are kept in the stats, so a large unrouted count means many facts were not used."
+    },
+    {
+      "start": 206,
+      "end": 245,
+      "kind": "function",
+      "name": "toObservations",
+      "id": "s8",
+      "hash": "cbc9a626e3dacfee",
+      "title": "Turning counts into met, not met or unknown",
+      "what": "For each project and criterion, marks it unknown if the project has too few facts. Otherwise, under presence it is met if at least one fact supports it, and under salience it is met if its share of the project's facts reaches the set level.",
+      "why": "Keeps unknown separate so a project with little research is not counted as lacking a criterion. The comment explains this.",
+      "watch_out": "The minimum fact count differs between the two definitions, so changing one setting changes results for only one of them."
+    }
+  ],
+  "explained_at": "2026-11-12T03:31:30+00:00",
+  "explained_by": "haiku",
+  "summary": "Reads the live project data and labels each project with its outcome, as an I/O layer for the E14 measurement gate. It does not change the deck pipeline.",
+  "purpose": "Lets the E14 gate measure how the lessons-learnt framework routes facts, using the same routing functions the deck uses.",
+  "why": "Likely reason: the gate has to measure the framework as shipped, so it calls the real routing functions instead of copies of them.",
+  "how": "Reads the projects and their evidence quotes from the database, uses the framework's routing functions to sort facts into pillars and sub-drivers, labels each project's outcome, and builds a corpus that the gate measures. Two private functions from the deck path are copied here rather than exported.",
+  "inputs": "The projects and evidence quotes tables, and the E14 parameter types.",
+  "outputs": "Outcome-labelled observations and a routed corpus for the gate.",
+  "risks": "Two copied functions can drift from the originals, so the gate would measure something other than the deck. The file has read access to the database.",
+  "debug": "The header says a harness checks the copied outcome split against a stored run. If the split differs, compare the copies with the originals in the deck path first.",
+  "summary_hash": "sha256:dd64f9ee5a37ef0e9cbf0168244dee259f9d14e16a6cbb15c5ba072647b6c8f6"
+}

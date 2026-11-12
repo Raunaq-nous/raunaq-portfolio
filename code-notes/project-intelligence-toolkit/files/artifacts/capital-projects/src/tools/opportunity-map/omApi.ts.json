@@ -1,0 +1,451 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/capital-projects/src/tools/opportunity-map/omApi.ts",
+  "language": "TypeScript",
+  "lines": 296,
+  "hash": "sha256:30361c2cb1a12644b629c9ba66c38bf92ac07b8d964ed4cbbd93bcf08c7a5314",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "unknown",
+    "reasons": [
+      "The file defines many types and functions, but this packet shows only the first 7 sections.",
+      "Types are checked at build time only, so server data is not validated at run time.",
+      "No tests are visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "API",
+      "meaning": "A doorway other programs use to ask this app for data or send it changes."
+    },
+    {
+      "term": "Type",
+      "meaning": "A named description of a data shape that the compiler checks."
+    },
+    {
+      "term": "Interface",
+      "meaning": "A type that lists the named fields an object must have."
+    },
+    {
+      "term": "Evidence tier",
+      "meaning": "A grade from C1 to C4 that rates how strong a source is."
+    },
+    {
+      "term": "Signal",
+      "meaning": "A sourced finding about the market that the tool tracks."
+    },
+    {
+      "term": "Source",
+      "meaning": "A web page or record that a signal cites, with the quote used."
+    },
+    {
+      "term": "Capex",
+      "meaning": "Capital expenditure: money spent on building assets such as plants."
+    },
+    {
+      "term": "Codebook",
+      "meaning": "The rulebook that classifies signals into solutions, triggers, types, industries and themes."
+    },
+    {
+      "term": "Yard",
+      "meaning": "The project records this app links signals to."
+    },
+    {
+      "term": "Classifier",
+      "meaning": "The automated step that assigns codebook labels to a signal."
+    },
+    {
+      "term": "Strength score",
+      "meaning": "A number and label that rate how well a signal is supported."
+    }
+  ],
+  "depends_on": [],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 13,
+      "kind": "setup",
+      "name": "File setup, OM_STATE_KEY, Audience, Kind, Confidence, SignalStatus",
+      "id": "s1",
+      "hash": "f28db8873ac1a6e2",
+      "title": "Setup, server address and status types",
+      "what": "Imports the shared request helper and the account, mapping and solution types, then sets the server address prefix and the cache key for the saved state. Defines the short lists of audiences, signal kinds, confidence levels and review statuses.",
+      "why": "Likely reason: the address and cache key are set in one place so every request uses the same route.",
+      "watch_out": "The address prefix must match the server route. If it changes, every request in this file will fail."
+    },
+    {
+      "start": 14,
+      "end": 27,
+      "kind": "type",
+      "name": "OmSource",
+      "id": "s2",
+      "hash": "2b3cdd8a4969f6f5",
+      "title": "Source citation record",
+      "what": "Describes one web source behind a signal: its title, link, publisher, the quote used, when it was checked, whether the page was fetched, and optional links to a project or evidence record.",
+      "why": "Lets each claim be traced to where it was found.",
+      "watch_out": "The status can only be one of three values, and the screens show labels based on those exact values."
+    },
+    {
+      "start": 28,
+      "end": 43,
+      "kind": "type",
+      "name": "OpportunityLocation",
+      "id": "s3",
+      "hash": "e3a3ee7de7aa16c6",
+      "title": "Location record",
+      "what": "Describes a place linked to a signal: a label, country, region, coordinates, how precise the location is, whether it comes from a project record or from research, and the source quote.",
+      "why": "Lets signals appear on the map only where a location has been sourced.",
+      "watch_out": "Coordinates are checked later for valid ranges. A bad value is hidden from the map rather than reported as an error."
+    },
+    {
+      "start": 44,
+      "end": 55,
+      "kind": "type",
+      "name": "OmCapex, OmAnnouncement, OmStrength, OmQueueSummary, Emphasis, CodebookElement, CodebookSolution",
+      "id": "s4",
+      "hash": "8120f9876b70ef9c",
+      "title": "Capex, announcement, strength and queue types",
+      "what": "Describes the capex figure with its local and US dollar amounts and scope; a new-project announcement; a strength score with its components; the background queue counts and time estimate; the emphasis level for codebook items; and the codebook items and solutions. Also defines the evidence grades C1 to C4.",
+      "why": "Gathers the main building blocks for how signals are described, rated and ranked.",
+      "watch_out": "The dollar amounts can be missing, so any display of them must handle a blank value rather than show zero."
+    },
+    {
+      "start": 56,
+      "end": 62,
+      "kind": "type",
+      "name": "TierRules",
+      "id": "s5",
+      "hash": "30c969719a9fe784",
+      "title": "Tier rules",
+      "what": "Describes how signals are placed into priority tiers: how recent they must be, which evidence grades qualify, the conditions for tier 1 (such as a value at risk and a decision window), the minimum score for tier 2, and whether deprioritised items are capped.",
+      "why": "Lets the owner change how signals are graded in one place.",
+      "watch_out": "Changing these rules changes the tier of many signals, and the codebook save triggers a re-classification in the background."
+    },
+    {
+      "start": 63,
+      "end": 71,
+      "kind": "type",
+      "name": "CodebookDoc, Codebook, CodebookDimension, OmNewProject, OmClassification, OmClassificationProgress",
+      "id": "s6",
+      "hash": "923b0986a32b88f8",
+      "title": "Codebook shape and classification results",
+      "what": "Describes the full codebook: solutions, triggers, signal types, industries, themes, tier rules and the new-project definition. Adds a version hash and who last updated it. Also describes the new-project check result, the classification status of a signal, and the progress counts for a classification run.",
+      "why": "Gives the classifier and the screens one shared rulebook and one way to report progress.",
+      "watch_out": "The meaning of the stale status is not explained in this code. It appears to mean a result predates the current rules, so it should not be shown as final."
+    },
+    {
+      "start": 72,
+      "end": 79,
+      "kind": "type",
+      "name": "OmSearchResult, OmYardStatus, OmYardLink, YARD_STATUS_LABEL",
+      "id": "s7",
+      "hash": "fe8f6a27cae6e5f2",
+      "title": "Search result and Yard link types",
+      "what": "Describes the AI search answer: the interpretation, how many signals were searched, whether the list was cut short or cached, and each result's relevance and strength. Also describes the Yard link for a signal (its status, linked project ids, reason and sync time) and gives each Yard status a plain label.",
+      "why": "Lets the screens show search results and Yard links with consistent, readable wording.",
+      "watch_out": "Relevance can be missing, so the display must handle a blank value. The Yard label table must cover every status, which the compiler checks."
+    },
+    {
+      "start": 80,
+      "end": 83,
+      "kind": "function",
+      "name": "syncYard",
+      "id": "s8",
+      "hash": "8e8a60f759747e37",
+      "title": "Starts the Yard sync",
+      "what": "Asks the server to copy Opportunity Map results into Yard, then returns how many items fall into each sync status. The file does not explain what Yard is beyond calling it the place where project records live.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "This writes to another system, and the code does not show whether repeating the call is safe."
+    },
+    {
+      "start": 84,
+      "end": 122,
+      "kind": "type",
+      "name": "Opportunity",
+      "id": "s9",
+      "hash": "dc7d88db9136f480",
+      "title": "The shape of one opportunity",
+      "what": "Defines every field a single opportunity signal carries, including its title, summary, type, audience, sources, locations, cost estimate, review status, priority score and links to accounts, projects and Yard. Anything the page shows about one signal reads from this record.",
+      "why": "Likely reason: it gives the server and the screens one agreed format for a signal.",
+      "watch_out": "Some fields are optional, so any screen reading them must handle them being missing."
+    },
+    {
+      "start": 123,
+      "end": 141,
+      "kind": "type",
+      "name": "OmRun, OmSettings",
+      "id": "s10",
+      "hash": "fea0aed5253fb457",
+      "title": "Research run and settings records",
+      "what": "Describes one background research job, including its target, status, start and finish times, how many sources and signals it produced, and any error. It also describes the automatic research settings: on or off, which industries, and how often to run.",
+      "why": "Likely reason: the research queue needs a history of past runs, and the settings screen needs somewhere to save the schedule.",
+      "watch_out": "The run status is limited to five fixed values, so a new status from the server would have no matching label."
+    },
+    {
+      "start": 142,
+      "end": 157,
+      "kind": "type",
+      "name": "OmState",
+      "id": "s11",
+      "hash": "c8404cedf0a57e8e",
+      "title": "The full data bundle for the page",
+      "what": "Describes everything the page receives in one response: accounts, solutions, signals, runs, settings, queue counts, the codebook and classification progress. The page is built from this single object.",
+      "why": "Likely reason: loading everything together keeps the screen consistent with one snapshot of the data.",
+      "watch_out": "Several fields are optional, so the loading code in getState must supply defaults, and any new field must be handled there too."
+    },
+    {
+      "start": 158,
+      "end": 173,
+      "kind": "function",
+      "name": "getState",
+      "id": "s12",
+      "hash": "db0315cbc6e55257",
+      "title": "Loads the page data and fills gaps",
+      "what": "Calls the state endpoint, then fills in default values for signals whose fields are missing. It also takes solution and trigger names from the codebook so that names added by the team appear on screen.",
+      "why": "The code comment says the codebook is the source of truth for names, so its names replace the names the server sends.",
+      "watch_out": "Missing strength data is silently replaced by a weak rating that says strength was not computed, which can look like a real result."
+    },
+    {
+      "start": 174,
+      "end": 177,
+      "kind": "function",
+      "name": "refresh",
+      "id": "s13",
+      "hash": "5aca3a0ad4a50c12",
+      "title": "Asks for a fresh research run",
+      "what": "Asks the server to queue new research for the chosen industries, or for all industries when none are given. It returns how many jobs were queued.",
+      "why": "Likely reason: lets a team re-check industries on demand instead of waiting for the scheduled run.",
+      "watch_out": "The code does not show whether the server ignores duplicate requests, so repeated clicks may queue repeated work."
+    },
+    {
+      "start": 178,
+      "end": 181,
+      "kind": "function",
+      "name": "refreshAccounts",
+      "id": "s14",
+      "hash": "c0fe77004cefcc8c",
+      "title": "Asks for research on chosen clients",
+      "what": "Asks the server to queue new research for the listed client accounts and returns how many jobs were queued.",
+      "why": "Likely reason: lets a user refresh one client's view without rerunning everything.",
+      "watch_out": "An empty list is sent when no accounts are chosen, and the code does not show what the server does with that."
+    },
+    {
+      "start": 182,
+      "end": 185,
+      "kind": "function",
+      "name": "refreshLocations",
+      "id": "s15",
+      "hash": "9eb17e0e84a36add",
+      "title": "Asks for map locations on signals",
+      "what": "Asks the server to find map locations for the listed signals and returns how many jobs were queued.",
+      "why": "Likely reason: map positions are looked up separately from the main research, so they can be requested on their own.",
+      "watch_out": "The code sends whatever list it is given with no limit, so a very large selection could queue a large amount of work."
+    },
+    {
+      "start": 186,
+      "end": 191,
+      "kind": "function",
+      "name": "searchSignals, ANNOUNCEMENT_LABEL, STRENGTH_LABEL",
+      "id": "s16",
+      "hash": "73be862b41c81985",
+      "title": "Question search over signals",
+      "what": "Sends a plain-language question and up to 500 signal ids to the server and returns the matching results. It also holds two label tables that turn internal codes for announcement kinds and strength levels into readable words.",
+      "why": "Likely reason: the AI question box on the signal list uses this to answer questions about the signals on screen.",
+      "watch_out": "Only the first 500 signal ids are sent, so any signals past that point are not searched."
+    },
+    {
+      "start": 192,
+      "end": 198,
+      "kind": "function",
+      "name": "money",
+      "id": "s17",
+      "hash": "fb547a1acb0a8368",
+      "title": "Turns cost figures into readable text",
+      "what": "Turns a capital cost record, the amount a project plans to spend in millions of US dollars, into text such as US$1.2bn or US$450M. It shows a range when the low and high values differ, and an approximately sign when the figure was converted from another currency. If there is no number, it shows the original wording.",
+      "why": "Likely reason: source figures arrive in mixed forms, so one helper keeps every screen showing them the same way.",
+      "watch_out": "A record with no numeric value shows its raw source wording, which may not be formatted."
+    },
+    {
+      "start": 199,
+      "end": 202,
+      "kind": "function",
+      "name": "saveCodebook",
+      "id": "s18",
+      "hash": "cdeff2bdb0777c90",
+      "title": "Saves the classification rulebook",
+      "what": "Sends the edited codebook to the server, which saves it and reports the saved version and whether signals will be sorted again.",
+      "why": "Likely reason: the team can change how signals are sorted, and the server keeps the one shared copy.",
+      "watch_out": "Saving can trigger a re-sort of signals that were not edited directly, so their classification may change."
+    },
+    {
+      "start": 203,
+      "end": 206,
+      "kind": "function",
+      "name": "resetCodebook",
+      "id": "s19",
+      "hash": "922073a6e0443d46",
+      "title": "Restores the default rulebook",
+      "what": "Asks the server to delete the team's codebook changes so the built-in version is used again. It reports the result in the same way as saving.",
+      "why": "Likely reason: gives the team a way back if their edits were wrong.",
+      "watch_out": "This removes every team edit at once, and this file offers no undo."
+    },
+    {
+      "start": 207,
+      "end": 213,
+      "kind": "function",
+      "name": "reclassifyAll, EMPHASIS_LABEL, DIMENSION_LABEL, shortHead",
+      "id": "s20",
+      "hash": "13623dede521ab3e",
+      "title": "Re-sorts all signals and label tables",
+      "what": "Asks the server to sort all signals again using the current codebook. It also holds label tables that turn codes for emphasis and rulebook sections into readable words, and a helper that cuts a long label down to its first clause.",
+      "why": "Likely reason: a manual re-sort lets a user apply rule changes without saving the codebook again.",
+      "watch_out": "Re-sorting every signal can take a while, and the footer on the main screen is the only place that shows its progress."
+    },
+    {
+      "start": 214,
+      "end": 220,
+      "kind": "function",
+      "name": "labelOf",
+      "id": "s21",
+      "hash": "99d2de4e2fd72751",
+      "title": "Readable name for a rulebook code",
+      "what": "Given a rulebook id and its section, returns the name a person should see. An empty id shows Not classified, and an id missing from the codebook shows the raw id. Built-in trigger families are shortened to their first clause.",
+      "why": "Likely reason: stored ids are codes, and the screens need plain names.",
+      "watch_out": "An id that was deleted or renamed in the codebook shows as its raw code, so internal text can reach the page."
+    },
+    {
+      "start": 221,
+      "end": 224,
+      "kind": "function",
+      "name": "saveSettings",
+      "id": "s22",
+      "hash": "12cc5293a507b344",
+      "title": "Saves automatic research settings",
+      "what": "Saves changes to automatic research: whether it is on, which industries it covers and how often it runs. Only the fields that are passed in are changed.",
+      "why": "Likely reason: sending only the changed fields means one switch does not have to resend every setting.",
+      "watch_out": "The code does not show when a changed schedule starts taking effect."
+    },
+    {
+      "start": 225,
+      "end": 229,
+      "kind": "function",
+      "name": "setSignalStatus",
+      "id": "s23",
+      "hash": "2703c81cad113557",
+      "title": "Changes a signal's review status",
+      "what": "Sets one signal to New, Reviewing, Dismissed or Resolved and returns the updated signal.",
+      "why": "Likely reason: lets the team track which signals have been looked at and what was decided.",
+      "watch_out": "The signal id is encoded before it goes into the web address, and that step should stay in place if id formats change."
+    },
+    {
+      "start": 230,
+      "end": 237,
+      "kind": "value",
+      "name": "AUDIENCE_LABEL, KIND_LABEL, STATUS_LABEL",
+      "id": "s24",
+      "hash": "a84d549d5d14fa39",
+      "title": "Readable labels for audience, kind and status",
+      "what": "Maps internal codes for who a signal is for, what kind of signal it is, and its review status to the words shown on screen. The kind whitespace is labelled as inferred, meaning the system worked it out rather than reading it from a source.",
+      "why": "Likely reason: keeps the wording in one place so every screen uses the same terms.",
+      "watch_out": "The types require a label for every code, so a new code must be added to these tables before the code can be used."
+    },
+    {
+      "start": 238,
+      "end": 253,
+      "kind": "function",
+      "name": "ago, KeyCriterion, FeedSource, FeedProject",
+      "id": "s25",
+      "hash": "bc812d070d4bfb7f",
+      "title": "Relative time text and source types",
+      "what": "Turns a date into text such as 5m ago, 3h ago or 2d ago, or the word never when there is no date. It also declares small type definitions for project criteria, news sources and project summaries.",
+      "why": "Likely reason: relative times are quicker to scan than full timestamps.",
+      "watch_out": "The text is worked out from the current clock, so the same stored date reads differently as time passes."
+    },
+    {
+      "start": 254,
+      "end": 257,
+      "kind": "type",
+      "name": "ProjectNewsItem",
+      "id": "s26",
+      "hash": "89e7b3a339803207",
+      "title": "One news item about a project",
+      "what": "Describes a single project news entry: its date, headline, whether it is still upcoming, where it came from (a project record, a development note, or an Opportunity Map signal), and the source it cites.",
+      "why": "Likely reason: the project news list needs each item to link back to its source.",
+      "watch_out": "The origin is one of three fixed values, so a new origin needs changes in this file."
+    },
+    {
+      "start": 258,
+      "end": 269,
+      "kind": "type",
+      "name": "ProjectProfile, ProjectFeed, OM_PROJECTS_KEY",
+      "id": "s27",
+      "hash": "b9b2b1f405feb7bb",
+      "title": "Project profile and feed records",
+      "what": "Describes one project's profile, including capacity, technology, cost, key dates, delay in months, companies, reported figures and facts. It also describes the feed that holds all news and profiles together, and sets OM_PROJECTS_KEY, the identifier used to store and look up that feed.",
+      "why": "Reason not stated in the code, beyond the identifier being used for lookup.",
+      "watch_out": "Cost figures are in millions and the currency can be missing, so any screen should show the currency with the number."
+    },
+    {
+      "start": 270,
+      "end": 276,
+      "kind": "function",
+      "name": "getProjectFeed, DeliveryCategory",
+      "id": "s28",
+      "hash": "4c7592bf863e157c",
+      "title": "Loads project feed and delivery types",
+      "what": "Asks the server for the project feed and returns it. It also defines the ten contract delivery models a project can use, such as lump sum, EPCM, alliance and public-private partnership.",
+      "why": "Likely reason: a fixed list keeps delivery labels consistent across screens.",
+      "watch_out": "The list is fixed here while the labels come from the server, so the two could disagree after a change on either side."
+    },
+    {
+      "start": 277,
+      "end": 282,
+      "kind": "type",
+      "name": "AdvisorProject, AdvisorLink, AdvisorFirm",
+      "id": "s29",
+      "hash": "8f98850832512f56",
+      "title": "Contractor and delivery link records",
+      "what": "Describes a project's delivery model, overrun, delay, capital cost and links to the firms that worked on it. Each link records whether the firm was the EPC firm (the engineering, procurement and construction firm) or the contractor, plus its source. A firm is also marked as catalogued or not.",
+      "why": "Likely reason: the build advisor shows who built each project, so it needs these records.",
+      "watch_out": "Delivery and overrun can be empty, so charts must treat blank as unknown rather than as zero."
+    },
+    {
+      "start": 283,
+      "end": 292,
+      "kind": "type",
+      "name": "BuildAdvisorData, OM_ADVISOR_KEY",
+      "id": "s30",
+      "hash": "8fad57ca37b21121",
+      "title": "Whole build advisor data bundle",
+      "what": "Describes everything the build advisor page receives at once: counts per industry, regions, projects, firms, source citations and labels for each delivery model. OM_ADVISOR_KEY is the identifier used to store and look up this bundle.",
+      "why": "Likely reason: one bundle keeps the page showing a single snapshot of the data.",
+      "watch_out": "The industry counts are separate totals from the server, and the code does not show that they always agree with the project list."
+    },
+    {
+      "start": 293,
+      "end": 296,
+      "kind": "function",
+      "name": "getBuildAdvisor",
+      "id": "s31",
+      "hash": "89800b656a70bd79",
+      "title": "Loads build advisor data",
+      "what": "Asks the server for the build advisor bundle and returns it without any checks.",
+      "why": "Reason not stated in the code.",
+      "watch_out": "The response is trusted to have the right shape, so a server change can break the page with no clear error here."
+    }
+  ],
+  "explained_at": "2026-11-12T06:37:47+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the data shapes the Opportunity Map uses for signals, sources, locations, codebook rules, Yard links, search results and the advisor data, and the calls that read and change that data on the server.",
+  "purpose": "Gives the rest of the Opportunity Map one agreed description of the data, and one place where server requests are made.",
+  "why": "Likely reason: keeps the data shape and the server calls together so the screens do not each guess the format. The code does not state this.",
+  "how": "1. Imports a shared request helper and the account, mapping and solution types. 2. Sets the server address prefix and the cache key. 3. Defines the types for sources, locations, capex, announcements, strength, queue, codebook, tier rules, classification, search and Yard links. 4. Defines the signal, run, settings, state and advisor types. 5. Provides functions that send requests for state, refresh, codebook save and reset, reclassify, settings, status change, search and project feeds.",
+  "inputs": "Parameters for each request, such as a signal id, a codebook, a search question and a list of signal ids.",
+  "outputs": "Typed data returned from the server, and label tables used by the screens.",
+  "risks": "If the server response changes shape, the types here will not catch it at runtime, so screens may show blank or wrong values. The server address prefix must match the server routes.",
+  "debug": "If data does not load, check the address prefix and the cache key, then the request helper. If a field is blank, check the type's optional fields against the server's response. If a label is missing, check the label table for that status.",
+  "summary_hash": "sha256:30361c2cb1a12644b629c9ba66c38bf92ac07b8d964ed4cbbd93bcf08c7a5314"
+}

@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/tools/opportunity-map/codebook.ts",
+  "language": "TypeScript",
+  "lines": 174,
+  "hash": "sha256:cef37d26b2711aa77d0e5134ccf8831ea2dd91a18102070e22e031c184a9cbb4",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "ready",
+    "reasons": [
+      "Validation returns specific error messages.",
+      "Tests cover the key rules for validation, fingerprinting and tiers.",
+      "Some built-in definitions for industries and triggers are short or empty, which may limit classification quality."
+    ]
+  },
+  "terms": [
+    {
+      "term": "emphasis",
+      "meaning": "how strongly a team wants an element used, from prioritise to exclude"
+    },
+    {
+      "term": "built-in",
+      "meaning": "an item supplied with the product that cannot be deleted, only excluded"
+    },
+    {
+      "term": "tier",
+      "meaning": "a priority band for a signal, with tier 1 the most important"
+    },
+    {
+      "term": "cache",
+      "meaning": "a short-lived stored copy so the same data is not read again and again"
+    }
+  ],
+  "depends_on": [
+    "drizzle-orm",
+    "zod",
+    "../../db",
+    "../../../../capital-projects/src/shared/industries",
+    "./catalog",
+    "./types",
+    "./store",
+    "./tiers",
+    "./branding"
+  ],
+  "used_by": [
+    "artifacts/api-server/src/tools/opportunity-map/classify.ts",
+    "artifacts/api-server/src/tools/opportunity-map/classifyWorker.ts",
+    "artifacts/api-server/src/tools/opportunity-map/codebook.test.ts",
+    "artifacts/api-server/src/tools/opportunity-map/index.ts"
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 10,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "287142959e7c4008",
+      "title": "Imports for the codebook",
+      "what": "Brings in database access, the schema checker, the industry list, the solutions and trigger data, theme names, storage helpers, tier defaults and the branding filter.",
+      "why": "Reason not stated in the code.",
+      "watch_out": ""
+    },
+    {
+      "start": 11,
+      "end": 25,
+      "kind": "value",
+      "name": "EMPHASIS, Emphasis, DIMENSIONS, Dimension, text",
+      "id": "s2",
+      "hash": "a2964853b9f7a75d",
+      "title": "Allowed emphasis levels and group names",
+      "what": "Lists the four emphasis levels (prioritise, standard, deprioritise, exclude) and the five groups that can hold elements: solutions, triggers, signal types, industries and themes. Also a helper that trims text and limits its length.",
+      "why": "The header says teams can change emphasis or exclude elements, so the allowed levels are fixed here.",
+      "watch_out": "Other files compare against these exact level names, so renaming one needs changes wherever it is used."
+    },
+    {
+      "start": 26,
+      "end": 35,
+      "kind": "value",
+      "name": "elementSchema, evidence",
+      "id": "s3",
+      "hash": "e74558ad3410c693",
+      "title": "Rules for one codebook element",
+      "what": "Sets the rules for a single element: id, label, definition, keywords, emphasis and whether it is built in. Solutions also carry a stage and whether they may be a primary solution. Evidence grades are limited to C1 through C4.",
+      "why": "Likely reason: the schema checks saved data before it is stored or used.",
+      "watch_out": "Length and count limits mean a saved codebook can be refused for being too large."
+    },
+    {
+      "start": 36,
+      "end": 46,
+      "kind": "value",
+      "name": "tierRulesSchema",
+      "id": "s4",
+      "hash": "809404daf60c8c1b",
+      "title": "Rules for tier settings",
+      "what": "Defines how signals are placed into tiers: the recent window in days, the requirements for tier one (evidence grade, value at risk, decision window, severity, ability to act, relationship), the tier two score threshold, the evidence grades for tier four, and whether deprioritised and prioritised elements may change a tier.",
+      "why": "Reason not stated in the code. The comment elsewhere says tier rules apply instantly when read.",
+      "watch_out": "Changing these numbers changes tiers straight away without re-classifying any signal."
+    },
+    {
+      "start": 47,
+      "end": 59,
+      "kind": "value",
+      "name": "codebookSchema, CodebookInput, CodebookElement, Codebook",
+      "id": "s5",
+      "hash": "e3af1cabe54471c0",
+      "title": "Whole codebook shape",
+      "what": "Defines the full codebook: lists of solutions, triggers, signal types, industries and themes, tier rules and the announcement definition. The Codebook type adds a fingerprint and the last editor and time.",
+      "why": "Gives every part of the app one agreed codebook structure.",
+      "watch_out": "Minimum and maximum counts for each list are enforced here, so removing entries can make validation fail."
+    },
+    {
+      "start": 60,
+      "end": 68,
+      "kind": "value",
+      "name": "THEME_DEFINITIONS",
+      "id": "s6",
+      "hash": "f53f7f81d73de27b",
+      "title": "Built-in theme definitions",
+      "what": "Gives a one-line definition for each of the seven built-in themes, such as Procurement and Permitting, which the model uses to choose themes.",
+      "why": "Likely reason: the classifier needs a clear definition to apply each theme consistently.",
+      "watch_out": "Themes are matched by their id, so renaming one here creates a separate theme for saved codebooks rather than updating the old one."
+    },
+    {
+      "start": 69,
+      "end": 83,
+      "kind": "value",
+      "name": "DEFAULT_SIGNAL_TYPES, DISALLOWED_PRIMARY",
+      "id": "s7",
+      "hash": "95db67b5c32b9ed9",
+      "title": "Built-in signal types and blocked primaries",
+      "what": "Lists the eleven built-in signal types, each with a label, definition and cue words, such as New project announcement and Schedule delay. Also lists four solutions that can never be the primary solution.",
+      "why": "Likely reason: those four solutions only support others; the tests confirm they are blocked as primary.",
+      "watch_out": "The four blocked solution ids are fixed in code, so renaming them in the catalogue would silently allow them as primary."
+    },
+    {
+      "start": 84,
+      "end": 98,
+      "kind": "function",
+      "name": "defaultCodebook",
+      "id": "s8",
+      "hash": "6cf9daa635f63380",
+      "title": "Building the default codebook",
+      "what": "Builds the starting codebook from the built-in solution catalogue, trigger library, signal types, industries, themes and tier defaults. Every element starts with standard emphasis and marked as built in.",
+      "why": "Likely reason: gives a complete starting point when a team has saved nothing.",
+      "watch_out": "Trigger labels are made by capitalising only the first letter of the family name."
+    },
+    {
+      "start": 99,
+      "end": 103,
+      "kind": "function",
+      "name": "canonical",
+      "id": "s9",
+      "hash": "29bfe6576d60e165",
+      "title": "Stable text form for hashing",
+      "what": "Turns codebook data into text with object keys always sorted, so the same content always produces the same text.",
+      "why": "The comment says a re-read codebook must hash the same as the defaults it equals.",
+      "watch_out": "Missing and undefined fields are dropped, so they are treated the same way."
+    },
+    {
+      "start": 104,
+      "end": 108,
+      "kind": "function",
+      "name": "classificationHash",
+      "id": "s10",
+      "hash": "0cc3cf44c4efcd69",
+      "title": "Fingerprint of classification inputs",
+      "what": "Creates a short fingerprint from the parts of the codebook the classifier reads, leaving out the built-in flag and tier rules. A change in this fingerprint triggers re-classification of signals.",
+      "why": "The comment says only inputs the classifier reads change the fingerprint, so tier edits do not cause re-classification.",
+      "watch_out": "If a new field is read by the classifier but not included here, stale classifications would look current."
+    },
+    {
+      "start": 109,
+      "end": 126,
+      "kind": "function",
+      "name": "mergeWithDefaults",
+      "id": "s11",
+      "hash": "c7029a7daf067664",
+      "title": "Combining a saved codebook with defaults",
+      "what": "Takes the saved codebook and adds any built-in elements that are missing, so new catalogue items appear automatically. Built-in items are never deleted, only excluded. Falls back to default tier rules if the saved ones are invalid.",
+      "why": "The comment says built-ins added later appear automatically and are never deleted.",
+      "watch_out": "A saved copy of a built-in item takes priority over the default, so a later fix to the default will not reach teams that already saved it."
+    },
+    {
+      "start": 127,
+      "end": 153,
+      "kind": "function",
+      "name": "validateCodebook",
+      "id": "s12",
+      "hash": "7663d4ce8294a54c",
+      "title": "Checking a codebook before saving",
+      "what": "Checks a submitted codebook for correct shape, no repeated ids, no client-created built-in items, no consultancy branding, at least one usable element in each group, and at least one solution allowed as primary. Returns the cleaned codebook or a plain error message.",
+      "why": "The comment says server-side validation keeps built-in details intact and blocks unusable setups.",
+      "watch_out": "Only the first problem is reported, so fixing several problems can take several save attempts."
+    },
+    {
+      "start": 154,
+      "end": 163,
+      "kind": "function",
+      "name": "loadCodebook",
+      "id": "s13",
+      "hash": "cb31c820db34ba43",
+      "title": "Loading the saved codebook",
+      "what": "Reads the codebook from the settings table, merges it with the defaults, computes its fingerprint and returns it. Keeps the result in memory for five seconds to avoid repeated reads.",
+      "why": "The comment says it is stored as one JSON row to avoid a database schema change.",
+      "watch_out": "The five second memory cache means another reader may see an old version for a few seconds after a save."
+    },
+    {
+      "start": 164,
+      "end": 174,
+      "kind": "function",
+      "name": "saveCodebook, usable",
+      "id": "s14",
+      "hash": "d40175d13fc187ce",
+      "title": "Saving the codebook and filtering usable items",
+      "what": "Saves the codebook as one JSON row, or deletes the row to return to defaults, then reloads it. The usable helper keeps only elements not marked exclude, which is what the classifier uses.",
+      "why": "Reason for deleting the row is not stated in the code.",
+      "watch_out": "Passing null deletes the team's saved codebook with no backup, so the caller must intend that."
+    }
+  ],
+  "explained_at": "2026-11-12T04:49:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Defines the team's classification scheme (solutions, triggers, signal types, industries, themes and tier rules), checks and saves it, and produces a fingerprint that shows when signals must be re-classified.",
+  "purpose": "Lets each team edit its labels and priorities while keeping built-in items safe and classifications consistent.",
+  "why": "The header says teams can edit definitions, add elements, change emphasis or exclude elements, and that saving changes re-classifies signals in the background.",
+  "how": "1. Start from the built-in defaults. 2. Merge the saved version over them. 3. Validate on save for shape, unique ids, branding and usable items. 4. Store the codebook as one JSON row in the settings table. 5. Compute a fingerprint from classifier inputs only. 6. Keep the loaded codebook in memory for five seconds.",
+  "inputs": "Saved JSON in the settings table, and codebook edits submitted by users.",
+  "outputs": "A full codebook with its fingerprint, last editor and time; validation error text; lists of usable elements.",
+  "risks": "Invalid saves are rejected with a message, but saving a codebook with mistaken emphasis can silently change which signals are kept. Saving null deletes the team's customisations. The five second memory cache can show old values briefly.",
+  "debug": "If the codebook seems reset, check the settings row for the codebook id. If a save is refused, read the error, which names the field path. If classifications look stale, compare the fingerprint before and after the change.",
+  "summary_hash": "sha256:cef37d26b2711aa77d0e5134ccf8831ea2dd91a18102070e22e031c184a9cbb4"
+}

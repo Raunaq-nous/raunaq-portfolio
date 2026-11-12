@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/lib/modelCallCache.ts",
+  "language": "TypeScript",
+  "lines": 57,
+  "hash": "sha256:500cffd97dcb8bdaccea00bf2cb36e1a57871f170facf053dd6e206a65153edf",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "No test is visible for the cache.",
+      "The memory store has no size limit or expiry."
+    ]
+  },
+  "terms": [
+    {
+      "term": "hash",
+      "meaning": "a fixed-length fingerprint computed from an input, so the same input always gives the same fingerprint"
+    },
+    {
+      "term": "time-to-live",
+      "meaning": "how long a saved entry stays valid before it is ignored"
+    },
+    {
+      "term": "namespace",
+      "meaning": "a label that keeps cache entries from different features apart"
+    }
+  ],
+  "depends_on": [
+    "node:crypto",
+    "drizzle-orm",
+    "../db",
+    "@workspace/db",
+    "../scan/synthesisCache",
+    "./portkeyOpenAI"
+  ],
+  "used_by": [
+    "Not visible in this packet."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup, l1",
+      "id": "s1",
+      "hash": "4634ff754c277d28",
+      "title": "Imports and in-memory store",
+      "what": "Loads the database tools and the cache table, and creates a memory store that holds answers for the life of the process.",
+      "why": "Likely reason: a fast first layer so repeat lookups in one run do not touch the database.",
+      "watch_out": "This memory store never shrinks, so long runs can use more memory over time."
+    },
+    {
+      "start": 18,
+      "end": 23,
+      "kind": "function",
+      "name": "cacheKey, rowId",
+      "id": "s2",
+      "hash": "e8b63920ab991611",
+      "title": "Building the cache key",
+      "what": "Turns any input into a fixed fingerprint, so identical inputs always find the same saved answer.",
+      "why": "Likely reason: a short fixed key is easy to store and compare, and identical inputs must share one answer.",
+      "watch_out": "The fingerprint depends on the order of fields in the input. Reordering fields gives a different key, which causes a cache miss but not a wrong answer."
+    },
+    {
+      "start": 24,
+      "end": 40,
+      "kind": "function",
+      "name": "getCachedModelOutput",
+      "id": "s3",
+      "hash": "edac781c67f03d12",
+      "title": "Reading a saved answer",
+      "what": "Looks in memory first, then in the database for an entry that has not expired. If nothing usable is found, or any error happens, it returns nothing so the caller makes a fresh model call.",
+      "why": "The code states that a cache failure must never fail the caller.",
+      "watch_out": "A memory hit does not check expiry, so an answer stays in use until the process restarts."
+    },
+    {
+      "start": 41,
+      "end": 57,
+      "kind": "function",
+      "name": "setCachedModelOutput",
+      "id": "s4",
+      "hash": "2c5cbfe1a6f3de91",
+      "title": "Saving an answer",
+      "what": "Stores a value in memory and in the database with an expiry date. A newer save replaces an older entry with the same id. A failed database write only logs a warning.",
+      "why": "Likely reason: later runs, even after a restart, can reuse the answer.",
+      "watch_out": "The memory copy is kept even when the database write fails, so the entry can look saved but disappear on restart."
+    }
+  ],
+  "explained_at": "2026-11-12T03:57:55+00:00",
+  "explained_by": "haiku",
+  "summary": "Remembers model answers so a re-run over unchanged inputs makes no new paid model calls.",
+  "purpose": "Save cost and time by reusing an earlier answer when the prompt and the source text are the same.",
+  "why": "The file header states the design: reuse the existing cache table with a namespace, avoid a schema change, and never let a cache failure break the caller.",
+  "how": "Builds a fingerprint from the inputs, checks a memory store first, then the database table that holds unexpired entries. On a write it saves to memory and to the database, and a database failure only logs a warning.",
+  "inputs": "A namespace name, a key built from the inputs, the value to save, the model name, and a time-to-live in days.",
+  "outputs": "The saved value, or nothing when there is no usable entry. Writes return nothing.",
+  "risks": "The memory store never shrinks and ignores expiry, so a long-running process can keep old answers. The fingerprint only includes what the caller passes in, so a prompt change that is not part of the inputs will not invalidate entries.",
+  "debug": "If answers seem stale, check that the prompt version is among the parts passed to cacheKey. If calls are not being saved, look for the model-cache write failed warning in the logs and check the database connection.",
+  "summary_hash": "sha256:500cffd97dcb8bdaccea00bf2cb36e1a57871f170facf053dd6e206a65153edf"
+}

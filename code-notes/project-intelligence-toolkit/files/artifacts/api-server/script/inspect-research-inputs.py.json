@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/script/inspect-research-inputs.py",
+  "language": "Python",
+  "lines": 107,
+  "hash": "sha256:688f1476eabc22d975c704d9c87655d20b74de40da813b3358f5ddd57056f6a7",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Slide count and file name patterns are hardcoded.",
+      "No tests are visible.",
+      "A line in the slide reader is overwritten immediately, so it is dead code.",
+      "Whole files are read into memory."
+    ]
+  },
+  "terms": [
+    {
+      "term": "PPTX",
+      "meaning": "A PowerPoint file. It is a zip archive containing XML text files."
+    },
+    {
+      "term": "Archive",
+      "meaning": "A zip file that holds other files, which can include more zip files."
+    },
+    {
+      "term": "SHA-256",
+      "meaning": "A fingerprint of a file's exact contents. Any change to the file changes it."
+    },
+    {
+      "term": "JSON",
+      "meaning": "A plain text data format used for the reports."
+    },
+    {
+      "term": "XML",
+      "meaning": "A tagged text format used inside Office files."
+    },
+    {
+      "term": "Read-only",
+      "meaning": "The script reads inputs and changes nothing in the data."
+    }
+  ],
+  "depends_on": [
+    "Python standard library modules",
+    "attached_assets folder",
+    "docs/verification folder"
+  ],
+  "used_by": [
+    "No caller is visible. Likely run by hand."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 17,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "13daf26e9c9eda8e",
+      "title": "Setup and file locations",
+      "what": "Loads the tools it needs, works out the project root, sets the output folder to docs/verification and sets the Office XML namespace names.",
+      "why": "Keeps all reads and writes in known places.",
+      "watch_out": "The project root is worked out from the script location three levels up, so moving the script breaks the paths."
+    },
+    {
+      "start": 18,
+      "end": 20,
+      "kind": "function",
+      "name": "digest",
+      "id": "s2",
+      "hash": "1bf6536ee5fe3e10",
+      "title": "Fingerprint helper",
+      "what": "Creates a SHA-256 fingerprint for any bytes so inputs and outputs can be checked later.",
+      "why": "Lets the owner prove which file version was inspected.",
+      "watch_out": ""
+    },
+    {
+      "start": 21,
+      "end": 46,
+      "kind": "function",
+      "name": "pptx_inventory",
+      "id": "s3",
+      "hash": "5848928419f415d7",
+      "title": "Slide deck reader",
+      "what": "Opens the PowerPoint file as a zip and reads each slide's text, tables, speaker notes and picture and shape counts. Marks slide 28 with a warning that its Darlington title sits over Sizewell content.",
+      "why": "Likely reason: the deck has a known mix-up on one slide, so the warning is stored with the data.",
+      "watch_out": "A paragraph list is built and immediately overwritten, which does nothing and can confuse edits."
+    },
+    {
+      "start": 47,
+      "end": 89,
+      "kind": "function",
+      "name": "archives_inventory",
+      "id": "s4",
+      "hash": "655777882c3554dc",
+      "title": "Archive and spreadsheet reader",
+      "what": "Opens each zip, goes into nested zips, lists markdown and Python files with their headings, and lists spreadsheet sheets with their first 12 rows. Full text is kept only for field definitions, SKILL and METHODOLOGY files. Nothing is run, and each entry is marked not executed.",
+      "why": "Likely reason: the script treats uploads as data only.",
+      "watch_out": "An entry over 25 MB stops the whole run, and a markdown file that is not UTF-8 will crash it."
+    },
+    {
+      "start": 90,
+      "end": 105,
+      "kind": "function",
+      "name": "main",
+      "id": "s5",
+      "hash": "570dde4cd86a436e",
+      "title": "Main inspection run",
+      "what": "Checks the deck and archives, writes both JSON reports and prints one line per slide with its first text and table count.",
+      "why": "One command produces both reports.",
+      "watch_out": "The fixed 87 slide check is a tripwire; if the deck changes, the whole run fails on purpose."
+    },
+    {
+      "start": 106,
+      "end": 107,
+      "kind": "entry point",
+      "name": "entry point",
+      "id": "s6",
+      "hash": "b60851f8e384a572",
+      "title": "Start when run directly",
+      "what": "Runs the main step only when the file is started as a program, not when another script imports it.",
+      "why": "Standard Python practice.",
+      "watch_out": ""
+    }
+  ],
+  "explained_at": "2026-11-12T03:05:26+00:00",
+  "explained_by": "haiku",
+  "summary": "Read-only tool that lists the contents of the supplied reference slide deck and uploaded research archives and saves the lists as JSON, without importing anything or running any uploaded code.",
+  "purpose": "Lets the owner and reviewers see what the supplied inputs contain before any import happens.",
+  "why": "Likely reason: the script only reads, so inspecting uploads is safe.",
+  "how": "Finds the single reference deck and the matching archives. Reads each slide's text, tables, notes, picture and shape counts. Checks the slide count is 87. Walks archives, including nested zips, and lists markdown and Python files by heading and spreadsheets by their first 12 rows. Writes two JSON reports under docs/verification and prints a short line per slide.",
+  "inputs": "A PowerPoint deck in attached_assets with a fixed name ending, and zip archives whose names contain a fixed number pattern.",
+  "outputs": "lessons-reference-inventory.json and uploaded-research-inventory.json in docs/verification, plus console lines.",
+  "risks": "Refuses any single entry over 25 MB. The slide count of 87 and the slide 28 warning about Darlington and Sizewell are hardcoded. Whole files are loaded into memory, so very large archives use a lot of memory.",
+  "debug": "If it stops with an Expected exactly one message, check attached_assets for the matching file names. If the slide count error appears, the deck changed and the expected number needs review. If a decode error appears, a markdown file is not plain UTF-8 text.",
+  "summary_hash": "sha256:688f1476eabc22d975c704d9c87655d20b74de40da813b3358f5ddd57056f6a7"
+}

@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "path": "scripts/post-merge.sh",
+  "language": "Shell script",
+  "lines": 48,
+  "hash": "sha256:7855239a552be16736b97742501f794c5d24d23be3911e24becbc1d1cee727bd",
+  "area": "scripts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "Most of the work is done in scripts that are not visible here.",
+      "Some steps tolerate failure and some do not, which is deliberate but easy to misread.",
+      "No test is visible."
+    ]
+  },
+  "terms": [
+    {
+      "term": "merge",
+      "meaning": "Combining code changes from one branch into another."
+    },
+    {
+      "term": "schema",
+      "meaning": "The definition of the database's tables and columns."
+    },
+    {
+      "term": "fixture",
+      "meaning": "Fixed sample data committed with the code so it can be loaded again."
+    },
+    {
+      "term": "idempotent",
+      "meaning": "Safe to run repeatedly; a second run changes nothing new."
+    },
+    {
+      "term": "replay ledger",
+      "meaning": "A list of approved data batches in the order they must be loaded."
+    },
+    {
+      "term": "digest",
+      "meaning": "A fingerprint of a batch's approved plan, used to detect changes."
+    },
+    {
+      "term": "fail-fast",
+      "meaning": "Stopping at the first error instead of continuing."
+    }
+  ],
+  "depends_on": [
+    "pnpm",
+    "@workspace/api-server scripts under its script folder",
+    "data/yard-research/<industry>/replay-ledger.json",
+    "docs/research-prompts/REPLAY-LEDGER.md (the guide)."
+  ],
+  "used_by": [
+    ".replit, which names this script as its post-merge step."
+  ],
+  "sections": [
+    {
+      "start": 1,
+      "end": 48,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "831de721e3842bb3",
+      "title": "Whole post-merge sequence",
+      "what": "Runs the install and data-loading steps in order after a merge. Schema changes are excluded on purpose.",
+      "why": "Keeps routine data synchronization automatic while leaving schema changes as a deliberate action.",
+      "watch_out": "The header warns that running the drizzle push command here would drop the compass tables and their data. Do not add it."
+    }
+  ],
+  "explained_at": "2026-11-12T06:58:40+00:00",
+  "explained_by": "haiku",
+  "summary": "Runs after a code merge to prepare the local setup: it installs packages, loads committed demo evidence and approved research, and queues report refreshes. It never changes the database schema.",
+  "purpose": "Brings the code and the database back in line after a merge.",
+  "why": "The header explains that schema changes must be applied on purpose, and that database rows do not come with the code, so they ship as fixtures and load safely.",
+  "how": "Installs packages from the lock file. Loads the committed demo evidence fixture, which fails the step if a pinned demo is still missing examples. Replays approved research batches within a 120 second budget, and records any failure. Refreshes the value layer, where failure is tolerated. Queues report catch-up runs, where failure is also tolerated. Ends with the replay's status as its exit status.",
+  "inputs": "The project files and the lock file, the replay ledger under data/yard-research, committed fixtures, and the database connection from the environment.",
+  "outputs": "Installed packages, loaded database rows, queued report runs, and messages for any failures. The exit status comes from the replay step.",
+  "risks": "It writes to the live database after every merge. The steps are meant to insert data only, but a bad fixture or ledger would still change data. Because the script sets fail-fast, an error in the first install or the demo fixture stops the rest.",
+  "debug": "If merge setup fails, read the last message printed. A refused replay batch names the batch, so compare its digest against the ledger. For a value-layer failure, run the command the message gives by hand. To check research report status, run the catch-up command with no flags.",
+  "summary_hash": "sha256:7855239a552be16736b97742501f794c5d24d23be3911e24becbc1d1cee727bd"
+}

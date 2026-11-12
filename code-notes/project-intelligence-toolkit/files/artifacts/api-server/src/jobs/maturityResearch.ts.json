@@ -1,0 +1,301 @@
+{
+  "schema_version": 1,
+  "path": "artifacts/api-server/src/jobs/maturityResearch.ts",
+  "language": "TypeScript",
+  "lines": 457,
+  "hash": "sha256:2b59b1a6bea05e77d6a6367e41c547f06340af3a4a37dfbe0c304d725262f2ac",
+  "area": "artifacts",
+  "status": "explained",
+  "summary_stale": false,
+  "readiness": {
+    "status": "needs-work",
+    "reasons": [
+      "A failed model call looks the same as no evidence, so the result shows only UNKNOWN gates with no clear error.",
+      "Many values are cast to any, which hides type mismatches from the compiler.",
+      "The automatic path accepts a quote found on any gathered page, while the cited address may be a different page.",
+      "The quote check compares only the first 160 characters of a quote.",
+      "No test or other evidence of correctness is visible in this file."
+    ]
+  },
+  "terms": [
+    {
+      "term": "Maturity gate",
+      "meaning": "One of six named stages a capital project must pass, such as securing approvals or signing contracts."
+    },
+    {
+      "term": "Verbatim quote",
+      "meaning": "Text copied word for word from a source page, so anyone can check the claim against the page."
+    },
+    {
+      "term": "UNKNOWN",
+      "meaning": "The status used when the sources do not give enough proof to decide a gate. It carries a score of zero."
+    },
+    {
+      "term": "Corpus",
+      "meaning": "The set of web pages gathered for one project, which the model reads and the quote check searches."
+    },
+    {
+      "term": "Upsert",
+      "meaning": "Save a row, or update it if it already exists."
+    },
+    {
+      "term": "Span anchoring",
+      "meaning": "Recording where a quote sits inside its page, so a reader can jump to it."
+    },
+    {
+      "term": "Tier",
+      "meaning": "The overall maturity level of a project, calculated from its six gates."
+    }
+  ],
+  "depends_on": [
+    "../storage",
+    "../search/createRouter",
+    "../models/router",
+    "../lib/safeFetch",
+    "../lib/spanAnchor",
+    "../shared/maturity",
+    "@workspace/db"
+  ],
+  "used_by": [],
+  "sections": [
+    {
+      "start": 1,
+      "end": 32,
+      "kind": "setup",
+      "name": "File setup",
+      "id": "s1",
+      "hash": "17705b1f6dc2c821",
+      "title": "Imports and file header",
+      "what": "The header explains the traceability rule and the cost of each run. The imports load storage, the search router, the model router, the safe page fetcher, the span anchoring tools and the maturity gate definitions. Nothing runs in this section.",
+      "why": "Reason stated in the header: scores must always be backed by evidence and each run has a known cost.",
+      "watch_out": "The gate list comes from the shared maturity module, so changing a gate there changes what this engine researches."
+    },
+    {
+      "start": 33,
+      "end": 36,
+      "kind": "value",
+      "name": "VALID_STATUSES",
+      "id": "s2",
+      "hash": "9d55e85cbf175973",
+      "title": "Limits on pages and text size",
+      "what": "Lists the four allowed statuses, caps the number of unique pages fetched per project at eight, and limits the text per page shown to the model to 4,500 characters.",
+      "why": "Likely reason: these limits control cost and prompt size. The comment on the text limit confirms it is the model's budget.",
+      "watch_out": "Raising the page cap increases search and model cost for every project in a batch."
+    },
+    {
+      "start": 37,
+      "end": 49,
+      "kind": "type",
+      "name": "GateResult",
+      "id": "s3",
+      "hash": "616154bcde500b69",
+      "title": "What is recorded for each gate",
+      "what": "Describes the outcome for one gate: status, score, the quote, the source address and title, confidence, a one-line rationale, whether it was saved, and an optional reason when a claim was rejected.",
+      "why": "The reason field lets someone see why a claim was downgraded to UNKNOWN, not only the final value.",
+      "watch_out": "The stored flag is true only when the status is not UNKNOWN, so a gate can hold a reason while nothing was saved for it."
+    },
+    {
+      "start": 50,
+      "end": 58,
+      "kind": "type",
+      "name": "MaturityResearchResult",
+      "id": "s4",
+      "hash": "04486fc8acf1ef5d",
+      "title": "The summary returned for one project",
+      "what": "The result package for a whole project run: project identity, the number of usable sources, the six gate outcomes and optional anchoring statistics. The anchoring statistics show how many quotes were located in their pages, so misses are visible.",
+      "why": "Likely reason: the calling job can record what happened, including misses, in its run record.",
+      "watch_out": "The sources count reflects pages with usable text, not the number of pages searched."
+    },
+    {
+      "start": 59,
+      "end": 62,
+      "kind": "function",
+      "name": "normalize",
+      "id": "s5",
+      "hash": "e7ca229570f23064",
+      "title": "Making text easier to compare",
+      "what": "Converts text to lower case and collapses repeated spaces into one, so a quote can match a page even when capitals or spacing differ.",
+      "why": "Likely reason: model output and page text rarely match exactly in spacing and capitals.",
+      "watch_out": "Punctuation and word changes still break a match, so a paraphrased quote fails even after this step."
+    },
+    {
+      "start": 63,
+      "end": 75,
+      "kind": "function",
+      "name": "stripHtml",
+      "id": "s6",
+      "hash": "6a108a5b9b409104",
+      "title": "Turning web pages into plain text",
+      "what": "Removes script and style blocks and HTML tags, and converts four common HTML codes into characters. The result is readable text for the model and for quote checking.",
+      "why": "Likely reason: the model and the quote check need words, not markup.",
+      "watch_out": "Only four HTML codes are converted, so other codes such as accented letters stay as codes and can stop a quote from matching."
+    },
+    {
+      "start": 76,
+      "end": 83,
+      "kind": "function",
+      "name": "domainOf",
+      "id": "s7",
+      "hash": "642fede1adfd27b2",
+      "title": "Getting a short site name from an address",
+      "what": "Returns the domain of a web address without its www prefix. If the address cannot be read, the whole address text is returned instead.",
+      "why": "Likely reason: it provides a readable source name when no page title is available.",
+      "watch_out": "A bad address returns the full text, which can then be saved as a publisher name."
+    },
+    {
+      "start": 84,
+      "end": 88,
+      "kind": "function",
+      "name": "buildGateQuery",
+      "id": "s8",
+      "hash": "43d6baca6ccf9a00",
+      "title": "Writing the search phrase for a gate",
+      "what": "Builds the search text from the project name in quotation marks, the country if one is known, and the first term of the gate's research hint.",
+      "why": "Likely reason: the quoted name keeps results about this project, and the country narrows the results.",
+      "watch_out": "A project with a common name can return unrelated pages, and the country term is the main guard against that."
+    },
+    {
+      "start": 89,
+      "end": 102,
+      "kind": "type",
+      "name": "CorpusSource",
+      "id": "s9",
+      "hash": "be4edc6f7769b456",
+      "title": "One gathered web page",
+      "what": "Describes one collected page: its address, title, a short text the model reads, and a full text used for locating quotes. If the page download failed, the search snippet is used instead.",
+      "why": "Reason stated in the comments: the short text keeps the model prompt small, while the full text lets quotes be found anywhere on the page.",
+      "watch_out": "A quote is only located against the full text, so the two text fields must stay consistent when this code is changed."
+    },
+    {
+      "start": 103,
+      "end": 148,
+      "kind": "function",
+      "name": "gatherCorpus",
+      "id": "s10",
+      "hash": "2e1ade7b80483523",
+      "title": "Collecting the source pages",
+      "what": "Runs one search for each gate, combines the results without duplicates, keeps up to eight addresses, downloads each page and keeps those with usable text. Failed searches or downloads are logged and skipped, and the run continues.",
+      "why": "Reason stated in the comments: the corpus is a deduplicated set that feeds one model call.",
+      "watch_out": "The eight-page cap is applied in search order, so the first eight unique addresses are kept whatever their quality."
+    },
+    {
+      "start": 149,
+      "end": 158,
+      "kind": "type",
+      "name": "LLMGateAssessment",
+      "id": "s11",
+      "hash": "fb25c42d5258d274",
+      "title": "Shape of the model's answer",
+      "what": "Describes one gate entry the model should return: gate key, status, quote, address, date, confidence and rationale. The code does not trust these values until the later checks pass.",
+      "why": "Likely reason: a fixed form lets the code read the model's reply in a predictable way.",
+      "watch_out": "Every field is a text value or empty, so a wrong type from the model will only be caught by the later checks."
+    },
+    {
+      "start": 159,
+      "end": 196,
+      "kind": "function",
+      "name": "buildPrompt",
+      "id": "s12",
+      "hash": "e70ccd3e400e8196",
+      "title": "Writing the instructions for the model",
+      "what": "Builds two messages. The system message lists the six gates and the four status meanings, and requires each claim to have a word-for-word quote and its source address. The user message gives the project details and the numbered sources.",
+      "why": "Likely reason: the rules force the model to cite its work so the code can check it. The header also says to use only the supplied sources.",
+      "watch_out": "Changing these rules changes how many quotes pass the later check, so test any edit on real projects."
+    },
+    {
+      "start": 197,
+      "end": 241,
+      "kind": "function",
+      "name": "researchProjectMaturity (part 1)",
+      "id": "s13",
+      "hash": "26c27187f0e8615b",
+      "title": "Starting one project's research",
+      "what": "Gathers the sources, then asks the model once for an assessment if any sources were found. It prepares text lookups so each quote can be checked against the exact pages it came from. If the model call fails, a warning is logged and the run continues with no assessments.",
+      "why": "Likely reason: one model call for all six gates costs less than six calls. The error handling keeps one failed call from stopping the whole project.",
+      "watch_out": "A failed model call is logged but looks the same as no evidence, so all gates are saved as UNKNOWN without an obvious error in the result."
+    },
+    {
+      "start": 242,
+      "end": 289,
+      "kind": "method",
+      "name": "researchProjectMaturity: for",
+      "id": "s14",
+      "hash": "379fcaf066bf321c",
+      "title": "Checking each gate's claim",
+      "what": "For each gate, accepts the model's claim only if the status is not UNKNOWN, the cited address is one of the gathered pages, and the first 160 characters of the quote appear in the cited page or in any gathered page. Accepted claims keep the quote and source. Rejected claims become UNKNOWN with a reason. The score is set from the final status.",
+      "why": "Reason stated in the comments: a score must never be stored without evidence.",
+      "watch_out": "A quote found on any gathered page is accepted, but the cited address is still saved, so the source shown may not be the page that holds the quote."
+    },
+    {
+      "start": 290,
+      "end": 341,
+      "kind": "method",
+      "name": "researchProjectMaturity: if",
+      "id": "s15",
+      "hash": "5e4bcf9f2454ce78",
+      "title": "Saving evidence and the gate row",
+      "what": "For an accepted gate, saves a quote record with the project, quote, address, publisher, date and field name, then queues it for locating in its page. Every gate, including UNKNOWN ones, is saved as a gate row. The project's overall tier is then recalculated, and any error there is logged without stopping the run.",
+      "why": "Likely reason: the evidence is saved first so each gate row can point to a real quote record.",
+      "watch_out": "When a source has no date, today's date is used, so an undated quote will look newly dated."
+    },
+    {
+      "start": 342,
+      "end": 375,
+      "kind": "method",
+      "name": "researchProjectMaturity: if",
+      "id": "s16",
+      "hash": "ffb22111b2279ecd",
+      "title": "Locating quotes inside their pages",
+      "what": "After all gates are saved, sends each saved quote and its full page text to the span locating step. This records where the quote sits in the page. It never blocks the run, and any failure is only logged.",
+      "why": "Comment: the quote was already checked as present in the corpus, so a miss points to a fault in the locating step, not in the quote.",
+      "watch_out": "The page text sent for locating must be the same text the quote was checked against, which is why both come from the same run."
+    },
+    {
+      "start": 376,
+      "end": 386,
+      "kind": "type",
+      "name": "GateAssessmentInput",
+      "id": "s17",
+      "hash": "2e6ae70c303d11f4",
+      "title": "Input for saving one gate by hand",
+      "what": "The fields needed to save one gate outside the automatic research: gate key, status, and optional quote, address, title, date, confidence and rationale.",
+      "why": "Reason stated in the comments: the same helper serves a manual ingestion tool, so manual and automatic gates follow one rule.",
+      "watch_out": "The quote and address fields are optional in this type, so the type alone cannot enforce the rule. The helper below enforces it."
+    },
+    {
+      "start": 387,
+      "end": 439,
+      "kind": "function",
+      "name": "persistGateAssessment",
+      "id": "s18",
+      "hash": "a93b42d1cf43eedc",
+      "title": "Saving one gate with the same rule",
+      "what": "Saves one gate. If the status is not UNKNOWN, it requires both a quote and an address and throws an error if either is missing. It saves the evidence first, marked as having no stored page because nothing was fetched, then saves the gate row. It returns true only when evidence was stored.",
+      "why": "Reason stated in the comments: the traceability rule applies to manual entry too.",
+      "watch_out": "It does not recalculate the project's overall tier, so finalizeProjectMaturity must be called afterward if the tier needs updating."
+    },
+    {
+      "start": 440,
+      "end": 457,
+      "kind": "function",
+      "name": "finalizeProjectMaturity",
+      "id": "s19",
+      "hash": "3c71416ea1c0459f",
+      "title": "Setting the project's overall tier",
+      "what": "Reads the saved gate rows for a project, keeps one status per gate, works out the overall maturity tier from them, and writes that tier to the project. It returns the tier.",
+      "why": "Reason stated in the comments: the tier is computed from saved rows so duplicate or partial lists cannot inflate it.",
+      "watch_out": "The tier rules live in the shared maturity module, which is not in this file, so the exact rules are not visible here."
+    }
+  ],
+  "explained_at": "2026-11-12T03:52:52+00:00",
+  "explained_by": "haiku",
+  "summary": "Checks each of six capital-project maturity gates for one project against live web sources, and saves a status and score only when an exact supporting quote and web address exist.",
+  "purpose": "Shows how far a project has progressed through six maturity gates, with proof for each claim the app displays.",
+  "why": "The file header states the rule: a score must never be stored without a traceable quote and source address. Any gate that cannot be backed by an exact quote is recorded as UNKNOWN with a score of zero.",
+  "how": "For each gate it searches the web, then collects up to eight unique pages. It sends all the page text to the model in one request and asks for an assessment of all six gates. It checks that each quote appears in the fetched text. Accepted quotes are saved as evidence, then each gate row is saved. The project's overall maturity tier is then recalculated. Finally, each saved quote is located inside its full source page.",
+  "inputs": "A project record with name, country, technology and description. The search service, the safe page fetcher and the model router. The shared maturity gate definitions.",
+  "outputs": "Gate rows with status, score, quote, source and confidence for each project. Evidence rows for each accepted quote. An updated maturity tier on the project. A result object listing each gate, with a reason for any gate that was rejected.",
+  "risks": "The run depends on the model returning valid JSON. If the model call fails, every gate is quietly saved as UNKNOWN. Web content can change between runs, so the same project can get different results. Each run costs search and model calls.",
+  "debug": "Start with the console lines that begin with maturity. In the result, read the reason on each gate: verbatim not found in sources means the model paraphrased, and cited URL not in corpus means it invented or changed an address. If the search returned no sources, the model is never called, so check the search service first.",
+  "summary_hash": "sha256:2b59b1a6bea05e77d6a6367e41c547f06340af3a4a37dfbe0c304d725262f2ac"
+}
