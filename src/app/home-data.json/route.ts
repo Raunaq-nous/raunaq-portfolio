@@ -41,6 +41,7 @@ export function GET() {
     name: p.name,
     slug: p.slug,
     category: p.category,
+    status: p.status,
     calm: p.calm,
     punchline: p.punchline,
     github: p.github,

@@ -69,7 +69,7 @@ export default function ProjectDetail({ slug }: { slug: string }) {
               <span>{project.number}</span>
               <span>{project.category}</span>
               <span>{project.type === 'PLATFORM' ? 'Platform' : 'Tool'}</span>
-              <span className="text-paper">{project.status === 'LIVE' ? 'Live' : project.status}</span>
+              <span className="text-paper">{project.status === 'LIVE' ? 'Live' : project.status.charAt(0) + project.status.slice(1).toLowerCase()}</span>
             </p>
             <h1 className="display mt-6 text-[clamp(64px,12vw,200px)]">{project.name}</h1>
           </div>

@@ -26,6 +26,16 @@ const meta: Record<string, ProjectMeta> = {
   'momentum-os': { slug: 'momentum-os', category: 'Personal productivity' },
   pit: { slug: 'pit', category: 'Capital projects research' },
   cartograph: { slug: 'cartograph', category: 'Process transformation', featured: 2 },
+  't-minus': { slug: 't-minus', category: 'Turnaround planning' },
+  'opportunity-map': { slug: 'opportunity-map', category: 'Project origination' },
+  'generative-concepts': { slug: 'generative-concepts', category: 'Concept generation' },
+  'costline': { slug: 'costline', category: 'Cost estimation' },
+  'generative-scheduler': { slug: 'generative-scheduler', category: 'Schedule generation' },
+  'risk-analysis': { slug: 'risk-analysis', category: 'Risk quantification' },
+  'precedent': { slug: 'precedent', category: 'Comparable-project benchmarking' },
+  'outturn-forecast': { slug: 'outturn-forecast', category: 'Cost and schedule forecasting' },
+  'forensic': { slug: 'forensic', category: 'Project recovery' },
+  'hindsight': { slug: 'hindsight', category: 'Lessons learned' },
 };
 
 export interface Project extends Build {

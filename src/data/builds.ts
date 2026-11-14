@@ -1,7 +1,7 @@
 export interface Build {
   id: string;
   name: string;
-  status: 'LIVE';
+  status: 'LIVE' | 'SPECIFIED' | 'MOCKUP';
   type: 'TOOL' | 'PLATFORM';
   tags: string[];
   calm: string;
@@ -347,5 +347,273 @@ Compresses what used to be a 3-4 week survey cycle into hours.`,
 
 4. RUNS ARE REPRODUCIBLE: Every run pins its models, prompts, schema version and inputs in a manifest, so any figure can be re-derived.`,
     punchline: 'Where did this number come from? Cartograph always knows.',
+  },
+  {
+    id: 'opportunity-map',
+    origin: 'independent',
+    name: 'Opportunity Map',
+    status: 'LIVE',
+    type: 'TOOL',
+    tags: ['TypeScript', 'React', 'Express', 'Research agents', 'Codebook classification'],
+    calm: 'Pursuit teams find projects late, from tenders, after the best positions are taken. See the projects forming in your markets before they reach a tender, ranked by how well they fit.',
+    nerd: '`project signal tracker`. Signal ingestion from plans, queues, permits and filings, with entity resolution across sources. Fit scoring against the customer’s criteria, with the evidence behind each score. Build Advisor: a deliverability model across turbine slots, transformer lead times, contractor backlog, craft labor, interconnection and gas supply, each verdict linked to its source.',
+    process: `What it does:
+
+1. OPPORTUNITY SIGNALS: Resource plans, queues, permits, financing and offtake, tracked across markets
+
+2. FIT RANKING: Each opportunity scored against your criteria, with the evidence behind the score
+
+3. DELIVERY AND CONTRACTOR INTELLIGENCE: Contractor backlog, workforce and lead times for major equipment
+
+4. ALERTS AND NEXT ACTIONS: What changed, and who should act on it
+
+5. BUILD ADVISOR: Six delivery constraints, each with a verdict, a date effect and its source: turbine slots, transformers, contractor backlog, craft labor, interconnection, gas supply
+
+6. PURSUIT CASE: A pursuit case and delivery plan generated for each shortlisted project`,
+    punchline: 'See the projects forming in your markets before they reach a tender, ranked by how well they fit.',
+    github: 'https://github.com/Raunaq-nous/Project-Intelligence-Toolkit',
+  },
+  {
+    id: 'generative-concepts',
+    origin: 'independent',
+    name: 'Generative Concepts',
+    status: 'SPECIFIED',
+    type: 'TOOL',
+    tags: ['Layout generation', 'Constraint screening', 'Costing'],
+    calm: 'Concepts are compared on inconsistent bases, so the first idea studied is often the one built. Generates and costs every viable concept for the site and the brief, so the best one is chosen on evidence rather than habit.',
+    nerd: '`concept generator`. Constraint-based enumeration of layouts, screened against hard engineering checks, with Pareto comparison of the survivors. Large option spaces explored, not three hand-drawn concepts. Each option costed by Costline and valued by Investment Case on one basis.',
+    process: `What it does:
+
+1. LAYOUTS FROM A BRIEF: Arrangements, equipment lists and quantities generated for engineers to refine
+
+2. CONCEPT COSTING: Capital and operating cost for each concept from the cost model
+
+3. LIFETIME ECONOMICS: Levelized cost and returns for every option, updated live
+
+4. TRADE-OFF COMPARISON: Concepts ranked on cost, schedule, risk and returns
+
+5. ALTERNATIVES LIBRARY: Design and contracting alternatives, each priced against the project’s own packages
+
+6. OUTSIDE-IN CHECK: The concept’s cost per unit of capacity against comparable plants, before it is chosen
+
+7. LAYOUT GENERATOR: Every arrangement enumerated from the site boundary, anchors and equipment envelopes, and screened against hard engineering checks
+
+8. REJECTION LEDGER: Every rejected option, with the check it failed`,
+    punchline: 'Generates and costs every viable concept for the site and the brief, so the best one is chosen on evidence rather than habit.',
+  },
+  {
+    id: 'costline',
+    origin: 'independent',
+    name: 'Costline',
+    status: 'LIVE',
+    type: 'TOOL',
+    tags: ['TypeScript', 'React', 'Express', 'PostgreSQL', 'Drizzle', 'Excel'],
+    calm: 'Estimates are rebuilt in spreadsheets at every stage and cannot be traced or tested. Every cost of the project on one traceable line: capital, contingency, escalation, operating, lifecycle and end-of-life.',
+    nerd: '`bottom-up cost engine`. Parametric cost-estimating relationships fitted to the cost database. Escalation and currency by published cost indices. Contingency drawn from the quantified risk distribution, not a percentage. Estimate classification by design maturity, against AACE International 18R-97.',
+    process: `What it does:
+
+1. CAPITAL COST: Direct, indirect and owner’s costs by package, from quantities and unit rates
+
+2. CONTINGENCY AND ESCALATION: Contingency from quantified risk; escalation and currency by cost index
+
+3. OPERATING AND LIFECYCLE COST: Fixed and variable O&M, fuel, major maintenance and replacements
+
+4. SHOULD-COST: What every package ought to cost, before the market prices it
+
+5. BID EVALUATION: Bids compared line by line against should-cost
+
+6. COST DATABASE: Rates, quantities and cost per unit of capacity from completed projects
+
+7. END-OF-LIFE COST: Decommissioning cost from the as-built quantities
+
+8. IMPORT PREVIEW: Every change to the estimate diffed and checked before it applies
+
+9. PACKAGE SPLIT CHECK: Each package’s share tested against public references
+
+10. RATE TRACE: Every rate traced to its quote, quantity and escalation
+
+11. MARKET RE-PRICING: The estimate re-priced as equipment markets move, scenario by scenario
+
+12. BENCHMARK POSITION: Cost per kilowatt against comparable plants`,
+    punchline: 'Every cost of the project on one traceable line: capital, contingency, escalation, operating, lifecycle and end-of-life.',
+    github: 'https://github.com/Raunaq-nous/Costline',
+  },
+  {
+    id: 'generative-scheduler',
+    origin: 'independent',
+    name: 'Generative Scheduling',
+    status: 'LIVE',
+    type: 'TOOL',
+    tags: ['Python', 'Constraint solving', '3D viewer', 'Cost-time trade-off'],
+    calm: 'Schedules are built by hand from linear templates, assume people are fully available to one project, and miss the third-party dependencies that cascade through engineering into construction. A resource-loaded, logic-linked schedule generated from the scope, with durations and crews computed rather than guessed.',
+    nerd: '`schedule generator`. Streaming schedule parsing, with every activity classified by phase and discipline. Critical path method on generated precedence logic. Parametric durations and resources from quantities, productivity and crews. Schedule-network Monte Carlo for P50 and P80 dates. Multi-objective genetic algorithm over non-linear, resource-constrained sequences, each option tested by Monte Carlo simulation.',
+    process: `What it does:
+
+1. GENERATED FROM SCOPE: Activities and logic from the work breakdown and comparable schedules
+
+2. PARAMETRIC DURATIONS: Computed from quantities, productivity rates and conditions
+
+3. PARAMETRIC RESOURCES: Crews, equipment and people across projects, without 100% utilization assumptions
+
+4. LINKED TO THE 3D MODEL: Each activity tied to model elements for the 4D build
+
+5. THIRD-PARTY DEPENDENCIES: Permits, land, utilities and owner deliverables modelled as logic
+
+6. MULTI-OBJECTIVE OPTIMIZER: A genetic algorithm searches non-linear, resource-constrained sequences; Monte Carlo simulation tests each option as faster, cheaper or safer
+
+7. SCHEDULE RISK: Monte Carlo P50 and P80 dates
+
+8. EXPORT: Primavera P6 and Microsoft Project
+
+9. PLANNER COMPANION: Reads each activity as the planner writes it, and flags logic gaps early
+
+10. SCHEDULE QUALITY: Logic and quality checked before optimization`,
+    punchline: 'A resource-loaded, logic-linked schedule generated from the scope, with durations and crews computed rather than guessed.',
+    github: 'https://github.com/Raunaq-nous/Generative-Scheduler',
+  },
+  {
+    id: 'risk-analysis',
+    origin: 'independent',
+    name: 'Risk Analysis',
+    status: 'SPECIFIED',
+    type: 'TOOL',
+    tags: ['Monte Carlo', 'Risk quantification', 'Reference classes'],
+    calm: 'Risk registers list risks without pricing them, so contingency is a guess. Risks identified, quantified and owned in days, not months.',
+    nerd: '`risk quantifier`. Critical path method on the loaded schedule, with DCMA schedule-health checks first. Schedule-network and risk-register Monte Carlo, run independently and compared. Analytic PERT and AACE estimate-class comparison as a cross-check. Earned value and momentum forecasts once the project is live. Integrated cost and schedule risk analysis to AACE International 57R-09.',
+    process: `What it does:
+
+1. SCHEDULE HEALTH: DCMA quality checks before any risk is run on the schedule
+
+2. THREE-POINT RISKS: Low, likely and high impact in dollars and days for every risk
+
+3. P50 AND P80: Risk-adjusted cost and finish date at P50 and P80
+
+4. DUAL SIMULATION: Schedule-network and risk-register Monte Carlo compared
+
+5. DESIGN MATURITY: AACE maturity inputs tied to the estimate class
+
+6. LIVE FORECASTING: Earned value and momentum forecasts in execution
+
+7. RISK ALLOCATION: Contract strategy tested: risk held by the party able to control it
+
+8. DRAFTED REGISTER: Risks and mitigation options drafted from project documents and comparable histories, for people to approve`,
+    punchline: 'Risks identified, quantified and owned in days, not months.',
+  },
+  {
+    id: 'precedent',
+    origin: 'independent',
+    name: 'Precedent',
+    status: 'LIVE',
+    type: 'TOOL',
+    tags: ['TypeScript', 'React', 'Express', 'PostgreSQL', 'Reference-class forecasting'],
+    calm: 'Nobody knows quickly whether a number is credible against what similar projects achieved. How comparable projects really performed, and where yours stands, in 24 to 48 hours.',
+    nerd: '`comparable-project benchmark`. Similarity matching on project attributes to assemble comparables. Percentile benchmarking of cost, schedule and performance. Root-cause classification across the reference class.',
+    process: `What it does:
+
+1. REFERENCE PERFORMANCE: Cost, schedule and root causes across comparable projects
+
+2. BENCHMARKING: The estimate and schedule placed against the reference class
+
+3. PEER BENCHMARKING: Operating performance and value leakage against peers
+
+4. WHAT THE BEST DID: Practices that separated the best outcomes
+
+5. OUTSIDE-IN CHECK: The estimate per kW against comparable plants by approval year
+
+6. PACKAGE SPLIT CHECK: Each package’s share of the estimate against public references
+
+7. SCOPE-GAP CHECK: What comparable plants included that this estimate leaves out`,
+    punchline: 'How comparable projects really performed, and where yours stands, in 24 to 48 hours.',
+    github: 'https://github.com/Raunaq-nous/Project-Intelligence-Toolkit',
+  },
+  {
+    id: 'outturn-forecast',
+    origin: 'independent',
+    name: 'Outturn Forecast',
+    status: 'SPECIFIED',
+    type: 'TOOL',
+    tags: ['Reference-class forecasting', 'Percentile ranges', 'Contingency'],
+    calm: 'Projects are approved on the inside view, and the outside view arrives as overruns. The outside view on cost, schedule and readiness, before capital is committed.',
+    nerd: '`outside-view forecaster`. Reference class forecasting from the empirical distribution of comparable outcomes. Adjustment only for structural traits supported by evidence. Calibration: forecasts scored against actual outcomes over time.',
+    process: `What it does:
+
+1. REFERENCE CLASS FORECAST: P5 to P95 cost and schedule, with contingency at P30, P50 and P80
+
+2. STRUCTURAL POSITIONING: Whether the project is really different, with evidenced traits only
+
+3. ESTIMATE ASSURANCE: Whether the estimate class matches the design maturity
+
+4. CALIBRATION: Every forecast scored against what happened, so confidence is earned`,
+    punchline: 'The outside view on cost, schedule and readiness, before capital is committed.',
+  },
+  {
+    id: 'forensic',
+    origin: 'independent',
+    name: 'Forensic',
+    status: 'SPECIFIED',
+    type: 'TOOL',
+    tags: ['Root-cause analysis', 'Delay analysis', 'Claims'],
+    calm: 'When projects fail, the causes and the cost are argued rather than established. When a project is in trouble: what happened, why, what it is worth, and how to reset it.',
+    nerd: '`project forensics`. Windows analysis of delay to AACE International 29R-03 and the Society of Construction Law Delay and Disruption Protocol. Earned value and disruption quantification. Business-case tests on the risk arithmetic.',
+    process: `What it does:
+
+1. BUSINESS CASE TEST: Eight checks on the risk arithmetic, in hours
+
+2. ROOT CAUSE ANALYSIS: Honest error, optimism or incentives, tested
+
+3. CLAIMS AND DISPUTES: Delay and disruption quantified against comparables
+
+4. PROJECT RESET: An independent baseline generated at a declared confidence, with decision rights that hold it`,
+    punchline: 'When a project is in trouble: what happened, why, what it is worth, and how to reset it.',
+  },
+  {
+    id: 'hindsight',
+    origin: 'independent',
+    name: 'Hindsight',
+    status: 'LIVE',
+    type: 'TOOL',
+    tags: ['TypeScript', 'React', 'Express', 'PostgreSQL', 'Source-cited lessons'],
+    calm: 'Lessons are written at close-out and filed, then the same mistakes recur on the next project. Lessons from your own projects and from the industry’s, cited to the page and surfaced at the stage where they apply.',
+    nerd: '`lessons-learned engine`. Hybrid vector and keyword retrieval with page-level citations. Language models that read and extract; numbers are never generated by them. Statistical test of which practices predicted outcomes.',
+    process: `What it does:
+
+1. INTERNAL LESSONS: From the owner’s own close-out reports, change logs and claims
+
+2. EXTERNAL LESSONS: From public audits, inquiries, regulator reports and published reviews
+
+3. CITED SEARCH: Any project document searched and questioned, each answer linked to its page
+
+4. LESSONS DIAGNOSTIC: Which practices predicted outcomes in the owner’s record
+
+5. LESSONS THAT BIND: A lesson closes only when an artefact has changed
+
+6. AT THE RIGHT MOMENT: Lessons surfaced at the matching stage and gate of the next project
+
+7. LESSON BRIEF: A brief of the lessons that apply, generated for each stage and gate`,
+    punchline: 'Lessons from your own projects and from the industry’s, cited to the page and surfaced at the stage where they apply.',
+    github: 'https://github.com/Raunaq-nous/Project-Intelligence-Toolkit',
+  },
+  {
+    id: 't-minus',
+    origin: 'independent',
+    name: 'T-MINUS',
+    status: 'MOCKUP',
+    type: 'TOOL',
+    tags: ['Next.js', 'React', 'TypeScript', 'Deterministic engines', 'Synthetic data'],
+    calm: 'Every few years a plant stops on purpose for about two weeks, and most of those stops run late or over. T-MINUS plans the stop backwards from the day the plant shuts: what goes in, what it costs, whether it fits the window, and whether the site is ready. It is a working mockup on invented data, built to show how the planning should feel.',
+    nerd: '`turnaround planning mockup`. Next.js and React over deterministic engines in TypeScript: scope decisions, outage economics, a resource-constrained schedule check, readiness meters and stage gates. Every number comes from a selector or an engine, and the data is synthetic by rule.',
+    process: `How it works:
+
+1. DATA INTEGRATION: Messy source records are matched into one clean list of assets, with duplicates and exceptions marked.
+
+2. SCOPE DECISIONS: Work requests are sorted into mandatory, include, defer and review, each with a written reason.
+
+3. OUTAGE ECONOMICS: Four ways to run the outage are priced on one number, so the cheapest balanced plan is visible.
+
+4. SCHEDULE CHECK: The chosen scope is placed hour by hour against the crews that exist, to test whether it fits the window.
+
+5. READINESS AND STAGE GATES: Readiness meters per discipline, and six gates from strategy to close-out that open only when the evidence is in.`,
+    punchline: 'A turnaround planned backwards from the day the plant stops.',
+    github: 'https://github.com/Raunaq-nous/Rundown',
   },
 ];

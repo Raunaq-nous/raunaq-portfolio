@@ -58,12 +58,28 @@ const SHOT_W = 1600;
 const SHOT_H = 1000;
 
 const captures: Record<string, string[]> = {
-  'bhoomi-setu': ['01-home', '02-case', '03-verification', '04-documents', '05-survey-record', '06-next-action'],
   maate: ['01-dashboard', '02-family', '03-extraction-review', '04-upload', '05-permissions', '06-reminders'],
   hitman: ['01-home', '02-schedule', '03-standings', '04-squads', '05-leagues'],
   'momentum-os': ['01-home-base', '02-dashboard', '03-analytics', '04-focus', '05-systems', '06-achievements'],
-  cartograph: ['01-portfolio', '02-process', '03-provenance'],
   'career-os': ['02-onboarding-role', '01-login', '03-onboarding-profile', '04-invite'],
+  abacus: ['s01-oracle-home', 's02-research', 's03-assumptions', 's04-income-statement', 's05-cash-flow', 's06-valuation', 's07-autonomous-builder', 's08-discovery'],
+  'bhoomi-setu': ['s01-home', 's02-create-case', 's03-case-dashboard', 's04-documents', 's05-document-source', 's06-verification', 's07-public-verify', 's08-parcel-map', 's09-area-comparison', 's10-official-records', 's11-earth-observation', 's12-next-action'],
+  cartograph: ['s01-portfolio', 's02-value-bridge', 's03-prerequisites', 's04-sensitivity', 's05-process', 's06-evidence', 's07-scorecard', 's08-future-state', 's09-value-parameters', 's10-confidence', 's11-critic', 's12-provenance'],
+  'digital-twin': ['s01-upload', 's02-column-mapping', 's03-project-chooser', 's04-programme-mode', 's05-combined-3d-playback', 's06-project-model', 's07-inspector-activity', 's08-inspector-coverage', 's09-inspector-logic', 's11-element-inspector', 's12-exports'],
+  'first-draft': ['s01-home', 's02-rfp-uploaded', 's04-ready-to-generate', 's05-content-summary-overview', 's06-workstreams', 's07-modules', 's08-timeline-governance', 's09-download'],
+  groundwork: ['s01-configure-inputs', 's02-inverters-storage', 's03-balance-of-system', 's04-other-costs-om', 's05-cost-results', 's06-cost-tables', 's07-system-diagram', 's08-lecture-system-size', 's09-lecture-storage', 's10-market-research', 's11-research-om'],
+  'haus-nous': ['s01-home', 's02-process', 's03-capabilities', 's04-tools', 's05-tools-filtered', 's06-frameworks', 's07-frameworks-filtered', 's08-console', 's09-console-input', 's10-console-recommendation'],
+  needle: ['s01-index-documents', 's03-indexing-complete', 's04-ask-questions', 's05-query-filters', 's06-simple-ui', 's07-simple-ui-index-done', 's08-api-docs', 's09-model-presets'],
+  pit: ['s01-sign-in', 's02-yard-industries', 's03-portfolio-summary', 's04-project-dataset', 's05-explore-table', 's06-timeline-chart', 's07-project-record', 's08-issue-register', 's09-citation-detail', 's10-glossary'],
+  pulse: ['s01-welcome', 's02-knowledge-base', 's03-documents-added', 's04-plan-survey', 's05-validate', 's06-export', 's07-classic-planner', 's08-question-author', 's09-model-registry'],
+  watchtower: ['s01-dashboard', 's02-time-window', 's03-capex-impact-filters', 's04-sector-filter', 's05-event-detail', 's06-full-width'],
+  yardstick: ['s01-dashboard', 's02-projects', 's03-create-project', 's04-api-docs', 's05-swagger-overview'],
+  costline: ['s01-source-workbook', 's02-projects', 's03-project-properties', 's04-field-data-trace', 's05-production-profile', 's06-concept-selector', 's07-schematic', 's08-cost-sheet-trace'],
+  precedent: ['s01-choose-scope', 's02-industry-scope-resolved', 's03-project-scope-selected'],
+  hindsight: ['s01-choose-scope', 's02-industry-scope-resolved', 's03-project-scope-selected'],
+  'opportunity-map': ['s01-tracked-clients', 's02-project-profiles', 's03-build-advisor', 's04-delivery-models'],
+  't-minus': ['s01-portfolio-of-facilities', 's02-data-integration', 's03-north-river-site-plan', 's04-scope-decisions', 's05-outage-economics', 's06-schedule-check', 's07-execution-readiness', 's08-stage-gate'],
+  'generative-scheduler': ['s01-project-3d-model', 's02-recipe', 's03-resources', 's04-cost-vs-time', 's05-chosen-schedule', 's06-compare'],
 };
 
 function labelFor(file: string) {
