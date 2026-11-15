@@ -74,6 +74,8 @@ const captures: Record<string, string[]> = {
   pulse: ['s01-welcome', 's02-knowledge-base', 's03-documents-added', 's04-plan-survey', 's05-validate', 's06-export', 's07-classic-planner', 's08-question-author', 's09-model-registry'],
   watchtower: ['s01-dashboard', 's02-time-window', 's03-capex-impact-filters', 's04-sector-filter', 's05-event-detail', 's06-full-width'],
   yardstick: ['s01-dashboard', 's02-projects', 's03-create-project', 's04-api-docs', 's05-swagger-overview'],
+  'generative-concepts': ['s06-concept-selector', 's07-schematic'],
+  'risk-analysis': ['s01-upload-schedule-file', 's02-cpm-analysis-metrics', 's04-gantt-chart-critical-path', 's07-critical-path-diagram', 's08-pert-network-chart', 's09-resources', 's11-optimization-settings', 's12-pareto-scenario-results'],
   costline: ['s01-source-workbook', 's02-projects', 's03-project-properties', 's04-field-data-trace', 's05-production-profile', 's06-concept-selector', 's07-schematic', 's08-cost-sheet-trace'],
   precedent: ['s01-choose-scope', 's02-industry-scope-resolved', 's03-project-scope-selected'],
   hindsight: ['s01-choose-scope', 's02-industry-scope-resolved', 's03-project-scope-selected'],

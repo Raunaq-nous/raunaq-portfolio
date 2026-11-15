@@ -1,6 +1,6 @@
 // How the AI builds are grouped. Calm mode groups by the segment of life or work a build serves;
 // nerd mode groups by the tech stack or skill stack it mostly exercises. Every room sits in exactly
-// one bucket per mode. The Spur Labs tools that run inside another build use that build's stack.
+// one bucket per mode.
 
 export interface Bucket {
   id: string;
