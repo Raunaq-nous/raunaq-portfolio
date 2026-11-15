@@ -5,10 +5,13 @@ import { projects, type Project } from './projects';
 import { buildVideos, mediaFor, type BuildVideoKind } from './assets';
 
 export type Wing = 'work' | 'fun';
+/** Platform builds are the stronger, connected ones that make up one platform; the rest of the work builds stand alone. */
+export type Tier = 'platform' | 'ai' | 'fun';
 
 export interface VaultBuild {
   project: Project;
   wing: Wing;
+  tier: Tier;
   code: string;
   /** Interface captures, when there are any. */
   shots: { src: string; alt: string; width: number; height: number }[];
@@ -17,6 +20,7 @@ export interface VaultBuild {
 }
 
 const FUN = new Set(['hitman', 'momentum-os', 'maate']);
+const PLATFORM = new Set(['opportunity-map', 'generative-concepts', 'costline', 'generative-scheduler', 'risk-analysis', 'precedent', 'outturn-forecast', 'forensic', 'hindsight', 'cockpit', 't-minus', 'digital-twin', 'pulse', 'cartograph', 'pit']);
 const ORDER = ['digital-twin', 'cartograph', 'pulse', 'haus-nous', 'abacus', 'needle', 'watchtower', 'blueprint', 'groundwork', 'yardstick', 'first-draft', 'bhoomi-setu', 'pit', 'opportunity-map', 'generative-concepts', 'costline', 'generative-scheduler', 'risk-analysis', 'precedent', 'outturn-forecast', 'forensic', 'hindsight', 't-minus', 'cockpit', 'hitman', 'momentum-os', 'maate'];
 
 export const vaultBuilds: VaultBuild[] = ORDER.map((slug) => projects.find((p) => p.slug === slug))
@@ -27,7 +31,8 @@ export const vaultBuilds: VaultBuild[] = ORDER.map((slug) => projects.find((p) =
       .screenshots.map((s) => s.asset)
       .filter((a): a is NonNullable<typeof a> => !!a)
       .map((a) => ({ src: a.src, alt: a.alt, width: a.width, height: a.height }));
-    return { project: p, wing, code: `${wing === 'fun' ? 'F' : 'B'}${String(i + 1).padStart(2, '0')}`, shots, videos: buildVideos[p.slug] ?? {} };
+    const tier: Tier = FUN.has(p.slug) ? 'fun' : PLATFORM.has(p.slug) ? 'platform' : 'ai';
+    return { project: p, wing, tier, code: `${wing === 'fun' ? 'F' : 'B'}${String(i + 1).padStart(2, '0')}`, shots, videos: buildVideos[p.slug] ?? {} };
   });
 
 export const wings: { id: Wing; label: string; blurb: string }[] = [

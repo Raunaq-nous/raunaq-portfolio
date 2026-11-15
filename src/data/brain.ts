@@ -125,9 +125,8 @@ modelFamilies.forEach((f) => {
 
 // ---------------------------------------------------------------- right: curiosity and craft
 const curiosityBuilds: Record<string, string[]> = {
-  'agentic-ai-industries': ['abacus', 'needle', 'blueprint', 'digital-twin', 'watchtower'],
+  'agentic-ai-industries': ['opportunity-map', 'generative-concepts', 'costline', 'generative-scheduler', 'risk-analysis', 'precedent', 'outturn-forecast', 'forensic', 'hindsight', 'cockpit', 'digital-twin', 'abacus', 'needle', 'blueprint', 'watchtower'],
   'ai-strategy-platform': ['haus-nous'],
-  'portfolio-tracker': ['watchtower'],
   'career-os': ['career-os'],
   'ai-sports': ['hitman'],
 };

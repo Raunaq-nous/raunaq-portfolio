@@ -21,22 +21,32 @@ export const curiosities: Curiosity[] = [
   {
     id: 'agentic-ai-industries',
     title: 'Agentic AI in Large, Capital Heavy Industries',
-    role: 'BUILDER + PRACTITIONER',
+    role: 'BUILDER + PRACTITIONER + RESEARCHER',
     year: '2025',
     status: 'ACTIVE',
     calm: `The thing that gets me about large, capital heavy industries (energy, infrastructure, mining) is that the analytical work is enormous and most of it is still done by hand. Spreadsheets that should not exist. Documents that cannot be searched. Financial models rebuilt from scratch every engagement.
 
 I have been building AI systems to fix this. Not as a research exercise, but as working tools. A multi-agent financial modeling engine. A RAG system for contracts and regulatory libraries. A workplan generator that automates schedule logic. A scheduling platform. An allocation trigger system that surfaces where money should move before anyone thinks to ask.
 
+Two threads run through it.
+
+The first is the portfolio. Nobody has a real-time picture of their whole project portfolio: the data exists (budgets, schedules, milestones, risk registers) but it sits in different systems, formats and teams. A tracker that watches it continuously finds where projects are slipping and where overruns are forming, and flags where money should move before the quarterly review would.
+
+The second is what happens before the tender. Big capital projects are visible years before anyone issues one: a utility asks for capacity, a developer joins a grid queue, a company files a new estimate. The same public record shows which projects are in trouble, and why. I am rebuilding the Opportunity Map as one engine that reads that record, tests whether forming projects can be built by their date, turns trouble on live projects into lessons with receipts, and ranks the decisions each lesson should change. The research behind it is in a flip-through notebook, with every source captured and graded.
+
 Each one started as a frustration. None of them started as a product idea.`,
     nerd: `Multi-agent systems applied to the analytical bottlenecks in energy, infrastructure, and mining. The stack: Python, LangChain, Streamlit on the agent side. FastAPI and React where real-time interaction matters.
 
 Current production tools: a financial modeling engine (parallel agent comparison across scenarios), a RAG pipeline with semantic chunking and hybrid retrieval for contracts and regs, a multi-objective schedule optimizer (genetic algorithm plus Monte Carlo on task durations), and a continuous portfolio monitoring system with drift detection and reallocation triggers.
 
+Portfolio thread: a continuous monitoring layer ingests budget vs. actuals, milestone rates, schedule variance and external signals, runs drift detection against the original investment thesis, and evaluates composable trigger conditions ("if project X is >15% over budget AND milestone completion is <60% at midpoint, flag for review"). Flagged reallocations are ranked by strategic fit, expected return and execution readiness.
+
+Before-the-tender thread: one intake, three outputs, one project record. Signals from grid queues, plant trackers, filings and audits are stored raw and versioned, resolved to projects with Fellegi-Sunter matching plus model adjudication for the uncertain band, and turned into typed events with verbatim evidence. Deliverability is the latest-arriving constraint (step-up transformers, breakers, turbines, interconnection, labour) at P80. Lessons carry a driver taxonomy, a gate and an artefact to change. Models classify and extract; code computes every number.
+
 Each one started as a frustration. None of them started as a product idea.`,
-    tags: ['AI', 'agentic', 'RAG', 'python', 'energy', 'infrastructure'],
+    tags: ['AI', 'agentic', 'RAG', 'python', 'energy', 'infrastructure', 'portfolio', 'monitoring', 'capital projects', 'opportunity intelligence', 'entity resolution', 'reference class forecasting', 'research notebook'],
     thesis: 'The analytical work is enormous and most of it is still done by hand.',
-    builds: ['abacus', 'needle', 'blueprint', 'digital-twin', 'watchtower'],
+    builds: ['opportunity-map', 'generative-concepts', 'costline', 'generative-scheduler', 'risk-analysis', 'precedent', 'outturn-forecast', 'forensic', 'hindsight', 'cockpit', 'digital-twin', 'abacus', 'needle', 'blueprint', 'watchtower'],
     thread: 'multi-agent-finance',
     plate: 'plant',
   },
@@ -60,24 +70,6 @@ It is not a chatbot bolted onto a database. That distinction matters.`,
     thesis: 'What does consulting look like when the analytical parts are automated?',
     builds: ['haus-nous'],
     plate: 'layers',
-  },
-  {
-    id: 'portfolio-tracker',
-    title: 'Portfolio Opportunity Tracker',
-    role: 'BUILDER',
-    year: '2025',
-    status: 'ACTIVE',
-    calm: `One of the underrated problems in large organizations is that nobody has a real-time picture of their entire project portfolio. The data exists (budgets, schedules, milestones, risk registers) but it is fragmented across systems, formats, and teams.
-
-I built a tracker that monitors the whole portfolio continuously. It finds where projects are slipping, where dependencies are breaking, where cost overruns are forming. More importantly, it triggers opportunities: where a failure is likely to show up before the quarterly review catches it, and where reallocation would improve outcomes. Portfolio intelligence that runs all the time, not once a year.`,
-    nerd: `Continuous monitoring layer that ingests project portfolio data (budget vs. actuals, milestone rates, schedule variance, external signals) and runs drift detection against original investment theses.
-
-LangChain agents evaluate composable trigger conditions ("if project X is >15% over budget AND milestone completion is <60% at midpoint, flag for review"). When reallocation is flagged, an opportunity mapper ranks alternatives by strategic fit, expected return, and execution readiness. Dashboard with traffic-light indicators and weekly digest. Python, LangChain.`,
-    tags: ['AI', 'finance', 'portfolio', 'python', 'monitoring'],
-    thesis: 'Nobody has a real-time picture of their entire project portfolio.',
-    builds: ['watchtower'],
-    thread: 'portfolio-intelligence',
-    plate: 'radar',
   },
   {
     id: 'career-os',
@@ -124,20 +116,5 @@ Open questions: which layer should personalize first, the application, the model
     thesis: 'Most of what we work with is built for an average person who does not exist.',
     builds: [],
     plate: 'die',
-  },
-  {
-    id: 'before-the-tender',
-    title: 'Before the Tender',
-    role: 'BUILDER + RESEARCHER',
-    year: '2026',
-    status: 'ACTIVE',
-    calm: `Big capital projects are visible years before anyone issues a tender: a utility asks for capacity, a developer joins a grid queue, a pipeline opens a season, a company files a new estimate. The same public record also shows which projects are in trouble, and why.
-
-I am rebuilding the Opportunity Map as one engine that reads that record, tests whether forming projects can be built by their date, turns trouble on live projects into lessons with receipts, and ranks the decisions each lesson should change. The research behind it is in a flip-through notebook, with every source captured and graded.`,
-    nerd: `One intake, three outputs, one project record. Signals from grid queues, plant trackers, filings and audits are stored raw and versioned, resolved to projects with Fellegi–Sunter matching plus model adjudication for the uncertain band, and turned into typed events with verbatim evidence. Deliverability is the latest-arriving constraint (step-up transformers, breakers, turbines, interconnection, labour) at P80. Lessons carry a driver taxonomy, a gate and an artefact to change; exposure and fit are explainable weighted overlaps. Models classify and extract; code computes every number.`,
-    tags: ['capital projects', 'opportunity intelligence', 'entity resolution', 'LLMs', 'reference class forecasting', 'research notebook'],
-    thesis: 'The same public event is a lesson about one project and a lead for the next.',
-    builds: [],
-    plate: 'layers',
   },
 ];
