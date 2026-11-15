@@ -27,6 +27,7 @@ const meta: Record<string, ProjectMeta> = {
   pit: { slug: 'pit', category: 'Capital projects research' },
   cartograph: { slug: 'cartograph', category: 'Process transformation', featured: 2 },
   't-minus': { slug: 't-minus', category: 'Turnaround planning' },
+  cockpit: { slug: 'cockpit', category: 'Execution control' },
   'opportunity-map': { slug: 'opportunity-map', category: 'Project origination' },
   'generative-concepts': { slug: 'generative-concepts', category: 'Concept generation' },
   'costline': { slug: 'costline', category: 'Cost estimation' },

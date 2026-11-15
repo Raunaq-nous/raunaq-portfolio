@@ -616,4 +616,34 @@ Compresses what used to be a 3-4 week survey cycle into hours.`,
     punchline: 'A turnaround planned backwards from the day the plant stops.',
     github: 'https://github.com/Raunaq-nous/Rundown',
   },
+  {
+    id: 'cockpit',
+    origin: 'independent',
+    name: 'Cockpit',
+    status: 'SPECIFIED',
+    type: 'TOOL',
+    tags: ['Project controls', 'Site imagery', 'Computer vision', 'Portfolio dashboards'],
+    calm: 'Boards see status reports weeks after problems begin. Every project on one screen, with drift flagged before the monthly report.',
+    nerd: '`execution control room`. Computer vision that recognizes installed elements in site imagery and compares them with the twin’s planned state for the same date. Schedule performance index and a top-down cost index for every project. Capital, commitment and approved-change aggregation across the portfolio. Risk exposure aggregated only from eligible, quantified risks. Readiness thresholds and safety aggregated to the portfolio.',
+    process: `What it does:
+
+1. PORTFOLIO VIEW: Every project and programme on one screen
+
+2. EARLY WARNING: Spending shape against comparables at the same progress
+
+3. DRIFT TRIGGERS: Cost and date drift against the investment case
+
+4. SITE VISION: Computer vision on drone, fixed-camera and 360-degree imagery, checked element by element against the twin’s plan for that date
+
+5. MEASURED EARNED VALUE: Schedule and cost performance indices from measured, not reported, progress
+
+6. SINGLE PANE OF GLASS: Cost, schedule, risk, safety, commitments and approved changes on one screen, for a project or a portfolio
+
+7. EXCEPTION REPORTING: Nine leading indicators, read as percentiles
+
+8. RECOVERY LEVERS: Options priced against the cost of a day of delay
+
+9. READINESS AND SAFETY: Readiness thresholds and safety performance in the same view`,
+    punchline: 'Every project on one screen, with drift flagged before the monthly report.',
+  },
 ];

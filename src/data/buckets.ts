@@ -58,4 +58,5 @@ export const roomBuckets: Record<string, { calm: string; nerd: string }> = {
   'forensic': { calm: 'evidence', nerd: 'quant' },
   'hindsight': { calm: 'evidence', nerd: 'rag' },
   't-minus': { calm: 'delivery', nerd: 'fullstack' },
+  cockpit: { calm: 'delivery', nerd: 'viz3d' },
 };

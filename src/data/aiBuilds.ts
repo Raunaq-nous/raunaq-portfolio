@@ -17,7 +17,7 @@ export interface VaultBuild {
 }
 
 const FUN = new Set(['hitman', 'momentum-os', 'maate']);
-const ORDER = ['digital-twin', 'cartograph', 'pulse', 'haus-nous', 'abacus', 'needle', 'watchtower', 'blueprint', 'groundwork', 'yardstick', 'first-draft', 'bhoomi-setu', 'pit', 'opportunity-map', 'generative-concepts', 'costline', 'generative-scheduler', 'risk-analysis', 'precedent', 'outturn-forecast', 'forensic', 'hindsight', 't-minus', 'hitman', 'momentum-os', 'maate'];
+const ORDER = ['digital-twin', 'cartograph', 'pulse', 'haus-nous', 'abacus', 'needle', 'watchtower', 'blueprint', 'groundwork', 'yardstick', 'first-draft', 'bhoomi-setu', 'pit', 'opportunity-map', 'generative-concepts', 'costline', 'generative-scheduler', 'risk-analysis', 'precedent', 'outturn-forecast', 'forensic', 'hindsight', 't-minus', 'cockpit', 'hitman', 'momentum-os', 'maate'];
 
 export const vaultBuilds: VaultBuild[] = ORDER.map((slug) => projects.find((p) => p.slug === slug))
   .filter((p): p is Project => !!p)
